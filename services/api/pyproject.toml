@@ -16,7 +16,7 @@ dependencies = [
   "fastapi==0.116.1",
   "httpx==0.28.1",
   "orjson==3.11.3",
-  "prometheus-client==0.22.1",
+  "prometheus-client==0.26.0",
   "pydantic==2.11.9",
   "pydantic-settings==2.10.1",
   "pyotp==2.9.0",
