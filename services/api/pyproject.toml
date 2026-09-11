@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Little Orbit HTTP, WebSocket, and worker service"
 requires-python = ">=3.12,<3.14"
 dependencies = [
-  "alembic==1.16.5",
+  "alembic==1.19.2",
   "argon2-cffi==25.1.0",
   "asyncpg==0.30.0",
   "cryptography==45.0.7",
