@@ -18,6 +18,7 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 - Use bounded container logs, health checks, restart policies, automated database backups, retention, and a tested restore path.
 - Do not enable HSTS until HTTPS, certificate renewal, rollback, and direct recovery access are verified.
 - Never run destructive Compose, volume, database, firewall, DHCP, DNS, or proxy actions without inspecting the target state.
+- Publish immutable GitHub APK bytes before publishing their API metadata. Run migrations and health checks before a version floor can be scheduled.
 
 ## Start here
 

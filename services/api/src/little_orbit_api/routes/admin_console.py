@@ -30,7 +30,7 @@ from ..models import (
     SecurityEvent,
     Session,
 )
-from ..release_service import upsert_apk_release
+from ..release_service import PublishedReleaseImmutable, upsert_apk_release
 from ..schemas import (
     AdminAccountAction,
     AdminCollectionResponse,
@@ -450,7 +450,10 @@ async def publish_release(
 
     if version != payload.version:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Version path and body differ")
-    await upsert_apk_release(session, payload, admin.id)
+    try:
+        await upsert_apk_release(session, payload, admin.id)
+    except PublishedReleaseImmutable as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     await session.commit()
     return PublicMessage(message="Release metadata updated.")
 

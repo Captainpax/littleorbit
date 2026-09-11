@@ -1,3 +1,19 @@
 <resources>
-    <color name="navy">#0B1122</color><color name="navy_surface">#151E36</color><color name="coral">#FF746D</color><color name="lavender">#A997FF</color><color name="cloud">#F8F5FF</color><color name="muted">#AEB5C9</color>
+    <color name="navy">#081226</color>
+    <color name="navy_deep">#050C1A</color>
+    <color name="navy_surface">#12213A</color>
+    <color name="navy_surface_high">#1A2B49</color>
+    <color name="navy_surface_muted">#0D1A2E</color>
+    <color name="orbit_border">#324968</color>
+    <color name="coral">#FF7D79</color>
+    <color name="coral_soft">#FFAAA5</color>
+    <color name="lavender">#A89BFF</color>
+    <color name="lavender_soft">#CEC7FF</color>
+    <color name="amber">#FFC45B</color>
+    <color name="sky">#85B9FF</color>
+    <color name="mint">#68DDB7</color>
+    <color name="cloud">#F7F6FF</color>
+    <color name="muted">#AEBBD2</color>
+    <color name="scrim">#CC050C1A</color>
+    <color name="transparent">#00000000</color>
 </resources>

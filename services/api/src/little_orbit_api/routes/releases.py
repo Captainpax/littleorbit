@@ -19,18 +19,44 @@ async def current_release(
 
     release = await session.scalar(
         select(ApkRelease)
-        .where(ApkRelease.published_at.is_not(None))
-        .order_by(ApkRelease.published_at.desc())
+        .where(
+            ApkRelease.published_at.is_not(None),
+            ApkRelease.version_code.is_not(None),
+            ApkRelease.size_bytes.is_not(None),
+            ApkRelease.package_name.is_not(None),
+            ApkRelease.signer_sha256.is_not(None),
+            ApkRelease.minimum_supported_version_code.is_not(None),
+        )
+        .order_by(ApkRelease.version_code.desc())
         .limit(1)
     )
     if release is None or release.published_at is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No signed release is published")
+    version_code = release.version_code
+    size_bytes = release.size_bytes
+    package_name = release.package_name
+    signer_sha256 = release.signer_sha256
+    minimum_supported_version_code = release.minimum_supported_version_code
+    if (
+        version_code is None
+        or size_bytes is None
+        or package_name is None
+        or signer_sha256 is None
+        or minimum_supported_version_code is None
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No signed release is published")
     return ApkReleaseResponse(
         version=release.version,
+        version_code=version_code,
         apk_url=release.apk_url,
         github_release_url=release.github_release_url,
         sha256=release.sha256,
+        size_bytes=size_bytes,
+        package_name=package_name,
+        signer_sha256=signer_sha256,
         minimum_android=release.minimum_android,
+        minimum_supported_version_code=minimum_supported_version_code,
+        required_after=release.required_after,
         release_notes=release.release_notes,
         published_at=release.published_at,
     )

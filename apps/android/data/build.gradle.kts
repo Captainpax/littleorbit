@@ -9,7 +9,20 @@ room { schemaDirectory("$projectDir/schemas") }
 android {
     namespace = "com.littleorbit.data"
     compileSdk = 36
-    defaultConfig { minSdk = 29 }
+    defaultConfig {
+        minSdk = 29
+        buildConfigField(
+            "int",
+            "CLIENT_VERSION_CODE",
+            (rootProject.extra["littleOrbitVersionCode"] as Int).toString(),
+        )
+        buildConfigField(
+            "String",
+            "CLIENT_VERSION_NAME",
+            "\"${rootProject.extra["littleOrbitVersionName"] as String}\"",
+        )
+    }
+    buildFeatures { buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

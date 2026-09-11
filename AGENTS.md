@@ -38,6 +38,7 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Note operation IDs are idempotent and server revisions increase monotonically.
 - Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates.
 - Only the gateway binds a public host port. Ollama remains internal and accepts calls only from the AI service.
+- Published APK metadata is immutable. Android accepts an update only when its package, increasing version code, exact byte count, APK hash, and pinned signing certificate all match.
 
 ## Owl discipline
 
@@ -71,7 +72,7 @@ npm --prefix apps/web run test
 
 ## Cross-system verification
 
-Contract changes require valid and invalid fixtures, Python tests, web validation, Android parsing tests, and a version note. Authentication, pairing, notes, AI, location, or deployment changes also require the corresponding Mermaid flow and privacy/operations document to be checked.
+Contract changes require valid and invalid fixtures, Python tests, web validation, Android parsing tests, and a version note. Authentication, pairing, notes, AI, location, updates, or deployment changes also require the corresponding Mermaid flow and privacy/operations document to be checked.
 
 ## Documentation impact
 

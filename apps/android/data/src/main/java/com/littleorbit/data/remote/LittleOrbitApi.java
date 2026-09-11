@@ -16,6 +16,10 @@ public interface LittleOrbitApi {
     @GET("api/v1/health/live")
     Call<HealthDto> health();
 
+    /** Loads public signed-APK update metadata without requiring an account session. */
+    @GET("api/v1/releases/current")
+    Call<ApiModels.ApkRelease> currentRelease();
+
     /** Authenticates a verified account. */
     @POST("api/v1/auth/login")
     Call<ApiModels.SessionResponse> login(@Body ApiModels.LoginRequest request);

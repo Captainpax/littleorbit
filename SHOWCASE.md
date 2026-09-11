@@ -14,11 +14,17 @@ The two linked orbits communicate two independent people choosing a shared path.
 
 The dashboard leads with the relationship rather than system controls. Daily questions, countdowns, and notes use spacious cards. Widgets and watch surfaces show cached together-time and the next countdown, with a visible stale marker when refresh is overdue.
 
+![Updater and More screen concept](docs/assets/android-update-more-concept.png)
+
+The RC3 companion study defines the updater and settings direction: the same planet motif, a visible verification step, calm progress language, and one More destination for pairing, privacy, archives, and app updates.
+
 ### Current Android implementation
 
-![Implemented signed-out Android dashboard on an API 36 emulator](docs/assets/android-home-emulator.png)
+![Implemented signed RC3 signed-out Android dashboard on an API 36 emulator](docs/assets/android-home-rc3-signed.png)
 
-The emulator capture verifies the adaptive dark theme, landscape reflow, scrollable feature navigation, signed-out state, and accessible native controls. Portrait, large-text, widget, and Wear OS captures remain part of the physical-device release gate.
+![Implemented RC3 More screen on an API 36 emulator](docs/assets/android-more-rc3.png)
+
+The RC3 emulator captures verify the Inter type system, paired planet motif, lavender primary action, persistent Home/Quiz/Notes/More navigation, sparse signed-out states, and Wear update boundary. Feature forms now share the same cosmic background, inset fields, and action styles. Portrait, large-text, updater installation, widget, and Wear OS captures remain part of the physical-device release gate.
 
 ## Public website
 
@@ -47,10 +53,11 @@ The console exposes service health, delivery and generation status, moderation q
 ## Screenshot checklist
 
 - [ ] Real phone: signed-out, pairing, daily question, both-answered reveal, countdown, notes conflict, together-time, privacy controls.
-- [x] API 36 emulator: debug APK install, launch, signed-out dashboard hierarchy, landscape rendering, and runtime-crash check.
+- [x] API 36 emulator: RC3 debug APK install, launch, signed-out dashboard and More hierarchy, landscape rendering, and runtime-crash check.
 - [ ] Home widget: fresh, stale, signed-out, and server-offline states.
 - [ ] Wear OS: tile, complication, loading, stale, and disconnected states.
 - [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
 - [ ] Website remaining: recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.
 - [ ] Two-device flow: pairing through unpair archive on physical phones.
+- [ ] Updater: optional deferral, interrupted download recovery, corrupt APK rejection, Android install approval, and scheduled compatibility floor on a physical phone.

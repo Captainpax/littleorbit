@@ -2,13 +2,14 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#050C1A"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="24dp">
 
     <ImageView
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
         android:contentDescription="@null"
         android:src="@drawable/wear_icon" />
 
@@ -18,7 +19,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="@string/together_for"
-        android:textColor="#AEB5C9"
+        android:letterSpacing="0.12"
+        android:textColor="#CEC7FF"
         android:textSize="12sp" />
 
     <TextView
@@ -26,8 +28,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/unavailable"
-        android:textColor="#F8F5FF"
-        android:textSize="28sp"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="#F7F6FF"
+        android:textSize="27sp"
         android:textStyle="bold" />
 
     <TextView
@@ -35,6 +38,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="@string/open_phone_to_refresh"
-        android:textColor="#F5C86C"
+        android:textColor="#FFC45B"
         android:textSize="11sp" />
 </LinearLayout>

@@ -11,7 +11,9 @@ import com.littleorbit.data.remote.LittleOrbitApi;
 import com.littleorbit.data.remote.SessionInterceptor;
 import com.littleorbit.data.repository.DisplayCacheRepository;
 import com.littleorbit.data.repository.NetworkOrbitRepository;
+import com.littleorbit.data.repository.NetworkReleaseRepository;
 import com.littleorbit.data.repository.OrbitRepository;
+import com.littleorbit.data.repository.ReleaseRepository;
 import com.littleorbit.data.repository.RoomDisplayCacheRepository;
 import com.squareup.moshi.Moshi;
 import dagger.Binds;
@@ -36,6 +38,10 @@ public abstract class DisplayModule {
     /** Binds authenticated feature operations. */
     @Binds
     abstract OrbitRepository bindOrbit(NetworkOrbitRepository repository);
+
+    /** Binds public signed-release discovery. */
+    @Binds
+    abstract ReleaseRepository bindReleases(NetworkReleaseRepository repository);
 
     /** Provides the single Room database. Destructive migration is intentionally absent. */
     @Provides @Singleton

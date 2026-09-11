@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/navy">
+    android:background="@drawable/background_cosmic">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,12 +26,14 @@
             android:textColor="@color/lavender" />
 
         <Spinner
+            style="@style/Widget.LittleOrbit.Spinner"
             android:id="@+id/bucketPicker"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp" />
 
         <EditText
+            style="@style/Widget.LittleOrbit.Input"
             android:id="@+id/secondsInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -41,6 +43,7 @@
             android:textColorHint="@color/muted" />
 
         <EditText
+            style="@style/Widget.LittleOrbit.Input"
             android:id="@+id/reasonInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -8,6 +8,13 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..client_compatibility import (
+    CLIENT_HEADER,
+    VERSION_CODE_HEADER,
+    enforced_version_floor,
+    supplied_version_code,
+    update_required,
+)
 from ..clock import SystemClock
 from ..config import get_settings
 from ..couple_access import active_member, lock_couple
@@ -307,10 +314,9 @@ async def disconnect_couple_notes(couple_id: UUID, hub: NoteConnectionHub) -> No
 async def note_socket(websocket: WebSocket, note_id: UUID) -> None:
     """Authenticate, authorize, then synchronize retry-safe note operations."""
 
-    authorization = websocket.headers.get("authorization", "")
-    token = authorization[7:] if authorization.startswith("Bearer ") else ""
-    account_id = await _authenticate(token) if token else None
-    snapshot = await _authorized_snapshot(account_id, note_id) if account_id else None
+    if not await _compatible_socket(websocket):
+        return
+    account_id, snapshot = await _authorized_socket(websocket, note_id)
     if account_id is None or snapshot is None:
         await websocket.close(code=4401)
         return
@@ -318,6 +324,43 @@ async def note_socket(websocket: WebSocket, note_id: UUID) -> None:
     hub = cast(NoteConnectionHub, websocket.app.state.note_connections)
     hub.add(note_id, websocket)
     await websocket.send_json(snapshot)
+    await _run_note_socket(websocket, note_id, account_id, hub)
+
+
+async def _compatible_socket(websocket: WebSocket) -> bool:
+    """Apply the version floor before authentication or relationship lookup."""
+
+    async with SessionFactory() as db:
+        floor = await enforced_version_floor(db, SystemClock().now())
+    version_code = supplied_version_code(
+        websocket.headers.get(CLIENT_HEADER), websocket.headers.get(VERSION_CODE_HEADER)
+    )
+    if update_required(version_code, floor):
+        await websocket.close(code=4426, reason="client_update_required")
+        return False
+    return True
+
+
+async def _authorized_socket(
+    websocket: WebSocket, note_id: UUID
+) -> tuple[UUID | None, dict[str, object] | None]:
+    """Resolve authentication and note authorization without revealing existence."""
+
+    authorization = websocket.headers.get("authorization", "")
+    token = authorization[7:] if authorization.startswith("Bearer ") else ""
+    account_id = await _authenticate(token) if token else None
+    snapshot = await _authorized_snapshot(account_id, note_id) if account_id else None
+    return account_id, snapshot
+
+
+async def _run_note_socket(
+    websocket: WebSocket,
+    note_id: UUID,
+    account_id: UUID,
+    hub: NoteConnectionHub,
+) -> None:
+    """Receive validated operations until disconnect or authorization revocation."""
+
     try:
         while True:
             try:

@@ -5,6 +5,7 @@ from datetime import timedelta
 from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
+from .client_compatibility import AndroidCompatibilityMiddleware
 from .notes_hub import NoteConnectionHub
 from .rate_limit import FixedWindowLimiter
 from .routes import (
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
             "api",
         ],
     )
+    app.add_middleware(AndroidCompatibilityMiddleware)
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(pairing.router)

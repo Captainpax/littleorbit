@@ -27,6 +27,7 @@ final class HomeStateMapper {
                 Duration.ofSeconds(cache.togetherSeconds).toDays() + " days together",
                 cache.nextCountdownTitle,
                 stale ? "Estimate may be stale" : "Updated recently",
+                signedIn,
                 signedIn);
     }
 }

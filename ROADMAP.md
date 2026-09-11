@@ -14,6 +14,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Complete consented together-time processing, corrections, and raw-coordinate expiry.
 - [x] Complete Android phone app, home widget, Wear OS tile, and complication implementation.
 - [x] Complete owner-console workflows, TOTP recovery, and metadata-only privacy review.
+- [x] Complete verified, user-approved Android phone updates and the RC3 cosmic UI foundation.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [ ] Sign release APKs, publish a GitHub Release, and configure the reviewed production proxy/firewall route.
 
@@ -22,7 +23,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - Accessibility and large-text improvements based on real device testing.
 - Translations and timezone edge-case hardening.
 - Question-quality feedback and community-contributed curated questions.
-- Release updater, operational dashboards, backup drills, and incident playbooks.
+- Operational dashboards, backup drills, and incident playbooks.
 - Improved offline reconciliation and battery measurements.
 
 ## 2.0 — Explicitly reviewed sensitive features

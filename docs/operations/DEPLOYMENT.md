@@ -58,4 +58,28 @@ Keep the PKCS12 release store and its four `ANDROID_SIGNING_*` settings outside 
 .\infra\scripts\build-signed-android.ps1
 ```
 
-The script loads signing values from the ignored `.env.android-signing`, which Compose never reads. It fails when any value or the store is missing, builds phone and Wear OS release APKs, verifies each signature with the newest installed Android `apksigner`, requires the same certificate on both, and writes APK plus SHA-256 files under `dist/android/`. Publish those bytes through GitHub Releases before updating stack metadata with the local `publish-release` command. Update the verified fallback in `apps/web/src/lib/release.ts` with the same version, phone APK URL, release URL, and SHA-256 before rebuilding the web image; this keeps the download available while the API is restarting. The public certificate and expected fingerprint are documented in [`../signing/README.md`](../signing/README.md).
+The script loads signing values from the ignored `.env.android-signing`, which Compose never reads. It fails when any value or the store is missing, builds phone and Wear OS release APKs, verifies each signature with the newest installed Android `apksigner`, requires the same certificate on both, and writes APK plus SHA-256 files under `dist/android/`.
+
+Publish in this order:
+
+1. Build, hash, and verify both APKs locally.
+2. Commit the final release code and documentation, create the immutable GitHub tag, and upload the exact APK/checksum files to that release.
+3. Update the verified fallback in `apps/web/src/lib/release.ts` with the same phone APK URL, release URL, version code, and SHA-256, then deploy the migrated API and rebuilt web image.
+4. Publish the release record only after the public GitHub URLs return the expected bytes:
+
+```powershell
+docker compose --env-file .env -f infra/compose.yaml exec api python -m little_orbit_api.cli publish-release `
+  --version 1.0.0-rc.3 `
+  --apk-url https://github.com/Captainpax/littleorbit/releases/download/v1.0.0-rc.3/little-orbit-1.0.0-rc.3.apk `
+  --github-release-url https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.3 `
+  --sha256 1ecf525d2c2d682dd2a361118c14c0153b58aee80e2ba151de62029d90379647 `
+  --release-notes "Verified updates and the cosmic Android interface." `
+  --version-code 3 --size-bytes 15746529 `
+  --package-name com.littleorbit.mobile `
+  --signer-sha256 43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337 `
+  --minimum-android 29 --minimum-supported-version-code 1
+```
+
+Omit `--required-after` for normal optional releases. Before scheduling a compatibility floor, confirm that the excluded build can discover and install the published APK, then use an explicit timezone-aware UTC value. Once a published record exists, corrections require a new version and new tag; the API deliberately rejects edits and unpublishing.
+
+The public certificate and expected fingerprint are documented in [`../signing/README.md`](../signing/README.md).

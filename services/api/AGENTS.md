@@ -22,6 +22,7 @@ Own authenticated HTTP/WSS behavior, application transactions, persistence, sche
 - WSS connections authenticate before subscription; note revisions are monotonic and operation IDs unique per note.
 - Audit security events with identifiers and outcomes, never credentials or relationship content.
 - Trust forwarded client IP only when the direct peer equals the configured NPM address.
+- Never mutate or unpublish a published APK record. A compatibility floor applies before authentication only after its explicit timezone-aware `required_after` instant.
 
 ## Start here
 
@@ -38,7 +39,7 @@ python -m pytest services/api/tests
 alembic -c services/api/alembic.ini upgrade head
 ```
 
-Test expiry and replay, neutral public responses, throttles, honeypot, session rotation, authorization-before-existence, pair races, idempotency, note ordering/reconnect, deletion, precise-coordinate expiry, and admin redaction.
+Test expiry and replay, neutral public responses, throttles, honeypot, session rotation, authorization-before-existence, pair races, idempotency, note ordering/reconnect, Android version-floor timing, release immutability, deletion, precise-coordinate expiry, and admin redaction.
 
 ## Documentation impact
 

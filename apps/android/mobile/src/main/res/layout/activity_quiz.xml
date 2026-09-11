@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/navy">
+    android:background="@drawable/background_cosmic">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -27,6 +27,7 @@
             android:textStyle="bold" />
 
         <EditText
+            style="@style/Widget.LittleOrbit.Input"
             android:id="@+id/answerInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -39,6 +40,7 @@
             android:textColorHint="@color/muted" />
 
         <Spinner
+            style="@style/Widget.LittleOrbit.Spinner"
             android:id="@+id/optionInput"
             android:layout_width="match_parent"
             android:layout_height="56dp"
@@ -68,12 +70,13 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/nextButton"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.LittleOrbit.Button.Outline"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/next_question" />
 
         <EditText
+            style="@style/Widget.LittleOrbit.Input"
             android:id="@+id/reportReasonInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -84,7 +87,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/reportButton"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.LittleOrbit.Button.Text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/report_question" />
@@ -99,6 +102,7 @@
             android:textStyle="bold" />
 
         <EditText
+            style="@style/Widget.LittleOrbit.Input"
             android:id="@+id/customPromptInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -107,16 +111,19 @@
             android:textColorHint="@color/muted" />
 
         <Spinner
+            style="@style/Widget.LittleOrbit.Spinner"
             android:id="@+id/customKindInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
         <Spinner
+            style="@style/Widget.LittleOrbit.Spinner"
             android:id="@+id/customCategoryInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
         <EditText
+            style="@style/Widget.LittleOrbit.Input"
             android:id="@+id/customOptionsInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -126,7 +133,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/customCreateButton"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.LittleOrbit.Button.Outline"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/add_custom_question" />

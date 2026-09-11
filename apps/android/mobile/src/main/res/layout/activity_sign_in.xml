@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/navy"
+    android:background="@drawable/background_cosmic"
     android:orientation="vertical"
     android:padding="24dp">
 
@@ -15,6 +15,7 @@
         android:textStyle="bold" />
 
     <EditText
+            style="@style/Widget.LittleOrbit.Input"
         android:id="@+id/emailInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -26,6 +27,7 @@
         android:textColorHint="@color/muted" />
 
     <EditText
+            style="@style/Widget.LittleOrbit.Input"
         android:id="@+id/passwordInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -52,7 +54,7 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/signupButton"
-        style="@style/Widget.Material3.Button.OutlinedButton"
+        style="@style/Widget.LittleOrbit.Button.Outline"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/create_account" />

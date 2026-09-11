@@ -15,11 +15,12 @@ Little Orbit is a free and open couples platform for staying curious, sharing sm
 - Shared countdowns and plain-text live notes with offline drafts.
 - Estimated together-time from explicitly consented location samples.
 - Android home widget, Wear OS tile, and watch complication using cached data.
+- A user-approved phone updater that verifies the APK hash, size, package, version, and pinned signing certificate before Android asks to install it.
 - Eight-character, single-use pairing with confirmation.
 - A public website for registration, account recovery, APK releases, privacy, and project documentation.
 - A privacy-limited owner console and local daily-question generation through Ollama.
 
-![Android and Wear OS direction](docs/assets/android-wear-concept.png)
+![Implemented signed RC3 Android home](docs/assets/android-home-rc3-signed.png)
 
 ## Architecture
 
@@ -50,7 +51,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.2`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.2) is the current signed phone and Wear OS release candidate. It fixes authenticated home state before pairing and clears account-scoped local data when an account changes or a couple unpairs. GitHub hosts the APKs and checksum files; the [signing certificate](docs/signing/README.md) documents the update identity. This remains a test release until the real-device launch gate is complete.
+[`1.0.0-rc.3`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.3) is the current signed phone and Wear OS release candidate. It adds the verified phone updater and brings the app, widget, and Wear launcher into the cosmic design system. GitHub hosts the APKs and checksum files; the [signing certificate](docs/signing/README.md) documents the pinned update identity. RC2 users need this one manual update because RC2 predates the updater. This remains a test release until the real-device launch gate is complete.
 
 ## Privacy promise
 

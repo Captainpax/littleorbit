@@ -1,5 +1,6 @@
 package com.littleorbit.data.remote;
 
+import com.littleorbit.data.BuildConfig;
 import com.littleorbit.data.security.SessionStore;
 import java.io.IOException;
 import javax.inject.Inject;
@@ -22,7 +23,13 @@ public final class SessionInterceptor implements Interceptor {
     /** Attaches authorization without logging or copying it into a URL. */
     @Override
     public Response intercept(Chain chain) throws IOException {
-        Request request = chain.request();
+        Request request = chain.request().newBuilder()
+                .header("X-Little-Orbit-Client", "android")
+                .header("X-Little-Orbit-Version", BuildConfig.CLIENT_VERSION_NAME)
+                .header(
+                        "X-Little-Orbit-Version-Code",
+                        Integer.toString(BuildConfig.CLIENT_VERSION_CODE))
+                .build();
         String token = sessions.read().orElse(null);
         if (token != null) {
             request = request.newBuilder().header("Authorization", "Bearer " + token).build();

@@ -7,8 +7,8 @@ android {
         applicationId = "com.littleorbit.mobile"
         minSdk = 30
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.0-rc.2"
+        versionCode = rootProject.extra["littleOrbitVersionCode"] as Int
+        versionName = rootProject.extra["littleOrbitVersionName"] as String
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

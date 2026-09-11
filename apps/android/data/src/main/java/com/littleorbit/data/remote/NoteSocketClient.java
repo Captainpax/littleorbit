@@ -1,5 +1,6 @@
 package com.littleorbit.data.remote;
 
+import com.littleorbit.data.BuildConfig;
 import com.littleorbit.data.security.SessionStore;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,7 @@ public final class NoteSocketClient {
             listener.onFailure();
             return () -> {};
         }
-        Request request = new Request.Builder()
+        Request request = versionedRequest()
                 .url("wss://lil-orb.pax-kun.com/ws/v1/notes/" + noteId)
                 .header("Authorization", "Bearer " + token)
                 .build();
@@ -62,12 +63,21 @@ public final class NoteSocketClient {
             listener.onFailure();
             return () -> {};
         }
-        Request request = new Request.Builder()
+        Request request = versionedRequest()
                 .url("wss://lil-orb.pax-kun.com/ws/v1/notes/" + noteId)
                 .header("Authorization", "Bearer " + token)
                 .build();
         WebSocket socket = client.newWebSocket(request, new ObserveListener(listener));
         return () -> socket.close(1000, "screen closed");
+    }
+
+    private static Request.Builder versionedRequest() {
+        return new Request.Builder()
+                .header("X-Little-Orbit-Client", "android")
+                .header("X-Little-Orbit-Version", BuildConfig.CLIENT_VERSION_NAME)
+                .header(
+                        "X-Little-Orbit-Version-Code",
+                        Integer.toString(BuildConfig.CLIENT_VERSION_CODE));
     }
 
     private static List<Operation> editPlan(String oldBody, String newBody) {

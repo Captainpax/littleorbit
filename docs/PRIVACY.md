@@ -18,6 +18,7 @@ This document describes the intended 1.0 behavior while the project is under dev
 | Together-time estimates and corrections | Display aggregate shared time | Current couple only; admins see operational counts | Until deletion/archive policy applies |
 | Question reports | Hide unsafe/poor questions and review content | Reporter status; admin question metadata | Operational moderation window |
 | AI batch metadata | Reliability, safety, and reproducibility | Admins | Operational/audit policy set before launch |
+| App release and updater state | Discover and safely resume user-approved phone updates | Public release metadata; device-local phase and byte counts | Published records are immutable; local state is replaced by later releases or app removal |
 
 ## Consent and control
 
@@ -38,3 +39,7 @@ Clients send consented, bounded batches with timestamp, coordinate, accuracy, an
 Ollama has no published port. The worker reaches it through an internal AI network; the one-shot initializer is the only other caller. Ollama has a separate egress-only bridge so it can download the pinned model manifest, while no gateway, web, API, or database service shares that bridge. Prompts contain a calendar date, public generation rules, and limited recent question text used for duplicate prevention. They contain no profiles, answers, notes, locations, relationship history, email addresses, or identifiers.
 
 The planned 2.0 cycle tracker is outside this policy. It requires a separate health-data privacy, encryption, consent, deletion, abuse-risk, and medical-boundary review before implementation. Cycle data remains outside AI by default.
+
+## App update boundary
+
+The update check sends only the normal request network metadata plus the installed app name and numeric version code. The public release response contains no account or relationship data. The phone stores a release ID, progress phase, byte counts, optional defer time, and sanitized failure code in its private app storage. Android's `DownloadManager` and `PackageInstaller` handle the APK after the person chooses to update. The phone updater does not read or transfer relationship data and never sends an APK to Wear OS.

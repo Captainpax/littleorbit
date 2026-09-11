@@ -29,6 +29,11 @@ function required(formData: FormData, name: string): string {
   return value;
 }
 
+function optional(formData: FormData, name: string): string | null {
+  const value = formData.get(name);
+  return typeof value === "string" && value ? value : null;
+}
+
 /** Pause or resume public registration through the audited API. */
 export async function setRegistration(formData: FormData) {
   await adminMutation("registration", "PUT", { enabled: required(formData, "enabled") === "true" });
@@ -76,13 +81,20 @@ export async function replaceCuratedBank(formData: FormData) {
 /** Publish signed GitHub Release metadata used by the download page. */
 export async function publishRelease(formData: FormData) {
   const version = required(formData, "version");
+  const requiredAfter = optional(formData, "required_after");
   if (!versionPattern.test(version)) throw new Error("Invalid release version");
   await adminMutation(`releases/${encodeURIComponent(version)}`, "PUT", {
     version,
+    version_code: Number(required(formData, "version_code")),
     apk_url: required(formData, "apk_url"),
     github_release_url: required(formData, "github_release_url"),
     sha256: required(formData, "sha256"),
+    size_bytes: Number(required(formData, "size_bytes")),
+    package_name: required(formData, "package_name"),
+    signer_sha256: required(formData, "signer_sha256"),
     minimum_android: Number(required(formData, "minimum_android")),
+    minimum_supported_version_code: Number(required(formData, "minimum_supported_version_code")),
+    required_after: requiredAfter ? new Date(requiredAfter).toISOString() : null,
     release_notes: required(formData, "release_notes"),
     publish: formData.get("publish") === "on",
   });

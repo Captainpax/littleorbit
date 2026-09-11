@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/card_background"
+    android:orientation="vertical"
+    android:padding="24dp">
+    <TextView
+        android:id="@+id/updateTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/update_available"
+        android:textAppearance="@style/TextAppearance.LittleOrbit.Title"
+        android:textSize="26sp" />
+    <TextView
+        android:id="@+id/updateVersion"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@color/lavender_soft"
+        android:textSize="16sp" />
+    <TextView
+        android:id="@+id/updateMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+    <ProgressBar
+        android:id="@+id/updateProgress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:layout_marginTop="22dp"
+        android:max="100"
+        android:progressTint="@color/lavender"
+        android:visibility="gone" />
+    <TextView
+        android:id="@+id/updateStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:accessibilityLiveRegion="polite"
+        android:textColor="@color/muted"
+        android:visibility="gone" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/updatePrimary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:text="@string/update_now" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/updateLater"
+        style="@style/Widget.LittleOrbit.Button.Outline"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/later" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/updateManual"
+        style="@style/Widget.LittleOrbit.Button.Text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/manual_download" />
+</LinearLayout>

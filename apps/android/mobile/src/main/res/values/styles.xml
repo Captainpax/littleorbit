@@ -1,0 +1,50 @@
+<resources>
+    <style name="TextAppearance.LittleOrbit.Eyebrow" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textColor">@color/lavender_soft</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.12</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+    <style name="TextAppearance.LittleOrbit.Title" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="android:textColor">@color/cloud</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="TextAppearance.LittleOrbit.CardTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">@color/cloud</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="TextAppearance.LittleOrbit.Body" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/muted</item>
+    </style>
+    <style name="Widget.LittleOrbit.Button.Primary" parent="Widget.Material3.Button">
+        <item name="android:minHeight">56dp</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="backgroundTint">@color/lavender</item>
+        <item name="android:textColor">@color/navy_deep</item>
+    </style>
+    <style name="Widget.LittleOrbit.Button.Outline" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:minHeight">56dp</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="strokeColor">@color/orbit_border</item>
+        <item name="android:textColor">@color/lavender_soft</item>
+    </style>
+    <style name="Widget.LittleOrbit.Button.Text" parent="Widget.Material3.Button.TextButton">
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textColor">@color/coral_soft</item>
+    </style>
+    <style name="Widget.LittleOrbit.Input" parent="Widget.AppCompat.EditText">
+        <item name="android:background">@drawable/card_background_muted</item>
+        <item name="android:minHeight">58dp</item>
+        <item name="android:padding">16dp</item>
+        <item name="android:textColor">@color/cloud</item>
+        <item name="android:textColorHint">@color/muted</item>
+    </style>
+    <style name="Widget.LittleOrbit.Spinner" parent="Widget.AppCompat.Spinner.Underlined">
+        <item name="android:background">@drawable/card_background_muted</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:popupBackground">@color/navy_surface_high</item>
+    </style>
+</resources>

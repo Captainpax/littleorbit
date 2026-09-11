@@ -19,6 +19,7 @@ Keep public promises, architecture diagrams, operations, screenshots, and decisi
 - Label concept art and simulated data. Replace screenshot checklist items only after capturing the actual implementation.
 - Use repository-relative links and alt text. Never embed production secrets, private IP details beyond the documented topology, or personal data.
 - Report tests and device checks honestly. Distinguish configured, simulated, locally verified, and production verified.
+- Release notes must record version code, signer identity, artifact hash, compatibility floor, and whether enforcement is inactive or scheduled.
 
 ## Start here
 

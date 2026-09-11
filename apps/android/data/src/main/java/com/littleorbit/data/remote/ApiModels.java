@@ -8,6 +8,54 @@ import java.util.Map;
 public final class ApiModels {
     private ApiModels() {}
 
+    /** Public metadata for one immutable signed phone APK. */
+    public static final class ApkRelease {
+        public final String version;
+        @Json(name = "version_code") public final int versionCode;
+        @Json(name = "apk_url") public final String apkUrl;
+        @Json(name = "github_release_url") public final String githubReleaseUrl;
+        public final String sha256;
+        @Json(name = "size_bytes") public final long sizeBytes;
+        @Json(name = "package_name") public final String packageName;
+        @Json(name = "signer_sha256") public final String signerSha256;
+        @Json(name = "minimum_android") public final int minimumAndroid;
+        @Json(name = "minimum_supported_version_code")
+        public final int minimumSupportedVersionCode;
+        @Json(name = "required_after") public final String requiredAfter;
+        @Json(name = "release_notes") public final String releaseNotes;
+        @Json(name = "published_at") public final String publishedAt;
+
+        /** Creates a decoded release response. */
+        public ApkRelease(
+                String version,
+                int versionCode,
+                String apkUrl,
+                String githubReleaseUrl,
+                String sha256,
+                long sizeBytes,
+                String packageName,
+                String signerSha256,
+                int minimumAndroid,
+                int minimumSupportedVersionCode,
+                String requiredAfter,
+                String releaseNotes,
+                String publishedAt) {
+            this.version = version;
+            this.versionCode = versionCode;
+            this.apkUrl = apkUrl;
+            this.githubReleaseUrl = githubReleaseUrl;
+            this.sha256 = sha256;
+            this.sizeBytes = sizeBytes;
+            this.packageName = packageName;
+            this.signerSha256 = signerSha256;
+            this.minimumAndroid = minimumAndroid;
+            this.minimumSupportedVersionCode = minimumSupportedVersionCode;
+            this.requiredAfter = requiredAfter;
+            this.releaseNotes = releaseNotes;
+            this.publishedAt = publishedAt;
+        }
+    }
+
     /** Email/password sign-in request. */
     public static final class LoginRequest {
         public final String email;

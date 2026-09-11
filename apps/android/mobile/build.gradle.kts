@@ -10,11 +10,14 @@ android {
         applicationId = "com.littleorbit.mobile"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.0-rc.2"
+        versionCode = rootProject.extra["littleOrbitVersionCode"] as Int
+        versionName = rootProject.extra["littleOrbitVersionName"] as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    buildFeatures { viewBinding = true }
+    buildFeatures {
+        viewBinding = true
+        buildConfig = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

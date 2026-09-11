@@ -17,6 +17,7 @@ Own the public discovery/account website and the metadata-only owner console.
 - Never render secrets or relationship content. Redact configuration on the API and again in presentation code.
 - Public account-recovery responses must resist account enumeration.
 - Download metadata includes version, minimum Android level, SHA-256, release notes, and a GitHub Release URL; GitHub hosts the APK bytes.
+- Keep the checked-in release fallback byte-for-byte aligned with the newest signed publication so an API restart cannot replace a valid download with stale metadata.
 - Meet keyboard, focus, large-text, reduced-motion, contrast, metadata, and mobile layout requirements.
 
 ## Start here

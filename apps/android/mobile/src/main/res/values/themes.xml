@@ -1,5 +1,22 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <style name="Theme.LittleOrbit" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="colorPrimary">@color/coral</item><item name="colorSecondary">@color/lavender</item><item name="android:fontFamily">sans</item><item name="android:windowLightStatusBar">false</item><item name="android:statusBarColor">@color/navy</item><item name="android:navigationBarColor">@color/navy</item><item name="android:windowActionModeOverlay">true</item>
+        <item name="colorPrimary">@color/lavender</item>
+        <item name="colorOnPrimary">@color/navy_deep</item>
+        <item name="colorSecondary">@color/coral</item>
+        <item name="colorOnSecondary">@color/navy_deep</item>
+        <item name="colorSurface">@color/navy_surface</item>
+        <item name="colorSurfaceVariant">@color/navy_surface_high</item>
+        <item name="colorOnSurface">@color/cloud</item>
+        <item name="colorOnSurfaceVariant">@color/muted</item>
+        <item name="colorOutline">@color/orbit_border</item>
+        <item name="android:fontFamily">@font/inter_variable</item>
+        <item name="fontFamily">@font/inter_variable</item>
+        <item name="android:windowBackground">@drawable/background_cosmic</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:statusBarColor">@color/navy</item>
+        <item name="android:navigationBarColor">@color/navy_deep</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="materialButtonStyle">@style/Widget.LittleOrbit.Button.Primary</item>
     </style>
 </resources>

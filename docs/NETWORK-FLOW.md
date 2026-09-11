@@ -161,3 +161,53 @@ flowchart LR
 ```
 
 Tokens stay in Android Keystore-backed storage. The offline queue contains encrypted countdown mutations, while widgets and watch surfaces receive only the minimal cached together-time and next-countdown values they render.
+
+## Verified Android phone updates
+
+```mermaid
+sequenceDiagram
+    actor Person
+    participant Phone as Little Orbit phone app
+    participant API as Public release API
+    participant GitHub as GitHub Releases
+    participant DM as Android DownloadManager
+    participant PI as Android PackageInstaller
+    Phone->>API: GET /v1/releases/current
+    API-->>Phone: Immutable version, URLs, size, hashes, floor, optional UTC enforcement
+    Phone->>Phone: Validate canonical repository, package, pinned signer, and update policy
+    alt optional release
+        Phone-->>Person: Update now or defer 24 hours
+    else active compatibility floor excludes installed version
+        Phone-->>Person: Update required or exit
+    end
+    Person->>Phone: Update now
+    Phone->>DM: Enqueue canonical GitHub APK URL
+    DM->>GitHub: Download release bytes
+    GitHub-->>DM: Signed APK
+    DM-->>Phone: Android-owned progress / completion
+    Phone->>Phone: Verify exact size + SHA-256 + package + newer version + certificate
+    alt any verification fails
+        Phone->>Phone: Delete APK and offer a clean retry
+    else all properties match
+        Phone->>PI: Create install session with verified bytes
+        PI-->>Person: Android installation approval
+        Person->>PI: Approve or cancel
+        PI-->>Phone: Installed or retry-safe result
+    end
+```
+
+The daily worker fetches metadata only. It cannot download or install an APK. Updater state contains a release ID, phase, byte counts, required flag, and sanitized failure code; it contains no credentials or relationship data. Published release records cannot be edited or unpublished.
+
+```mermaid
+flowchart LR
+    Request[Android HTTP or note WSS request] --> Mobile{Mobile protocol path?}
+    Mobile -->|no| Continue[Continue normal routing]
+    Mobile -->|yes| Floor{Published floor has reached its UTC required-after time?}
+    Floor -->|no| Continue
+    Floor -->|yes| Version{Explicit Android version header meets floor?}
+    Version -->|yes| Continue
+    Version -->|no HTTP| Upgrade[426 client_update_required]
+    Version -->|no WSS| Close[Close 4426 before authentication]
+```
+
+The compatibility gate runs before authentication and protected resource lookup, so its response cannot disclose account or relationship state. Routine publications leave `required_after` empty and remain optional.

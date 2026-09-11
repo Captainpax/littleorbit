@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/navy">
+    android:background="@drawable/background_cosmic">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,6 +26,7 @@
             android:text="@string/create_pair_code" />
 
         <EditText
+            style="@style/Widget.LittleOrbit.Input"
             android:id="@+id/codeInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -43,7 +44,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/checkPendingButton"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.LittleOrbit.Button.Outline"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"

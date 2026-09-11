@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
@@ -383,10 +384,16 @@ class ApkRelease(Timestamped, Base):
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     version: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
+    version_code: Mapped[int | None] = mapped_column(Integer, unique=True)
     apk_url: Mapped[str] = mapped_column(Text, nullable=False)
     github_release_url: Mapped[str] = mapped_column(Text, nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    package_name: Mapped[str | None] = mapped_column(String(160))
+    signer_sha256: Mapped[str | None] = mapped_column(String(64))
     minimum_android: Mapped[int] = mapped_column(Integer, nullable=False)
+    minimum_supported_version_code: Mapped[int | None] = mapped_column(Integer)
+    required_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     release_notes: Mapped[str] = mapped_column(String(4000), nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_by: Mapped[UUID | None] = mapped_column(

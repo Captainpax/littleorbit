@@ -6,8 +6,59 @@
     android:gravity="center_vertical"
     android:orientation="vertical"
     android:padding="18dp">
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="LITTLE ORBIT" android:textColor="#A997FF" android:textSize="10sp" android:textStyle="bold" />
-    <TextView android:id="@+id/widget_together" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="Together-time unavailable" android:textColor="#FFF9F8" android:textSize="22sp" android:textStyle="bold" />
-    <TextView android:id="@+id/widget_countdown" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="Open Little Orbit to refresh" android:textColor="#B8C0D3" android:textSize="12sp" />
-    <TextView android:id="@+id/widget_stale" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="STALE" android:textColor="#F5C86C" android:textSize="9sp" android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.12"
+            android:text="LITTLE ORBIT"
+            android:textColor="#CEC7FF"
+            android:textSize="10sp" />
+        <ImageView
+            android:layout_width="84dp"
+            android:layout_height="40dp"
+            android:contentDescription="@null"
+            android:src="@drawable/widget_planets" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_together"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:fontFamily="sans-serif-medium"
+        android:text="Together-time unavailable"
+        android:textColor="#F7F6FF"
+        android:textSize="23sp" />
+
+    <TextView
+        android:id="@+id/widget_countdown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/widget_countdown"
+        android:fontFamily="sans-serif"
+        android:maxLines="2"
+        android:padding="10dp"
+        android:text="Open Little Orbit to refresh"
+        android:textColor="#AEBBD2"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/widget_stale"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.1"
+        android:text="ESTIMATE · STALE"
+        android:textColor="#FFC45B"
+        android:textSize="9sp" />
 </LinearLayout>

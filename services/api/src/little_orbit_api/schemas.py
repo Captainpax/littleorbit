@@ -419,25 +419,101 @@ class CuratedImportRequest(StrictModel):
 class ApkReleaseInput(StrictModel):
     """Signed GitHub-hosted APK metadata for publication."""
 
-    version: Annotated[StrictText, Field(min_length=1, max_length=40)]
+    version: Annotated[
+        StrictText,
+        Field(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$", max_length=40),
+    ]
+    version_code: int = Field(gt=0)
     apk_url: AnyHttpUrl
     github_release_url: AnyHttpUrl
     sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+    size_bytes: int = Field(gt=0, le=2_147_483_648)
+    package_name: Literal["com.littleorbit.mobile"]
+    signer_sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
     minimum_android: int = Field(ge=29, le=36)
+    minimum_supported_version_code: int = Field(ge=1)
+    required_after: datetime | None = None
     release_notes: Annotated[StrictText, Field(min_length=1, max_length=4000)]
     publish: bool = False
+
+    @model_validator(mode="after")
+    def validate_release_authority(self) -> "ApkReleaseInput":
+        """Restrict releases to the canonical repository and monotonic compatibility floor."""
+
+        expected_tag = f"v{self.version}"
+        _validate_apk_release_url(self.apk_url, expected_tag)
+        _validate_github_release_url(self.github_release_url, expected_tag)
+        _validate_version_floor(self.minimum_supported_version_code, self.version_code)
+        _validate_required_after(self.required_after)
+        return self
+
+
+def _canonical_github_url(url: AnyHttpUrl) -> bool:
+    """Accept only query-free HTTPS URLs on the canonical release authority."""
+
+    return (url.scheme, url.host, url.query, url.fragment) == (
+        "https",
+        "github.com",
+        None,
+        None,
+    )
+
+
+def _validate_apk_release_url(url: AnyHttpUrl, expected_tag: str) -> None:
+    """Require one APK below the matching canonical GitHub release tag."""
+
+    path = url.path or ""
+    prefix = f"/Captainpax/littleorbit/releases/download/{expected_tag}/"
+    if not _canonical_github_url(url) or not (path.startswith(prefix) and path.endswith(".apk")):
+        raise ValueError("APK URL must use the canonical Little Orbit GitHub release")
+
+
+def _validate_github_release_url(url: AnyHttpUrl, expected_tag: str) -> None:
+    """Require the human-facing page for the same immutable release tag."""
+
+    expected_path = f"/Captainpax/littleorbit/releases/tag/{expected_tag}"
+    if not _canonical_github_url(url) or url.path != expected_path:
+        raise ValueError("release URL must match the canonical Little Orbit tag")
+
+
+def _validate_version_floor(floor: int, release_version: int) -> None:
+    """Prevent a release from requiring a version newer than itself."""
+
+    if floor > release_version:
+        raise ValueError("minimum supported version cannot exceed the release version")
+
+
+def _validate_required_after(value: datetime | None) -> None:
+    """Reject ambiguous local timestamps at the compatibility boundary."""
+
+    if value is not None and value.utcoffset() is None:
+        raise ValueError("required-after timestamp must include a timezone")
 
 
 class ApkReleaseResponse(StrictModel):
     """Latest public signed APK metadata."""
 
     version: str
+    version_code: int
     apk_url: str
     github_release_url: str
     sha256: str
+    size_bytes: int
+    package_name: str
+    signer_sha256: str
     minimum_android: int
+    minimum_supported_version_code: int
+    required_after: datetime | None
     release_notes: str
     published_at: datetime
+
+
+class ClientUpdateRequired(StrictModel):
+    """Stable compatibility response that contains no account or relationship state."""
+
+    code: Literal["client_update_required"] = "client_update_required"
+    minimum_version_code: int
+    release_url: Literal["/v1/releases/current"] = "/v1/releases/current"
 
 
 class AdminEnrollmentStart(StrictModel):

@@ -65,10 +65,16 @@ def main() -> None:
     promote.add_argument("email")
     release = subcommands.add_parser("publish-release")
     release.add_argument("--version", required=True)
+    release.add_argument("--version-code", required=True, type=int)
     release.add_argument("--apk-url", required=True)
     release.add_argument("--github-release-url", required=True)
     release.add_argument("--sha256", required=True)
+    release.add_argument("--size-bytes", required=True, type=int)
+    release.add_argument("--package-name", default="com.littleorbit.mobile")
+    release.add_argument("--signer-sha256", required=True)
     release.add_argument("--minimum-android", required=True, type=int)
+    release.add_argument("--minimum-supported-version-code", default=1, type=int)
+    release.add_argument("--required-after")
     release.add_argument("--release-notes", required=True)
     arguments = parser.parse_args()
     if arguments.command == "promote-admin":
@@ -76,10 +82,16 @@ def main() -> None:
     if arguments.command == "publish-release":
         payload = ApkReleaseInput(
             version=arguments.version,
+            version_code=arguments.version_code,
             apk_url=arguments.apk_url,
             github_release_url=arguments.github_release_url,
             sha256=arguments.sha256,
+            size_bytes=arguments.size_bytes,
+            package_name=arguments.package_name,
+            signer_sha256=arguments.signer_sha256,
             minimum_android=arguments.minimum_android,
+            minimum_supported_version_code=arguments.minimum_supported_version_code,
+            required_after=arguments.required_after,
             release_notes=arguments.release_notes,
             publish=True,
         )
