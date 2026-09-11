@@ -64,7 +64,7 @@ async def _issue_admin_session(
 ) -> AdminSessionResponse:
     now = SystemClock().now()
     raw = new_opaque_token()
-    expires = now + timedelta(minutes=settings.session_minutes)
+    expires = now + timedelta(minutes=settings.admin_session_minutes)
     session.add(
         Session(
             account_id=account.id,
@@ -89,7 +89,7 @@ def _set_admin_cookie(response: Response, token: str, settings: Settings) -> Non
     response.set_cookie(
         key="little_orbit_admin",
         value=token,
-        max_age=settings.session_minutes * 60,
+        max_age=settings.admin_session_minutes * 60,
         httponly=True,
         secure=settings.public_base_url.startswith("https://"),
         samesite="strict",
@@ -233,5 +233,7 @@ async def configuration(
         "smtp_from": settings.smtp_from,
         "trusted_proxy_ip": settings.trusted_proxy_ip,
         "registration_open": settings.registration_open,
+        "app_session_minutes": settings.session_minutes,
+        "admin_session_minutes": settings.admin_session_minutes,
     }
     return AdminConfigResponse(values=redact_config(visible))

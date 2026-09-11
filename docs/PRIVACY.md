@@ -9,7 +9,7 @@ This document describes the intended 1.0 behavior while the project is under dev
 | Data | Purpose | Access | Intended retention |
 |---|---|---|---|
 | Email, password hash, verification state | Account access and recovery | Account owner; limited admin metadata | Until deletion plus bounded backup expiry |
-| Session identifiers and security events | Authentication and abuse response | Account owner sessions; privacy-limited admins | Short operational window documented before launch |
+| Session identifiers and security events | Authentication and abuse response | Account owner sessions; privacy-limited admins | App sessions expire after 30 days; admin sessions after 30 minutes; revoked sessions are removed on the operational cleanup schedule |
 | Pairing state | Connect exactly two verified adults | The two accounts; limited admin metadata | Active pairing plus private archive references |
 | Quiz responses | Reveal after both partners answer | Current couple only | Until user deletion/export policy applies |
 | Plain-text notes and revision history | Shared editing and recovery | Current couple only | Until deletion or private unpair archive policy applies |

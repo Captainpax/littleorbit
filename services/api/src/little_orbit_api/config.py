@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     registration_open: bool = True
     registration_ip_per_hour: int = 8
     registration_email_per_hour: int = 4
-    session_minutes: int = 30
+    session_minutes: int = Field(default=43_200, ge=30, le=525_600)
+    admin_session_minutes: int = Field(default=30, ge=5, le=1_440)
 
 
 @lru_cache
