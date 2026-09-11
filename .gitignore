@@ -1,0 +1,40 @@
+.env
+.env.*
+!.env.example
+.idea/
+.inspect/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv*/
+htmlcov/
+.coverage
+
+# Web
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Android
+.gradle/
+local.properties
+**/build/
+*.jks
+*.keystore
+
+# Runtime data and secrets
+/data/
+backups/
+secrets/
+*.log

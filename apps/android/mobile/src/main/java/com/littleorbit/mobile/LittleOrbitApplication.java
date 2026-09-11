@@ -1,0 +1,19 @@
+package com.littleorbit.mobile;
+
+import android.app.Application;
+import androidx.hilt.work.HiltWorkerFactory;
+import androidx.work.Configuration;
+import dagger.hilt.android.HiltAndroidApp;
+import javax.inject.Inject;
+
+/** Application root for constructor-injected Android dependencies. */
+@HiltAndroidApp
+public final class LittleOrbitApplication extends Application implements Configuration.Provider {
+    @Inject HiltWorkerFactory workerFactory;
+
+    /** Routes WorkManager construction through Hilt without a global service locator. */
+    @Override
+    public Configuration getWorkManagerConfiguration() {
+        return new Configuration.Builder().setWorkerFactory(workerFactory).build();
+    }
+}

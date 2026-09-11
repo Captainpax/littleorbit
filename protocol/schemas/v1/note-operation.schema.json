@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v1/note-operation.schema.json",
+  "title": "Note WebSocket operation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operation_id", "base_revision", "kind", "position"],
+  "properties": {
+    "operation_id": { "type": "string", "format": "uuid" },
+    "base_revision": { "type": "integer", "minimum": 0 },
+    "kind": { "enum": ["insert", "delete"] },
+    "position": { "type": "integer", "minimum": 0 },
+    "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "length": { "type": "integer", "minimum": 1, "maximum": 4000 }
+  },
+  "oneOf": [
+    {
+      "properties": { "kind": { "const": "insert" } },
+      "required": ["text"],
+      "not": { "required": ["length"] }
+    },
+    {
+      "properties": { "kind": { "const": "delete" } },
+      "required": ["length"],
+      "not": { "required": ["text"] }
+    }
+  ]
+}

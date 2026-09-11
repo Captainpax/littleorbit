@@ -1,0 +1,68 @@
+# Little Orbit
+
+![Little Orbit logo concept](docs/assets/little-orbit-logo-concept.png)
+
+Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
+
+> **Project status:** 1.0 release candidate. The implemented flows pass automated API, protocol, web, Android build, gateway, deletion, and backup-restore checks. Real-device privacy/permission testing, release signing, firewall/DHCP setup, and the reviewed Nginx Proxy Manager change remain launch gates, so do not use the public deployment for real relationship data yet.
+
+## What 1.0 includes
+
+- Five daily questions with private-until-both-answer reveal behavior.
+- Single choice, multiple choice, free text, partner guessing, and weighted 1–5 prompts.
+- Shared countdowns and plain-text live notes with offline drafts.
+- Estimated together-time from explicitly consented location samples.
+- Android home widget, Wear OS tile, and watch complication using cached data.
+- Eight-character, single-use pairing with confirmation.
+- A public website for registration, account recovery, APK releases, privacy, and project documentation.
+- A privacy-limited owner console and local daily-question generation through Ollama.
+
+![Android and Wear OS direction](docs/assets/android-wear-concept.png)
+
+## Architecture
+
+Android, Wear OS, and browsers connect to `https://lil-orb.pax-kun.com`. Nginx Proxy Manager forwards traffic to a single gateway port on the application host. The gateway routes `/api/*` and `/ws/*` to FastAPI and all other paths to Next.js. PostgreSQL, Ollama, the worker, and Mailpit remain private to the Compose network.
+
+See the [network and logic flows](docs/NETWORK-FLOW.md), [privacy design](docs/PRIVACY.md), and [architecture decisions](docs/adr/) before changing a trust boundary.
+
+## Quick start
+
+Requirements: Docker Desktop, Compose, Node.js 24+, Python 3.12 or 3.13, Java 17, and Android SDK 36 for Android builds.
+
+```bash
+copy .env.example .env
+docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml up --build
+```
+
+Then open `http://localhost:8180`. Mailpit is available in the development profile at `http://localhost:8025`. The first Ollama model pull is large and may take several minutes. The base Compose file works on CPU; add `infra/compose.gpu.yaml` on a configured NVIDIA Docker Desktop host.
+
+For direct development:
+
+```bash
+npm install --prefix apps/web
+npm --prefix apps/web run dev
+python -m venv .venv
+.venv/Scripts/pip install -e services/api -e services/ai
+.venv/Scripts/uvicorn little_orbit_api.main:app --reload --port 8000
+```
+
+## Privacy promise
+
+Little Orbit collects only what a selected feature needs. AI question generation in 1.0 is site-wide and receives no couple data. Precise coordinates are kept for no more than 24 hours, administrator views exclude relationship content, and unpairing immediately stops sharing. Read the full [privacy design](docs/PRIVACY.md).
+
+## Project documents
+
+- [Showcase](SHOWCASE.md)
+- [Contributing](CONTRIBUTING.md) and [contributors](CONTRIBUTORS.md)
+- [Roadmap](ROADMAP.md)
+- [Security policy](SECURITY.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Network flow](docs/NETWORK-FLOW.md)
+- [Local development](docs/operations/LOCAL-DEVELOPMENT.md)
+- [Deployment runbook](docs/operations/DEPLOYMENT.md)
+- [Backup and restore](docs/operations/BACKUP-RESTORE.md)
+- [Latest verification record](docs/operations/VERIFICATION-2026-09-11.md)
+
+## License and support
+
+The application code is licensed under the [MIT License](LICENSE). Optional donations may support hosting, but will never unlock features. GitHub Releases are the canonical APK source once signed releases begin.

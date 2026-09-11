@@ -1,0 +1,5 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.LittleOrbit" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/coral</item><item name="colorSecondary">@color/lavender</item><item name="android:fontFamily">sans</item><item name="android:windowLightStatusBar">false</item><item name="android:statusBarColor">@color/navy</item><item name="android:navigationBarColor">@color/navy</item><item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>

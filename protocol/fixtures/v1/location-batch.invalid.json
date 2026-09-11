@@ -1,0 +1,12 @@
+{
+  "samples": [
+    {
+      "sample_id": "not-a-uuid",
+      "recorded_at": "yesterday",
+      "latitude": 97,
+      "longitude": -122.3493,
+      "accuracy_m": 0
+    }
+  ],
+  "raw_device_name": "must not cross the boundary"
+}

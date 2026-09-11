@@ -1,0 +1,49 @@
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static 192.168.50.6
+		trusted_proxies_strict
+		client_ip_headers X-Forwarded-For
+	}
+}
+
+:8180 {
+	encode zstd gzip
+	request_body {
+		max_size 1MB
+	}
+
+	@api path /api/*
+	handle @api {
+		uri strip_prefix /api
+		reverse_proxy api:8000 {
+			header_up X-Little-Orbit-Client-IP {client_ip}
+		}
+	}
+
+	@websocket path /ws/*
+	handle @websocket {
+		uri strip_prefix /ws
+		reverse_proxy api:8000 {
+			header_up X-Little-Orbit-Client-IP {client_ip}
+		}
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		X-Frame-Options DENY
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

@@ -1,0 +1,27 @@
+# Contributing to Little Orbit
+
+Thank you for helping build a free couples app. Treat relationship and location data with care, explain non-obvious decisions, and keep discussion respectful.
+
+## Setup
+
+1. Install Docker Desktop, Node.js 24+, Python 3.12+, Java 17, and Android SDK 36.
+2. Copy `.env.example` to `.env` and replace development values.
+3. Start the local stack with `docker compose -f infra/compose.yaml -f infra/compose.dev.yaml up --build`.
+4. Read the root `AGENTS.md`, then the closest nested guide for the code you will change.
+
+## Standards
+
+- Keep public Java APIs documented with Javadoc and Python public modules and callables documented with docstrings.
+- Use strict TypeScript and explicit schemas at network boundaries.
+- Keep functions below 60 logical lines, files below 500, and cyclomatic complexity at or below 10.
+- Add comments for concurrency, privacy guarantees, algorithms, platform workarounds, and unusual invariants.
+- Use UTC for stored instants and explicit IANA time zones for user-facing dates.
+- Never commit secrets, production data, signed keys, or private exports.
+
+## Changes and pull requests
+
+Open an issue for broad feature or privacy changes. Keep pull requests focused, describe the concrete behavior, add the smallest meaningful tests, and update the matching public document and diagram. Durable architectural decisions need a numbered ADR.
+
+Before requesting review, run the commands in the closest `AGENTS.md`. Include the checks you actually ran and any device, GPU, browser, or production check that remains outstanding.
+
+Protocol changes must add versioned valid and invalid fixtures. Security or privacy fixes should follow the private reporting process in `SECURITY.md` rather than starting with a public issue.

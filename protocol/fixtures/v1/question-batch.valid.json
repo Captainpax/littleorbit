@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "date": "2026-09-11",
+  "questions": [
+    {"client_id":"q-01","kind":"single_choice","prompt":"Which tiny comfort would make tonight feel extra cozy?","category":"everyday","intimacy":false,"options":["A favorite snack","A quiet walk","A movie","An early night"]},
+    {"client_id":"q-02","kind":"multiple_choice","prompt":"Which places would you enjoy exploring together someday?","category":"dreams","intimacy":false,"options":["A new city","A forest trail","A museum","A small town"]},
+    {"client_id":"q-03","kind":"free_text","prompt":"What ordinary memory of us still makes you smile?","category":"memories","intimacy":false,"options":[]},
+    {"client_id":"q-04","kind":"partner_guess","prompt":"What would your partner choose for an unplanned free afternoon?","category":"playful","intimacy":false,"options":["Stay home","Go outside","Try a cafe","Call friends"]},
+    {"client_id":"q-05","kind":"weighted_scale","prompt":"How much quiet time would feel restorative this weekend?","category":"connection","intimacy":false,"options":[]}
+  ]
+}

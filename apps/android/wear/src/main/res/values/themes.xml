@@ -1,0 +1,1 @@
+<resources><style name="Theme.LittleOrbit.Wear" parent="android:style/Theme.DeviceDefault"><item name="android:fontFamily">sans</item><item name="android:windowBackground">#0B1122</item><item name="android:colorAccent">#FF746D</item></style></resources>

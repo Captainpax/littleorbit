@@ -1,0 +1,474 @@
+"""Versioned request and response models for the public API."""
+
+from datetime import date, datetime
+from typing import Annotated, Literal
+from uuid import UUID
+
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StringConstraints,
+    model_validator,
+)
+
+StrictText = Annotated[str, StringConstraints(strip_whitespace=True)]
+
+
+class StrictModel(BaseModel):
+    """Base model that rejects undeclared network fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class PublicMessage(StrictModel):
+    """Enumeration-neutral response."""
+
+    message: str
+
+
+class RegistrationRequest(StrictModel):
+    """Adult account registration payload."""
+
+    email: EmailStr
+    password: Annotated[str, Field(min_length=12, max_length=256)]
+    display_name: Annotated[StrictText, Field(min_length=1, max_length=80)]
+    is_adult: Literal[True]
+    accepted_terms_version: Literal["2026-09-10"]
+    website: str = Field(default="", max_length=200, description="Invisible honeypot")
+
+
+class LoginRequest(StrictModel):
+    """Email/password login payload."""
+
+    email: EmailStr
+    password: Annotated[str, Field(min_length=1, max_length=256)]
+
+
+class ForgotPasswordRequest(StrictModel):
+    """Email-only recovery request with a neutral public response."""
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(StrictModel):
+    """One-use password reset proof and replacement password."""
+
+    token: Annotated[str, Field(min_length=32, max_length=256)]
+    password: Annotated[str, Field(min_length=12, max_length=256)]
+
+
+class SessionResponse(StrictModel):
+    """Opaque session returned only after successful authentication."""
+
+    access_token: str
+    expires_at: datetime
+    account_id: UUID
+
+
+class TokenRequest(StrictModel):
+    """One-use verification or recovery token."""
+
+    token: Annotated[str, Field(min_length=32, max_length=256)]
+
+
+class PairCodeResponse(StrictModel):
+    """Pair code shown only to its creator."""
+
+    code: str
+    expires_at: datetime
+
+
+class PairRedeemRequest(StrictModel):
+    """Pair code entered by the invited partner."""
+
+    code: Annotated[str, Field(pattern=r"^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$")]
+
+
+class PairPendingResponse(StrictModel):
+    """Pending request metadata that avoids exposing an email address."""
+
+    request_id: UUID
+    partner_display_name: str
+    expires_at: datetime
+
+
+class PairConfirmRequest(StrictModel):
+    """Creator confirmation for the pending partner."""
+
+    request_id: UUID
+
+
+class PairingState(StrictModel):
+    """Current result of a create-confirm pairing transition."""
+
+    state: Literal["awaiting_creator_confirmation", "paired"]
+    request_id: UUID
+    couple_id: UUID | None
+
+
+class CouplePreferencesRequest(StrictModel):
+    """One member's consent plus shared estimate settings."""
+
+    intimacy_enabled: bool | None = None
+    location_enabled: bool | None = None
+    proximity_threshold_m: float | None = Field(default=None, ge=25, le=1000)
+    anniversary_date: date | None = None
+
+
+class CouplePreferencesResponse(StrictModel):
+    """Current member choices and whether both partners consent."""
+
+    couple_id: UUID
+    anniversary_date: date | None
+    proximity_threshold_m: float
+    intimacy_enabled_by_me: bool
+    intimacy_enabled_by_both: bool
+    location_enabled_by_me: bool
+    location_enabled_by_both: bool
+
+
+class UnpairResponse(StrictModel):
+    """Former relationship reference retained as a private archive."""
+
+    archive_id: UUID
+    ended_at: datetime
+
+
+class ArchiveSummary(StrictModel):
+    """Private read-only former-pairing summary."""
+
+    archive_id: UUID
+    partner_display_name: str
+    joined_at: datetime
+    ended_at: datetime
+
+
+class ArchiveDetail(ArchiveSummary):
+    """Former-pairing content visible only to the original member."""
+
+    notes: list[dict[str, object]]
+    countdowns: list[dict[str, object]]
+    quiz_answers: list[dict[str, object]]
+
+
+class CustomQuestionRequest(StrictModel):
+    """Couple-authored question with the same interaction rules as global content."""
+
+    publish_date: date
+    kind: Literal[
+        "single_choice",
+        "multiple_choice",
+        "free_text",
+        "partner_guess",
+        "weighted_scale",
+    ]
+    prompt: Annotated[StrictText, Field(min_length=12, max_length=240)]
+    category: Literal["everyday", "memories", "dreams", "values", "playful", "connection", "intimacy"]
+    intimacy: bool
+    options: list[Annotated[StrictText, Field(min_length=1, max_length=80)]] = Field(
+        max_length=8
+    )
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "CustomQuestionRequest":
+        """Keep kind, options, and explicit intimacy tagging consistent."""
+
+        choice = {"single_choice", "multiple_choice", "partner_guess"}
+        if self.kind in choice and not 2 <= len(self.options) <= 8:
+            raise ValueError("choice questions require 2-8 options")
+        if self.kind not in choice and self.options:
+            raise ValueError("free text and weighted scale questions have no options")
+        if len(set(self.options)) != len(self.options):
+            raise ValueError("options must be unique")
+        if self.intimacy != (self.category == "intimacy"):
+            raise ValueError("intimacy flag must match the intimacy category")
+        return self
+
+
+class QuestionReportRequest(StrictModel):
+    """Reason for immediately hiding a question from one couple."""
+
+    reason: Annotated[StrictText, Field(min_length=3, max_length=500)]
+
+
+class QuestionResponse(StrictModel):
+    """Daily question without either partner's hidden answer."""
+
+    id: UUID
+    publish_date: date
+    kind: str
+    prompt: str
+    category: str
+    options: list[str]
+    submitted_by_me: bool
+    both_submitted: bool
+    my_answer: dict[str, object] | None = None
+    partner_answer: dict[str, object] | None = None
+
+
+class QuizAnswerRequest(StrictModel):
+    """Validated answer envelope; type-specific checks run in the domain service."""
+
+    answer: dict[str, object]
+
+
+class CountdownMutation(StrictModel):
+    """Retry-safe shared countdown mutation."""
+
+    operation_id: UUID
+    title: Annotated[StrictText, Field(min_length=1, max_length=120)]
+    occurs_at: datetime
+    timezone: Annotated[StrictText, Field(min_length=1, max_length=64)]
+    notes: Annotated[StrictText, Field(max_length=1000)] = ""
+    expected_revision: int | None = Field(default=None, ge=0)
+
+
+class CountdownResponse(StrictModel):
+    """Shared countdown state returned to either active partner."""
+
+    id: UUID
+    title: str
+    occurs_at: datetime
+    timezone: str
+    notes: str
+    revision: int
+    updated_at: datetime
+
+
+class CountdownDeleteRequest(StrictModel):
+    """Retry-safe optimistic countdown deletion."""
+
+    operation_id: UUID
+    expected_revision: int = Field(ge=0)
+
+
+class LocationSampleRequest(StrictModel):
+    """One consented, short-lived coordinate sample."""
+
+    sample_id: UUID
+    recorded_at: datetime
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    accuracy_m: float = Field(gt=0, le=1000)
+
+
+class LocationBatchRequest(StrictModel):
+    """Bounded offline upload whose sample IDs make retries harmless."""
+
+    samples: list[LocationSampleRequest] = Field(min_length=1, max_length=48)
+
+
+class LocationBatchResponse(StrictModel):
+    """Location ingestion result without echoing coordinates."""
+
+    accepted: int
+    duplicates: int
+    together_minutes_added: int
+
+
+class TogetherSummary(StrictModel):
+    """Estimated together-time and its recency."""
+
+    estimated_seconds: int
+    last_updated_at: datetime | None
+    proximity_threshold_m: float
+    label: Literal["estimate"]
+
+
+class TogetherBucketResponse(StrictModel):
+    """One non-overlapping estimated minute without either coordinate."""
+
+    id: UUID
+    bucket_start: datetime
+    duration_seconds: int
+    corrected_at: datetime | None
+
+
+class TogetherCorrectionRequest(StrictModel):
+    """Audited correction to one non-overlapping minute bucket."""
+
+    duration_seconds: int = Field(ge=0, le=60)
+    reason: Annotated[StrictText, Field(min_length=3, max_length=240)]
+
+
+class NoteCreateRequest(StrictModel):
+    """Idempotent shared note creation request."""
+
+    operation_id: UUID
+    title: Annotated[StrictText, Field(min_length=1, max_length=120)]
+    body: Annotated[str, Field(max_length=100_000)] = ""
+
+
+class NoteResponse(StrictModel):
+    """Current shared note revision."""
+
+    id: UUID
+    title: str
+    body: str
+    revision: int
+    updated_at: datetime
+
+
+class NoteHistoryEntry(StrictModel):
+    """Applied note operation for revision history and reconciliation."""
+
+    operation_id: UUID
+    actor_id: UUID | None
+    base_revision: int
+    resulting_revision: int
+    edit: dict[str, object]
+    applied_at: datetime
+
+
+class AccountExportResponse(StrictModel):
+    """Portable account and relationship data prepared for its owner."""
+
+    generated_at: datetime
+    data: dict[str, object]
+
+
+class AccountDeletionRequest(StrictModel):
+    """Recent password proof for scheduling full account erasure."""
+
+    password: Annotated[str, Field(min_length=1, max_length=256)]
+
+
+class AccountDeletionResponse(StrictModel):
+    """Deletion schedule after sessions and sharing are revoked."""
+
+    job_id: UUID
+    execute_after: datetime
+
+
+class HealthResponse(StrictModel):
+    """Health status suitable for a load balancer or public status page."""
+
+    status: Literal["ok", "degraded"]
+    service: str
+    version: str
+    checked_at: datetime
+
+
+class AdminConfigResponse(StrictModel):
+    """Configuration dictionary whose secret values are already redacted."""
+
+    values: dict[str, object]
+
+
+class AdminCollectionResponse(StrictModel):
+    """Bounded privacy-safe owner-console rows."""
+
+    items: list[dict[str, object]]
+
+
+class AdminOverviewResponse(StrictModel):
+    """Operational-safe operational counters and service state."""
+
+    values: dict[str, object]
+
+
+class AdminAccountAction(StrictModel):
+    """Suspend or restore one account."""
+
+    suspended: bool
+
+
+class AdminQuestionAction(StrictModel):
+    """Resolve a report and optionally disable a global question."""
+
+    disable_question: bool = False
+
+
+class AdminRegistrationControl(StrictModel):
+    """Pause or resume public registration without changing secrets."""
+
+    enabled: bool
+
+
+class CuratedQuestionInput(StrictModel):
+    """Owner-reviewed fallback question definition."""
+
+    stable_key: Annotated[str, Field(pattern=r"^[a-z0-9-]{3,48}$")]
+    kind: Literal[
+        "single_choice",
+        "multiple_choice",
+        "free_text",
+        "partner_guess",
+        "weighted_scale",
+    ]
+    prompt: Annotated[StrictText, Field(min_length=12, max_length=240)]
+    category: Literal[
+        "everyday", "memories", "dreams", "values", "playful", "connection", "intimacy"
+    ]
+    intimacy: bool
+    options: list[Annotated[StrictText, Field(min_length=1, max_length=80)]] = Field(
+        max_length=8
+    )
+    enabled: bool = True
+
+
+class CuratedImportRequest(StrictModel):
+    """Atomic replacement set for the editable curated bank."""
+
+    questions: list[CuratedQuestionInput] = Field(min_length=6, max_length=500)
+
+
+class ApkReleaseInput(StrictModel):
+    """Signed GitHub-hosted APK metadata for publication."""
+
+    version: Annotated[StrictText, Field(min_length=1, max_length=40)]
+    apk_url: AnyHttpUrl
+    github_release_url: AnyHttpUrl
+    sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+    minimum_android: int = Field(ge=29, le=36)
+    release_notes: Annotated[StrictText, Field(min_length=1, max_length=4000)]
+    publish: bool = False
+
+
+class ApkReleaseResponse(StrictModel):
+    """Latest public signed APK metadata."""
+
+    version: str
+    apk_url: str
+    github_release_url: str
+    sha256: str
+    minimum_android: int
+    release_notes: str
+    published_at: datetime
+
+
+class AdminEnrollmentStart(StrictModel):
+    """Recent password proof required before revealing an enrollment URI."""
+
+    password: Annotated[str, Field(min_length=1, max_length=256)]
+
+
+class AdminEnrollmentChallenge(StrictModel):
+    """Temporary authenticator enrollment material."""
+
+    otpauth_uri: str
+    qr_svg_data_url: str
+
+
+class AdminEnrollmentConfirm(StrictModel):
+    """First authenticator code that proves enrollment succeeded."""
+
+    code: Annotated[str, Field(pattern=r"^[0-9]{6}$")]
+
+
+class AdminSessionRequest(StrictModel):
+    """Password plus TOTP or a one-time recovery code."""
+
+    email: EmailStr
+    password: Annotated[str, Field(min_length=1, max_length=256)]
+    totp_code: Annotated[str | None, Field(default=None, pattern=r"^[0-9]{6}$")]
+    recovery_code: Annotated[str | None, Field(default=None, min_length=13, max_length=32)]
+
+
+class AdminSessionResponse(SessionResponse):
+    """MFA-verified owner session and recovery codes shown during enrollment only."""
+
+    recovery_codes: list[str] = Field(default_factory=list)

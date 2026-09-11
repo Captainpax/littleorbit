@@ -1,0 +1,59 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "little-orbit-api"
+version = "0.1.0"
+description = "Little Orbit HTTP, WebSocket, and worker service"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "alembic==1.16.5",
+  "argon2-cffi==25.1.0",
+  "asyncpg==0.30.0",
+  "cryptography==45.0.7",
+  "email-validator==2.3.0",
+  "fastapi==0.116.1",
+  "httpx==0.28.1",
+  "orjson==3.11.3",
+  "prometheus-client==0.22.1",
+  "pydantic==2.11.9",
+  "pydantic-settings==2.10.1",
+  "pyotp==2.9.0",
+  "python-multipart==0.0.20",
+  "qrcode==8.2",
+  "sqlalchemy[asyncio]==2.0.43",
+  "uvicorn[standard]==0.35.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "jsonschema[format]==4.25.1",
+  "mypy==1.17.1",
+  "pytest==8.4.2",
+  "pytest-asyncio==1.1.0",
+  "ruff==0.12.12",
+  "types-jsonschema==4.25.1.20251009",
+  "types-qrcode==8.2.0.20260518"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/little_orbit_api"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "C4", "SIM", "RUF"]
+ignore = ["B008", "E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = ["services/ai/src"]

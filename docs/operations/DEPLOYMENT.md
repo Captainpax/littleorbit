@@ -1,0 +1,41 @@
+# Home deployment runbook
+
+Public availability depends on this computer, home power, internet service, router, and the Nginx Proxy Manager host remaining online. This topology is suitable for learning and a small service only after security, backup, and device release gates pass.
+
+## Before touching live routing
+
+1. Reserve `192.168.50.182` for this computer's network adapter in router DHCP and verify the lease after reconnect/reboot.
+2. Copy `.env.example` to a protected `.env`, generate independent random secrets, configure production SMTP, and replace GitHub placeholders.
+3. Run tests, build containers, migrate a fresh database, start the stack, and verify `http://192.168.50.182:8180/api/v1/health/ready` from the NPM host.
+4. Restore the newest backup into an empty test database and perform a login smoke test.
+5. Verify DNS for `lil-orb.pax-kun.com` without modifying unrelated records.
+
+Promote the first owner only after that person has registered and verified their email:
+
+```powershell
+docker compose --env-file .env -f infra/compose.yaml exec api python -m little_orbit_api.cli promote-admin owner@example.com
+```
+
+Then visit `/admin/enroll`, re-enter the owner password, scan the TOTP QR code, confirm one current code, and store the one-time recovery codes. The command never creates an account or bypasses email verification.
+
+## Windows Firewall
+
+Create an inbound TCP rule for local port 8180 scoped to remote address `192.168.50.6`. Remove or disable any broader prior rule for the same application port. Verify another LAN host cannot connect while NPM can. Record the actual rule name in private operations notes.
+
+## Nginx Proxy Manager
+
+Create one proxy host for `lil-orb.pax-kun.com`:
+
+- Scheme: HTTP
+- Forward hostname/IP: `192.168.50.182`
+- Forward port: `8180`
+- WebSocket support: enabled
+- Block common exploits: enabled
+- Certificate: Let's Encrypt for the exact hostname
+- Force SSL and HTTP/2: enabled after certificate issuance succeeds
+
+Test website pages, `/api/v1/health/ready`, a real WebSocket upgrade, signup email delivery, and certificate renewal/recovery. Enable HSTS only after those checks and a rollback path succeed. The initial live NPM change is an explicit deployment action; screenshots or a saved draft are not proof that traffic works.
+
+## Restart recovery
+
+Set Docker Desktop/engine and the Compose stack to start after host reboot. Reboot the host, then verify DHCP address, firewall scope, all health checks, public HTTPS, WSS, email, worker schedules, and one curated fallback pool while Ollama is stopped.

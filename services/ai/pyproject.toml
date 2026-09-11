@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "little-orbit-ai"
+version = "0.1.0"
+description = "Private daily-question generation and validation for Little Orbit"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "httpx==0.28.1",
+  "pydantic==2.11.9",
+  "pydantic-settings==2.10.1"
+]
+
+[project.optional-dependencies]
+dev = ["mypy==1.17.1", "pytest==8.4.2", "pytest-asyncio==1.1.0", "ruff==0.12.12"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/little_orbit_ai"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "C4", "SIM", "RUF"]
+ignore = ["B008", "E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]

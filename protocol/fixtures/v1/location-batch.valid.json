@@ -1,0 +1,11 @@
+{
+  "samples": [
+    {
+      "sample_id": "865f01a0-b23b-4ce6-a406-1e57485363e0",
+      "recorded_at": "2026-09-11T12:00:00Z",
+      "latitude": 47.6205,
+      "longitude": -122.3493,
+      "accuracy_m": 8.5
+    }
+  ]
+}

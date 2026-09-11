@@ -1,0 +1,20 @@
+services:
+  api:
+    environment:
+      LITTLE_ORBIT_ENV: development
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+  worker:
+    environment:
+      LITTLE_ORBIT_ENV: development
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+    expose:
+      - "1025"
+    networks:
+      - private

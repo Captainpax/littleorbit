@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/navy">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/privacy_controls" android:textColor="@color/cloud" android:textSize="30sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/privacy_summary" android:textColor="@color/muted" />
+        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/intimacySwitch" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="@string/optional_intimacy_questions" android:textColor="@color/cloud" />
+        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/locationSwitch" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/estimated_together_time" android:textColor="@color/cloud" />
+        <EditText android:id="@+id/thresholdInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/threshold_hint" android:inputType="numberDecimal" android:textColor="@color/cloud" android:textColorHint="@color/muted" />
+        <TextView android:id="@+id/mutualState" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/lavender" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/saveButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/save_preferences" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/exportButton" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/export_data" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/unpairButton" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:text="@string/unpair" />
+        <EditText android:id="@+id/passwordInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:autofillHints="password" android:hint="@string/password_for_deletion" android:inputType="textPassword" android:textColor="@color/cloud" android:textColorHint="@color/muted" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/deleteButton" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/delete_account" />
+        <TextView android:id="@+id/statusText" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:accessibilityLiveRegion="polite" android:textColor="@color/lavender" />
+    </LinearLayout>
+</ScrollView>

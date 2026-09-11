@@ -1,0 +1,44 @@
+{
+  "name": "@little-orbit/web",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "capture:showcase": "node scripts/capture-showcase.mjs"
+  },
+  "dependencies": {
+    "@once-ui-system/core": "1.8.4",
+    "next": "16.3.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "sass": "1.92.1",
+    "sharp": "0.35.4"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.1",
+    "@playwright/test": "1.63.0",
+    "@testing-library/jest-dom": "6.8.0",
+    "@testing-library/react": "16.3.0",
+    "@types/node": "24.3.1",
+    "@types/react": "19.1.12",
+    "@types/react-dom": "19.1.9",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "eslint": "9.35.0",
+    "eslint-config-next": "16.3.4",
+    "jsdom": "26.1.0",
+    "typescript": "5.9.2",
+    "vitest": "5.0.0"
+  }
+}

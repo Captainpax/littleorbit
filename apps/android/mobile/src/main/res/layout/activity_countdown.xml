@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/navy">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/countdowns" android:textColor="@color/cloud" android:textSize="30sp" android:textStyle="bold" />
+        <TextView android:id="@+id/countdownList" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:textColor="@color/lavender" />
+        <Spinner android:id="@+id/countdownPicker" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" />
+        <EditText android:id="@+id/titleInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:hint="@string/countdown_title" android:textColor="@color/cloud" android:textColorHint="@color/muted" />
+        <EditText android:id="@+id/timeInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/countdown_time_hint" android:inputType="text" android:textColor="@color/cloud" android:textColorHint="@color/muted" />
+        <EditText android:id="@+id/timezoneInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/timezone_hint" android:inputType="text" android:textColor="@color/cloud" android:textColorHint="@color/muted" />
+        <EditText android:id="@+id/notesInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/optional_notes" android:inputType="textCapSentences|textMultiLine" android:textColor="@color/cloud" android:textColorHint="@color/muted" />
+        <TextView android:id="@+id/statusText" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:accessibilityLiveRegion="polite" android:textColor="@color/lavender" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/createButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="@string/create_countdown" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/updateButton" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/update_selected_countdown" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/deleteButton" style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/delete_selected_countdown" />
+    </LinearLayout>
+</ScrollView>
