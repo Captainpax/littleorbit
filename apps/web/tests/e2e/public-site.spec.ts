@@ -22,6 +22,18 @@ test("signup requires adult and terms attestations", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveText("");
 });
 
+test("download remains available when release API metadata is unavailable", async ({ page }) => {
+  await page.goto("/download");
+  const download = page.getByRole("link", { name: "Download signed APK" });
+  await expect(page.getByText("Available", { exact: true })).toBeVisible();
+  await expect(page.getByText("bafcbe67ab140edafc57300555c60c131be5fe6c346769df15fb8bee473bc0f1")).toBeVisible();
+  await expect(download).toBeVisible();
+  await expect(download).toHaveAttribute(
+    "href",
+    "https://github.com/Captainpax/littleorbit/releases/download/v1.0.0-rc.1/little-orbit-1.0.0-rc.1.apk",
+  );
+});
+
 test("verification links fill their one-use token from the URL fragment", async ({ page }) => {
   const token = "a".repeat(43);
   await page.goto(`/verify-email#token=${token}`);

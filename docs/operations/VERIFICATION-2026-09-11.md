@@ -15,6 +15,7 @@ This record reports what was actually exercised for the 1.0 release candidate. I
 - Android release: phone and Wear OS `1.0.0-rc.1` APKs were built from one protected 4096-bit RSA identity and independently verified with Android `apksigner`; SHA-256 checksum sidecars were generated for publication.
 - Public service: Nginx Proxy Manager serves valid HTTPS for `lil-orb.pax-kun.com`, the gateway firewall rule accepts only the proxy host, and Gmail SMTP delivered and consumed a real verification link in 17 seconds.
 - Mobile signup regression: Android Chrome autofill populated the off-screen registration honeypot and caused a neutral rejection. The field is now hidden, read-only, and covered by desktop and mobile Playwright checks; the API records future honeypot rejections without storing submitted values.
+- Download availability regression: the static web build could capture an API-unavailable fallback while containers restarted, removing the primary APK button. The fallback now contains the verified signed release URL and checksum, so the download remains available independently of API readiness.
 
 ## Launch gates still open
 

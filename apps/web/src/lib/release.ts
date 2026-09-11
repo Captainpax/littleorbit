@@ -8,13 +8,19 @@ export interface ReleaseMetadata {
   published: boolean;
 }
 
+// Keep this verified fallback synchronized with every signed release so a brief API
+// outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
   version: "1.0.0-rc.1",
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "Release metadata temporarily unavailable",
-  releaseNotes: ["The signed release metadata could not be loaded. Check GitHub Releases before installing."],
-  githubUrl: process.env.GITHUB_RELEASE_URL ?? "https://github.com/Captainpax/littleorbit/releases",
-  published: false,
+  sha256: "bafcbe67ab140edafc57300555c60c131be5fe6c346769df15fb8bee473bc0f1",
+  releaseNotes: [
+    "Signed release candidate for Android 10 and newer.",
+    "The Wear OS companion APK and checksum files are included in the GitHub Release.",
+  ],
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.1",
+  apkUrl: "https://github.com/Captainpax/littleorbit/releases/download/v1.0.0-rc.1/little-orbit-1.0.0-rc.1.apk",
+  published: true,
 };
 
 interface ApiRelease {

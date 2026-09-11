@@ -4,9 +4,15 @@ import { currentRelease, getCurrentRelease } from "./release";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("release metadata", () => {
-  it("does not present fallback metadata as a downloadable release", () => {
-    expect(currentRelease.published).toBe(false);
-    expect(currentRelease.sha256).toContain("unavailable");
+  it("keeps the verified signed APK downloadable when the API is unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("API unavailable")));
+
+    const release = await getCurrentRelease();
+
+    expect(release).toEqual(currentRelease);
+    expect(release.published).toBe(true);
+    expect(release.sha256).toHaveLength(64);
+    expect(release.apkUrl).toContain("releases/download/v1.0.0-rc.1");
   });
 
   it("maps published API metadata to the signed APK download", async () => {
