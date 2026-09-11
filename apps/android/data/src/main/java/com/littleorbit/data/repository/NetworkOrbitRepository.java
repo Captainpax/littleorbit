@@ -72,6 +72,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     public CompletableFuture<ApiModels.SessionResponse> signIn(String email, String password) {
         return async(api.login(new ApiModels.LoginRequest(email, password)))
                 .thenApply(session -> {
+                    clearRelationshipState();
                     sessions.save(session.accessToken);
                     return session;
                 });
@@ -80,15 +81,10 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     @Override
     public CompletableFuture<Void> signOut() {
         if (!isSignedIn()) {
-            disableLocationWork();
-            offlineCountdowns.clear();
-            sessions.clear();
-            return CompletableFuture.completedFuture(null);
+            return CompletableFuture.runAsync(this::clearLocalSession, executor);
         }
         return async(api.logout()).handle((ignored, failure) -> {
-            disableLocationWork();
-            offlineCountdowns.clear();
-            sessions.clear();
+            clearLocalSession();
             return null;
         });
     }
@@ -236,7 +232,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     @Override
     public CompletableFuture<ApiModels.UnpairResult> unpair() {
         return async(api.unpair()).thenApply(result -> {
-            disableLocationWork();
+            clearRelationshipState();
             return result;
         });
     }
@@ -260,11 +256,21 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     public CompletableFuture<ApiModels.DeletionResult> deleteAccount(String password) {
         return async(api.deleteAccount(new ApiModels.DeletionRequest(password)))
                 .thenApply(result -> {
-                    disableLocationWork();
-                    offlineCountdowns.clear();
-                    sessions.clear();
+                    clearLocalSession();
                     return result;
                 });
+    }
+
+    private void clearLocalSession() {
+        clearRelationshipState();
+        sessions.clear();
+    }
+
+    private void clearRelationshipState() {
+        disableLocationWork();
+        offlineCountdowns.clear();
+        displayCache.clear();
+        wearPublisher.clear();
     }
 
     private void configureLocationWork(boolean enabled) {

@@ -13,13 +13,13 @@ public record HomeScreenState(
                 "Welcome to your orbit", "Not connected", "No countdown yet", "Sign in to sync", false);
     }
 
-    /** State used when cached data remains available after a failed refresh. */
-    public static HomeScreenState syncUnavailable() {
+    /** Signed-in state before shared couple data is available locally. */
+    public static HomeScreenState signedInWithoutCache() {
         return new HomeScreenState(
                 "Your little orbit",
-                "Estimate unavailable",
-                "Cached countdown unavailable",
-                "Offline — retry later",
+                "Not connected",
+                "No countdown yet",
+                "Signed in — connect or retry sync",
                 true);
     }
 }

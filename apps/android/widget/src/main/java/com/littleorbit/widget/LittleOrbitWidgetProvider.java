@@ -24,6 +24,7 @@ public final class LittleOrbitWidgetProvider extends AppWidgetProvider {
                 LittleOrbitDatabase database = Room.databaseBuilder(
                         context.getApplicationContext(), LittleOrbitDatabase.class, "little-orbit.db")
                         .addMigrations(DatabaseMigrations.MIGRATION_1_2)
+                        .addMigrations(DatabaseMigrations.MIGRATION_2_3)
                         .build();
                 DisplayCacheEntity cache = database.displayCache().read();
                 for (int widgetId : widgetIds) {

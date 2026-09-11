@@ -29,4 +29,9 @@ public final class WearCachePublisher {
         map.getDataMap().putLong("updated_at", cache.updatedAtEpochMillis);
         Wearable.getDataClient(context).putDataItem(map.asPutDataRequest().setUrgent());
     }
+
+    /** Replaces prior relationship values with an explicitly unavailable watch state. */
+    public void clear() {
+        publish(new DisplayCacheEntity("primary", 0, "No countdown yet", 0, 0));
+    }
 }

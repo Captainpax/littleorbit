@@ -50,7 +50,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.1`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.1) is the first signed phone and Wear OS release candidate. GitHub hosts the APKs and checksum files; the [signing certificate](docs/signing/README.md) documents the update identity. This remains a test release until the real-device launch gate is complete.
+[`1.0.0-rc.2`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.2) is the current signed phone and Wear OS release candidate. It fixes authenticated home state before pairing and clears account-scoped local data when an account changes or a couple unpairs. GitHub hosts the APKs and checksum files; the [signing certificate](docs/signing/README.md) documents the update identity. This remains a test release until the real-device launch gate is complete.
 
 ## Privacy promise
 

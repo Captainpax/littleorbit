@@ -10,8 +10,8 @@ android {
         applicationId = "com.littleorbit.mobile"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0-rc.1"
+        versionCode = 2
+        versionName = "1.0.0-rc.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { viewBinding = true }

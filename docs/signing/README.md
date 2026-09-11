@@ -11,7 +11,7 @@ Little Orbit phone and Wear OS release APKs use the same update identity. The pr
 Verify a downloaded APK with Android SDK Build Tools:
 
 ```powershell
-apksigner verify --verbose --print-certs little-orbit-1.0.0-rc.1.apk
+apksigner verify --verbose --print-certs little-orbit-1.0.0-rc.2.apk
 ```
 
 The command must report that the APK verifies and that its certificate SHA-256 exactly matches this document. Also compare the APK file SHA-256 with its matching `.sha256` asset on GitHub Releases.

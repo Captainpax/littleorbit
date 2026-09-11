@@ -26,11 +26,11 @@ test("download remains available when release API metadata is unavailable", asyn
   await page.goto("/download");
   const download = page.getByRole("link", { name: "Download signed APK" });
   await expect(page.getByText("Available", { exact: true })).toBeVisible();
-  await expect(page.getByText("bafcbe67ab140edafc57300555c60c131be5fe6c346769df15fb8bee473bc0f1")).toBeVisible();
+  await expect(page.getByText("8cea61f20cd0da6e4144b8eedb58c14d1ea16371e10df7d8e4b8f9068b0f0d10")).toBeVisible();
   await expect(download).toBeVisible();
   await expect(download).toHaveAttribute(
     "href",
-    "https://github.com/Captainpax/littleorbit/releases/download/v1.0.0-rc.1/little-orbit-1.0.0-rc.1.apk",
+    "https://github.com/Captainpax/littleorbit/releases/download/v1.0.0-rc.2/little-orbit-1.0.0-rc.2.apk",
   );
 });
 

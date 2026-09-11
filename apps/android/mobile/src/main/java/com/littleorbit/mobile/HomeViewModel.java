@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel;
 import com.littleorbit.data.repository.DisplayCacheRepository;
 import com.littleorbit.data.repository.OrbitRepository;
 import dagger.hilt.android.lifecycle.HiltViewModel;
-import java.time.Duration;
 import java.time.Instant;
 import javax.inject.Inject;
 
@@ -20,20 +19,13 @@ public final class HomeViewModel extends ViewModel {
     @Inject
     public HomeViewModel(DisplayCacheRepository repository, OrbitRepository orbit) {
         this.orbit = orbit;
-        state.setValue(HomeScreenState.signedOut());
+        state.setValue(HomeStateMapper.withoutCache(orbit.isSignedIn()));
         state.addSource(repository.observe(), cache -> {
             if (cache == null) {
-                state.setValue(HomeScreenState.signedOut());
+                state.setValue(HomeStateMapper.withoutCache(orbit.isSignedIn()));
                 return;
             }
-            Instant updatedAt = Instant.ofEpochMilli(cache.updatedAtEpochMillis);
-            boolean stale = updatedAt.plus(Duration.ofHours(6)).isBefore(Instant.now());
-            state.setValue(new HomeScreenState(
-                    "Your little orbit",
-                    Duration.ofSeconds(cache.togetherSeconds).toDays() + " days together",
-                    cache.nextCountdownTitle,
-                    stale ? "Estimate may be stale" : "Updated recently",
-                    orbit.isSignedIn()));
+            state.setValue(HomeStateMapper.fromCache(cache, orbit.isSignedIn(), Instant.now()));
         });
     }
 
@@ -46,9 +38,14 @@ public final class HomeViewModel extends ViewModel {
             state.setValue(HomeScreenState.signedOut());
             return;
         }
+        HomeScreenState current = state.getValue();
+        if (current == null || !current.signedIn()) {
+            state.setValue(HomeScreenState.signedInWithoutCache());
+        }
         orbit.refreshHome().exceptionally(failure -> {
-            if (state.getValue() == null) {
-                state.postValue(HomeScreenState.syncUnavailable());
+            HomeScreenState latest = state.getValue();
+            if (latest == null || !latest.signedIn()) {
+                state.postValue(HomeScreenState.signedInWithoutCache());
             }
             return null;
         });

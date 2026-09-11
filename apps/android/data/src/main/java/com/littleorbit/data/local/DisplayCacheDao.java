@@ -20,4 +20,8 @@ public interface DisplayCacheDao {
     /** Replaces the cache atomically after a successful authorized sync. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void replace(DisplayCacheEntity entity);
+
+    /** Removes relationship display data when the local account context changes. */
+    @Query("DELETE FROM display_cache")
+    void clear();
 }
