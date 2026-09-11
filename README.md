@@ -1,5 +1,7 @@
 # Little Orbit
 
+[![CI](https://github.com/Captainpax/littleorbit/actions/workflows/ci.yml/badge.svg)](https://github.com/Captainpax/littleorbit/actions/workflows/ci.yml)
+
 ![Little Orbit logo concept](docs/assets/little-orbit-logo-concept.png)
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
@@ -66,3 +68,5 @@ Little Orbit collects only what a selected feature needs. AI question generation
 ## License and support
 
 The application code is licensed under the [MIT License](LICENSE). Optional donations may support hosting, but will never unlock features. GitHub Releases are the canonical APK source once signed releases begin.
+
+Source, issues, and releases live at [github.com/Captainpax/littleorbit](https://github.com/Captainpax/littleorbit).
