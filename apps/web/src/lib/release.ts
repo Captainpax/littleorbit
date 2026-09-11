@@ -9,11 +9,11 @@ export interface ReleaseMetadata {
 }
 
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-dev",
+  version: "1.0.0-rc.1",
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "Pending first signed release",
-  releaseNotes: ["The signed public APK has not been published yet.", "Source builds are for development and testing only."],
-  githubUrl: process.env.GITHUB_RELEASE_URL ?? "https://github.com/OWNER/little-orbit/releases",
+  sha256: "Release metadata temporarily unavailable",
+  releaseNotes: ["The signed release metadata could not be loaded. Check GitHub Releases before installing."],
+  githubUrl: process.env.GITHUB_RELEASE_URL ?? "https://github.com/Captainpax/littleorbit/releases",
   published: false,
 };
 

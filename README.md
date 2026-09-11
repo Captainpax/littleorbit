@@ -6,7 +6,7 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.0 release candidate. The implemented flows pass automated API, protocol, web, Android build, gateway, deletion, and backup-restore checks. Real-device privacy/permission testing, release signing, firewall/DHCP setup, and the reviewed Nginx Proxy Manager change remain launch gates, so do not use the public deployment for real relationship data yet.
+> **Project status:** 1.0 release candidate. The implemented flows pass automated API, protocol, web, signed Android release, gateway, email, deletion, and backup-restore checks. Public HTTPS and the source-restricted Windows Firewall rule are live. Real-device privacy/permission testing, the DHCP reservation, and legal review remain launch gates, so do not use the public deployment for real relationship data yet.
 
 ## What 1.0 includes
 
@@ -48,6 +48,10 @@ python -m venv .venv
 .venv/Scripts/uvicorn little_orbit_api.main:app --reload --port 8000
 ```
 
+## Signed Android release
+
+[`1.0.0-rc.1`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.1) is the first signed phone and Wear OS release candidate. GitHub hosts the APKs and checksum files; the [signing certificate](docs/signing/README.md) documents the update identity. This remains a test release until the real-device launch gate is complete.
+
 ## Privacy promise
 
 Little Orbit collects only what a selected feature needs. AI question generation in 1.0 is site-wide and receives no couple data. Precise coordinates are kept for no more than 24 hours, administrator views exclude relationship content, and unpairing immediately stops sharing. Read the full [privacy design](docs/PRIVACY.md).
@@ -67,6 +71,6 @@ Little Orbit collects only what a selected feature needs. AI question generation
 
 ## License and support
 
-The application code is licensed under the [MIT License](LICENSE). Optional donations may support hosting, but will never unlock features. GitHub Releases are the canonical APK source once signed releases begin.
+The application code is licensed under the [MIT License](LICENSE). Optional donations may support hosting, but will never unlock features. GitHub Releases are the canonical source for signed APKs.
 
 Source, issues, and releases live at [github.com/Captainpax/littleorbit](https://github.com/Captainpax/littleorbit).

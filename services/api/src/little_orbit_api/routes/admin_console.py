@@ -30,6 +30,7 @@ from ..models import (
     SecurityEvent,
     Session,
 )
+from ..release_service import upsert_apk_release
 from ..schemas import (
     AdminAccountAction,
     AdminCollectionResponse,
@@ -449,25 +450,7 @@ async def publish_release(
 
     if version != payload.version:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Version path and body differ")
-    record = await session.scalar(
-        select(ApkRelease).where(ApkRelease.version == version).with_for_update()
-    )
-    now = SystemClock().now()
-    values = {
-        "apk_url": str(payload.apk_url),
-        "github_release_url": str(payload.github_release_url),
-        "sha256": payload.sha256,
-        "minimum_android": payload.minimum_android,
-        "release_notes": payload.release_notes,
-        "published_at": now if payload.publish else None,
-        "updated_by": admin.id,
-        "updated_at": now,
-    }
-    if record is None:
-        session.add(ApkRelease(version=version, created_at=now, **values))
-    else:
-        for key, value in values.items():
-            setattr(record, key, value)
+    await upsert_apk_release(session, payload, admin.id)
     await session.commit()
     return PublicMessage(message="Release metadata updated.")
 

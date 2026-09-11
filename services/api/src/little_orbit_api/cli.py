@@ -8,6 +8,8 @@ from sqlalchemy import select
 from .clock import SystemClock
 from .database import SessionFactory
 from .models import Account, SecurityEvent
+from .release_service import upsert_apk_release
+from .schemas import ApkReleaseInput
 from .security import normalize_email
 
 
@@ -36,6 +38,24 @@ async def promote_admin(email: str) -> None:
     print("Verified account promoted. Complete MFA enrollment before using the console.")
 
 
+async def publish_release(payload: ApkReleaseInput) -> None:
+    """Publish validated GitHub release metadata from the trusted local host."""
+
+    async with SessionFactory() as session:
+        await upsert_apk_release(session, payload, updated_by=None)
+        session.add(
+            SecurityEvent(
+                actor_id=None,
+                event_type="local_apk_release_publication",
+                outcome="accepted",
+                metadata_json={"version": payload.version, "sha256": payload.sha256},
+                created_at=SystemClock().now(),
+            )
+        )
+        await session.commit()
+    print("Signed APK release metadata published.")
+
+
 def main() -> None:
     """Parse and run an explicit local administrative command."""
 
@@ -43,9 +63,27 @@ def main() -> None:
     subcommands = parser.add_subparsers(dest="command", required=True)
     promote = subcommands.add_parser("promote-admin")
     promote.add_argument("email")
+    release = subcommands.add_parser("publish-release")
+    release.add_argument("--version", required=True)
+    release.add_argument("--apk-url", required=True)
+    release.add_argument("--github-release-url", required=True)
+    release.add_argument("--sha256", required=True)
+    release.add_argument("--minimum-android", required=True, type=int)
+    release.add_argument("--release-notes", required=True)
     arguments = parser.parse_args()
     if arguments.command == "promote-admin":
         asyncio.run(promote_admin(arguments.email))
+    if arguments.command == "publish-release":
+        payload = ApkReleaseInput(
+            version=arguments.version,
+            apk_url=arguments.apk_url,
+            github_release_url=arguments.github_release_url,
+            sha256=arguments.sha256,
+            minimum_android=arguments.minimum_android,
+            release_notes=arguments.release_notes,
+            publish=True,
+        )
+        asyncio.run(publish_release(payload))
 
 
 if __name__ == "__main__":

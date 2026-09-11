@@ -1,0 +1,41 @@
+"""Transactional APK release metadata updates shared by admin and local operations."""
+
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from .clock import SystemClock
+from .models import ApkRelease
+from .schemas import ApkReleaseInput
+
+
+async def upsert_apk_release(
+    session: AsyncSession,
+    payload: ApkReleaseInput,
+    updated_by: UUID | None,
+) -> ApkRelease:
+    """Create or replace one release record without committing its transaction."""
+
+    record = await session.scalar(
+        select(ApkRelease).where(ApkRelease.version == payload.version).with_for_update()
+    )
+    now = SystemClock().now()
+    values = {
+        "apk_url": str(payload.apk_url),
+        "github_release_url": str(payload.github_release_url),
+        "sha256": payload.sha256,
+        "minimum_android": payload.minimum_android,
+        "release_notes": payload.release_notes,
+        "published_at": now if payload.publish else None,
+        "updated_by": updated_by,
+        "updated_at": now,
+    }
+    if record is None:
+        record = ApkRelease(version=payload.version, created_at=now, **values)
+        session.add(record)
+    else:
+        for key, value in values.items():
+            setattr(record, key, value)
+    await session.flush()
+    return record

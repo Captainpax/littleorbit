@@ -25,6 +25,7 @@ coverage/
 playwright-report/
 test-results/
 *.tsbuildinfo
+dist/
 
 # Android
 .gradle/

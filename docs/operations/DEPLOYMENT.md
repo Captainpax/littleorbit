@@ -49,3 +49,13 @@ Test website pages, `/api/v1/health/ready`, a real WebSocket upgrade, signup ema
 ## Restart recovery
 
 Set Docker Desktop/engine and the Compose stack to start after host reboot. Reboot the host, then verify DHCP address, firewall scope, all health checks, public HTTPS, WSS, email, worker schedules, and one curated fallback pool while Ollama is stopped.
+
+## Signed Android releases
+
+Keep the PKCS12 release store and its four `ANDROID_SIGNING_*` settings outside Git. Back them up separately because Android will reject an update signed by a replacement key. Increment `versionCode` before every published update, set the intended `versionName`, then build and verify both targets:
+
+```powershell
+.\infra\scripts\build-signed-android.ps1
+```
+
+The script loads signing values from the ignored `.env`, fails when any value or the store is missing, builds phone and Wear OS release APKs, verifies each signature with the newest installed Android `apksigner`, requires the same certificate on both, and writes APK plus SHA-256 files under `dist/android/`. Publish those bytes through GitHub Releases before updating stack metadata with the local `publish-release` command. The public certificate and expected fingerprint are documented in [`../signing/README.md`](../signing/README.md).

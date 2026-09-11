@@ -127,6 +127,7 @@ img { max-width: 100%; height: auto; }
 .release-card dl div { display: grid; grid-template-columns: 150px 1fr; padding-block: 12px; border-top: 1px solid var(--line); }
 .release-card dt { color: var(--muted); }.release-card dd { margin: 0; overflow-wrap: anywhere; }
 .release-card li { margin: 8px 0; color: var(--muted); }
+.release-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .fine-print { margin-top: 18px; color: var(--muted); font-size: .8rem; }
 
 .form-page { width: var(--shell); min-height: 760px; display: grid; grid-template-columns: 1fr minmax(340px, 480px); align-items: center; gap: 80px; margin: auto; }
