@@ -143,7 +143,7 @@ img { max-width: 100%; height: auto; }
 .account-form label small { color: var(--muted); font-weight: 400; }
 .account-form .check { grid-template-columns: 20px 1fr; align-items: center; }
 .account-form .check input { min-height: 18px; height: 18px; accent-color: var(--coral); }
-.honeypot { position: absolute; left: -10000px; }
+.account-form .honeypot { display: none; }
 .form-message { min-height: 24px; color: var(--coral-light) !important; }
 .verification-forms { display: grid; grid-template-columns: repeat(2, minmax(0, 420px)); justify-content: center; gap: 24px; padding-block: 80px 110px; }
 .recovery-codes ul { columns: 2; padding: 14px 0; list-style: none; }.recovery-codes li { padding: 5px 0; }.break-secret { display: block; margin-top: 8px; overflow-wrap: anywhere; color: var(--muted); font-size: .7rem; }

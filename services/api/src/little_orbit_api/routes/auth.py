@@ -80,11 +80,14 @@ async def register(
     allowed = ip_limiter.allow(_limit_key(client_ip, pepper), now)
     allowed = email_limiter.allow(_limit_key(normalized, pepper), now) and allowed
     registration_enabled = await _registration_enabled(session, settings)
-    if not allowed:
+    blocked_event = "registration_rate_limit" if not allowed else None
+    if payload.website:
+        blocked_event = "registration_honeypot"
+    if blocked_event is not None:
         session.add(
             SecurityEvent(
                 actor_id=None,
-                event_type="registration_rate_limit",
+                event_type=blocked_event,
                 outcome="blocked",
                 metadata_json={},
                 created_at=now,

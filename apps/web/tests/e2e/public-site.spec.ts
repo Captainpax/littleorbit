@@ -10,6 +10,10 @@ test("landing page exposes mission and keyboard-visible actions", async ({ page 
 
 test("signup requires adult and terms attestations", async ({ page }) => {
   await page.goto("/signup");
+  const honeypot = page.locator('input[name="website"]');
+  await expect(honeypot).toBeHidden();
+  await expect(honeypot).toHaveAttribute("readonly", "");
+  await expect(honeypot).toHaveValue("");
   await page.getByLabel("Email").fill("browser-check@example.test");
   await page.getByLabel("Your name").fill("Browser Check");
   await page.getByLabel(/^Password/).fill("browser-test-password");

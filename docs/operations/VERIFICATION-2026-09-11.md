@@ -14,6 +14,7 @@ This record reports what was actually exercised for the 1.0 release candidate. I
 - Local AI: the pinned Qwen model generated seven future global pools on the RTX 4050 Laptop GPU; schema, safety, exact-hash, trigram, category, and curated-fallback gates remain in the worker path.
 - Android release: phone and Wear OS `1.0.0-rc.1` APKs were built from one protected 4096-bit RSA identity and independently verified with Android `apksigner`; SHA-256 checksum sidecars were generated for publication.
 - Public service: Nginx Proxy Manager serves valid HTTPS for `lil-orb.pax-kun.com`, the gateway firewall rule accepts only the proxy host, and Gmail SMTP delivered and consumed a real verification link in 17 seconds.
+- Mobile signup regression: Android Chrome autofill populated the off-screen registration honeypot and caused a neutral rejection. The field is now hidden, read-only, and covered by desktop and mobile Playwright checks; the API records future honeypot rejections without storing submitted values.
 
 ## Launch gates still open
 

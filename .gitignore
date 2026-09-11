@@ -40,3 +40,4 @@ local.properties
 backups/
 secrets/
 *.log
+.codex-remote-attachments/

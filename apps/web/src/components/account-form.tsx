@@ -86,8 +86,19 @@ export function AccountForm({ mode }: Readonly<AccountFormProps>) {
             <input name="terms_confirmed" type="checkbox" required />
             <span>I accept the privacy notice and terms.</span>
           </label>
-          <label className="honeypot" aria-hidden="true">
-            Company website<input name="website" tabIndex={-1} autoComplete="off" />
+          {/* A controlled read-only field keeps mobile autofill from tripping the bot honeypot. */}
+          <label className="honeypot" aria-hidden="true" hidden>
+            Leave this field blank
+            <input
+              name="website"
+              type="text"
+              value=""
+              readOnly
+              tabIndex={-1}
+              autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+            />
           </label>
         </>
       )}
