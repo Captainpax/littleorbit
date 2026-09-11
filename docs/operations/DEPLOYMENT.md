@@ -22,6 +22,14 @@ Then visit `/admin/enroll`, re-enter the owner password, scan the TOTP QR code, 
 
 Create an inbound TCP rule for local port 8180 scoped to remote address `192.168.50.6`. Remove or disable any broader prior rule for the same application port. Verify another LAN host cannot connect while NPM can. Record the actual rule name in private operations notes.
 
+From an elevated PowerShell prompt, apply the repository's idempotent rule:
+
+```powershell
+.\infra\scripts\configure-windows-firewall.ps1
+```
+
+Use `-WhatIf` to preview the named rule. The script creates or updates only `Little Orbit Gateway - NPM only` and leaves unrelated rules unchanged.
+
 ## Nginx Proxy Manager
 
 Create one proxy host for `lil-orb.pax-kun.com`:
@@ -33,6 +41,8 @@ Create one proxy host for `lil-orb.pax-kun.com`:
 - Block common exploits: enabled
 - Certificate: Let's Encrypt for the exact hostname
 - Force SSL and HTTP/2: enabled after certificate issuance succeeds
+
+Keep `REGISTRATION_OPEN=false` while Mailpit is the configured SMTP service. Open registration only after an external SMTP delivery test confirms that verification and password-reset links use the public HTTPS origin.
 
 Test website pages, `/api/v1/health/ready`, a real WebSocket upgrade, signup email delivery, and certificate renewal/recovery. Enable HSTS only after those checks and a rollback path succeed. The initial live NPM change is an explicit deployment action; screenshots or a saved draft are not proof that traffic works.
 
