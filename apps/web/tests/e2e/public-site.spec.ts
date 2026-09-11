@@ -18,6 +18,12 @@ test("signup requires adult and terms attestations", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveText("");
 });
 
+test("verification links fill their one-use token from the URL fragment", async ({ page }) => {
+  const token = "a".repeat(43);
+  await page.goto(`/verify-email#token=${token}`);
+  await expect(page.getByLabel("Secure link token")).toHaveValue(token);
+});
+
 test("admin redirects to password and second-factor entry", async ({ page }) => {
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login/);

@@ -43,14 +43,14 @@ def enqueue_mail(
 def verification_body(settings: Settings, display_name: str, token: str) -> str:
     """Create a plain-text email verification message."""
 
-    link = f"{settings.public_base_url}/verify-email?token={token}"
+    link = f"{settings.public_base_url}/verify-email#token={token}"
     return f"Hello {display_name},\n\nVerify your Little Orbit email within 24 hours:\n{link}\n"
 
 
 def recovery_body(settings: Settings, display_name: str, token: str) -> str:
     """Create a plain-text password recovery message."""
 
-    link = f"{settings.public_base_url}/reset-password?token={token}"
+    link = f"{settings.public_base_url}/reset-password#token={token}"
     return f"Hello {display_name},\n\nReset your Little Orbit password within 30 minutes:\n{link}\n"
 
 

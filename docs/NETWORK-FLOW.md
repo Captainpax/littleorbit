@@ -135,11 +135,12 @@ sequenceDiagram
     Worker->>SMTP: Send provider-neutral message
     SMTP-->>Worker: Accepted or retryable failure
     Worker->>DB: Record redacted delivery outcome
+    Worker-->>User: Link carries token in URL fragment
     User->>API: Submit raw token
     API->>DB: Hash and consume atomically if valid
 ```
 
-Local development uses Mailpit. Production uses configured SMTP and never exposes Mailpit publicly.
+Email and recovery tokens use URL fragments so browsers do not send them in HTTP request targets or proxy logs. The client submits the token explicitly to the API, where it is hashed and consumed once. Existing query-string links remain accepted during the transition. Local development uses Mailpit. Production uses configured SMTP and never exposes Mailpit publicly. The worker polls the outbox every 30 seconds by default.
 
 ## Android offline and wearable cache
 

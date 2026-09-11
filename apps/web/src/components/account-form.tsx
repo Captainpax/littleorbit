@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface AccountFormProps { mode: "signup" | "forgot" | "verify" | "reset" | "resend"; }
@@ -17,6 +17,16 @@ export function AccountForm({ mode }: Readonly<AccountFormProps>) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const linkTokenRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (mode !== "verify" && mode !== "reset") return;
+    const fragmentToken = new URLSearchParams(window.location.hash.slice(1)).get("token");
+    const legacyQueryToken = new URLSearchParams(window.location.search).get("token");
+    if (linkTokenRef.current) {
+      linkTokenRef.current.value = fragmentToken ?? legacyQueryToken ?? "";
+    }
+  }, [mode]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setMessage("");
@@ -38,5 +48,51 @@ export function AccountForm({ mode }: Readonly<AccountFormProps>) {
     finally { setBusy(false); }
   }
 
-  return <form className="account-form" onSubmit={submit}><h2>{copy[mode].title}</h2>{(mode === "signup" || mode === "forgot" || mode === "resend") && <label>Email<input name="email" type="email" autoComplete="email" required /></label>}{mode === "signup" && <label>Your name<input name="display_name" autoComplete="name" minLength={1} maxLength={80} required /></label>}{(mode === "signup" || mode === "reset") && <label>{mode === "reset" ? "New password" : "Password"}<input name="password" type="password" autoComplete="new-password" minLength={12} required /><small>At least 12 characters</small></label>}{(mode === "verify" || mode === "reset") && <label>Secure link token<input name="token" autoComplete="one-time-code" minLength={32} required /></label>}{mode === "signup" && <><label className="check"><input name="adult_confirmed" type="checkbox" required /><span>I confirm I am 18 or older.</span></label><label className="check"><input name="terms_confirmed" type="checkbox" required /><span>I accept the privacy notice and terms.</span></label><label className="honeypot" aria-hidden="true">Company website<input name="website" tabIndex={-1} autoComplete="off" /></label></>}<button className="button" disabled={busy}>{busy ? "Working…" : copy[mode].submit}</button><p className="form-message" role="status" aria-live="polite">{message}</p></form>;
+  return (
+    <form className="account-form" onSubmit={submit}>
+      <h2>{copy[mode].title}</h2>
+      {(mode === "signup" || mode === "forgot" || mode === "resend") && (
+        <label>Email<input name="email" type="email" autoComplete="email" required /></label>
+      )}
+      {mode === "signup" && (
+        <label>Your name<input name="display_name" autoComplete="name" minLength={1} maxLength={80} required /></label>
+      )}
+      {(mode === "signup" || mode === "reset") && (
+        <label>
+          {mode === "reset" ? "New password" : "Password"}
+          <input name="password" type="password" autoComplete="new-password" minLength={12} required />
+          <small>At least 12 characters</small>
+        </label>
+      )}
+      {(mode === "verify" || mode === "reset") && (
+        <label>
+          Secure link token
+          <input
+            name="token"
+            ref={linkTokenRef}
+            autoComplete="one-time-code"
+            minLength={32}
+            required
+          />
+        </label>
+      )}
+      {mode === "signup" && (
+        <>
+          <label className="check">
+            <input name="adult_confirmed" type="checkbox" required />
+            <span>I confirm I am 18 or older.</span>
+          </label>
+          <label className="check">
+            <input name="terms_confirmed" type="checkbox" required />
+            <span>I accept the privacy notice and terms.</span>
+          </label>
+          <label className="honeypot" aria-hidden="true">
+            Company website<input name="website" tabIndex={-1} autoComplete="off" />
+          </label>
+        </>
+      )}
+      <button className="button" disabled={busy}>{busy ? "Working…" : copy[mode].submit}</button>
+      <p className="form-message" role="status" aria-live="polite">{message}</p>
+    </form>
+  );
 }

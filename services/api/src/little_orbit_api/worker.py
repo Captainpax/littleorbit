@@ -287,17 +287,35 @@ async def ensure_question_coverage(days: int = 7) -> None:
         await _persist_pool(target, result, settings, effective_bank)
 
 
-async def run_forever(interval_seconds: int = 300) -> None:
-    """Run bounded maintenance repeatedly while allowing container shutdown."""
+async def _poll_mail_forever(interval_seconds: int) -> None:
+    while True:
+        try:
+            await deliver_pending_mail(get_settings())
+        except Exception:
+            LOGGER.exception("mail delivery cycle failed")
+        await asyncio.sleep(max(interval_seconds, 5))
 
+
+async def _run_scheduled_jobs_forever(interval_seconds: int) -> None:
     while True:
         try:
             await run_maintenance_once()
-            await deliver_pending_mail(get_settings())
             await ensure_question_coverage()
         except Exception:
-            LOGGER.exception("maintenance cycle failed")
+            LOGGER.exception("scheduled maintenance cycle failed")
         await asyncio.sleep(max(interval_seconds, 3600))
+
+
+async def run_forever(
+    mail_interval_seconds: int = 30,
+    scheduled_interval_seconds: int = 3600,
+) -> None:
+    """Run mail polling independently from slower maintenance and AI work."""
+
+    await asyncio.gather(
+        _poll_mail_forever(mail_interval_seconds),
+        _run_scheduled_jobs_forever(scheduled_interval_seconds),
+    )
 
 
 def main() -> None:
