@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+!.env.android-signing.example
 .idea/
 .inspect/
 .vscode/

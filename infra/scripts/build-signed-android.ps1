@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$EnvironmentFile = ".env",
+    [string]$EnvironmentFile = ".env.android-signing",
     [string]$OutputDirectory = "dist/android"
 )
 
