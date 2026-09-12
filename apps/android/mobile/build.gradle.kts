@@ -35,7 +35,7 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.hilt.work)
     implementation(libs.play.services.wearable)
-    implementation("androidx.core:core:1.16.0")
+    implementation("androidx.core:core:1.19.0")
     implementation(libs.material)
     implementation(libs.hilt.android)
     annotationProcessor(libs.hilt.compiler)
