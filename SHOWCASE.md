@@ -30,6 +30,10 @@ This generated RC5 design study is the visual target for daily questions. The im
 
 The RC3 emulator captures verify the Inter type system, paired planet motif, lavender primary action, persistent Home/Quiz/Notes/More navigation, sparse signed-out states, and Wear update boundary. RC4 changed the verified download transport and RC5 brought the daily quiz into the same visual system. RC6 removes status/navigation-bar overlap, gives relationship age and nearby-time distinct hierarchy, adds a guided device-setup screen, and refreshes the widget, tile, and complication cache contract. These RC6 descriptions are implementation status, while the pictured phone screens remain labelled RC3 captures until new device screenshots are recorded.
 
+![Signed RC7 Wear OS fallback state on a round Wear OS 5 emulator](docs/assets/wear-rc7-signed-emulator.png)
+
+The signed RC7 Wear launcher capture verifies that the logo, relationship date fallback, nearby estimate, and stale status fit the round safe area. Its content remains scrollable for large text and smaller displays.
+
 ## Public website
 
 ![Website landing page concept](docs/assets/web-landing-concept.png)
@@ -60,6 +64,7 @@ The console exposes service health, delivery and generation status, moderation q
 - [x] API 36 emulator: RC3 debug APK install, launch, signed-out dashboard and More hierarchy, landscape rendering, and runtime-crash check.
 - [ ] Home widget: fresh, stale, signed-out, and server-offline states.
 - [ ] Wear OS: guided installation, phone capability detection, tile, complication, loading, stale, and disconnected states.
+- [x] Wear OS 5 round emulator: signed RC7 install, cold launch, safe-area fallback layout, and stale-state rendering.
 - [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
 - [ ] Website remaining: recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.

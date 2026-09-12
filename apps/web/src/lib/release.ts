@@ -27,23 +27,23 @@ export function hostedWearApkPath(version: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.6",
-  versionCode: 6,
+  version: "1.0.0-rc.7",
+  versionCode: 7,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "71093232e3d3dc5c0523a785ad9314de2fa14a0338ef5c9ae336962caa9033fc",
+  sha256: "426618ec1051d54c9c391ccb5850b78b11f25f49cb8a4daf2394c0e7db79a35e",
   releaseNotes: [
+    "Makes the complete fallback state fit safely on round Wear OS displays and keeps it scrollable for large text.",
     "Keeps every phone screen clear of status bars, navigation bars, display cutouts, and the keyboard.",
     "Separates a mutually confirmed relationship start date from the location-derived nearby-time estimate.",
     "Adds guided notification and precise background-location setup with live consent status.",
-    "Refreshes the home widget and Wear OS surfaces with honest stale states and a verified watch installer.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.6",
-  apkUrl: hostedApkPath("1.0.0-rc.6"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.7",
+  apkUrl: hostedApkPath("1.0.0-rc.7"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.6"),
-    sha256: "857197277ac5da7c23db816ae8dd04f95defa137c4870a0cb1ef2abbac086027",
-    sizeBytes: 14124686,
-    versionCode: 6,
+    apkUrl: hostedWearApkPath("1.0.0-rc.7"),
+    sha256: "615d18689b76b19e303a0423bce553c08e8ce77f0042c9b28d4ede4bf81d50a1",
+    sizeBytes: 14124818,
+    versionCode: 7,
     minimumAndroid: 30,
   },
   published: true,

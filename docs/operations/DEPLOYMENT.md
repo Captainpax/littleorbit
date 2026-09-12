@@ -83,7 +83,7 @@ docker compose --env-file .env -f infra/compose.yaml exec api python -m little_o
   --wear-size-bytes 14124686 --wear-package-name com.littleorbit.mobile `
   --wear-version-code 6 --wear-minimum-android 30 `
   --minimum-android 29 --minimum-supported-version-code 6 `
-  --required-after <VERIFIED-UTC-INSTANT>
+  --required-after 2026-09-12T17:45:00Z
 ```
 
 Verify both a complete response and a resumed slice through the public proxy. The range request must return `206`, `Content-Range: bytes 0-1023/15823790`, and exactly 1,024 bytes:
@@ -94,6 +94,6 @@ curl.exe -fsS -H "Range: bytes=0-1023" -D - -o range-check.bin https://lil-orb.p
 curl.exe -fSI https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.6/wear-apk
 ```
 
-Omit `--required-after` for normal optional releases. Replace the placeholder only after the deployed migration, both hosted artifacts, updater discovery, complete/range downloads, and health checks pass. RC6 deliberately moves the floor to version code 6 after those checks. Once a published record exists, corrections require a new version and new tag; the API deliberately rejects edits and unpublishing.
+Omit `--required-after` for normal optional releases. RC6 moved the floor to version code 6 at `2026-09-12T17:45:00Z`, after the deployed migration, both hosted artifacts, updater discovery, complete/range downloads, and health checks passed. Once a published record exists, corrections require a new version and new tag; the API deliberately rejects edits and unpublishing. RC7 demonstrates that rule: a Wear layout correction received version code 7 while the active minimum remains 6.
 
 The public certificate and expected fingerprint are documented in [`../signing/README.md`](../signing/README.md).
