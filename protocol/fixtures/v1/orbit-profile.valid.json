@@ -1,0 +1,11 @@
+{
+  "me": {
+    "display_name": "Avery",
+    "photo": {
+      "revision": 2,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "updated_at": "2026-09-12T12:00:00Z"
+    }
+  },
+  "partner": { "display_name": "River", "photo": null }
+}

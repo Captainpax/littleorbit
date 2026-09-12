@@ -235,6 +235,44 @@ def test_wear_endpoint_uses_its_own_verified_artifact(tmp_path: Path) -> None:
     assert partial.headers["x-checksum-sha256"] == wear_digest
 
 
+def test_release_history_exposes_only_ordered_public_metadata() -> None:
+    newer = published_record(release_input(
+        version="1.0.0-rc.7",
+        version_code=7,
+        apk_url=hosted_apk_url("1.0.0-rc.7"),
+        github_release_url="https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.7",
+        wear_apk_url=hosted_wear_apk_url("1.0.0-rc.7"),
+        wear_sha256="b" * 64,
+        wear_size_bytes=2048,
+        wear_package_name="com.littleorbit.mobile",
+        wear_version_code=7,
+        wear_minimum_android=30,
+    ))
+    older = published_record(release_input(
+        version="1.0.0-rc.6",
+        version_code=6,
+        apk_url=hosted_apk_url("1.0.0-rc.6"),
+        github_release_url="https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.6",
+        wear_apk_url=hosted_wear_apk_url("1.0.0-rc.6"),
+        wear_sha256="c" * 64,
+        wear_size_bytes=2048,
+        wear_package_name="com.littleorbit.mobile",
+        wear_version_code=6,
+        wear_minimum_android=30,
+    ))
+    session = AsyncMock()
+    session.scalars.return_value = [newer, older]
+    app = _release_test_app(session, Path("."))
+
+    with TestClient(app) as client:
+        response = client.get("/v1/releases/history?limit=2")
+
+    assert response.status_code == 200
+    assert [item["version_code"] for item in response.json()] == [7, 6]
+    statement = session.scalars.await_args.args[0]
+    assert "published_at IS NOT NULL" in str(statement)
+
+
 def _release_test_app(session: AsyncMock, storage: Path) -> FastAPI:
     """Build an isolated release router with no real database connection."""
 

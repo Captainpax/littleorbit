@@ -19,6 +19,8 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Repair clean PostgreSQL bootstrap migrations and verify a full upgrade, RC6 downgrade, re-upgrade, and model/schema comparison.
 - [x] Gate every versioned Android route, including RC6 together-time endpoints, behind the activated minimum-client floor.
 - [x] Verify the Wear launcher on a round emulator, make its fallback fit and scroll safely, and publish the immutable RC7 correction.
+- [x] Publish RC8 with the concept-led home hierarchy, account profile photos on phone and Wear, a phone-hosted wireless-ADB Wear installer, and public patch notes with RSS.
+- [x] Require every major-system agent guide to inventory all Markdown, update every affected document, and always review this roadmap.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.
 
@@ -31,7 +33,8 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - Improved offline reconciliation and battery measurements.
 - Device-tested notification timing and richer quiz reveal motion under reduced-motion controls.
 - Physical-device battery measurements and OEM-specific background-location recovery guidance.
-- A friendlier signed desktop watch installer if community testing shows wireless ADB setup is still too difficult.
+- Guided watch-installer usability improvements based on physical phone/watch testing.
+- Profile-photo accessibility, transfer retry, and storage measurements on physical phone/watch pairs.
 
 ## 2.0 — Explicitly reviewed sensitive features
 

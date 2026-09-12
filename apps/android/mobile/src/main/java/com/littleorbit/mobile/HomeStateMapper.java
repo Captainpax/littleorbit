@@ -35,6 +35,7 @@ final class HomeStateMapper {
                 relationship,
                 nearby,
                 cache.nextCountdownTitle,
+                "Open today’s five questions",
                 freshness(cache, now),
                 signedIn,
                 signedIn);

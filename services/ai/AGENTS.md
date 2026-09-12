@@ -16,7 +16,7 @@ The AI service may receive calendar dates, recent public question text/categorie
 - Normalize and hash exact duplicates; use database trigram similarity for near duplicates in production.
 - Maintain seven future local dates. Every date must have five publishable general questions even when Ollama is absent or times out.
 - Persist model digest, prompt version, parameters, validation results, selections, quarantine reasons, and fallback reason.
-- Update `ROADMAP.md` in the same change whenever AI behavior, code, model state, or release scope changes.
+- Inventory every repository-owned Markdown file for each AI update. Update or create all affected evaluation, privacy, operations, architecture, release, and contributor documents, and always review and update `ROADMAP.md` for behavior, scope, milestone, or release changes.
 
 ## Start here
 

@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from sqlalchemy import select
@@ -17,9 +17,43 @@ from ..release_artifacts import (
     verify_release_artifact,
     verify_wear_release_artifact,
 )
+from ..release_schemas import ReleaseHistoryItem
 from ..schemas import ApkReleaseResponse
 
 router = APIRouter(prefix="/v1/releases", tags=["releases"])
+
+
+@router.get("/history", response_model=list[ReleaseHistoryItem])
+async def release_history(
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    session: AsyncSession = Depends(session_scope),
+) -> list[ReleaseHistoryItem]:
+    """List immutable published releases newest-first for public patch notes."""
+
+    releases = list(
+        await session.scalars(
+            select(ApkRelease)
+            .where(
+                ApkRelease.published_at.is_not(None),
+                ApkRelease.version_code.is_not(None),
+            )
+            .order_by(ApkRelease.version_code.desc())
+            .limit(limit)
+        )
+    )
+    return [
+        ReleaseHistoryItem(
+            version=item.version,
+            version_code=item.version_code,
+            github_release_url=item.github_release_url,
+            sha256=item.sha256,
+            minimum_android=item.minimum_android,
+            release_notes=item.release_notes,
+            published_at=item.published_at,
+        )
+        for item in releases
+        if item.version_code is not None and item.published_at is not None
+    ]
 
 
 @router.get("/current", response_model=ApkReleaseResponse)

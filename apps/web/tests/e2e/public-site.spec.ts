@@ -32,6 +32,28 @@ test("download remains available when release API metadata is unavailable", asyn
   await expect(download).toHaveAttribute("href", hostedApkPath(currentRelease.version));
 });
 
+test("patch notes and RSS expose the same signed fallback release", async ({ request, page }) => {
+  await page.goto("/patch-notes");
+  await expect(page.getByRole("heading", { name: currentRelease.version })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Subscribe with RSS" }))
+    .toHaveAttribute("href", "/patch-notes.xml");
+
+  const response = await request.get("/patch-notes.xml");
+  expect(response.ok()).toBe(true);
+  expect(response.headers()["content-type"]).toContain("application/rss+xml");
+  const xml = await response.text();
+  expect(xml).toContain('<rss version="2.0">');
+  expect(xml).toContain(currentRelease.version);
+});
+
+test("Wear handoff explains the phone-only installation path", async ({ page }) => {
+  await page.goto("/app/install-wear");
+  await expect(page.getByRole("heading", { name: "Continue on your phone" })).toBeVisible();
+  await expect(page.getByText("No computer required")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Little Orbit" }))
+    .toHaveAttribute("href", "https://lil-orb.pax-kun.com/app/install-wear");
+});
+
 test("verification links fill their one-use token from the URL fragment", async ({ page }) => {
   const token = "a".repeat(43);
   await page.goto(`/verify-email#token=${token}`);

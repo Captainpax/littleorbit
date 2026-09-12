@@ -8,9 +8,9 @@ import com.squareup.moshi.Moshi;
 import com.squareup.moshi.Types;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,7 +19,7 @@ import org.junit.Test;
 /** Cross-language smoke checks over the canonical protocol fixtures. */
 public final class ProtocolFixturesTest {
     private static final List<String> NAMES = List.of(
-            "location-batch", "note-operation", "pairing", "question-batch");
+            "location-batch", "note-operation", "pairing", "question-batch", "orbit-profile");
     private final JsonAdapter<Map<String, Object>> adapter;
 
     /** Creates a generic JSON adapter without coupling protocol payloads to Room entities. */
@@ -44,6 +44,12 @@ public final class ProtocolFixturesTest {
         assertFalse(validQuizDay(read("v2", "quiz-day.invalid.json")));
     }
 
+    @Test
+    public void releaseHistoryFixturesKeepPublicMetadataShape() throws IOException {
+        assertTrue(validReleaseHistory(readList("release-history.valid.json")));
+        assertFalse(validReleaseHistory(readList("release-history.invalid.json")));
+    }
+
     private Map<String, Object> read(String version, String filename) throws IOException {
         Path fixture = repositoryRoot()
                 .resolve("protocol/fixtures")
@@ -55,6 +61,18 @@ public final class ProtocolFixturesTest {
             throw new IOException("Fixture is not a JSON object: " + filename);
         }
         return parsed;
+    }
+
+    private List<Map<String, Object>> readList(String filename) throws IOException {
+        Path fixture = repositoryRoot().resolve("protocol/fixtures/v1").resolve(filename);
+        Type type = Types.newParameterizedType(
+                List.class, Types.newParameterizedType(Map.class, String.class, Object.class));
+        JsonAdapter<List<Map<String, Object>>> listAdapter =
+                new Moshi.Builder().build().adapter(type);
+        List<Map<String, Object>> result = listAdapter.fromJson(
+                new String(Files.readAllBytes(fixture), StandardCharsets.UTF_8));
+        if (result == null) throw new IOException("Fixture is not a JSON list");
+        return result;
     }
 
     private static Path repositoryRoot() throws IOException {
@@ -74,8 +92,29 @@ public final class ProtocolFixturesTest {
             case "note-operation" -> validNote(value);
             case "pairing" -> validPairing(value);
             case "question-batch" -> validQuestionBatch(value);
+            case "orbit-profile" -> validOrbitProfile(value);
             default -> false;
         };
+    }
+
+    private static boolean validOrbitProfile(Map<String, Object> value) {
+        if (value.size() != 2 || !(value.get("me") instanceof Map<?, ?> me)) return false;
+        Object name = me.get("display_name");
+        Object photo = me.get("photo");
+        boolean validPhoto = photo == null || photo instanceof Map<?, ?> details
+                && numberIn(details.get("revision"), 1, Integer.MAX_VALUE)
+                && String.valueOf(details.get("sha256")).matches("^[a-f0-9]{64}$");
+        return name instanceof String text && !text.isBlank() && validPhoto;
+    }
+
+    private static boolean validReleaseHistory(List<Map<String, Object>> values) {
+        return !values.isEmpty() && values.stream().allMatch(item ->
+                item.get("version") instanceof String version && !version.isBlank()
+                && numberIn(item.get("version_code"), 1, Integer.MAX_VALUE)
+                && String.valueOf(item.get("github_release_url")).startsWith("https://")
+                && String.valueOf(item.get("sha256")).matches("^[a-f0-9]{64}$")
+                && numberIn(item.get("minimum_android"), 29, Integer.MAX_VALUE)
+                && item.get("release_notes") instanceof String notes && !notes.isBlank());
     }
 
     private static boolean validLocation(Map<String, Object> value) {

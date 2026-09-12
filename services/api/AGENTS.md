@@ -24,7 +24,7 @@ Own authenticated HTTP/WSS behavior, application transactions, persistence, sche
 - Trust forwarded client IP only when the direct peer equals the configured NPM address.
 - Never mutate or unpublish a published APK record. A compatibility floor applies before authentication only after its explicit timezone-aware `required_after` instant.
 - Serve APKs only from the versioned release directory after their file size and SHA-256 match published metadata. Preserve byte-range and HEAD behavior for interrupted mobile downloads.
-- Update `ROADMAP.md` in the same change whenever API behavior, code, or release state changes.
+- Inventory every repository-owned Markdown file for each API update. Update or create all affected protocol, privacy, operations, architecture, release, and contributor documents, and always review and update `ROADMAP.md` for behavior, scope, milestone, or release changes.
 
 ## Start here
 

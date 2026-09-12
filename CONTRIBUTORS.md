@@ -14,4 +14,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request and follow
 
 ## Credits
 
-The visual direction uses the original Little Orbit owl-and-orbit concepts archived in [`docs/assets/`](docs/assets/). The local question generator uses the Apache-2.0 Qwen model through Ollama; generated questions remain subject to Little Orbit's validation and human-reporting controls.
+The visual direction uses the original Little Orbit owl-and-orbit concepts archived in [`docs/assets/`](docs/assets/). The local question generator uses the Apache-2.0 Qwen model through Ollama; generated questions remain subject to Little Orbit's validation and human-reporting controls. Direct dependency credits and licenses are recorded in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

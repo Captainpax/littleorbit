@@ -1,5 +1,6 @@
 """Authenticated export and privacy-preserving account deletion lifecycle."""
 
+from base64 import b64encode
 from datetime import timedelta
 from uuid import UUID
 
@@ -23,6 +24,7 @@ from ..models import (
     Session,
     TogetherBucket,
 )
+from ..profile_models import AccountProfilePhoto
 from ..schemas import AccountDeletionRequest, AccountDeletionResponse, AccountExportResponse
 from ..security import verify_password
 
@@ -104,6 +106,7 @@ async def export_account(
             select(LocationSample).where(LocationSample.account_id == actor.id)
         )
     )
+    own_photo = await session.get(AccountProfilePhoto, actor.id)
     return AccountExportResponse(
         generated_at=SystemClock().now(),
         data={
@@ -113,6 +116,16 @@ async def export_account(
                 "display_name": actor.display_name,
                 "verified_at": actor.verified_at,
                 "created_at": actor.created_at,
+                "profile_photo": (
+                    {
+                        "media_type": "image/webp",
+                        "sha256": own_photo.sha256,
+                        "revision": own_photo.revision,
+                        "base64": b64encode(own_photo.image_webp).decode("ascii"),
+                    }
+                    if own_photo
+                    else None
+                ),
             },
             "relationships": relationships,
             "unexpired_location_samples": [

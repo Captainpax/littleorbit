@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     description: "A private place for two. Free for everyone, with no paywalls.",
     type: "website",
   },
+  alternates: { types: { "application/rss+xml": "/patch-notes.xml" } },
 };
 
 export const viewport: Viewport = { themeColor: "#10172b", colorScheme: "dark" };

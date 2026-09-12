@@ -14,6 +14,7 @@ import javax.inject.Inject;
 public final class HomeViewModel extends ViewModel {
     private final MediatorLiveData<HomeScreenState> state = new MediatorLiveData<>();
     private final OrbitRepository orbit;
+    private String quizPrompt = "Open today’s five questions";
 
     /** Starts observing the privacy-limited display cache. */
     @Inject
@@ -25,7 +26,8 @@ public final class HomeViewModel extends ViewModel {
                 state.setValue(HomeStateMapper.withoutCache(orbit.isSignedIn()));
                 return;
             }
-            state.setValue(HomeStateMapper.fromCache(cache, orbit.isSignedIn(), Instant.now()));
+            state.setValue(HomeStateMapper.fromCache(cache, orbit.isSignedIn(), Instant.now())
+                    .withQuizPrompt(quizPrompt));
         });
     }
 
@@ -49,5 +51,17 @@ public final class HomeViewModel extends ViewModel {
             }
             return null;
         });
+        refreshQuizPrompt();
+    }
+
+    private void refreshQuizPrompt() {
+        orbit.quizToday().thenAccept(day -> {
+            if (day.questions == null || day.questions.isEmpty()) return;
+            quizPrompt = day.myFinished
+                    ? (day.revealed ? "Your answers are ready together" : "Waiting for your partner")
+                    : day.questions.get(0).prompt;
+            HomeScreenState current = state.getValue();
+            if (current != null) state.postValue(current.withQuizPrompt(quizPrompt));
+        }).exceptionally(failure -> null);
     }
 }

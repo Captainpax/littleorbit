@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v1/orbit-profile.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["me", "partner"],
+  "properties": {
+    "me": { "$ref": "#/$defs/person" },
+    "partner": { "oneOf": [{ "$ref": "#/$defs/person" }, { "type": "null" }] }
+  },
+  "$defs": {
+    "person": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display_name", "photo"],
+      "properties": {
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "photo": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["revision", "sha256", "updated_at"],
+              "properties": {
+                "revision": { "type": "integer", "minimum": 1 },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "updated_at": { "type": "string", "format": "date-time" }
+              }
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -11,6 +11,7 @@ This document describes the intended 1.0 behavior while the project is under dev
 | Email, password hash, verification state | Account access and recovery | Account owner; limited admin metadata | Until deletion plus bounded backup expiry |
 | Session identifiers and security events | Authentication and abuse response | Account owner sessions; privacy-limited admins | App sessions expire after 30 days; admin sessions after 30 minutes; revoked sessions are removed on the operational cleanup schedule |
 | Pairing state | Connect exactly two verified adults | The two accounts; limited admin metadata | Active pairing plus private archive references |
+| Profile name and processed photo variants | Show the two people on their phone and Wear launcher | Account owner and current partner; never admin content views | Until photo removal or account deletion; former partners lose access immediately |
 | Relationship start date and proposals | Show mutually agreed calendar relationship age | Current couple only | Accepted date follows the pairing archive policy; retry records expire after 30 days and resolved proposals after 90 days |
 | Quiz drafts and responses | Private revisioned editing, then one reveal after both people finish all five | Author before reveal; current couple after reveal | Until user deletion/export policy applies |
 | Quiz status polling | Notify about partner completion or shared reveal | Device owner; content-free server response | Latest UTC date and booleans in private app storage |
@@ -21,12 +22,15 @@ This document describes the intended 1.0 behavior while the project is under dev
 | Question reports | Hide unsafe/poor questions and review content | Reporter status; admin question metadata | Operational moderation window |
 | AI batch metadata | Reliability, safety, and reproducibility | Admins | Operational/audit policy set before launch |
 | App release and updater state | Discover and safely resume user-approved phone updates | Public release metadata; device-local phase and byte counts | Published records are immutable; local state is replaced by later releases or app removal |
+| Wireless-watch authorization key | Reconnect the same phone identity for later Wear updates | Device-local Android app only | Until the person forgets authorization, clears app data, or removes the app |
 
 ## Consent and control
 
 Registration is for adults and uses 18+ self-attestation without identity documents. Android asks separately for notification, precise foreground location, and background location permission. Location permission alone does not enable collection: both partners must also enable sharing in Little Orbit. Both partners must opt into intimacy questions; either partner can disable them immediately.
 
-Unpairing stops new sharing immediately. Each person receives a private read-only archive. An archive from an old pairing never becomes visible to a future partner. Users can export and delete their account from the Android app; deletion jobs and bounded backup expiry must be visible and documented before launch.
+Unpairing stops new sharing immediately, including access to a former partner's profile photo. Each person receives a private read-only archive. Profile photos are account-level and are not copied into relationship archives. An archive from an old pairing never becomes visible to a future partner. Users can export their own processed profile photo and delete their account from the Android app; deletion jobs and bounded backup expiry must be visible and documented before launch.
+
+The phone crops a chosen image to a square before upload. The server decodes JPEG, PNG, or WebP input, applies orientation, removes source metadata, and creates bounded 512-pixel and 128-pixel WebP variants. Only the owner and current partner can fetch them. The phone keeps encrypted thumbnails and sends authorized names and thumbnails through the private Wearable Data Layer. The Wear launcher stores them in app-private files. Home widgets, tiles, and complications remain text-only.
 
 ## Administrative access
 
@@ -48,4 +52,6 @@ The planned 2.0 cycle tracker is outside this policy. It requires a separate hea
 
 ## App update boundary
 
-The update check sends only the normal request network metadata plus the installed app name and numeric version code. The public release response and phone/Wear APK endpoints require no account data and contain no relationship data. The self-hosted gateway receives ordinary download metadata such as IP address, time, requested version, and byte range; bounded operational logs follow the same privacy rules as other public requests. The phone stores a release ID, progress phase, byte counts, optional defer time, and sanitized failure code in its private app storage. Android's `DownloadManager` and `PackageInstaller` handle the phone APK after the person chooses to update. The separate Wear installer receives only public release metadata and the watch addresses supplied locally by the person; it removes the temporary APK after installation.
+The update check sends only the normal request network metadata plus the installed app name and numeric version code. The public release response and phone/Wear APK endpoints require no account data and contain no relationship data. The self-hosted gateway receives ordinary download metadata such as IP address, time, requested version, and byte range; bounded operational logs follow the same privacy rules as other public requests. The phone stores a release ID, progress phase, byte counts, optional defer time, and sanitized failure code in its private app storage. Android's `DownloadManager` and `PackageInstaller` handle the phone APK after the person chooses to update.
+
+The in-app Wear installer uses local DNS-SD discovery or addresses typed by the person. It sends the short-lived pairing code only to the selected local watch endpoint, checks privacy-safe device properties, and transfers the already verified public Wear APK over wireless ADB. It keeps the reusable ADB private key encrypted by Android Keystore until the person chooses **Forget watch authorization** or clears app data. The temporary Wear APK is held in the phone's private cache. The server never receives the watch address, pairing code, device model, or security patch.

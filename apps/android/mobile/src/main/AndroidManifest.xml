@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application
         android:name=".LittleOrbitApplication"
@@ -30,6 +33,15 @@
                 tools:node="remove" />
         </provider>
         <activity android:name=".PrivacyActivity" android:exported="false" />
+        <activity android:name=".ProfilePhotoActivity" android:exported="false" />
+        <activity android:name=".WearInstallerActivity" android:exported="true">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="lil-orb.pax-kun.com" android:pathPrefix="/app/install-wear" />
+            </intent-filter>
+        </activity>
         <activity android:name=".DeviceSetupActivity" android:exported="false" />
         <activity android:name=".ArchivesActivity" android:exported="false" />
         <activity android:name=".TogetherTimeActivity" android:exported="false" />

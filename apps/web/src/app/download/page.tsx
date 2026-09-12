@@ -33,28 +33,24 @@ export default async function DownloadPage() {
     <section id="wear" className="shell release-card">
       <span className="eyebrow">Optional Wear OS companion</span>
       <h2>Install Little Orbit on your watch</h2>
-      <p>The watch build is free and self-hosted. Android does not allow the phone app to
-        silently install an APK on a watch, so the verified installer uses Wear OS wireless
-        debugging from your computer.</p>
+      <p>The watch build is free and self-hosted. The phone app verifies its exact bytes,
+        package, version, watch requirement, and signing certificate before sending it over
+        your private Wi-Fi.</p>
       {release.wear ? <dl>
         <div><dt>Wear OS minimum</dt><dd>API {release.wear.minimumAndroid}</dd></div>
         <div><dt>Wear APK SHA-256</dt><dd><code>{release.wear.sha256}</code></dd></div>
-      </dl> : <p className="fine-print">Wear metadata will appear with the RC6 publication.</p>}
-      <ol>
-        <li>On the watch, enable Developer options and Wireless debugging.</li>
-        <li>Choose “Pair new device” and note both the pairing and connection addresses.</li>
-        <li>Run the installer in PowerShell and enter the addresses when prompted.</li>
-      </ol>
+      </dl> : <p className="fine-print">Wear metadata is unavailable for this release.</p>}
+      <ol><li>Install or update the Little Orbit phone app.</li>
+        <li>Open More → Install on watch.</li>
+        <li>Follow the one-time Wireless debugging pairing guide on your phone.</li></ol>
       <div className="release-actions">
-        <a className="button" href="/install-little-orbit-wear.ps1" download>
-          Download verified Wear installer
-        </a>
+        <a className="button" href="/app/install-wear">Open phone installer guide</a>
         {release.wear
           ? <a className="button button-secondary" href={release.wear.apkUrl}>Wear APK only</a>
           : null}
       </div>
-      <p className="fine-print">The script checks the download authority, byte count, SHA-256,
-        package, version code, signing certificate, and watch device type before installing.</p>
+      <p className="fine-print">The encrypted authorization stays on the phone for future
+        watch updates. Older security patches show a clear warning before continuing.</p>
     </section>
   </main>;
 }

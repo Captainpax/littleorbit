@@ -214,28 +214,73 @@ flowchart LR
     Watch -->|age threshold| Stale
 ```
 
-Tokens stay in Android Keystore-backed storage. The offline queue contains encrypted countdown mutations. Widget and watch caches contain only the accepted relationship start date, coordinate-free nearby seconds and process time, next countdown, and cache-sync time. RC6 publishes the v2 cache plus the legacy v1 path for one release so an older watch fails stale rather than displaying a new value with the wrong meaning.
+Tokens stay in Android Keystore-backed storage. The offline queue contains encrypted countdown mutations. Widget, tile, and complication caches contain only the accepted relationship start date, coordinate-free nearby seconds and process time, next countdown, and cache-sync time. The separate Wear launcher profile cache contains only display names and server-normalized 128-pixel thumbnails received through the Wearable Data Layer. RC6 publishes the v2 display cache plus the legacy v1 path for one release so an older watch fails stale rather than displaying a new value with the wrong meaning.
+
+## Profile photo processing and synchronization
+
+```mermaid
+sequenceDiagram
+    actor Owner
+    participant Phone
+    participant API
+    participant DB as PostgreSQL
+    participant Partner as Partner phone
+    participant Watch as Wear launcher
+    Owner->>Phone: Choose image and approve square crop
+    Phone->>API: PUT authenticated image, max 5 MiB
+    API->>API: Decode, orient, strip metadata, crop and bound WebP variants
+    API->>DB: Lock owner; atomically replace image and revision
+    API-->>Phone: Private revision and content hash
+    Partner->>API: Authorize current pairing before partner image lookup
+    API-->>Partner: 128 px WebP with private ETag
+    Partner->>Partner: Encrypt thumbnail in app-private storage
+    Partner->>Watch: Authorized names and thumbnails over Wearable Data Layer
+    Watch->>Watch: Replace app-private launcher cache
+    Note over Phone,Watch: Widget, tile, and complication remain text-only
+    Owner->>API: DELETE photo or account
+    API->>DB: Delete image; current-partner access ends
+```
+
+An unpaired caller never reaches the partner photo lookup. Photo replacement and deletion lock the owning account so concurrent first uploads cannot race. Clients compare both revision and content hash, which prevents a deleted then re-added revision from preserving stale bytes.
 
 ## Self-hosted Wear installation
 
 ```mermaid
 sequenceDiagram
     actor Person
-    participant Guide as /download#wear
-    participant Script as Signed installer script
+    participant Phone as Little Orbit phone app
     participant API as Public release API
     participant Watch as Wear OS wireless ADB
-    Person->>Guide: Choose Install on Wear OS
-    Guide-->>Person: Explain wireless-debugging steps
-    Person->>Script: Enter watch pairing and connection addresses
-    Script->>API: Fetch current immutable release metadata
-    Script->>API: Download versioned Wear APK
-    Script->>Script: Verify endpoint, bytes, hash, package, version, signer
-    Script->>Watch: Pair, verify watch characteristic, install -r
+    Person->>Phone: More > Install on watch
+    Phone->>API: Fetch current immutable release metadata
+    Phone->>API: Download exact versioned Wear APK
+    Phone->>Phone: Verify endpoint, bytes, hash, package, version, watch feature, signer
+    Phone->>Phone: Discover pairing and connect endpoints with local DNS-SD
+    Person->>Phone: Enter the watch's short-lived pairing code
+    Phone->>Watch: Pair with reusable phone identity
+    Phone->>Watch: Read watch characteristic, SDK, installed version, security patch
+    alt patch before 2026-05-01 or unknown
+        Phone-->>Person: Warn; cancel or explicitly install anyway
+    end
+    Phone->>Watch: Install -r; never downgrade
     Watch-->>Person: Little Orbit app, tile, and complication available
 ```
 
-The phone checks connected nodes and the `little_orbit_display_v2` capability so More can distinguish no watch, a missing watch app, and a connected Little Orbit watch. Platform security prevents the phone app from silently sideloading a self-hosted APK.
+The phone checks connected nodes and the `little_orbit_display_v2` capability so More can distinguish no watch, a missing watch app, and a connected Little Orbit watch. The installer starts only after a person opens it, supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
+
+## Patch notes and RSS
+
+```mermaid
+flowchart LR
+    Publish[Publish immutable APK record] --> DB[(PostgreSQL)]
+    DB --> History[GET /api/v1/releases/history]
+    History --> Notes[/patch-notes]
+    History --> RSS[/patch-notes.xml RSS 2.0]
+    Fallback[Checked-in latest signed fallback] --> Notes
+    Fallback --> RSS
+```
+
+Release history contains only public version, checksum, minimum Android, mirror URL, notes, and publication time. Both pages use the checked-in signed-release fallback during an API outage.
 
 ## Verified Android phone updates
 

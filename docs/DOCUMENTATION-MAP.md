@@ -1,0 +1,81 @@
+# Documentation map
+
+This inventory assigns every repository-owned Markdown file to a purpose. Review the full list for every change, update every affected file, create a missing document when the behavior has no honest home, and always review `ROADMAP.md`. `python infra/scripts/check_docs.py` fails when a Markdown file is missing from this inventory or a listed file no longer exists.
+
+## Project, community, and policy
+
+<!-- documentation-inventory:start -->
+- `AGENTS.md` — repository mission, invariants, quality rules, and cross-system commands.
+- `CODE_OF_CONDUCT.md` — community behavior and enforcement expectations.
+- `CONTRIBUTING.md` — contributor setup, code standards, documentation workflow, and review gates.
+- `CONTRIBUTORS.md` — contributor routes and project credits.
+- `README.md` — public mission, feature summary, current release, quick start, and document index.
+- `ROADMAP.md` — completed 1.0 scope and future 1.x/2.0 direction; always review.
+- `SECURITY.md` — supported versions, private reporting, and security boundaries.
+- `SHOWCASE.md` — concept art, current visual evidence, and screenshot checklist.
+- `THIRD_PARTY_NOTICES.md` — directly used third-party components and license notices.
+
+## Major-system agent guides
+
+- `apps/android/AGENTS.md` — phone, widget, and Wear implementation rules.
+- `apps/web/AGENTS.md` — public site and owner-console implementation rules.
+- `docs/AGENTS.md` — documentation, Mermaid, screenshot, and verification rules.
+- `infra/AGENTS.md` — container, gateway, firewall, backup, GPU, and secret rules.
+- `services/ai/AGENTS.md` — model privacy, schema, validation, fallback, and evaluation rules.
+- `services/api/AGENTS.md` — API authorization, transaction, migration, and WSS rules.
+
+## Architecture, privacy, and protocol
+
+- `docs/DOCUMENTATION-MAP.md` — this complete Markdown inventory and ownership map.
+- `docs/NETWORK-FLOW.md` — editable Mermaid source of truth for network and logic flows.
+- `docs/PRIVACY.md` — data, purpose, access, retention, consent, AI, location, and update boundaries.
+- `protocol/README.md` — versioned cross-language contract and fixture conventions.
+
+## Architecture decisions
+
+- `docs/adr/0001-monorepo-modular-monolith.md` — repository and service architecture.
+- `docs/adr/0002-owned-authentication.md` — owned email/password authentication.
+- `docs/adr/0003-private-local-ai.md` — private local global-question generation.
+- `docs/adr/0004-android-java-modules.md` — Java/XML Android module boundaries.
+- `docs/adr/0005-server-authoritative-notes.md` — revisioned shared-note synchronization.
+- `docs/adr/0006-account-erasure-reference-policy.md` — account deletion references.
+- `docs/adr/0007-encrypted-android-offline-queues.md` — encrypted retryable Android work.
+- `docs/adr/0008-separated-session-lifetimes.md` — app and admin session separation.
+- `docs/adr/0009-verified-sideload-updates.md` — verified user-driven phone updates.
+- `docs/adr/0010-first-party-apk-delivery.md` — resumable self-hosted APK delivery.
+- `docs/adr/0011-stable-daily-quiz-snapshots.md` — stable quiz sets and reveal behavior.
+- `docs/adr/0012-relationship-age-proximity-and-wear-delivery.md` — relationship date, proximity, and original Wear delivery.
+- `docs/adr/0013-private-profile-images.md` — normalized owner/current-partner profile images.
+- `docs/adr/0014-phone-hosted-wear-installation.md` — in-app local wireless-ADB installation.
+
+## Operations and verification
+
+- `docs/operations/BACKUP-RESTORE.md` — PostgreSQL and immutable release recovery.
+- `docs/operations/DEPLOYMENT.md` — production Compose, NPM, firewall, and release runbook.
+- `docs/operations/LOCAL-DEVELOPMENT.md` — local stack, updater, Wear installer, and photo development.
+- `docs/operations/WEAR-INSTALLER.md` — user flow and physical-device verification checklist.
+- `docs/operations/VERIFICATION-2026-09-11.md` — initial system verification evidence.
+- `docs/operations/VERIFICATION-2026-09-12.md` — follow-up system verification evidence.
+- `docs/operations/VERIFICATION-RC5-2026-09-12.md` — RC5 quiz and AI verification evidence.
+- `docs/operations/VERIFICATION-RC6-2026-09-12.md` — RC6 relationship/location/Wear verification evidence.
+- `docs/operations/VERIFICATION-RC7-2026-09-12.md` — RC7 round-Wear correction evidence.
+- `docs/operations/VERIFICATION-RC8-2026-09-12.md` — RC8 profile, installer, patch-note, build, and deployment evidence.
+- `docs/signing/README.md` — public certificate identity and private-key handling.
+
+## Immutable release notes
+
+- `docs/releases/1.0.0-rc.1.md` — RC1 signed baseline.
+- `docs/releases/1.0.0-rc.2.md` — RC2 session and cleanup fixes.
+- `docs/releases/1.0.0-rc.3.md` — RC3 updater and cosmic interface.
+- `docs/releases/1.0.0-rc.4.md` — RC4 first-party downloads.
+- `docs/releases/1.0.0-rc.5.md` — RC5 daily quiz and AI pipeline.
+- `docs/releases/1.0.0-rc.6.md` — RC6 insets, relationship age, proximity, permissions, and Wear.
+- `docs/releases/1.0.0-rc.7.md` — RC7 round-display correction.
+- `docs/releases/1.0.0-rc.8.md` — RC8 home, photos, in-app Wear install, and patch notes.
+<!-- documentation-inventory:end -->
+
+## Review routing
+
+Changes to public behavior normally affect README, SHOWCASE, ROADMAP, one release note, and a verification record. Data or permissions affect PRIVACY and SECURITY. Trust, transport, authorization, synchronization, or background work affects NETWORK-FLOW and usually an ADR. Deployment, secrets, migrations, backups, APK publication, or device setup affects an operations guide. Contract changes affect `protocol/README.md` and versioned fixtures even when their payload details stay out of prose.
+
+Historical release and verification records are immutable evidence. Correct a past factual error with a clearly scoped correction or new record; never rewrite a prior test as though it covered later behavior.

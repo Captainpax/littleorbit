@@ -24,21 +24,25 @@ This generated RC5 design study is the visual target for daily questions. The im
 
 ### Current Android implementation
 
+![Implemented signed-out RC8 home on an API 36 emulator](docs/assets/android-home-rc8-emulator.png)
+
 ![Implemented signed RC3 signed-out Android dashboard on an API 36 emulator](docs/assets/android-home-rc3-signed.png)
 
 ![Implemented RC3 More screen on an API 36 emulator](docs/assets/android-more-rc3.png)
 
-The RC3 emulator captures verify the Inter type system, paired planet motif, lavender primary action, persistent Home/Quiz/Notes/More navigation, sparse signed-out states, and Wear update boundary. RC4 changed the verified download transport and RC5 brought the daily quiz into the same visual system. RC6 removes status/navigation-bar overlap, gives relationship age and nearby-time distinct hierarchy, adds a guided device-setup screen, and refreshes the widget, tile, and complication cache contract. These RC6 descriptions are implementation status, while the pictured phone screens remain labelled RC3 captures until new device screenshots are recorded.
+The RC8 API 36 emulator capture verifies the refreshed signed-out planet hierarchy, action treatment, icon navigation, and status/navigation-bar insets. The earlier RC3 captures preserve the first implemented Inter type system, persistent navigation, More hierarchy, and Wear update boundary. RC4 changed the verified download transport and RC5 brought the daily quiz into the same visual system. RC6 separated relationship age and nearby-time, added guided device setup, and refreshed the widget, tile, and complication cache contract. Paired photo and live-data states still need physical-device captures.
 
 ![Signed RC7 Wear OS fallback state on a round Wear OS 5 emulator](docs/assets/wear-rc7-signed-emulator.png)
 
 The signed RC7 Wear launcher capture verifies that the logo, relationship date fallback, nearby estimate, and stale status fit the round safe area. Its content remains scrollable for large text and smaller displays.
 
+RC8 adds synchronized, app-private couple thumbnails to the Wear launcher with styled initials as the fallback. Tile and complication surfaces remain text-only to keep their cache small and avoid putting faces on passive watch surfaces. The phone's More tab now opens a guided installer that downloads and verifies the Wear APK, discovers wireless-debugging endpoints, pairs with the short-lived watch code, remembers the ADB identity in encrypted storage, and asks before proceeding on an old security patch.
+
 ## Public website
 
 ![Website landing page concept](docs/assets/web-landing-concept.png)
 
-The website explains the mission, provides the signed APK and checksum, and hosts account and project pages. Relationship features remain in the Android app.
+The website explains the mission, provides the signed APK and checksum, and hosts account and project pages. Its patch-notes page and RSS feed are generated from immutable public release records. Relationship features remain in the Android app.
 
 ### Current implementation
 
@@ -60,13 +64,13 @@ The console exposes service health, delivery and generation status, moderation q
 
 ## Screenshot checklist
 
-- [ ] Real phone: RC6 inset behavior, notification/location setup, pairing, focused daily question, review/wait/reveal, countdown, notes conflict, relationship date, nearby-time, and privacy controls.
-- [x] API 36 emulator: RC3 debug APK install, launch, signed-out dashboard and More hierarchy, landscape rendering, and runtime-crash check.
+- [ ] Real phone: RC8 inset behavior, profile crop/upload/remove, notification/location setup, pairing, focused daily question, review/wait/reveal, countdown, notes conflict, relationship date, nearby-time, and privacy controls.
+- [x] API 36 emulator: signed RC8 install, cold launch, signed-out home hierarchy, status/navigation-bar insets, and accessibility-tree dump.
 - [ ] Home widget: fresh, stale, signed-out, and server-offline states.
-- [ ] Wear OS: guided installation, phone capability detection, tile, complication, loading, stale, and disconnected states.
+- [ ] Wear OS: in-app wireless install, remembered authorization, old-patch warning, profile-photo sync, phone capability detection, tile, complication, loading, stale, and disconnected states.
 - [x] Wear OS 5 round emulator: signed RC7 install, cold launch, safe-area fallback layout, and stale-state rendering.
 - [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
-- [ ] Website remaining: recovery states, expanded mobile navigation, and dedicated accessibility views.
+- [ ] Website remaining: patch notes/RSS in a feed reader, recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.
 - [ ] Two-device flow: pairing through unpair archive on physical phones.
 - [ ] Updater: optional deferral, interrupted download recovery, corrupt APK rejection, Android install approval, and scheduled compatibility floor on a physical phone.

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v1/release-history.schema.json",
+  "type": "array",
+  "maxItems": 50,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["version", "version_code", "github_release_url", "sha256", "minimum_android", "release_notes", "published_at"],
+    "properties": {
+      "version": { "type": "string", "minLength": 1, "maxLength": 40 },
+      "version_code": { "type": "integer", "minimum": 1 },
+      "github_release_url": { "type": "string", "format": "uri", "pattern": "^https://" },
+      "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+      "minimum_android": { "type": "integer", "minimum": 29 },
+      "release_notes": { "type": "string", "minLength": 1, "maxLength": 10000 },
+      "published_at": { "type": "string", "format": "date-time" }
+    }
+  }
+}

@@ -13,6 +13,8 @@ import com.littleorbit.data.repository.DisplayCacheRepository;
 import com.littleorbit.data.repository.NetworkOrbitRepository;
 import com.littleorbit.data.repository.NetworkReleaseRepository;
 import com.littleorbit.data.repository.OrbitRepository;
+import com.littleorbit.data.repository.NetworkProfileRepository;
+import com.littleorbit.data.repository.ProfileRepository;
 import com.littleorbit.data.repository.ReleaseRepository;
 import com.littleorbit.data.repository.RoomDisplayCacheRepository;
 import com.squareup.moshi.Moshi;
@@ -38,6 +40,10 @@ public abstract class DisplayModule {
     /** Binds authenticated feature operations. */
     @Binds
     abstract OrbitRepository bindOrbit(NetworkOrbitRepository repository);
+
+    /** Binds encrypted profile identity synchronization. */
+    @Binds
+    abstract ProfileRepository bindProfiles(NetworkProfileRepository repository);
 
     /** Binds public signed-release discovery. */
     @Binds

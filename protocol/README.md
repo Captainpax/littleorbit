@@ -2,6 +2,8 @@
 
 `schemas/v1` preserves the original HTTP, WebSocket, pairing, location, and AI payloads. `schemas/v2` defines RC5 generated-question batches and privacy-aware quiz days with typed answer shapes. Matching fixtures are consumed by Python, Java, and TypeScript tests.
 
+RC8 adds the authenticated, content-limited orbit profile contract and the public immutable release-history contract used by the patch-notes page and RSS feed. Binary profile images remain outside JSON schemas and are always authorized separately.
+
 Rules:
 
 - Schemas use JSON Schema draft 2020-12 and reject unknown fields.

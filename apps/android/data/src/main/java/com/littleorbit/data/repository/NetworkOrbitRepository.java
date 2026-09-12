@@ -38,6 +38,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     private final Context context;
     private final CountdownOfflineStore offlineCountdowns;
     private final WorkManager workManager;
+    private final ProfileRepository profiles;
     private final ExecutorService executor = Executors.newFixedThreadPool(3, runnable -> {
         Thread thread = new Thread(runnable, "orbit-network-" + threadIds.incrementAndGet());
         thread.setDaemon(true);
@@ -52,6 +53,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
             LocationQueueDao locationQueue,
             DisplayCacheSynchronizer displaySynchronizer,
             CountdownOfflineStore offlineCountdowns,
+            ProfileRepository profiles,
             @ApplicationContext Context context) {
         this.api = api;
         this.sessions = sessions;
@@ -59,6 +61,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         this.displaySynchronizer = displaySynchronizer;
         this.context = context;
         this.offlineCountdowns = offlineCountdowns;
+        this.profiles = profiles;
         this.workManager = WorkManager.getInstance(context);
     }
 
@@ -72,6 +75,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         return async(api.login(new ApiModels.LoginRequest(email, password)))
                 .thenApply(session -> {
                     clearRelationshipState();
+                    profiles.clearAll();
                     sessions.save(session.accessToken);
                     DisplayCacheSyncWorker.schedule(context);
                     DisplayCacheSyncWorker.enqueue(context);
@@ -339,6 +343,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     private void clearLocalSession() {
         clearRelationshipState();
+        profiles.clearAll();
         sessions.clear();
     }
 
@@ -347,6 +352,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         offlineCountdowns.clear();
         DisplayCacheSyncWorker.cancel(context);
         displaySynchronizer.clear();
+        profiles.clearPartner();
     }
 
     private void configureLocationWork(boolean enabled) {

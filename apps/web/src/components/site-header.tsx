@@ -4,6 +4,7 @@ import Link from "next/link";
 const navigation = [
   ["Showcase", "/showcase"],
   ["Download", "/download"],
+  ["Patch notes", "/patch-notes"],
   ["Privacy", "/privacy"],
   ["Roadmap", "/roadmap"],
 ] as const;

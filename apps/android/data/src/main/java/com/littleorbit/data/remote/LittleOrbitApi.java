@@ -2,13 +2,16 @@ package com.littleorbit.data.remote;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
+import retrofit2.http.Headers;
 import retrofit2.http.HTTP;
 import retrofit2.http.PATCH;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
+import retrofit2.http.Streaming;
 
 /** Versioned Little Orbit HTTP contract used by repositories only. */
 public interface LittleOrbitApi {
@@ -19,6 +22,29 @@ public interface LittleOrbitApi {
     /** Loads public signed-APK update metadata without requiring an account session. */
     @GET("api/v1/releases/current")
     Call<ApiModels.ApkRelease> currentRelease();
+
+    /** Loads the caller and currently authorized partner display identities. */
+    @GET("api/v1/account/orbit-profile")
+    Call<ProfileApiModels.OrbitProfile> orbitProfile();
+
+    /** Loads the caller's normalized private profile image. */
+    @Streaming
+    @GET("api/v1/account/profile-photo")
+    Call<okhttp3.ResponseBody> profilePhoto(@Query("thumbnail") boolean thumbnail);
+
+    /** Loads the active partner image only after couple authorization. */
+    @Streaming
+    @GET("api/v1/couple/current/partner-profile-photo")
+    Call<okhttp3.ResponseBody> partnerProfilePhoto(@Query("thumbnail") boolean thumbnail);
+
+    /** Replaces the caller's profile image with normalized WebP bytes. */
+    @Headers("Content-Type: image/webp")
+    @PUT("api/v1/account/profile-photo")
+    Call<ProfileApiModels.PhotoMetadata> putProfilePhoto(@Body okhttp3.RequestBody image);
+
+    /** Idempotently removes the caller's profile image. */
+    @DELETE("api/v1/account/profile-photo")
+    Call<Void> deleteProfilePhoto();
 
     /** Authenticates a verified account. */
     @POST("api/v1/auth/login")

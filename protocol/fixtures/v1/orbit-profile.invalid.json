@@ -1,0 +1,5 @@
+{
+  "me": { "display_name": "", "photo": { "revision": 0, "sha256": "bad", "updated_at": "today" } },
+  "partner": null,
+  "email": "must-not-appear@example.test"
+}

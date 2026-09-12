@@ -11,7 +11,7 @@
 :8180 {
 	encode zstd gzip
 	request_body {
-		max_size 1MB
+		max_size 6MB
 	}
 
 	@api path /api/*

@@ -1,6 +1,7 @@
 package com.littleorbit.mobile;
 
 import android.content.Intent;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -13,6 +14,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.littleorbit.data.repository.OrbitRepository;
+import com.littleorbit.data.repository.ProfileRepository;
 import com.littleorbit.domain.UpdatePolicy;
 import com.littleorbit.domain.UpdaterStateMachine;
 import com.littleorbit.mobile.databinding.ActivityMainBinding;
@@ -32,6 +34,7 @@ public final class MainActivity extends InsetAwareActivity
     private boolean manualUpdateCheck;
     private boolean setupLookupStarted;
     @Inject OrbitRepository orbit;
+    @Inject ProfileRepository profiles;
     @Inject AndroidUpdateCoordinator updates;
     @Inject WearStatusChecker wearStatus;
 
@@ -59,6 +62,7 @@ public final class MainActivity extends InsetAwareActivity
         reconcileQuizNotifications();
         refreshSetupStatus();
         model.refresh();
+        if (orbit.isSignedIn()) refreshProfile();
         updates.check(false, this);
     }
 
@@ -83,7 +87,12 @@ public final class MainActivity extends InsetAwareActivity
         binding.moreTogetherButton.setOnClickListener(view -> open(TogetherTimeActivity.class));
         binding.notificationSetupButton.setOnClickListener(view -> open(DeviceSetupActivity.class));
         binding.locationSetupButton.setOnClickListener(view -> open(DeviceSetupActivity.class));
-        binding.wearInstallButton.setOnClickListener(view -> openWeb("/download#wear"));
+        binding.wearInstallButton.setOnClickListener(view -> open(WearInstallerActivity.class));
+        binding.profilePhotoButton.setOnClickListener(view -> open(ProfilePhotoActivity.class));
+        binding.myPlanet.setOnClickListener(view -> {
+            if (orbit.isSignedIn()) open(ProfilePhotoActivity.class);
+            else open(SignInActivity.class);
+        });
         binding.signOutButton.setOnClickListener(
                 view -> orbit.signOut().thenRun(() -> runOnUiThread(() -> {
                     QuizStatusWorker.cancel(this);
@@ -113,6 +122,7 @@ public final class MainActivity extends InsetAwareActivity
         binding.togetherText.setText(state.togetherTime());
         binding.nearbyText.setText(state.nearbyTime());
         binding.countdownText.setText(state.countdown());
+        binding.quizPromptText.setText(state.quizPrompt());
         binding.statusText.setText(state.freshness());
         binding.partnerPlanet.setText(state.connected() ? "P" : "?");
         binding.sharedContent.setVisibility(state.connected() ? View.VISIBLE : View.GONE);
@@ -121,13 +131,54 @@ public final class MainActivity extends InsetAwareActivity
         binding.guestActions.setVisibility(state.signedIn() ? View.GONE : View.VISIBLE);
         binding.signOutButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
         binding.morePairingButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
+        binding.profilePhotoButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
         binding.moreCountdownsButton.setVisibility(state.connected() ? View.VISIBLE : View.GONE);
         binding.moreTogetherButton.setVisibility(state.connected() ? View.VISIBLE : View.GONE);
         binding.privacyButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
         binding.archivesButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
         binding.locationStatus.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
         binding.locationSetupButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
+        binding.myPlanet.setContentDescription(getString(
+                state.signedIn() ? R.string.edit_profile_photo : R.string.sign_in));
         maybeOfferSetup(state);
+        if (state.signedIn()) renderProfile(profiles.cached());
+        else renderProfile(new ProfileRepository.State("You", null, null, null));
+    }
+
+    private void refreshProfile() {
+        renderProfile(profiles.cached());
+        profiles.refresh().thenAccept(value -> runOnUiThread(() -> {
+            if (!isFinishing()) renderProfile(value);
+        })).exceptionally(failure -> null);
+    }
+
+    private void renderProfile(ProfileRepository.State profile) {
+        renderPlanet(
+                binding.myPlanetImage, binding.myPlanetInitial,
+                profile.myName(), profile.myPhoto(), "Y");
+        renderPlanet(
+                binding.partnerPlanetImage, binding.partnerPlanet,
+                profile.partnerName(), profile.partnerPhoto(), "?");
+        binding.partnerPlanetImage.setContentDescription(
+                profile.partnerName() == null ? getString(R.string.partner_planet) : profile.partnerName());
+    }
+
+    private static void renderPlanet(
+            android.widget.ImageView image,
+            android.widget.TextView fallback,
+            String name,
+            byte[] bytes,
+            String defaultInitial) {
+        if (bytes == null || bytes.length == 0) {
+            image.setVisibility(View.GONE);
+            fallback.setVisibility(View.VISIBLE);
+            fallback.setText(name == null || name.isBlank()
+                    ? defaultInitial : name.substring(0, 1).toUpperCase());
+            return;
+        }
+        image.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
+        image.setVisibility(View.VISIBLE);
+        fallback.setVisibility(View.GONE);
     }
 
     private void reconcileQuizNotifications() {

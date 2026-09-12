@@ -20,11 +20,21 @@
             android:orientation="vertical"
             android:padding="4dp">
 
-            <ImageView
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:contentDescription="@null"
-                android:src="@drawable/wear_icon" />
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+                <FrameLayout android:layout_width="48dp" android:layout_height="48dp" android:background="@drawable/planet_me">
+                    <ImageView android:id="@+id/wearMyPhoto" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" android:visibility="gone" />
+                    <TextView android:id="@+id/wearMyInitial" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="Y" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
+                </FrameLayout>
+                <TextView android:layout_width="26dp" android:layout_height="match_parent" android:gravity="center" android:text="✦" android:textColor="#FFC45B" android:textSize="20sp" />
+                <FrameLayout android:layout_width="48dp" android:layout_height="48dp" android:background="@drawable/planet_partner">
+                    <ImageView android:id="@+id/wearPartnerPhoto" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" android:visibility="gone" />
+                    <TextView android:id="@+id/wearPartnerInitial" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="?" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
+                </FrameLayout>
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/wearEyebrow"

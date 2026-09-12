@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.littleorbit.mobile",
+      "sha256_cert_fingerprints": [
+        "43:E8:3A:42:0C:74:96:CE:91:21:33:9A:B5:BD:6B:01:A6:35:71:61:A8:3A:95:04:2A:CE:56:85:5B:D8:93:37"
+      ]
+    }
+  }
+]

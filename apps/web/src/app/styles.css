@@ -119,6 +119,10 @@ img { max-width: 100%; height: auto; }
 .prose h2 { margin-top: 34px; color: var(--ink); font-family: Georgia, serif; }
 .prose li { margin-bottom: 10px; }
 .contributor-card, .release-card { max-width: 800px; margin-bottom: 110px; }
+.patch-notes-list { display: grid; gap: 20px; padding-bottom: 90px; }
+.patch-notes-list .release-card { width: 100%; margin-bottom: 0; }
+.patch-notes-list time { color: var(--muted); white-space: nowrap; }
+.patch-notes-list code { overflow-wrap: anywhere; }
 .release-top { display: flex; justify-content: space-between; align-items: start; gap: 18px; }
 .release-top h2 { margin: 8px 0 24px; font: 700 2.8rem Georgia, serif; }
 .release-state { display: inline-flex; padding: 7px 11px; border-radius: 999px; background: rgba(245,200,108,.12); color: var(--gold); font-size: .72rem; font-weight: 750; }
