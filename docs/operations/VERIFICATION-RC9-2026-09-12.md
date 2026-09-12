@@ -48,7 +48,16 @@ The synthetic test image contained no real person, was removed from the account 
 
 ## Deployment verification
 
-Deployment results are recorded here after the immutable tag, mirrors, API record, and public byte-range endpoints are verified.
+- Pushed commit `5de32c1` and annotated tag `v1.0.0-rc.9`, then created the GitHub prerelease with the exact phone/Wear APKs and checksum sidecars. GitHub reported the expected 23,285,988-byte and 14,130,618-byte assets.
+- Copied the same verified bytes into ignored release storage, rebuilt the production web image, and confirmed API, web, gateway, PostgreSQL, and Ollama health. Only gateway port 8180 was host-bound.
+- Published one immutable release record at `2026-09-12T21:52:55.481551Z`. The public current response and release history returned RC9 first with code 9, exact hashes and sizes, minimum phone API 29, compatibility floor 6, and no enforcement time.
+- Downloaded both complete APKs through public HTTPS and reproduced the local sizes and SHA-256 hashes.
+- Requested bytes 1,048,576 through 1,049,599 for each APK through Nginx Proxy Manager. Both returned `206`, exactly 1,024 bytes, the correct full-file `Content-Range`, immutable cache control, ETag, byte-range support, and `X-Checksum-SHA256`.
+- Confirmed `/patch-notes` presents RC9 and `/patch-notes.xml` parses as RSS 2.0 with RC9 first.
+- Confirmed `/download` presents RC9 and its exact phone SHA-256 after the rebuilt web container became healthy.
+- Confirmed `/.well-known/assetlinks.json` still binds `com.littleorbit.mobile` to the pinned signing certificate.
+
+Public checks used `https://lil-orb.pax-kun.com` through Nginx Proxy Manager and the gateway rather than direct container ports.
 
 ## Open release gate
 
