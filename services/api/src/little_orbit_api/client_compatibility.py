@@ -24,6 +24,7 @@ MOBILE_PREFIXES = (
     "/v1/quizzes",
     "/v1/together-time",
     "/v2/quizzes",
+    "/v2/together-time",
 )
 MOBILE_AUTH_PATHS = {"/v1/auth/login", "/v1/auth/logout", "/v1/auth/session/rotate"}
 

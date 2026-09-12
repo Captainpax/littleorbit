@@ -17,6 +17,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Complete verified, user-approved Android phone updates, resumable first-party APK delivery, and the cosmic UI foundation.
 - [x] Complete RC6 system-bar and keyboard insets, mutually confirmed relationship dates, deterministic nearby-time estimates, guided notification/location checks, refreshed widgets, and first-party Wear APK installation guidance.
 - [x] Repair clean PostgreSQL bootstrap migrations and verify a full upgrade, RC6 downgrade, re-upgrade, and model/schema comparison.
+- [x] Gate every versioned Android route, including RC6 together-time endpoints, behind the activated minimum-client floor.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.
 

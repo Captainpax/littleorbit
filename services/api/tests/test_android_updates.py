@@ -132,6 +132,7 @@ def test_only_installed_client_routes_are_gated() -> None:
     assert is_mobile_http_path("/v1/auth/login")
     assert is_mobile_http_path("/v1/notes/00000000-0000-0000-0000-000000000000")
     assert is_mobile_http_path("/v2/quizzes/today")
+    assert is_mobile_http_path("/v2/together-time/locations")
     assert not is_mobile_http_path("/v1/auth/register")
     assert not is_mobile_http_path("/v1/releases/current")
     assert not is_mobile_http_path("/v1/admin/session")
