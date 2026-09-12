@@ -1,6 +1,9 @@
 """Release-contract and Android compatibility regression tests."""
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
+from typing import cast
+from unittest.mock import AsyncMock
 
 import pytest
 from pydantic import ValidationError
@@ -10,6 +13,8 @@ from little_orbit_api.client_compatibility import (
     supplied_version_code,
     update_required,
 )
+from little_orbit_api.models import ApkRelease
+from little_orbit_api.release_service import PublishedReleaseImmutable, upsert_apk_release
 from little_orbit_api.schemas import ApkReleaseInput
 
 SIGNER = "43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337"
@@ -84,3 +89,55 @@ def test_only_installed_client_routes_are_gated() -> None:
     assert not is_mobile_http_path("/v1/auth/register")
     assert not is_mobile_http_path("/v1/releases/current")
     assert not is_mobile_http_path("/v1/admin/session")
+
+
+def published_record(payload: ApkReleaseInput) -> ApkRelease:
+    """Create the exact persisted shape needed by the immutable-service tests."""
+
+    return cast(
+        ApkRelease,
+        SimpleNamespace(
+            version=payload.version,
+            version_code=payload.version_code,
+            apk_url=str(payload.apk_url),
+            github_release_url=str(payload.github_release_url),
+            sha256=payload.sha256,
+            size_bytes=payload.size_bytes,
+            package_name=payload.package_name,
+            signer_sha256=payload.signer_sha256,
+            minimum_android=payload.minimum_android,
+            minimum_supported_version_code=payload.minimum_supported_version_code,
+            required_after=payload.required_after,
+            release_notes=payload.release_notes,
+            published_at=datetime(2026, 9, 12, tzinfo=UTC),
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_exact_published_release_retry_is_idempotent() -> None:
+    payload = release_input()
+    record = published_record(payload)
+    session = AsyncMock()
+    session.scalar.return_value = record
+
+    result = await upsert_apk_release(session, payload, updated_by=None)
+
+    assert result is record
+    session.flush.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_published_release_cannot_be_mutated_or_unpublished() -> None:
+    original = release_input()
+    session = AsyncMock()
+    session.scalar.return_value = published_record(original)
+
+    with pytest.raises(PublishedReleaseImmutable):
+        await upsert_apk_release(
+            session,
+            release_input(release_notes="Changed after publication."),
+            updated_by=None,
+        )
+    with pytest.raises(PublishedReleaseImmutable):
+        await upsert_apk_release(session, release_input(publish=False), updated_by=None)
