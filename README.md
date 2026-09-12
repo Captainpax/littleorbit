@@ -15,7 +15,7 @@ Little Orbit is a free and open couples platform for staying curious, sharing sm
 - Shared countdowns and plain-text live notes with offline drafts.
 - Estimated together-time from explicitly consented location samples.
 - Android home widget, Wear OS tile, and watch complication using cached data.
-- A user-approved phone updater that verifies the APK hash, size, package, version, and pinned signing certificate before Android asks to install it.
+- A user-approved phone updater with resumable first-party downloads that verifies the APK hash, size, package, version, and pinned signing certificate before Android asks to install it.
 - Eight-character, single-use pairing with confirmation.
 - A public website for registration, account recovery, APK releases, privacy, and project documentation.
 - A privacy-limited owner console and local daily-question generation through Ollama.
@@ -51,7 +51,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.3`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.3) is the current signed phone and Wear OS release candidate. It adds the verified phone updater and brings the app, widget, and Wear launcher into the cosmic design system. GitHub hosts the APKs and checksum files; the [signing certificate](docs/signing/README.md) documents the pinned update identity. RC2 users need this one manual update because RC2 predates the updater. This remains a test release until the real-device launch gate is complete.
+[`1.0.0-rc.4`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.4) is the current signed phone and Wear OS release candidate. The [primary phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk) is served by Little Orbit with byte-range resume support; GitHub keeps a release mirror, checksums, and source history. The updater checks the exact size, SHA-256, package, version, and [pinned signing certificate](docs/signing/README.md). RC3 users need one manual RC4 install because RC3 trusted only GitHub APK URLs; later first-party updates can run through the app. This remains a test release until the real-device launch gate is complete.
 
 ## Privacy promise
 
@@ -72,6 +72,6 @@ Little Orbit collects only what a selected feature needs. AI question generation
 
 ## License and support
 
-The application code is licensed under the [MIT License](LICENSE). Optional donations may support hosting, but will never unlock features. GitHub Releases are the canonical source for signed APKs.
+The application code is licensed under the [MIT License](LICENSE). Optional donations may support hosting, but will never unlock features. Little Orbit hosts the primary signed phone APK; GitHub mirrors releases and remains the canonical source history.
 
 Source, issues, and releases live at [github.com/Captainpax/littleorbit](https://github.com/Captainpax/littleorbit).

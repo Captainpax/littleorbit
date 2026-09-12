@@ -1,11 +1,21 @@
-"""Public signed APK release metadata."""
+"""Public signed APK release metadata and resumable first-party downloads."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import Settings, get_settings
 from ..database import session_scope
 from ..models import ApkRelease
+from ..release_artifacts import (
+    APK_MEDIA_TYPE,
+    ReleaseArtifactUnavailable,
+    verify_release_artifact,
+)
 from ..schemas import ApkReleaseResponse
 
 router = APIRouter(prefix="/v1/releases", tags=["releases"])
@@ -15,7 +25,7 @@ router = APIRouter(prefix="/v1/releases", tags=["releases"])
 async def current_release(
     session: AsyncSession = Depends(session_scope),
 ) -> ApkReleaseResponse:
-    """Return the most recently published release without proxying its APK."""
+    """Return the most recently published signed release."""
 
     release = await session.scalar(
         select(ApkRelease)
@@ -59,4 +69,51 @@ async def current_release(
         required_after=release.required_after,
         release_notes=release.release_notes,
         published_at=release.published_at,
+    )
+
+
+@router.api_route("/{version}/apk", methods=["GET", "HEAD"], response_class=FileResponse)
+async def download_release(
+    version: Annotated[
+        str,
+        Path(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$", max_length=40),
+    ],
+    session: AsyncSession = Depends(session_scope),
+    settings: Settings = Depends(get_settings),
+) -> FileResponse:
+    """Serve verified immutable APK bytes with standard HTTP range support."""
+
+    release = await session.scalar(
+        select(ApkRelease).where(
+            ApkRelease.version == version,
+            ApkRelease.published_at.is_not(None),
+            ApkRelease.size_bytes.is_not(None),
+        )
+    )
+    if release is None or release.size_bytes is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Signed release not found")
+    try:
+        artifact = await run_in_threadpool(
+            verify_release_artifact,
+            settings.release_storage_dir,
+            version,
+            release.size_bytes,
+            release.sha256,
+        )
+    except ReleaseArtifactUnavailable as error:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Signed release temporarily unavailable",
+        ) from error
+    return FileResponse(
+        artifact.path,
+        media_type=APK_MEDIA_TYPE,
+        filename=artifact.filename,
+        stat_result=artifact.stat,
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "ETag": f'"{release.sha256}"',
+            "X-Checksum-SHA256": release.sha256,
+        },
     )

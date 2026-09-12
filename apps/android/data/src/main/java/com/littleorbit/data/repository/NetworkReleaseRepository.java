@@ -7,7 +7,6 @@ import com.littleorbit.data.remote.LittleOrbitApi;
 import com.littleorbit.domain.ReleaseUpdate;
 import dagger.hilt.android.qualifiers.ApplicationContext;
 import java.io.IOException;
-import java.net.URI;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -17,7 +16,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import retrofit2.Response;
 
-/** HTTPS release metadata client that accepts only the canonical GitHub artifact authority. */
+/** HTTPS release metadata client restricted to Little Orbit's signed release authorities. */
 @Singleton
 public final class NetworkReleaseRepository implements ReleaseRepository {
     public static final String EXPECTED_PACKAGE = "com.littleorbit.mobile";
@@ -88,7 +87,7 @@ public final class NetworkReleaseRepository implements ReleaseRepository {
     }
 
     private static ReleaseUpdate map(ApiModels.ApkRelease dto) {
-        validateAuthority(dto);
+        ReleaseAuthority.validate(dto);
         return new ReleaseUpdate(
                 dto.version,
                 dto.versionCode,
@@ -103,31 +102,6 @@ public final class NetworkReleaseRepository implements ReleaseRepository {
                 dto.requiredAfter == null ? null : Instant.parse(dto.requiredAfter),
                 dto.releaseNotes,
                 Instant.parse(dto.publishedAt));
-    }
-
-    private static void validateAuthority(ApiModels.ApkRelease dto) {
-        URI apk = URI.create(dto.apkUrl);
-        URI release = URI.create(dto.githubReleaseUrl);
-        String tag = "v" + dto.version;
-        String prefix = "/Captainpax/littleorbit/releases/download/" + tag + "/";
-        boolean validApk = canonicalGithub(apk)
-                && apk.getPath().startsWith(prefix)
-                && apk.getPath().endsWith(".apk");
-        boolean validRelease = canonicalGithub(release)
-                && release.getPath().equals("/Captainpax/littleorbit/releases/tag/" + tag);
-        if (!validApk || !validRelease
-                || !EXPECTED_PACKAGE.equals(dto.packageName)
-                || !EXPECTED_SIGNER.equals(dto.signerSha256)) {
-            throw new ReleaseCheckException("release_metadata_invalid");
-        }
-    }
-
-    private static boolean canonicalGithub(URI uri) {
-        return "https".equals(uri.getScheme())
-                && "github.com".equals(uri.getHost())
-                && uri.getRawQuery() == null
-                && uri.getRawFragment() == null
-                && uri.getUserInfo() == null;
     }
 
     private void write(ReleaseUpdate release, long checkedAt) {

@@ -38,7 +38,7 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Note operation IDs are idempotent and server revisions increase monotonically.
 - Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates.
 - Only the gateway binds a public host port. Ollama remains internal and accepts calls only from the AI service.
-- Published APK metadata is immutable. Android accepts an update only when its package, increasing version code, exact byte count, APK hash, and pinned signing certificate all match.
+- Published APK metadata and first-party APK bytes are immutable. Android accepts an update only when its trusted URL, package, increasing version code, exact byte count, APK hash, and pinned signing certificate all match.
 
 ## Owl discipline
 

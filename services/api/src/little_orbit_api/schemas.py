@@ -417,7 +417,7 @@ class CuratedImportRequest(StrictModel):
 
 
 class ApkReleaseInput(StrictModel):
-    """Signed GitHub-hosted APK metadata for publication."""
+    """Signed APK metadata for first-party publication or a legacy GitHub release."""
 
     version: Annotated[
         StrictText,
@@ -451,21 +451,29 @@ class ApkReleaseInput(StrictModel):
 def _canonical_github_url(url: AnyHttpUrl) -> bool:
     """Accept only query-free HTTPS URLs on the canonical release authority."""
 
-    return (url.scheme, url.host, url.query, url.fragment) == (
+    return (url.scheme, url.host, url.port, url.username, url.password, url.query, url.fragment) == (
         "https",
         "github.com",
+        443,
+        None,
+        None,
         None,
         None,
     )
 
 
 def _validate_apk_release_url(url: AnyHttpUrl, expected_tag: str) -> None:
-    """Require one APK below the matching canonical GitHub release tag."""
+    """Require the matching first-party endpoint or legacy canonical GitHub asset."""
 
+    from .release_artifacts import is_hosted_apk_url
+
+    version = expected_tag.removeprefix("v")
+    if is_hosted_apk_url(str(url), version):
+        return
     path = url.path or ""
     prefix = f"/Captainpax/littleorbit/releases/download/{expected_tag}/"
     if not _canonical_github_url(url) or not (path.startswith(prefix) and path.endswith(".apk")):
-        raise ValueError("APK URL must use the canonical Little Orbit GitHub release")
+        raise ValueError("APK URL must use the Little Orbit API or canonical GitHub release")
 
 
 def _validate_github_release_url(url: AnyHttpUrl, expected_tag: str) -> None:

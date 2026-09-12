@@ -21,7 +21,7 @@ The first model initialization downloads roughly 2.5 GB. Add `-f infra/compose.g
 
 ## Android updater development
 
-The phone always requests `https://lil-orb.pax-kun.com/v1/releases/current` and accepts APK URLs only from the canonical GitHub repository. Test pure policy and restart behavior without a device:
+The phone requests `https://lil-orb.pax-kun.com/api/v1/releases/current` and accepts only the matching versioned API APK endpoint or a historical canonical GitHub release asset. Create `data/releases/` and copy a signed APK there using `little-orbit-{version}.apk`; Compose mounts that ignored directory read-only into the API. Test pure policy and restart behavior without a device:
 
 ```powershell
 .\gradlew.bat :apps:android:domain:test :apps:android:mobile:testDebugUnitTest

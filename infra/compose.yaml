@@ -59,6 +59,10 @@ services:
       - "8000"
     env_file:
       - ../.env
+    environment:
+      RELEASE_STORAGE_DIR: /var/lib/little-orbit/releases
+    volumes:
+      - ../data/releases:/var/lib/little-orbit/releases:ro
     depends_on:
       postgres:
         condition: service_healthy

@@ -169,21 +169,23 @@ sequenceDiagram
     actor Person
     participant Phone as Little Orbit phone app
     participant API as Public release API
-    participant GitHub as GitHub Releases
+    participant Files as Read-only release directory
     participant DM as Android DownloadManager
     participant PI as Android PackageInstaller
-    Phone->>API: GET /v1/releases/current
+    Phone->>API: GET /api/v1/releases/current
     API-->>Phone: Immutable version, URLs, size, hashes, floor, optional UTC enforcement
-    Phone->>Phone: Validate canonical repository, package, pinned signer, and update policy
+    Phone->>Phone: Validate trusted API path, package, pinned signer, and update policy
     alt optional release
         Phone-->>Person: Update now or defer 24 hours
     else active compatibility floor excludes installed version
         Phone-->>Person: Update required or exit
     end
     Person->>Phone: Update now
-    Phone->>DM: Enqueue canonical GitHub APK URL
-    DM->>GitHub: Download release bytes
-    GitHub-->>DM: Signed APK
+    Phone->>DM: Enqueue versioned Little Orbit API URL
+    DM->>API: GET APK, optionally with Range
+    API->>Files: Verify exact size and SHA-256
+    Files-->>API: Signed immutable APK
+    API-->>DM: 200 or 206 with exact length and resume headers
     DM-->>Phone: Android-owned progress / completion
     Phone->>Phone: Verify exact size + SHA-256 + package + newer version + certificate
     alt any verification fails

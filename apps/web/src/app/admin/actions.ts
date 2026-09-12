@@ -78,7 +78,7 @@ export async function replaceCuratedBank(formData: FormData) {
   await adminMutation("curated-bank", "PUT", { questions });
 }
 
-/** Publish signed GitHub Release metadata used by the download page. */
+/** Publish signed APK metadata used by first-party delivery and the download page. */
 export async function publishRelease(formData: FormData) {
   const version = required(formData, "version");
   const requiredAfter = optional(formData, "required_after");

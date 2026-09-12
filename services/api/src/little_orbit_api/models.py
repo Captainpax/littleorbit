@@ -378,7 +378,7 @@ class CuratedBankQuestion(Timestamped, Base):
 
 
 class ApkRelease(Timestamped, Base):
-    """Published signed APK metadata while GitHub remains the file host."""
+    """Published signed APK metadata for first-party delivery and GitHub mirroring."""
 
     __tablename__ = "apk_releases"
 

@@ -16,7 +16,7 @@ The dashboard leads with the relationship rather than system controls. Daily que
 
 ![Updater and More screen concept](docs/assets/android-update-more-concept.png)
 
-The RC3 companion study defines the updater and settings direction: the same planet motif, a visible verification step, calm progress language, and one More destination for pairing, privacy, archives, and app updates.
+The companion study defines the updater and settings direction: the same planet motif, a visible verification step, calm progress language, and one More destination for pairing, privacy, archives, and app updates. RC4 moves the actual APK transfer to Little Orbit's resumable first-party endpoint.
 
 ### Current Android implementation
 
@@ -24,7 +24,7 @@ The RC3 companion study defines the updater and settings direction: the same pla
 
 ![Implemented RC3 More screen on an API 36 emulator](docs/assets/android-more-rc3.png)
 
-The RC3 emulator captures verify the Inter type system, paired planet motif, lavender primary action, persistent Home/Quiz/Notes/More navigation, sparse signed-out states, and Wear update boundary. Feature forms now share the same cosmic background, inset fields, and action styles. Portrait, large-text, updater installation, widget, and Wear OS captures remain part of the physical-device release gate.
+The RC3 emulator captures verify the Inter type system, paired planet motif, lavender primary action, persistent Home/Quiz/Notes/More navigation, sparse signed-out states, and Wear update boundary. RC4 keeps that interface and changes the verified download transport. Feature forms share the same cosmic background, inset fields, and action styles. Portrait, large-text, updater installation, widget, and Wear OS captures remain part of the physical-device release gate.
 
 ## Public website
 

@@ -2,11 +2,14 @@
 
 from uuid import UUID
 
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .clock import SystemClock
+from .config import get_settings
 from .models import ApkRelease
+from .release_artifacts import is_hosted_apk_url, verify_release_artifact
 from .schemas import ApkReleaseInput
 
 
@@ -21,6 +24,14 @@ async def upsert_apk_release(
 ) -> ApkRelease:
     """Create or replace one release record without committing its transaction."""
 
+    if payload.publish and is_hosted_apk_url(str(payload.apk_url), payload.version):
+        await run_in_threadpool(
+            verify_release_artifact,
+            get_settings().release_storage_dir,
+            payload.version,
+            payload.size_bytes,
+            payload.sha256,
+        )
     record = await session.scalar(
         select(ApkRelease).where(ApkRelease.version == payload.version).with_for_update()
     )

@@ -166,12 +166,12 @@ export default async function AdminPage() {
           <form action={setRegistration}><input type="hidden" name="enabled" value="false" /><button type="submit">Pause registration</button></form>
         </div>
         <form action={publishRelease} className="admin-form-grid">
-          <label>Version<input name="version" required placeholder="1.0.0-rc.3" /></label>
-          <label>Version code<input name="version_code" type="number" min="1" defaultValue="3" required /></label>
+          <label>Version<input name="version" required placeholder="1.0.0-rc.4" /></label>
+          <label>Version code<input name="version_code" type="number" min="1" defaultValue="4" required /></label>
           <label>Minimum Android<input name="minimum_android" type="number" min="29" max="36" defaultValue="29" required /></label>
           <label>Compatibility floor<input name="minimum_supported_version_code" type="number" min="1" defaultValue="1" required /></label>
           <label>Require after (optional)<input name="required_after" type="datetime-local" /></label>
-          <label>Signed APK URL<input name="apk_url" type="url" required /></label>
+          <label>First-party APK URL<input name="apk_url" type="url" placeholder="https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk" required /></label>
           <label>GitHub Release URL<input name="github_release_url" type="url" required /></label>
           <label>SHA-256<input name="sha256" pattern="[a-f0-9]{64}" required /></label>
           <label>APK bytes<input name="size_bytes" type="number" min="1" required /></label>

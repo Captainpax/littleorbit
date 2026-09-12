@@ -16,7 +16,7 @@ Own the public discovery/account website and the metadata-only owner console.
 - Prefer Server Components. Use client components only for interaction or browser state, and keep their props serializable and narrow.
 - Never render secrets or relationship content. Redact configuration on the API and again in presentation code.
 - Public account-recovery responses must resist account enumeration.
-- Download metadata includes version, minimum Android level, SHA-256, release notes, and a GitHub Release URL; GitHub hosts the APK bytes.
+- Download metadata includes version, minimum Android level, SHA-256, release notes, and a GitHub Release URL; the versioned Little Orbit API endpoint hosts the APK bytes with resumable delivery.
 - Keep the checked-in release fallback byte-for-byte aligned with the newest signed publication so an API restart cannot replace a valid download with stale metadata.
 - Meet keyboard, focus, large-text, reduced-motion, contrast, metadata, and mobile layout requirements.
 
@@ -48,7 +48,7 @@ Update README and SHOWCASE for routes and visible changes. Update PRIVACY and NE
 - Importing the entire component library into a client bundle.
 - Turning a static page into a client component.
 - Authorizing admin UI only in middleware or client code.
-- Proxying APK downloads through the home server.
+- Linking the primary download action to an unverified third-party or unversioned APK URL.
 - Hiding focus styles to match a mockup.
 
 

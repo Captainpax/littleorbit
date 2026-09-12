@@ -1,6 +1,7 @@
 """Typed runtime configuration loaded from environment variables."""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
 
     little_orbit_env: str = "development"
     public_base_url: str = "http://localhost:8180"
+    release_storage_dir: Path = Path("data/releases")
     database_url: str = "postgresql+asyncpg://little_orbit:change-me@localhost/little_orbit"
     session_secret: SecretStr = Field(default=SecretStr("development-only-change-this-secret"))
     token_pepper: SecretStr = Field(default=SecretStr("development-only-token-pepper"))

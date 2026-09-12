@@ -14,9 +14,9 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Complete consented together-time processing, corrections, and raw-coordinate expiry.
 - [x] Complete Android phone app, home widget, Wear OS tile, and complication implementation.
 - [x] Complete owner-console workflows, TOTP recovery, and metadata-only privacy review.
-- [x] Complete verified, user-approved Android phone updates and the RC3 cosmic UI foundation.
+- [x] Complete verified, user-approved Android phone updates, resumable first-party APK delivery, and the cosmic UI foundation.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
-- [ ] Sign release APKs, publish a GitHub Release, and configure the reviewed production proxy/firewall route.
+- [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.
 
 ## 1.x — Reliability and reach
 

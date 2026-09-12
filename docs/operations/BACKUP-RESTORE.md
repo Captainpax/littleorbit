@@ -1,5 +1,7 @@
 # PostgreSQL backup and restore
 
+Signed APKs in `data/releases/` are immutable deployment artifacts rather than database state. Keep their checksum sidecars and GitHub release mirrors so the directory can be restored exactly without placing binaries or signing secrets in Git. Restore these files before republishing or serving their existing metadata.
+
 Run `infra/scripts/backup-postgres.ps1` from Windows Task Scheduler using a dedicated local account and a protected destination. The default keeps 14 days. Copy encrypted backups to a second device or storage location outside the application disk.
 
 ```powershell

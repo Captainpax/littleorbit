@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { currentRelease, getCurrentRelease } from "./release";
+import { currentRelease, getCurrentRelease, hostedApkPath } from "./release";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -12,7 +12,7 @@ describe("release metadata", () => {
     expect(release).toEqual(currentRelease);
     expect(release.published).toBe(true);
     expect(release.sha256).toHaveLength(64);
-    expect(release.apkUrl).toContain("releases/download/v1.0.0-rc.3");
+    expect(release.apkUrl).toBe("/api/v1/releases/1.0.0-rc.4/apk");
   });
 
   it("maps published API metadata to the signed APK download", async () => {
@@ -31,7 +31,11 @@ describe("release metadata", () => {
     const release = await getCurrentRelease();
 
     expect(release.published).toBe(true);
-    expect(release.apkUrl).toBe("https://example.test/little-orbit.apk");
+    expect(release.apkUrl).toBe("/api/v1/releases/1.0.0-rc.1/apk");
     expect(release.sha256).toHaveLength(64);
+  });
+
+  it("escapes a release version before making a first-party path", () => {
+    expect(hostedApkPath("1.0.0 rc.4")).toBe("/api/v1/releases/1.0.0%20rc.4/apk");
   });
 });

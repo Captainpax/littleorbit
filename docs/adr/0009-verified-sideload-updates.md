@@ -1,6 +1,6 @@
 # ADR 0009: Verified user-approved sideload updates
 
-- Status: Accepted
+- Status: Superseded by [ADR 0010](0010-first-party-apk-delivery.md)
 - Date: 2026-09-11
 
 ## Context

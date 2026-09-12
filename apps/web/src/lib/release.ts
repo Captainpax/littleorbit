@@ -9,21 +9,25 @@ export interface ReleaseMetadata {
   published: boolean;
 }
 
+export function hostedApkPath(version: string): string {
+  return `/api/v1/releases/${encodeURIComponent(version)}/apk`;
+}
+
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.3",
-  versionCode: 3,
+  version: "1.0.0-rc.4",
+  versionCode: 4,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "1ecf525d2c2d682dd2a361118c14c0153b58aee80e2ba151de62029d90379647",
+  sha256: "94f6a8a6393d0a76680996dc8ee7274859969b0993bca99bece0d1a665bb69d6",
   releaseNotes: [
-    "Adds user-approved phone updates with package, version, size, hash, and signer verification.",
-    "Keeps interrupted update progress safe across activity and process restarts.",
-    "Introduces the cosmic phone, widget, and Wear OS visual system.",
-    "Keeps routine releases optional; compatibility enforcement requires a separately scheduled UTC time.",
+    "Downloads signed APKs directly from Little Orbit instead of GitHub.",
+    "Supports interrupted-download resume with exact content length and byte ranges.",
+    "Refuses to publish or serve local APK bytes when their size or SHA-256 differs.",
+    "Keeps GitHub as the matching source and release-history mirror.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.3",
-  apkUrl: "https://github.com/Captainpax/littleorbit/releases/download/v1.0.0-rc.3/little-orbit-1.0.0-rc.3.apk",
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.4",
+  apkUrl: hostedApkPath("1.0.0-rc.4"),
   published: true,
 };
 
@@ -52,7 +56,7 @@ export async function getCurrentRelease(): Promise<ReleaseMetadata> {
       sha256: release.sha256,
       releaseNotes: release.release_notes.split("\n").filter(Boolean),
       githubUrl: release.github_release_url,
-      apkUrl: release.apk_url,
+      apkUrl: hostedApkPath(release.version),
       published: true,
     };
   } catch {

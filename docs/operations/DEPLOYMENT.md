@@ -63,21 +63,29 @@ The script loads signing values from the ignored `.env.android-signing`, which C
 Publish in this order:
 
 1. Build, hash, and verify both APKs locally.
-2. Commit the final release code and documentation, create the immutable GitHub tag, and upload the exact APK/checksum files to that release.
-3. Update the verified fallback in `apps/web/src/lib/release.ts` with the same phone APK URL, release URL, version code, and SHA-256, then deploy the migrated API and rebuilt web image.
-4. Publish the release record only after the public GitHub URLs return the expected bytes:
+2. Commit the final release code and documentation. Create the immutable GitHub tag and upload the exact APK/checksum files as a recovery mirror.
+3. Copy the phone APK to the ignored host path `data/releases/little-orbit-{version}.apk`. Never commit this directory.
+4. Update the verified fallback in `apps/web/src/lib/release.ts` with the same version code, API path, release URL, and SHA-256, then deploy the API and rebuilt web image. Compose mounts release storage read-only.
+5. Publish the release record. Publication verifies the local file's size and SHA-256 before committing metadata:
 
 ```powershell
 docker compose --env-file .env -f infra/compose.yaml exec api python -m little_orbit_api.cli publish-release `
-  --version 1.0.0-rc.3 `
-  --apk-url https://github.com/Captainpax/littleorbit/releases/download/v1.0.0-rc.3/little-orbit-1.0.0-rc.3.apk `
-  --github-release-url https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.3 `
-  --sha256 1ecf525d2c2d682dd2a361118c14c0153b58aee80e2ba151de62029d90379647 `
-  --release-notes "Verified updates and the cosmic Android interface." `
-  --version-code 3 --size-bytes 15746529 `
+  --version 1.0.0-rc.4 `
+  --apk-url https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk `
+  --github-release-url https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.4 `
+  --sha256 94f6a8a6393d0a76680996dc8ee7274859969b0993bca99bece0d1a665bb69d6 `
+  --release-notes "First-party resumable APK downloads with unchanged signature verification." `
+  --version-code 4 --size-bytes 15747217 `
   --package-name com.littleorbit.mobile `
   --signer-sha256 43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337 `
   --minimum-android 29 --minimum-supported-version-code 1
+```
+
+Verify both a complete response and a resumed slice through the public proxy. The range request must return `206`, `Content-Range: bytes 0-1023/15747217`, and exactly 1,024 bytes:
+
+```powershell
+curl.exe -fSI https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk
+curl.exe -fsS -H "Range: bytes=0-1023" -D - -o range-check.bin https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk
 ```
 
 Omit `--required-after` for normal optional releases. Before scheduling a compatibility floor, confirm that the excluded build can discover and install the published APK, then use an explicit timezone-aware UTC value. Once a published record exists, corrections require a new version and new tag; the API deliberately rejects edits and unpublishing.
