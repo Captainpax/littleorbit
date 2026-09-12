@@ -24,6 +24,7 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 - Increase `versionCode` for every published update. A reused code or different certificate prevents safe upgrades.
 - Fetch release metadata only from the public API. Accept APK links only from the exact versioned `lil-orb.pax-kun.com` API endpoint or the historical canonical GitHub repository, then verify byte count, SHA-256, package name, increasing version code, and the pinned certificate before opening Android's installer.
 - Keep updater progress restart-safe. Background work may fetch metadata but must never download or install an APK without a user action. Required updates begin only after the server's explicit UTC enforcement time.
+- Update `ROADMAP.md` in the same change whenever Android behavior, code, or release state changes.
 
 ## Start here
 

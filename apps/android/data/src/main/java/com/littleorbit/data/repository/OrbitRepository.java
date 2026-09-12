@@ -2,6 +2,7 @@ package com.littleorbit.data.repository;
 
 import com.littleorbit.data.remote.ApiModels;
 import com.littleorbit.data.remote.QuizApiModels;
+import com.littleorbit.data.remote.TogetherTimeModels;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -98,6 +99,20 @@ public interface OrbitRepository {
 
     /** Loads the coordinate-free together-time estimate. */
     CompletableFuture<ApiModels.TogetherSummary> togetherSummary();
+
+    /** Loads separate relationship-age and location-derived nearby values. */
+    CompletableFuture<TogetherTimeModels.Summary> togetherSummaryV2();
+
+    /** Loads thirty coordinate-free UTC days of nearby estimates. */
+    CompletableFuture<List<TogetherTimeModels.HistoryDay>> togetherHistory();
+
+    /** Proposes a relationship start date for mutual approval. */
+    CompletableFuture<TogetherTimeModels.StartDateProposal> proposeStartDate(
+            TogetherTimeModels.ProposalRequest request);
+
+    /** Accepts, declines, or cancels one current start-date proposal. */
+    CompletableFuture<TogetherTimeModels.StartDateProposal> decideStartDate(
+            String proposalId, TogetherTimeModels.DecisionRequest request);
 
     /** Lists recent correctable together-time minute buckets. */
     CompletableFuture<List<ApiModels.TogetherBucket>> togetherBuckets();

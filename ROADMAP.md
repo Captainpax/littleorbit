@@ -15,6 +15,8 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Complete Android phone app, home widget, Wear OS tile, and complication implementation.
 - [x] Complete owner-console workflows, TOTP recovery, and metadata-only privacy review.
 - [x] Complete verified, user-approved Android phone updates, resumable first-party APK delivery, and the cosmic UI foundation.
+- [x] Complete RC6 system-bar and keyboard insets, mutually confirmed relationship dates, deterministic nearby-time estimates, guided notification/location checks, refreshed widgets, and first-party Wear APK installation guidance.
+- [x] Repair clean PostgreSQL bootstrap migrations and verify a full upgrade, RC6 downgrade, re-upgrade, and model/schema comparison.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.
 
@@ -26,6 +28,8 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - Operational dashboards, backup drills, and incident playbooks.
 - Improved offline reconciliation and battery measurements.
 - Device-tested notification timing and richer quiz reveal motion under reduced-motion controls.
+- Physical-device battery measurements and OEM-specific background-location recovery guidance.
+- A friendlier signed desktop watch installer if community testing shows wireless ADB setup is still too difficult.
 
 ## 2.0 — Explicitly reviewed sensitive features
 

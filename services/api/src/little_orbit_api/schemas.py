@@ -160,7 +160,6 @@ class CouplePreferencesRequest(StrictModel):
     intimacy_enabled: bool | None = None
     location_enabled: bool | None = None
     proximity_threshold_m: float | None = Field(default=None, ge=25, le=1000)
-    anniversary_date: date | None = None
 
 
 class CouplePreferencesResponse(StrictModel):
@@ -339,6 +338,60 @@ class TogetherCorrectionRequest(StrictModel):
     reason: Annotated[StrictText, Field(min_length=3, max_length=240)]
 
 
+class RelationshipStartProposalRequest(StrictModel):
+    """Retry-safe proposal for the couple's shared relationship start date."""
+
+    operation_id: UUID
+    proposed_date: date
+
+
+class RelationshipStartDecisionRequest(StrictModel):
+    """Retry-safe decision whose allowed actions depend on the current actor."""
+
+    operation_id: UUID
+    decision: Literal["accept", "decline", "cancel"]
+
+
+class RelationshipStartProposalResponse(StrictModel):
+    """Content-safe pending or completed relationship-date proposal state."""
+
+    id: UUID
+    proposed_date: date
+    proposed_by_me: bool
+    status: Literal["pending", "accepted", "declined", "cancelled", "expired"]
+    expires_at: datetime
+
+
+class TogetherSummaryV2(StrictModel):
+    """Relationship age and separate location-derived nearby estimate."""
+
+    relationship_start_date: date | None
+    relationship_days: int | None
+    nearby_estimated_seconds: int
+    nearby_last_processed_at: datetime | None
+    proximity_threshold_m: float
+    location_enabled_by_me: bool
+    location_enabled_by_both: bool
+    label: Literal["estimate"]
+    pending_start_date: RelationshipStartProposalResponse | None
+
+
+class TogetherHistoryDay(StrictModel):
+    """One UTC day of coordinate-free nearby history."""
+
+    day: date
+    estimated_seconds: int
+    corrected: bool
+
+
+class LocationBatchV2Response(StrictModel):
+    """Location ingestion result for deterministic interval recomputation."""
+
+    accepted: int
+    duplicates: int
+    nearby_seconds_recomputed: int
+
+
 class NoteCreateRequest(StrictModel):
     """Idempotent shared note creation request."""
 
@@ -483,6 +536,12 @@ class ApkReleaseInput(StrictModel):
     size_bytes: int = Field(gt=0, le=2_147_483_648)
     package_name: Literal["com.littleorbit.mobile"]
     signer_sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+    wear_apk_url: AnyHttpUrl | None = None
+    wear_sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")] | None = None
+    wear_size_bytes: int | None = Field(default=None, gt=0, le=2_147_483_648)
+    wear_package_name: Literal["com.littleorbit.mobile"] | None = None
+    wear_version_code: int | None = Field(default=None, gt=0)
+    wear_minimum_android: int | None = Field(default=None, ge=30, le=36)
     minimum_android: int = Field(ge=29, le=36)
     minimum_supported_version_code: int = Field(ge=1)
     required_after: datetime | None = None
@@ -495,10 +554,35 @@ class ApkReleaseInput(StrictModel):
 
         expected_tag = f"v{self.version}"
         _validate_apk_release_url(self.apk_url, expected_tag)
+        _validate_wear_release(self, expected_tag)
         _validate_github_release_url(self.github_release_url, expected_tag)
         _validate_version_floor(self.minimum_supported_version_code, self.version_code)
         _validate_required_after(self.required_after)
         return self
+
+
+def _validate_wear_release(release: ApkReleaseInput, expected_tag: str) -> None:
+    """Require one complete first-party Wear tuple for published RC6+ metadata."""
+
+    fields = (
+        release.wear_apk_url,
+        release.wear_sha256,
+        release.wear_size_bytes,
+        release.wear_package_name,
+        release.wear_version_code,
+        release.wear_minimum_android,
+    )
+    if not any(value is not None for value in fields):
+        if release.publish and release.version_code >= 6:
+            raise ValueError("RC6 and later releases require complete Wear metadata")
+        return
+    if not all(value is not None for value in fields):
+        raise ValueError("Wear release metadata must be complete")
+    from .release_artifacts import is_hosted_wear_apk_url
+
+    version = expected_tag.removeprefix("v")
+    if not is_hosted_wear_apk_url(str(release.wear_apk_url), version):
+        raise ValueError("Wear APK URL must use the matching Little Orbit API endpoint")
 
 
 def _canonical_github_url(url: AnyHttpUrl) -> bool:
@@ -562,6 +646,12 @@ class ApkReleaseResponse(StrictModel):
     size_bytes: int
     package_name: str
     signer_sha256: str
+    wear_apk_url: str | None
+    wear_sha256: str | None
+    wear_size_bytes: int | None
+    wear_package_name: str | None
+    wear_version_code: int | None
+    wear_minimum_android: int | None
     minimum_android: int
     minimum_supported_version_code: int
     required_after: datetime | None

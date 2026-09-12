@@ -11,19 +11,20 @@ This document describes the intended 1.0 behavior while the project is under dev
 | Email, password hash, verification state | Account access and recovery | Account owner; limited admin metadata | Until deletion plus bounded backup expiry |
 | Session identifiers and security events | Authentication and abuse response | Account owner sessions; privacy-limited admins | App sessions expire after 30 days; admin sessions after 30 minutes; revoked sessions are removed on the operational cleanup schedule |
 | Pairing state | Connect exactly two verified adults | The two accounts; limited admin metadata | Active pairing plus private archive references |
+| Relationship start date and proposals | Show mutually agreed calendar relationship age | Current couple only | Accepted date follows the pairing archive policy; retry records expire after 30 days and resolved proposals after 90 days |
 | Quiz drafts and responses | Private revisioned editing, then one reveal after both people finish all five | Author before reveal; current couple after reveal | Until user deletion/export policy applies |
 | Quiz status polling | Notify about partner completion or shared reveal | Device owner; content-free server response | Latest UTC date and booleans in private app storage |
 | Plain-text notes and revision history | Shared editing and recovery | Current couple only | Until deletion or private unpair archive policy applies |
 | Countdown details | Shared events and reminders | Current couple only | Until deleted/archive policy applies |
 | Location samples and accuracy | Estimate proximity sessions | Processing service; never admin UI | Raw coordinates deleted within 24 hours |
-| Together-time estimates and corrections | Display aggregate shared time | Current couple only; admins see operational counts | Until deletion/archive policy applies |
+| Nearby-time estimates and corrections | Display coordinate-free estimated nearby time separately from relationship age | Current couple only; admins see operational counts | Until deletion/archive policy applies |
 | Question reports | Hide unsafe/poor questions and review content | Reporter status; admin question metadata | Operational moderation window |
 | AI batch metadata | Reliability, safety, and reproducibility | Admins | Operational/audit policy set before launch |
 | App release and updater state | Discover and safely resume user-approved phone updates | Public release metadata; device-local phase and byte counts | Published records are immutable; local state is replaced by later releases or app removal |
 
 ## Consent and control
 
-Registration is for adults and uses 18+ self-attestation without identity documents. Background location and intimacy questions each require separate consent. Location permission alone does not enable collection. Both partners must opt into intimacy questions; either partner can disable them immediately.
+Registration is for adults and uses 18+ self-attestation without identity documents. Android asks separately for notification, precise foreground location, and background location permission. Location permission alone does not enable collection: both partners must also enable sharing in Little Orbit. Both partners must opt into intimacy questions; either partner can disable them immediately.
 
 Unpairing stops new sharing immediately. Each person receives a private read-only archive. An archive from an old pairing never becomes visible to a future partner. Users can export and delete their account from the Android app; deletion jobs and bounded backup expiry must be visible and documented before launch.
 
@@ -35,7 +36,9 @@ Daily quiz notifications poll only the UTC date, state revision, and completion/
 
 ## Location processing
 
-Clients send consented, bounded batches with timestamp, coordinate, accuracy, and a stable sample ID. The server rejects unauthorized samples and values outside its timestamp, coordinate, and accuracy bounds; deduplicates uploads; applies an initial configurable 100-metre threshold with accuracy-aware distance bounds; and stores at most one estimated bucket per couple and minute. Results are labelled estimates and show last update time. Corrections are audited without rewriting raw history silently.
+Clients request a balanced-power fix about every 15 minutes while signed in, locally permitted, and server consent remains enabled. Fixes older than two minutes are rejected locally. Clients send bounded encrypted retry queues containing a timestamp, coordinate, accuracy, and stable sample ID. The server accepts storage only while both partners consent, rejects out-of-policy values, and deduplicates uploads. Either partner's opt-out deletes both partners' raw coordinates.
+
+The estimate matches the two streams deterministically one-to-one within ten minutes. It counts only intervals bounded by two confident nearby pairs no more than twenty minutes apart, then writes coordinate-free UTC-minute buckets. The current algorithm version and process time are stored so stale results remain visible as estimates rather than facts. Corrections are audited without silently changing raw history.
 
 ## AI boundary
 
@@ -45,4 +48,4 @@ The planned 2.0 cycle tracker is outside this policy. It requires a separate hea
 
 ## App update boundary
 
-The update check sends only the normal request network metadata plus the installed app name and numeric version code. The public release response and APK endpoint require no account data and contain no relationship data. The self-hosted gateway receives ordinary download metadata such as IP address, time, requested version, and byte range; bounded operational logs follow the same privacy rules as other public requests. The phone stores a release ID, progress phase, byte counts, optional defer time, and sanitized failure code in its private app storage. Android's `DownloadManager` and `PackageInstaller` handle the APK after the person chooses to update. The phone updater does not read or transfer relationship data and never sends an APK to Wear OS.
+The update check sends only the normal request network metadata plus the installed app name and numeric version code. The public release response and phone/Wear APK endpoints require no account data and contain no relationship data. The self-hosted gateway receives ordinary download metadata such as IP address, time, requested version, and byte range; bounded operational logs follow the same privacy rules as other public requests. The phone stores a release ID, progress phase, byte counts, optional defer time, and sanitized failure code in its private app storage. Android's `DownloadManager` and `PackageInstaller` handle the phone APK after the person chooses to update. The separate Wear installer receives only public release metadata and the watch addresses supplied locally by the person; it removes the temporary APK after installation.

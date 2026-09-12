@@ -4,6 +4,7 @@ package com.littleorbit.mobile;
 public record HomeScreenState(
         String greeting,
         String togetherTime,
+        String nearbyTime,
         String countdown,
         String freshness,
         boolean signedIn,
@@ -11,7 +12,13 @@ public record HomeScreenState(
     /** Initial state while no authorized cache is available. */
     public static HomeScreenState signedOut() {
         return new HomeScreenState(
-                "Welcome to your orbit", "Not connected", "No countdown yet", "Sign in to sync", false, false);
+                "Welcome to your orbit",
+                "Not connected",
+                "Nearby time starts after pairing",
+                "No countdown yet",
+                "Sign in to sync",
+                false,
+                false);
     }
 
     /** Signed-in state before shared couple data is available locally. */
@@ -19,6 +26,7 @@ public record HomeScreenState(
         return new HomeScreenState(
                 "Your little orbit",
                 "Not connected",
+                "Nearby time unavailable",
                 "No countdown yet",
                 "Signed in — connect or retry sync",
                 true,

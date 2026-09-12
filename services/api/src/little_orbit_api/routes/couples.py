@@ -82,12 +82,10 @@ async def update_preferences(
         member.location_enabled = payload.location_enabled
         if not payload.location_enabled:
             await session.execute(
-                delete(LocationSample).where(LocationSample.account_id == actor.id)
+                delete(LocationSample).where(LocationSample.couple_id == couple.id)
             )
     if payload.proximity_threshold_m is not None:
         couple.proximity_threshold_m = payload.proximity_threshold_m
-    if "anniversary_date" in payload.model_fields_set:
-        couple.anniversary_date = payload.anniversary_date
     couple.updated_at = SystemClock().now()
     await session.commit()
     return await _preferences(session, member)

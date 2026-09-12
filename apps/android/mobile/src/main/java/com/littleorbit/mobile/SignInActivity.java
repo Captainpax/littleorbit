@@ -11,7 +11,7 @@ import javax.inject.Inject;
 
 /** Verified-account sign-in and App Link destination. */
 @AndroidEntryPoint
-public final class SignInActivity extends AppCompatActivity {
+public final class SignInActivity extends InsetAwareActivity {
     @Inject OrbitRepository orbit;
     private ActivitySignInBinding binding;
 

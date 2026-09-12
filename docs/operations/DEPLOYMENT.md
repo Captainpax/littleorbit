@@ -64,31 +64,36 @@ Publish in this order:
 
 1. Build, hash, and verify both APKs locally.
 2. Commit the final release code and documentation. Create the immutable GitHub tag and upload the exact APK/checksum files as a recovery mirror.
-3. Copy the phone APK to the ignored host path `data/releases/little-orbit-{version}.apk`. Never commit this directory.
-4. Update the verified fallback in `apps/web/src/lib/release.ts` with the same version code, API path, release URL, and SHA-256, then deploy the API and rebuilt web image. Compose mounts release storage read-only.
+3. Copy the phone and Wear APKs to `data/releases/little-orbit-{version}.apk` and `data/releases/little-orbit-wear-{version}.apk`. Never commit this ignored directory.
+4. Update the verified fallback in `apps/web/src/lib/release.ts` with the same version codes, API paths, release URL, byte counts, and SHA-256 values, then deploy the API and rebuilt web image. Compose mounts release storage read-only.
 5. Publish the release record. Publication verifies the local file's size and SHA-256 before committing metadata:
 
 ```powershell
 docker compose --env-file .env -f infra/compose.yaml exec api python -m little_orbit_api.cli publish-release `
-  --version 1.0.0-rc.5 `
-  --apk-url https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.5/apk `
-  --github-release-url https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.5 `
-  --sha256 044c7c068fde480407ed3f1d29ec7df4bdf19d1b855e334f4e30a769732848ed `
-  --release-notes "Focused daily quizzes, shared reveal, custom questions, and validated AI pools." `
-  --version-code 5 --size-bytes 15823790 `
+  --version 1.0.0-rc.6 `
+  --apk-url https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.6/apk `
+  --github-release-url https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.6 `
+  --sha256 71093232e3d3dc5c0523a785ad9314de2fa14a0338ef5c9ae336962caa9033fc `
+  --release-notes "Insets, relationship age, nearby estimates, permissions, widget, and Wear OS." `
+  --version-code 6 --size-bytes 15907162 `
   --package-name com.littleorbit.mobile `
   --signer-sha256 43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337 `
-  --minimum-android 29 --minimum-supported-version-code 5 `
-  --required-after 2026-09-12T15:45:00Z
+  --wear-apk-url https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.6/wear-apk `
+  --wear-sha256 857197277ac5da7c23db816ae8dd04f95defa137c4870a0cb1ef2abbac086027 `
+  --wear-size-bytes 14124686 --wear-package-name com.littleorbit.mobile `
+  --wear-version-code 6 --wear-minimum-android 30 `
+  --minimum-android 29 --minimum-supported-version-code 6 `
+  --required-after <VERIFIED-UTC-INSTANT>
 ```
 
 Verify both a complete response and a resumed slice through the public proxy. The range request must return `206`, `Content-Range: bytes 0-1023/15823790`, and exactly 1,024 bytes:
 
 ```powershell
-curl.exe -fSI https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.5/apk
-curl.exe -fsS -H "Range: bytes=0-1023" -D - -o range-check.bin https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.5/apk
+curl.exe -fSI https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.6/apk
+curl.exe -fsS -H "Range: bytes=0-1023" -D - -o range-check.bin https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.6/apk
+curl.exe -fSI https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.6/wear-apk
 ```
 
-Omit `--required-after` for normal optional releases. RC5 deliberately sets an immediate floor at version code 5 after the RC4 first-party updater path was deployed. Before scheduling any later compatibility floor, confirm that the excluded build can discover and install the published APK, then use an explicit timezone-aware UTC value. Once a published record exists, corrections require a new version and new tag; the API deliberately rejects edits and unpublishing.
+Omit `--required-after` for normal optional releases. Replace the placeholder only after the deployed migration, both hosted artifacts, updater discovery, complete/range downloads, and health checks pass. RC6 deliberately moves the floor to version code 6 after those checks. Once a published record exists, corrections require a new version and new tag; the API deliberately rejects edits and unpublishing.
 
 The public certificate and expected fingerprint are documented in [`../signing/README.md`](../signing/README.md).

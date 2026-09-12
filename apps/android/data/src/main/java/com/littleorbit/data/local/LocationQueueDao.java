@@ -28,4 +28,9 @@ public interface LocationQueueDao {
     /** Removes samples older than the server's raw-coordinate retention window. */
     @Query("DELETE FROM queued_locations WHERE recordedAtEpochMillis <= :cutoffEpochMillis")
     void deleteOlderThan(long cutoffEpochMillis);
+
+    /** Retains at most the most recent 96 encrypted samples during long outages. */
+    @Query("DELETE FROM queued_locations WHERE sampleId NOT IN ("
+            + "SELECT sampleId FROM queued_locations ORDER BY recordedAtEpochMillis DESC LIMIT 96)")
+    void trimToLimit();
 }

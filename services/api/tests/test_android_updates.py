@@ -23,8 +23,11 @@ from little_orbit_api.models import ApkRelease
 from little_orbit_api.release_artifacts import (
     ReleaseArtifactUnavailable,
     hosted_apk_url,
+    hosted_wear_apk_url,
     is_hosted_apk_url,
+    is_hosted_wear_apk_url,
     verify_release_artifact,
+    verify_wear_release_artifact,
 )
 from little_orbit_api.release_service import PublishedReleaseImmutable, upsert_apk_release
 from little_orbit_api.routes import releases
@@ -70,6 +73,26 @@ def test_release_contract_accepts_matching_first_party_endpoint() -> None:
     release = release_input(apk_url=hosted_apk_url("1.0.0-rc.3"))
     assert str(release.apk_url) == hosted_apk_url("1.0.0-rc.3")
     assert is_hosted_apk_url(str(release.apk_url), release.version)
+
+
+def test_rc6_requires_complete_matching_wear_metadata() -> None:
+    with pytest.raises(ValidationError):
+        release_input(version="1.0.0-rc.6", version_code=6)
+    release = release_input(
+        version="1.0.0-rc.6",
+        version_code=6,
+        apk_url=hosted_apk_url("1.0.0-rc.6"),
+        github_release_url=(
+            "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.6"
+        ),
+        wear_apk_url=hosted_wear_apk_url("1.0.0-rc.6"),
+        wear_sha256="b" * 64,
+        wear_size_bytes=2048,
+        wear_package_name="com.littleorbit.mobile",
+        wear_version_code=1,
+        wear_minimum_android=30,
+    )
+    assert is_hosted_wear_apk_url(str(release.wear_apk_url), release.version)
 
 
 @pytest.mark.parametrize(
@@ -130,6 +153,16 @@ def test_release_artifact_requires_exact_immutable_bytes(tmp_path: Path) -> None
         verify_release_artifact(root, "1.0.0-rc.4", 18, "a" * 64)
 
 
+def test_wear_release_artifact_uses_distinct_filename(tmp_path: Path) -> None:
+    artifact = tmp_path / "little-orbit-wear-1.0.0-rc.6.apk"
+    artifact.write_bytes(b"wear-apk")
+    digest = "342445e5f7af9eff85cd69cdacca533068998636348ba70b073fdea3de74a275"
+
+    verified = verify_wear_release_artifact(tmp_path, "1.0.0-rc.6", 8, digest)
+
+    assert verified.path == artifact
+
+
 def test_release_endpoint_supports_head_and_byte_range(tmp_path: Path) -> None:
     content = b"signed-apk-fixture"
     digest = "ade12cd72b92f20a396dceb889ba24f899806a0afd7904cb69ff815909ef2eb1"
@@ -163,6 +196,44 @@ def test_release_endpoint_supports_head_and_byte_range(tmp_path: Path) -> None:
     assert partial.headers["x-checksum-sha256"] == digest
 
 
+def test_wear_endpoint_uses_its_own_verified_artifact(tmp_path: Path) -> None:
+    phone = b"phone-apk"
+    wear = b"wear-apk-fixture"
+    phone_digest = "da33b1bc7e598023fde90814b6a74345c655bbaa37202985f0d86aed6de5e655"
+    wear_digest = "6ae28353d99fdade4c01623835558cc610e1a64d3aaf460035df8c71c45f3d84"
+    version = "1.0.0-rc.6"
+    (tmp_path / f"little-orbit-{version}.apk").write_bytes(phone)
+    (tmp_path / f"little-orbit-wear-{version}.apk").write_bytes(wear)
+    payload = release_input(
+        version=version,
+        version_code=6,
+        apk_url=hosted_apk_url(version),
+        github_release_url=f"https://github.com/Captainpax/littleorbit/releases/tag/v{version}",
+        sha256=phone_digest,
+        size_bytes=len(phone),
+        wear_apk_url=hosted_wear_apk_url(version),
+        wear_sha256=wear_digest,
+        wear_size_bytes=len(wear),
+        wear_package_name="com.littleorbit.mobile",
+        wear_version_code=6,
+        wear_minimum_android=30,
+    )
+    session = AsyncMock()
+    session.scalar.return_value = published_record(payload)
+
+    with TestClient(_release_test_app(session, tmp_path)) as client:
+        head = client.head(f"/v1/releases/{version}/wear-apk")
+        partial = client.get(
+            f"/v1/releases/{version}/wear-apk", headers={"Range": "bytes=5-7"}
+        )
+
+    assert head.status_code == 200
+    assert head.headers["content-length"] == str(len(wear))
+    assert partial.status_code == 206
+    assert partial.content == b"apk"
+    assert partial.headers["x-checksum-sha256"] == wear_digest
+
+
 def _release_test_app(session: AsyncMock, storage: Path) -> FastAPI:
     """Build an isolated release router with no real database connection."""
 
@@ -191,6 +262,12 @@ def published_record(payload: ApkReleaseInput) -> ApkRelease:
             size_bytes=payload.size_bytes,
             package_name=payload.package_name,
             signer_sha256=payload.signer_sha256,
+            wear_apk_url=str(payload.wear_apk_url) if payload.wear_apk_url else None,
+            wear_sha256=payload.wear_sha256,
+            wear_size_bytes=payload.wear_size_bytes,
+            wear_package_name=payload.wear_package_name,
+            wear_version_code=payload.wear_version_code,
+            wear_minimum_android=payload.wear_minimum_android,
             minimum_android=payload.minimum_android,
             minimum_supported_version_code=payload.minimum_supported_version_code,
             required_after=payload.required_after,

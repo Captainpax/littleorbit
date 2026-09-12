@@ -25,6 +25,55 @@
             android:layout_marginTop="18dp"
             android:textColor="@color/lavender" />
 
+        <EditText
+            android:id="@+id/startDateInput"
+            style="@style/Widget.LittleOrbit.Input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:hint="@string/start_date_hint"
+            android:inputType="date"
+            android:textColor="@color/cloud"
+            android:textColorHint="@color/muted" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/proposeDateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/propose_start_date" />
+        <TextView
+            android:id="@+id/pendingDateText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/lavender" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/acceptDateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/accept_start_date"
+            android:visibility="gone" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/declineDateButton"
+            style="@style/Widget.LittleOrbit.Button.Outline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/decline_start_date"
+            android:visibility="gone" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/cancelDateButton"
+            style="@style/Widget.LittleOrbit.Button.Outline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/cancel_start_date"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/historyText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:textColor="@color/muted" />
+
         <Spinner
             style="@style/Widget.LittleOrbit.Spinner"
             android:id="@+id/bucketPicker"

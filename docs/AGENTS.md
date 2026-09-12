@@ -20,6 +20,7 @@ Keep public promises, architecture diagrams, operations, screenshots, and decisi
 - Use repository-relative links and alt text. Never embed production secrets, private IP details beyond the documented topology, or personal data.
 - Report tests and device checks honestly. Distinguish configured, simulated, locally verified, and production verified.
 - Release notes must record version code, signer identity, artifact hash, compatibility floor, and whether enforcement is inactive or scheduled.
+- Update `ROADMAP.md` in the same change whenever code, product behavior, infrastructure, or release state changes; documentation-only corrections should update it when they alter stated scope or status.
 
 ## Start here
 
@@ -32,7 +33,7 @@ Keep public promises, architecture diagrams, operations, screenshots, and decisi
 ## Commands and required checks
 
 ```bash
-npx --yes markdownlint-cli2 "**/*.md" "#node_modules"
+npx --yes markdownlint-cli2 "**/*.md"
 python infra/scripts/check_docs.py
 npm --prefix apps/web run capture:showcase
 ```

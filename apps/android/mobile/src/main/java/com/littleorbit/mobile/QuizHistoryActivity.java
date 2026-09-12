@@ -14,7 +14,7 @@ import javax.inject.Inject;
 
 /** Thirty-day quiz navigator with server-enforced seven-day catch-up. */
 @AndroidEntryPoint
-public final class QuizHistoryActivity extends AppCompatActivity {
+public final class QuizHistoryActivity extends InsetAwareActivity {
     @Inject OrbitRepository orbit;
     private ActivityQuizHistoryBinding binding;
 

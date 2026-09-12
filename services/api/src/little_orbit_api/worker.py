@@ -15,7 +15,7 @@ from little_orbit_ai.pipeline import (
 )
 from little_orbit_ai.safety import normalized_hash
 from little_orbit_ai.schemas import CandidateQuestion, Category, IconKey, QuestionKind
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .clock import SystemClock
@@ -35,6 +35,7 @@ from .models import (
     QuizDayQuestion,
     Session,
 )
+from .together_models import RelationshipStartProposal, TogetherOperation
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,6 +52,25 @@ async def run_maintenance_once() -> None:
             )
         )
         await session.execute(delete(Session).where(Session.expires_at <= now - timedelta(days=7)))
+        await session.execute(
+            update(RelationshipStartProposal)
+            .where(
+                RelationshipStartProposal.status == "pending",
+                RelationshipStartProposal.expires_at <= now,
+            )
+            .values(status="expired", decided_at=now)
+        )
+        await session.execute(
+            delete(TogetherOperation).where(
+                TogetherOperation.created_at <= now - timedelta(days=30)
+            )
+        )
+        await session.execute(
+            delete(RelationshipStartProposal).where(
+                RelationshipStartProposal.status != "pending",
+                RelationshipStartProposal.created_at <= now - timedelta(days=90),
+            )
+        )
         jobs = list(
             await session.scalars(
                 select(DeletionJob)

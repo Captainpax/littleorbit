@@ -9,6 +9,7 @@ import com.littleorbit.data.local.LocationQueueDao;
 import com.littleorbit.data.local.QueuedLocationEntity;
 import com.littleorbit.data.remote.ApiModels;
 import com.littleorbit.data.remote.LittleOrbitApi;
+import com.littleorbit.data.remote.TogetherTimeModels;
 import com.littleorbit.data.security.SessionStore;
 import dagger.assisted.Assisted;
 import dagger.assisted.AssistedInject;
@@ -24,6 +25,7 @@ public final class LocationUploadWorker extends Worker {
     private final LocationQueueDao queue;
     private final SessionStore cipher;
     private final LittleOrbitApi api;
+    private final DisplayCacheSynchronizer displaySynchronizer;
 
     /** Creates an injected bounded upload worker. */
     @AssistedInject
@@ -32,11 +34,13 @@ public final class LocationUploadWorker extends Worker {
             @Assisted @NonNull WorkerParameters parameters,
             LocationQueueDao queue,
             SessionStore cipher,
-            LittleOrbitApi api) {
+            LittleOrbitApi api,
+            DisplayCacheSynchronizer displaySynchronizer) {
         super(context, parameters);
         this.queue = queue;
         this.cipher = cipher;
         this.api = api;
+        this.displaySynchronizer = displaySynchronizer;
     }
 
     /** Uploads a maximum of 48 samples and deletes only acknowledged rows. */
@@ -53,7 +57,7 @@ public final class LocationUploadWorker extends Worker {
             if (samples.isEmpty()) {
                 return Result.success();
             }
-            Response<ApiModels.LocationBatchResult> response =
+            Response<TogetherTimeModels.LocationBatchResult> response =
                     api.uploadLocations(new ApiModels.LocationBatch(samples)).execute();
             if (response.isSuccessful()) {
                 List<String> ids = new ArrayList<>(rows.size());
@@ -61,6 +65,7 @@ public final class LocationUploadWorker extends Worker {
                     ids.add(row.sampleId);
                 }
                 queue.deleteByIds(ids);
+                refreshDisplayCache();
                 return Result.success();
             }
             if (response.code() == 403) {
@@ -70,6 +75,14 @@ public final class LocationUploadWorker extends Worker {
             return response.code() >= 500 ? Result.retry() : Result.failure();
         } catch (java.io.IOException exception) {
             return Result.retry();
+        }
+    }
+
+    private void refreshDisplayCache() {
+        try {
+            displaySynchronizer.refresh();
+        } catch (DisplayCacheSynchronizer.SyncException ignored) {
+            // The acknowledged location batch must not be retried just for display refresh.
         }
     }
 

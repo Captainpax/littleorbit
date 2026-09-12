@@ -27,6 +27,7 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 7. Use Java 17/XML in Android production code, Python with strict typing in services, and strict TypeScript in the web app.
 8. Keep modules below 500 logical lines, functions/methods below 60 lines, and cyclomatic complexity at most 10. A ratcheted baseline may document existing exceptions and may only decrease.
 9. Preserve unrelated work. Never guess a secret, DNS state, proxy state, or production state.
+10. Update `ROADMAP.md` in the same change whenever product behavior, code, release state, or infrastructure changes.
 
 ## System invariants
 

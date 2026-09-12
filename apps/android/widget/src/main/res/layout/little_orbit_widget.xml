@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
@@ -39,6 +40,15 @@
         android:textSize="23sp" />
 
     <TextView
+        android:id="@+id/widget_nearby"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:text="Nearby estimate unavailable"
+        android:textColor="#AEBBD2"
+        android:textSize="11sp" />
+
+    <TextView
         android:id="@+id/widget_countdown"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -60,5 +70,14 @@
         android:letterSpacing="0.1"
         android:text="ESTIMATE · STALE"
         android:textColor="#FFC45B"
+        android:textSize="9sp" />
+
+    <TextView
+        android:id="@+id/widget_refresh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="TAP TO REFRESH"
+        android:textColor="#CEC7FF"
         android:textSize="9sp" />
 </LinearLayout>

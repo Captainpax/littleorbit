@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.wear.widget.BoxInsetLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#050C1A"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:background="#050C1A">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="12dp"
+        app:layout_boxedEdges="all">
 
     <ImageView
         android:layout_width="64dp"
@@ -14,7 +20,7 @@
         android:src="@drawable/wear_icon" />
 
     <TextView
-        android:id="@+id/wearStatus"
+        android:id="@+id/wearEyebrow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
@@ -34,10 +40,21 @@
         android:textStyle="bold" />
 
     <TextView
+        android:id="@+id/wearNearby"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/nearby_unavailable"
+        android:textColor="#AEBBD2"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/wearStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="@string/open_phone_to_refresh"
         android:textColor="#FFC45B"
         android:textSize="11sp" />
-</LinearLayout>
+    </LinearLayout>
+</androidx.wear.widget.BoxInsetLayout>

@@ -7,7 +7,7 @@ android {
         applicationId = "com.littleorbit.mobile"
         minSdk = 30
         targetSdk = 36
-        versionCode = rootProject.extra["littleOrbitVersionCode"] as Int
+        versionCode = rootProject.extra["littleOrbitWearVersionCode"] as Int
         versionName = rootProject.extra["littleOrbitVersionName"] as String
     }
     compileOptions {
@@ -26,4 +26,5 @@ dependencies {
     implementation(libs.androidx.concurrent.futures)
     implementation(libs.guava)
     implementation(libs.play.services.wearable)
+    testImplementation(libs.junit4)
 }

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.littleorbit.data.local.DisplayCacheEntity;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import org.junit.Test;
 
 /** Regression coverage for authentication and display-cache state mapping. */
@@ -28,7 +29,13 @@ public final class HomeStateMapperTest {
     public void cacheBecomesStaleOnlyAfterFreshnessWindow() {
         Instant updatedAt = Instant.parse("2026-09-11T12:00:00Z");
         DisplayCacheEntity cache = new DisplayCacheEntity(
-                "primary", 172_800, "Dinner", 0, updatedAt.toEpochMilli());
+                "primary",
+                updatedAt.atZone(ZoneOffset.UTC).toLocalDate().minusDays(2).toEpochDay(),
+                172_800,
+                updatedAt.toEpochMilli(),
+                "Dinner",
+                0,
+                updatedAt.toEpochMilli());
 
         HomeScreenState fresh = HomeStateMapper.fromCache(
                 cache, true, updatedAt.plusSeconds(6 * 60 * 60));
@@ -36,6 +43,8 @@ public final class HomeStateMapperTest {
                 cache, true, updatedAt.plusSeconds(6 * 60 * 60 + 1));
 
         assertEquals("Updated recently", fresh.freshness());
-        assertEquals("Estimate may be stale", stale.freshness());
+        assertEquals("Cached data may be stale", stale.freshness());
+        assertEquals("2 days together", fresh.togetherTime());
+        assertEquals("2d 0h nearby · estimate", fresh.nearbyTime());
     }
 }

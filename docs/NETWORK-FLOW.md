@@ -124,6 +124,31 @@ sequenceDiagram
 
 A person may reopen and edit a finished set only before the shared reveal. Past incomplete days remain editable for seven days and remain visible for 30. Custom questions take the next available UTC slot, up to all five questions, and surprise content is hidden from the other partner until its day arrives. Non-surprise custom questions appear in both partners' pending queue. Intimacy-tagged custom or global questions require both partners' current consent. If either person opts out, every unrevealed intimacy prompt is replaced atomically, its drafts are cleared, and both people review the safe replacement before finishing again.
 
+## Relationship start-date agreement
+
+```mermaid
+sequenceDiagram
+    actor A as Proposer
+    actor B as Partner
+    participant API
+    participant DB as PostgreSQL
+    A->>API: Propose date + operation ID
+    API->>DB: Authorize member; lock couple and pending proposal
+    API->>DB: Replace A's earlier proposal; expire after 7 days
+    API-->>A: Pending proposal
+    B->>API: Accept or decline + operation ID
+    API->>DB: Authorize member; lock current proposal
+    alt accepted and still current
+        API->>DB: Store shared start date atomically
+        API-->>A: Relationship age updates on refresh
+        API-->>B: Relationship age updates on refresh
+    else stale, expired, reused, or wrong role
+        API-->>B: 409; refresh current state
+    end
+```
+
+Only the proposer may cancel. Only the other partner may accept or decline. Operation IDs return the original response after a safe retry, and the database permits only one pending proposal per couple.
+
 ## Together-time processing
 
 ```mermaid
@@ -132,14 +157,16 @@ flowchart TD
     Samples --> Upload[Authenticated idempotent batch]
     Upload --> Checks{Authorized, consent current,<br/>within time/accuracy bounds, unique}
     Checks -->|reject| Audit[Privacy-safe rejection event]
-    Checks -->|accept| Match[Accuracy-aware proximity match]
-    Match --> Threshold{Within configured 100 m?}
-    Threshold -->|yes| Bucket[Insert one unique couple/minute bucket]
-    Threshold -->|no| Skip[Do not count the minute]
+    Checks -->|accept| Match[Deterministic one-to-one match<br/>within 10 minutes]
+    Match --> Threshold{Two consecutive confident pairs<br/>within 100 m and at most 20 min apart?}
+    Threshold -->|yes| Bucket[Replace rolling uncorrected<br/>UTC-minute estimates]
+    Threshold -->|no| Skip[Do not count the interval]
     Bucket --> Estimate[Update aggregate estimate + last-updated]
     Skip --> Estimate
     Estimate --> Cache[Minimal widget/watch cache]
     Samples --> Expiry[Delete raw coordinates within 24 h]
+    OptOut[Either partner opts out] --> Delete[Delete both partners' raw coordinates]
+    Delete --> Stop[Reject future uploads until mutual consent]
     Correction[User correction] --> CorrectionAudit[Append audited correction]
     CorrectionAudit --> Estimate
 ```
@@ -179,7 +206,7 @@ flowchart LR
     Work -->|idempotency key + base revision| API[FastAPI]
     API -->|accepted state| Room
     API -->|stale revision| Conflict[Explicit local/server reconciliation]
-    Phone[Phone cache publisher] -->|Wearable Data Layer| Watch[Wear OS cache]
+    Phone[Phone cache publisher] -->|Versioned Wearable Data Layer| Watch[Wear OS cache]
     Room --> Widget[Home-screen widget]
     Watch --> Tile[Wear OS tile]
     Watch --> Complication[Watch-face complication]
@@ -187,7 +214,28 @@ flowchart LR
     Watch -->|age threshold| Stale
 ```
 
-Tokens stay in Android Keystore-backed storage. The offline queue contains encrypted countdown mutations, while widgets and watch surfaces receive only the minimal cached together-time and next-countdown values they render.
+Tokens stay in Android Keystore-backed storage. The offline queue contains encrypted countdown mutations. Widget and watch caches contain only the accepted relationship start date, coordinate-free nearby seconds and process time, next countdown, and cache-sync time. RC6 publishes the v2 cache plus the legacy v1 path for one release so an older watch fails stale rather than displaying a new value with the wrong meaning.
+
+## Self-hosted Wear installation
+
+```mermaid
+sequenceDiagram
+    actor Person
+    participant Guide as /download#wear
+    participant Script as Signed installer script
+    participant API as Public release API
+    participant Watch as Wear OS wireless ADB
+    Person->>Guide: Choose Install on Wear OS
+    Guide-->>Person: Explain wireless-debugging steps
+    Person->>Script: Enter watch pairing and connection addresses
+    Script->>API: Fetch current immutable release metadata
+    Script->>API: Download versioned Wear APK
+    Script->>Script: Verify endpoint, bytes, hash, package, version, signer
+    Script->>Watch: Pair, verify watch characteristic, install -r
+    Watch-->>Person: Little Orbit app, tile, and complication available
+```
+
+The phone checks connected nodes and the `little_orbit_display_v2` capability so More can distinguish no watch, a missing watch app, and a connected Little Orbit watch. Platform security prevents the phone app from silently sideloading a self-hosted APK.
 
 ## Verified Android phone updates
 

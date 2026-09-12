@@ -14,8 +14,9 @@
         <item name="android:windowBackground">@drawable/background_cosmic</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
-        <item name="android:statusBarColor">@color/navy</item>
-        <item name="android:navigationBarColor">@color/navy_deep</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="materialButtonStyle">@style/Widget.LittleOrbit.Button.Primary</item>
     </style>

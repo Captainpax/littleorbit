@@ -120,7 +120,9 @@ async def upload_locations(
     if couple is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
     mutual = await both_members_consent(session, member.couple_id, "location_enabled")
-    partner_id = await _partner_id(session, member.couple_id, actor.id) if mutual else None
+    if not mutual:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Mutual location sharing is disabled")
+    partner_id = await _partner_id(session, member.couple_id, actor.id)
     accepted = 0
     together = 0
     for item in payload.samples:

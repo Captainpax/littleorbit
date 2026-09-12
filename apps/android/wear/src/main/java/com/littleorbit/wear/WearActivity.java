@@ -20,9 +20,11 @@ public final class WearActivity extends Activity {
 
     private void render() {
         WearDisplayCache.State cache = WearDisplayCache.read(this);
-        findViewById(android.R.id.content).setContentDescription(cache.statusText());
+        findViewById(android.R.id.content).setContentDescription(cache.accessibilityText());
         ((android.widget.TextView) findViewById(R.id.wearTogether))
-                .setText(cache.togetherText());
+                .setText(cache.relationshipText());
+        ((android.widget.TextView) findViewById(R.id.wearNearby))
+                .setText(cache.nearbyText());
         ((android.widget.TextView) findViewById(R.id.wearStatus))
                 .setText(cache.statusText());
     }

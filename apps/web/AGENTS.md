@@ -19,6 +19,7 @@ Own the public discovery/account website and the metadata-only owner console.
 - Download metadata includes version, minimum Android level, SHA-256, release notes, and a GitHub Release URL; the versioned Little Orbit API endpoint hosts the APK bytes with resumable delivery.
 - Keep the checked-in release fallback byte-for-byte aligned with the newest signed publication so an API restart cannot replace a valid download with stale metadata.
 - Meet keyboard, focus, large-text, reduced-motion, contrast, metadata, and mobile layout requirements.
+- Update `ROADMAP.md` in the same change whenever web behavior, code, or release state changes.
 
 ## Start here
 
@@ -50,8 +51,6 @@ Update README and SHOWCASE for routes and visible changes. Update PRIVACY and NE
 - Authorizing admin UI only in middleware or client code.
 - Linking the primary download action to an unverified third-party or unversioned APK URL.
 - Hiding focus styles to match a mockup.
-
-
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

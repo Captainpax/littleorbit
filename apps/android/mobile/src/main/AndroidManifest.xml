@@ -30,6 +30,7 @@
                 tools:node="remove" />
         </provider>
         <activity android:name=".PrivacyActivity" android:exported="false" />
+        <activity android:name=".DeviceSetupActivity" android:exported="false" />
         <activity android:name=".ArchivesActivity" android:exported="false" />
         <activity android:name=".TogetherTimeActivity" android:exported="false" />
         <activity android:name=".NotesActivity" android:exported="false" />

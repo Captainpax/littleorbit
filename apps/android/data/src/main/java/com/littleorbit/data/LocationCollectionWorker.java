@@ -71,7 +71,7 @@ public final class LocationCollectionWorker extends Worker {
                             new CancellationTokenSource().getToken()),
                     20,
                     TimeUnit.SECONDS);
-            if (location == null || !location.hasAccuracy() || location.getAccuracy() > 1000) {
+            if (!usable(location)) {
                 return Result.retry();
             }
             enqueue(location);
@@ -90,7 +90,7 @@ public final class LocationCollectionWorker extends Worker {
         try {
             Response<ApiModels.Preferences> response = api.preferences().execute();
             if (response.isSuccessful() && response.body() != null) {
-                return !response.body().locationByMe;
+                return !response.body().locationByBoth;
             }
             return response.code() >= 400 && response.code() < 500;
         } catch (java.io.IOException offline) {
@@ -109,7 +109,7 @@ public final class LocationCollectionWorker extends Worker {
 
     private void enqueue(Location location) throws JSONException {
         String sampleId = UUID.randomUUID().toString();
-        long recordedAt = System.currentTimeMillis();
+        long recordedAt = location.getTime();
         JSONObject payload = new JSONObject()
                 .put("recorded_at", Instant.ofEpochMilli(recordedAt).toString())
                 .put("latitude", location.getLatitude())
@@ -117,5 +117,14 @@ public final class LocationCollectionWorker extends Worker {
                 .put("accuracy_m", location.getAccuracy());
         queue.insert(new QueuedLocationEntity(
                 sampleId, cipher.seal(payload.toString()), recordedAt));
+        queue.trimToLimit();
+    }
+
+    private static boolean usable(Location location) {
+        if (location == null || !location.hasAccuracy() || location.getAccuracy() > 1000) {
+            return false;
+        }
+        long ageMillis = System.currentTimeMillis() - location.getTime();
+        return ageMillis >= 0 && ageMillis <= TimeUnit.MINUTES.toMillis(2);
     }
 }

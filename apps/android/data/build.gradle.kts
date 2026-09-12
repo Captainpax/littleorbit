@@ -11,6 +11,7 @@ android {
     compileSdk = 36
     defaultConfig {
         minSdk = 29
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField(
             "int",
             "CLIENT_VERSION_CODE",
@@ -46,4 +47,7 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.moshi)
     testImplementation(libs.junit4)
+    androidTestImplementation(libs.androidx.room.testing)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
 }

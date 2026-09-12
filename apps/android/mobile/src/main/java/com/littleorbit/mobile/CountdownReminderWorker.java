@@ -1,7 +1,6 @@
 package com.littleorbit.mobile;
 
 import android.Manifest;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -13,8 +12,6 @@ import androidx.work.WorkerParameters;
 
 /** Local-only countdown reminder that contains no notes or partner data. */
 public final class CountdownReminderWorker extends Worker {
-    private static final String CHANNEL_ID = "countdowns";
-
     /** Creates a local reminder worker. */
     public CountdownReminderWorker(
             @NonNull Context context, @NonNull WorkerParameters parameters) {
@@ -31,12 +28,10 @@ public final class CountdownReminderWorker extends Worker {
             return Result.success();
         }
         NotificationManager manager = context.getSystemService(NotificationManager.class);
-        manager.createNotificationChannel(new NotificationChannel(
-                CHANNEL_ID, context.getString(R.string.countdowns), NotificationManager.IMPORTANCE_DEFAULT));
         String title = getInputData().getString("title");
         manager.notify(
                 getId().hashCode(),
-                new NotificationCompat.Builder(context, CHANNEL_ID)
+                new NotificationCompat.Builder(context, NotificationChannels.COUNTDOWNS)
                         .setSmallIcon(R.drawable.ic_launcher_foreground)
                         .setContentTitle(title == null ? context.getString(R.string.countdown_due) : title)
                         .setContentText(context.getString(R.string.countdown_due))

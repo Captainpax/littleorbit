@@ -9,6 +9,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.littleorbit.data.repository.OrbitRepository;
@@ -21,7 +22,7 @@ import javax.inject.Inject;
 
 /** Cosmic phone shell that renders home, More, and the persistent verified updater. */
 @AndroidEntryPoint
-public final class MainActivity extends AppCompatActivity
+public final class MainActivity extends InsetAwareActivity
         implements AndroidUpdateCoordinator.Listener {
     private ActivityMainBinding binding;
     private HomeViewModel model;
@@ -29,8 +30,10 @@ public final class MainActivity extends AppCompatActivity
     private DialogUpdateBinding updateBinding;
     private UpdatePresentation activeUpdate;
     private boolean manualUpdateCheck;
+    private boolean setupLookupStarted;
     @Inject OrbitRepository orbit;
     @Inject AndroidUpdateCoordinator updates;
+    @Inject WearStatusChecker wearStatus;
 
     private final ActivityResultLauncher<Intent> installPermission = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -53,6 +56,8 @@ public final class MainActivity extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
+        reconcileQuizNotifications();
+        refreshSetupStatus();
         model.refresh();
         updates.check(false, this);
     }
@@ -76,8 +81,14 @@ public final class MainActivity extends AppCompatActivity
         binding.archivesButton.setOnClickListener(view -> open(ArchivesActivity.class));
         binding.togetherButton.setOnClickListener(view -> open(TogetherTimeActivity.class));
         binding.moreTogetherButton.setOnClickListener(view -> open(TogetherTimeActivity.class));
+        binding.notificationSetupButton.setOnClickListener(view -> open(DeviceSetupActivity.class));
+        binding.locationSetupButton.setOnClickListener(view -> open(DeviceSetupActivity.class));
+        binding.wearInstallButton.setOnClickListener(view -> openWeb("/download#wear"));
         binding.signOutButton.setOnClickListener(
-                view -> orbit.signOut().thenRun(() -> runOnUiThread(this::finish)));
+                view -> orbit.signOut().thenRun(() -> runOnUiThread(() -> {
+                    QuizStatusWorker.cancel(this);
+                    finish();
+                })));
     }
 
     private void bindNavigation() {
@@ -100,6 +111,7 @@ public final class MainActivity extends AppCompatActivity
     private void renderHome(HomeScreenState state) {
         binding.greetingText.setText(state.greeting());
         binding.togetherText.setText(state.togetherTime());
+        binding.nearbyText.setText(state.nearbyTime());
         binding.countdownText.setText(state.countdown());
         binding.statusText.setText(state.freshness());
         binding.partnerPlanet.setText(state.connected() ? "P" : "?");
@@ -113,6 +125,75 @@ public final class MainActivity extends AppCompatActivity
         binding.moreTogetherButton.setVisibility(state.connected() ? View.VISIBLE : View.GONE);
         binding.privacyButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
         binding.archivesButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
+        binding.locationStatus.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
+        binding.locationSetupButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
+        maybeOfferSetup(state);
+    }
+
+    private void reconcileQuizNotifications() {
+        if (orbit.isSignedIn() && PermissionChecks.notificationsGranted(this)) {
+            QuizStatusWorker.schedule(this);
+        } else {
+            QuizStatusWorker.cancel(this);
+        }
+    }
+
+    private void refreshSetupStatus() {
+        binding.notificationStatus.setText(
+                PermissionChecks.notificationsGranted(this)
+                        ? R.string.notifications_ready
+                        : R.string.notifications_off);
+        boolean locationReady = PermissionChecks.fineLocationGranted(this)
+                && PermissionChecks.backgroundLocationGranted(this);
+        binding.locationStatus.setText(
+                locationReady ? R.string.location_permission_ready : R.string.location_permission_off);
+        if (orbit.isSignedIn() && locationReady) {
+            orbit.preferences().thenAccept(preferences -> runOnUiThread(() ->
+                    renderLocationStatus(preferences))).exceptionally(failure -> null);
+        }
+        wearStatus.check().thenAccept(state -> runOnUiThread(() -> renderWearStatus(state)));
+    }
+
+    private void renderLocationStatus(com.littleorbit.data.remote.ApiModels.Preferences preferences) {
+        if (isFinishing()) return;
+        binding.locationStatus.setText(
+                preferences.locationByBoth
+                        ? R.string.location_ready_both
+                        : preferences.locationByMe
+                                ? R.string.location_waiting_partner
+                                : R.string.location_server_off);
+    }
+
+    private void renderWearStatus(WearStatusChecker.State state) {
+        int text = switch (state) {
+            case APP_CONNECTED -> R.string.wear_connected;
+            case APP_MISSING -> R.string.wear_missing;
+            case NO_WATCH -> R.string.wear_no_watch;
+            case UNAVAILABLE -> R.string.wear_status_unavailable;
+        };
+        binding.wearStatus.setText(text);
+        binding.wearInstallButton.setEnabled(state != WearStatusChecker.State.APP_CONNECTED);
+    }
+
+    private void maybeOfferSetup(HomeScreenState state) {
+        if (!state.connected() || setupLookupStarted) return;
+        setupLookupStarted = true;
+        orbit.preferences().thenAccept(preferences -> runOnUiThread(() -> {
+            if (isFinishing()) return;
+            String key = "setup_prompted_" + preferences.coupleId;
+            android.content.SharedPreferences values =
+                    getSharedPreferences("device_setup", MODE_PRIVATE);
+            if (values.getBoolean(key, false)) return;
+            values.edit().putBoolean(key, true).apply();
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.finish_setup)
+                    .setMessage(R.string.setup_prompt)
+                    .setNegativeButton(R.string.later, null)
+                    .setPositiveButton(
+                            R.string.start_setup,
+                            (dialog, which) -> open(DeviceSetupActivity.class))
+                    .show();
+        })).exceptionally(failure -> null);
     }
 
     private void showHome() {

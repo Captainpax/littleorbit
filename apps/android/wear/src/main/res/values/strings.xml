@@ -3,4 +3,5 @@
     <string name="open_phone_to_refresh">Open phone to refresh</string>
     <string name="together_for">Together for</string>
     <string name="unavailable">Unavailable</string>
+    <string name="nearby_unavailable">Nearby estimate unavailable</string>
 </resources>

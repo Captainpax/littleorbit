@@ -15,7 +15,7 @@ import org.json.JSONArray;
 
 /** Read-only viewer for archives owned by the signed-in account. */
 @AndroidEntryPoint
-public final class ArchivesActivity extends AppCompatActivity {
+public final class ArchivesActivity extends InsetAwareActivity {
     @Inject OrbitRepository orbit;
     private ActivityArchivesBinding binding;
     private List<ApiModels.ArchiveSummary> archives = List.of();

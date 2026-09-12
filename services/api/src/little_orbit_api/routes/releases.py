@@ -15,6 +15,7 @@ from ..release_artifacts import (
     APK_MEDIA_TYPE,
     ReleaseArtifactUnavailable,
     verify_release_artifact,
+    verify_wear_release_artifact,
 )
 from ..schemas import ApkReleaseResponse
 
@@ -64,6 +65,12 @@ async def current_release(
         size_bytes=size_bytes,
         package_name=package_name,
         signer_sha256=signer_sha256,
+        wear_apk_url=release.wear_apk_url,
+        wear_sha256=release.wear_sha256,
+        wear_size_bytes=release.wear_size_bytes,
+        wear_package_name=release.wear_package_name,
+        wear_version_code=release.wear_version_code,
+        wear_minimum_android=release.wear_minimum_android,
         minimum_android=release.minimum_android,
         minimum_supported_version_code=minimum_supported_version_code,
         required_after=release.required_after,
@@ -115,5 +122,55 @@ async def download_release(
             "Cache-Control": "public, max-age=31536000, immutable",
             "ETag": f'"{release.sha256}"',
             "X-Checksum-SHA256": release.sha256,
+        },
+    )
+
+
+@router.api_route(
+    "/{version}/wear-apk", methods=["GET", "HEAD"], response_class=FileResponse
+)
+async def download_wear_release(
+    version: Annotated[
+        str,
+        Path(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$", max_length=40),
+    ],
+    session: AsyncSession = Depends(session_scope),
+    settings: Settings = Depends(get_settings),
+) -> FileResponse:
+    """Serve verified immutable Wear OS APK bytes with range support."""
+
+    release = await session.scalar(
+        select(ApkRelease).where(
+            ApkRelease.version == version,
+            ApkRelease.published_at.is_not(None),
+            ApkRelease.wear_size_bytes.is_not(None),
+            ApkRelease.wear_sha256.is_not(None),
+        )
+    )
+    if release is None or release.wear_size_bytes is None or release.wear_sha256 is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Signed Wear release not found")
+    try:
+        artifact = await run_in_threadpool(
+            verify_wear_release_artifact,
+            settings.release_storage_dir,
+            version,
+            release.wear_size_bytes,
+            release.wear_sha256,
+        )
+    except ReleaseArtifactUnavailable as error:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Signed Wear release temporarily unavailable",
+        ) from error
+    return FileResponse(
+        artifact.path,
+        media_type=APK_MEDIA_TYPE,
+        filename=artifact.filename,
+        stat_result=artifact.stat,
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "ETag": f'"{release.wear_sha256}"',
+            "X-Checksum-SHA256": release.wear_sha256,
         },
     )

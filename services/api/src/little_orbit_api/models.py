@@ -107,6 +107,12 @@ class Couple(Timestamped, Base):
     anniversary_date: Mapped[date | None] = mapped_column(Date)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     proximity_threshold_m: Mapped[float] = mapped_column(Float, nullable=False, default=100.0)
+    proximity_processed_through: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    proximity_algorithm_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=2
+    )
 
 
 class CoupleMember(Base):
@@ -178,6 +184,12 @@ class Question(Base):
             "custom_slot",
             unique=True,
             postgresql_where=sql_text("couple_id IS NOT NULL AND custom_slot IS NOT NULL"),
+        ),
+        Index(
+            "ix_questions_prompt_trgm",
+            "prompt",
+            postgresql_using="gin",
+            postgresql_ops={"prompt": "gin_trgm_ops"},
         ),
     )
 
@@ -355,7 +367,15 @@ class LocationSample(Base):
     """Short-lived raw coordinate used only for proximity calculation."""
 
     __tablename__ = "location_samples"
-    __table_args__ = (UniqueConstraint("account_id", "sample_id"),)
+    __table_args__ = (
+        UniqueConstraint("account_id", "sample_id"),
+        Index(
+            "ix_location_samples_couple_account_recorded",
+            "couple_id",
+            "account_id",
+            "recorded_at",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     sample_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
@@ -377,6 +397,7 @@ class TogetherBucket(Base):
     __table_args__ = (
         UniqueConstraint("couple_id", "bucket_start"),
         CheckConstraint("duration_seconds >= 0 AND duration_seconds <= 60"),
+        Index("ix_together_buckets_couple_start", "couple_id", "bucket_start"),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
@@ -386,6 +407,7 @@ class TogetherBucket(Base):
     bucket_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
     estimated_distance_m: Mapped[float] = mapped_column(Float, nullable=False)
+    algorithm_version: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
     corrected_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("accounts.id", ondelete="SET NULL")
     )
@@ -519,6 +541,12 @@ class ApkRelease(Timestamped, Base):
     size_bytes: Mapped[int | None] = mapped_column(BigInteger)
     package_name: Mapped[str | None] = mapped_column(String(160))
     signer_sha256: Mapped[str | None] = mapped_column(String(64))
+    wear_apk_url: Mapped[str | None] = mapped_column(Text)
+    wear_sha256: Mapped[str | None] = mapped_column(String(64))
+    wear_size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    wear_package_name: Mapped[str | None] = mapped_column(String(160))
+    wear_version_code: Mapped[int | None] = mapped_column(Integer)
+    wear_minimum_android: Mapped[int | None] = mapped_column(Integer)
     minimum_android: Mapped[int] = mapped_column(Integer, nullable=False)
     minimum_supported_version_code: Mapped[int | None] = mapped_column(Integer)
     required_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

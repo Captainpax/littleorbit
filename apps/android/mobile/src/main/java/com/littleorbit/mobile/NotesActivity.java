@@ -15,7 +15,7 @@ import javax.inject.Inject;
 
 /** Shared note editor with encrypted drafts and explicit stale-version reconciliation. */
 @AndroidEntryPoint
-public final class NotesActivity extends AppCompatActivity {
+public final class NotesActivity extends InsetAwareActivity {
     @Inject OrbitRepository orbit;
     @Inject NoteDraftStore drafts;
     @Inject NoteSocketClient sockets;

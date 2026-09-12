@@ -16,7 +16,7 @@ import javax.inject.Inject;
 
 /** Three-step custom question composer with automatic FIFO scheduling. */
 @AndroidEntryPoint
-public final class CustomQuestionActivity extends AppCompatActivity {
+public final class CustomQuestionActivity extends InsetAwareActivity {
     private static final List<String> KINDS = List.of(
             "single_choice", "multiple_choice", "free_text", "partner_guess", "weighted_choice");
     private static final List<String> CATEGORIES = List.of(

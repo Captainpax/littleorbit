@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { currentRelease, hostedApkPath } from "../../src/lib/release";
 
 test("landing page exposes mission and keyboard-visible actions", async ({ page }) => {
   await page.goto("/");
@@ -26,12 +27,9 @@ test("download remains available when release API metadata is unavailable", asyn
   await page.goto("/download");
   const download = page.getByRole("link", { name: "Download signed APK" });
   await expect(page.getByText("Available", { exact: true })).toBeVisible();
-  await expect(page.getByText("56dd74a4640c0fd91f029c3e59c227521284d524e3bb4f6035b2a38dad88c234")).toBeVisible();
+  await expect(page.getByText(currentRelease.sha256)).toBeVisible();
   await expect(download).toBeVisible();
-  await expect(download).toHaveAttribute(
-    "href",
-    "/api/v1/releases/1.0.0-rc.4/apk",
-  );
+  await expect(download).toHaveAttribute("href", hostedApkPath(currentRelease.version));
 });
 
 test("verification links fill their one-use token from the URL fragment", async ({ page }) => {

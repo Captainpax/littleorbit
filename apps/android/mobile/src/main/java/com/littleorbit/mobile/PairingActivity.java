@@ -10,7 +10,7 @@ import javax.inject.Inject;
 
 /** Two-person pair-code creation, redemption, and creator confirmation. */
 @AndroidEntryPoint
-public final class PairingActivity extends AppCompatActivity {
+public final class PairingActivity extends InsetAwareActivity {
     @Inject OrbitRepository orbit;
     private ActivityPairingBinding binding;
     private String pendingRequestId;

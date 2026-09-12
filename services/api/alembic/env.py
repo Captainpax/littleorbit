@@ -5,7 +5,10 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from little_orbit_api import models  # noqa: F401
+from little_orbit_api import (
+    models,  # noqa: F401
+    together_models,  # noqa: F401
+)
 from little_orbit_api.config import get_settings
 from little_orbit_api.database import Base
 

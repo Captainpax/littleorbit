@@ -34,6 +34,11 @@ function optional(formData: FormData, name: string): string | null {
   return typeof value === "string" && value ? value : null;
 }
 
+function optionalNumber(formData: FormData, name: string): number | null {
+  const value = optional(formData, name);
+  return value === null ? null : Number(value);
+}
+
 /** Pause or resume public registration through the audited API. */
 export async function setRegistration(formData: FormData) {
   await adminMutation("registration", "PUT", { enabled: required(formData, "enabled") === "true" });
@@ -92,6 +97,12 @@ export async function publishRelease(formData: FormData) {
     size_bytes: Number(required(formData, "size_bytes")),
     package_name: required(formData, "package_name"),
     signer_sha256: required(formData, "signer_sha256"),
+    wear_apk_url: optional(formData, "wear_apk_url"),
+    wear_sha256: optional(formData, "wear_sha256"),
+    wear_size_bytes: optionalNumber(formData, "wear_size_bytes"),
+    wear_package_name: optional(formData, "wear_package_name"),
+    wear_version_code: optionalNumber(formData, "wear_version_code"),
+    wear_minimum_android: optionalNumber(formData, "wear_minimum_android"),
     minimum_android: Number(required(formData, "minimum_android")),
     minimum_supported_version_code: Number(required(formData, "minimum_supported_version_code")),
     required_after: requiredAfter ? new Date(requiredAfter).toISOString() : null,

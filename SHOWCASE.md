@@ -28,7 +28,7 @@ This generated RC5 design study is the visual target for daily questions. The im
 
 ![Implemented RC3 More screen on an API 36 emulator](docs/assets/android-more-rc3.png)
 
-The RC3 emulator captures verify the Inter type system, paired planet motif, lavender primary action, persistent Home/Quiz/Notes/More navigation, sparse signed-out states, and Wear update boundary. RC4 changed the verified download transport. RC5 brings the daily quiz and custom-question composer into the same visual system. Portrait, large-text, updater installation, quiz reveal, widget, and Wear OS captures remain part of the physical-device release gate.
+The RC3 emulator captures verify the Inter type system, paired planet motif, lavender primary action, persistent Home/Quiz/Notes/More navigation, sparse signed-out states, and Wear update boundary. RC4 changed the verified download transport and RC5 brought the daily quiz into the same visual system. RC6 removes status/navigation-bar overlap, gives relationship age and nearby-time distinct hierarchy, adds a guided device-setup screen, and refreshes the widget, tile, and complication cache contract. These RC6 descriptions are implementation status, while the pictured phone screens remain labelled RC3 captures until new device screenshots are recorded.
 
 ## Public website
 
@@ -56,10 +56,10 @@ The console exposes service health, delivery and generation status, moderation q
 
 ## Screenshot checklist
 
-- [ ] Real phone: signed-out, pairing, focused RC5 daily question, review/wait/reveal, countdown, notes conflict, together-time, privacy controls.
+- [ ] Real phone: RC6 inset behavior, notification/location setup, pairing, focused daily question, review/wait/reveal, countdown, notes conflict, relationship date, nearby-time, and privacy controls.
 - [x] API 36 emulator: RC3 debug APK install, launch, signed-out dashboard and More hierarchy, landscape rendering, and runtime-crash check.
 - [ ] Home widget: fresh, stale, signed-out, and server-offline states.
-- [ ] Wear OS: tile, complication, loading, stale, and disconnected states.
+- [ ] Wear OS: guided installation, phone capability detection, tile, complication, loading, stale, and disconnected states.
 - [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
 - [ ] Website remaining: recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.

@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 import androidx.wear.watchface.complications.data.ComplicationData;
 import androidx.wear.watchface.complications.data.ComplicationType;
 import androidx.wear.watchface.complications.data.PlainComplicationText;
+import androidx.wear.watchface.complications.data.LongTextComplicationData;
 import androidx.wear.watchface.complications.data.ShortTextComplicationData;
 import androidx.wear.watchface.complications.datasource.ComplicationDataSourceService;
 import androidx.wear.watchface.complications.datasource.ComplicationRequest;
@@ -20,7 +21,8 @@ public final class TogetherComplicationService extends ComplicationDataSourceSer
             @NonNull ComplicationRequest request,
             @NonNull ComplicationRequestListener listener) {
         try {
-            listener.onComplicationData(displayData(WearDisplayCache.read(this)));
+            listener.onComplicationData(displayData(
+                    WearDisplayCache.read(this), request.getComplicationType()));
         } catch (RemoteException exception) {
             // The watch-face binder disappeared; there is no user data to retry or persist.
             Log.w(TAG, "Watch face disconnected before complication delivery");
@@ -36,10 +38,25 @@ public final class TogetherComplicationService extends ComplicationDataSourceSer
                 .build();
     }
 
-    private ComplicationData displayData(WearDisplayCache.State cache) {
+    private ComplicationData displayData(
+            WearDisplayCache.State cache, ComplicationType type) {
+        if (type == ComplicationType.LONG_TEXT) {
+            String value = cache.relationshipText() + " together · " + cache.nearbyText();
+            return new LongTextComplicationData.Builder(
+                    new PlainComplicationText.Builder(value).build(),
+                    new PlainComplicationText.Builder(cache.accessibilityText()).build())
+                    .build();
+        }
+        if (cache.stale()) {
+            return shortData(cache.relationshipShort(), "Little Orbit stale; open phone");
+        }
+        return shortData(cache.relationshipShort(), cache.accessibilityText());
+    }
+
+    private ComplicationData shortData(String text, String description) {
         return new ShortTextComplicationData.Builder(
-                new PlainComplicationText.Builder(cache.togetherText()).build(),
-                new PlainComplicationText.Builder(cache.statusText()).build())
+                new PlainComplicationText.Builder(text).build(),
+                new PlainComplicationText.Builder(description).build())
                 .build();
     }
 }

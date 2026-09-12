@@ -5,16 +5,15 @@ import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 import com.littleorbit.data.LocationCollectionWorker;
-import com.littleorbit.data.WearCachePublisher;
-import com.littleorbit.data.local.DisplayCacheDao;
-import com.littleorbit.data.local.DisplayCacheEntity;
+import com.littleorbit.data.DisplayCacheSynchronizer;
+import com.littleorbit.data.DisplayCacheSyncWorker;
 import com.littleorbit.data.local.LocationQueueDao;
 import com.littleorbit.data.remote.ApiModels;
 import com.littleorbit.data.remote.LittleOrbitApi;
 import com.littleorbit.data.remote.QuizApiModels;
+import com.littleorbit.data.remote.TogetherTimeModels;
 import com.littleorbit.data.security.SessionStore;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -34,9 +33,9 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     private final AtomicInteger threadIds = new AtomicInteger();
     private final LittleOrbitApi api;
     private final SessionStore sessions;
-    private final DisplayCacheDao displayCache;
     private final LocationQueueDao locationQueue;
-    private final WearCachePublisher wearPublisher;
+    private final DisplayCacheSynchronizer displaySynchronizer;
+    private final Context context;
     private final CountdownOfflineStore offlineCountdowns;
     private final WorkManager workManager;
     private final ExecutorService executor = Executors.newFixedThreadPool(3, runnable -> {
@@ -50,16 +49,15 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     public NetworkOrbitRepository(
             LittleOrbitApi api,
             SessionStore sessions,
-            DisplayCacheDao displayCache,
             LocationQueueDao locationQueue,
-            WearCachePublisher wearPublisher,
+            DisplayCacheSynchronizer displaySynchronizer,
             CountdownOfflineStore offlineCountdowns,
             @ApplicationContext Context context) {
         this.api = api;
         this.sessions = sessions;
-        this.displayCache = displayCache;
         this.locationQueue = locationQueue;
-        this.wearPublisher = wearPublisher;
+        this.displaySynchronizer = displaySynchronizer;
+        this.context = context;
         this.offlineCountdowns = offlineCountdowns;
         this.workManager = WorkManager.getInstance(context);
     }
@@ -75,6 +73,8 @@ public final class NetworkOrbitRepository implements OrbitRepository {
                 .thenApply(session -> {
                     clearRelationshipState();
                     sessions.save(session.accessToken);
+                    DisplayCacheSyncWorker.schedule(context);
+                    DisplayCacheSyncWorker.enqueue(context);
                     return session;
                 });
     }
@@ -93,20 +93,12 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     @Override
     public CompletableFuture<Void> refreshHome() {
         return CompletableFuture.supplyAsync(() -> {
-            ApiModels.TogetherSummary summary = execute(api.togetherSummary());
-            List<ApiModels.Countdown> countdowns = execute(api.countdowns());
-            ApiModels.Countdown next = countdowns.stream()
-                    .filter(item -> Instant.parse(item.occursAt).isAfter(Instant.now()))
-                    .min((left, right) -> left.occursAt.compareTo(right.occursAt))
-                    .orElse(null);
-            DisplayCacheEntity cache = new DisplayCacheEntity(
-                    "primary",
-                    summary.estimatedSeconds,
-                    next == null ? "No countdown yet" : next.title,
-                    next == null ? 0 : Instant.parse(next.occursAt).toEpochMilli(),
-                    Instant.now().toEpochMilli());
-            displayCache.replace(cache);
-            wearPublisher.publish(cache);
+            try {
+                displaySynchronizer.refresh();
+                DisplayCacheSyncWorker.schedule(context);
+            } catch (DisplayCacheSynchronizer.SyncException failure) {
+                throw new OrbitServiceException(failure.statusCode());
+            }
             return null;
         }, executor);
     }
@@ -251,6 +243,34 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     @Override
+    public CompletableFuture<TogetherTimeModels.Summary> togetherSummaryV2() {
+        return async(api.togetherSummaryV2());
+    }
+
+    @Override
+    public CompletableFuture<List<TogetherTimeModels.HistoryDay>> togetherHistory() {
+        return async(api.togetherHistory(30));
+    }
+
+    @Override
+    public CompletableFuture<TogetherTimeModels.StartDateProposal> proposeStartDate(
+            TogetherTimeModels.ProposalRequest request) {
+        return async(api.proposeStartDate(request)).thenApply(result -> {
+            DisplayCacheSyncWorker.enqueue(context);
+            return result;
+        });
+    }
+
+    @Override
+    public CompletableFuture<TogetherTimeModels.StartDateProposal> decideStartDate(
+            String proposalId, TogetherTimeModels.DecisionRequest request) {
+        return async(api.decideStartDate(proposalId, request)).thenApply(result -> {
+            DisplayCacheSyncWorker.enqueue(context);
+            return result;
+        });
+    }
+
+    @Override
     public CompletableFuture<List<ApiModels.TogetherBucket>> togetherBuckets() {
         return async(api.togetherBuckets());
     }
@@ -325,8 +345,8 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     private void clearRelationshipState() {
         disableLocationWork();
         offlineCountdowns.clear();
-        displayCache.clear();
-        wearPublisher.clear();
+        DisplayCacheSyncWorker.cancel(context);
+        displaySynchronizer.clear();
     }
 
     private void configureLocationWork(boolean enabled) {
@@ -348,7 +368,9 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     private ApiModels.Countdown createCountdownOrQueue(ApiModels.CountdownMutation mutation) {
         try {
-            return execute(api.createCountdown(mutation));
+            ApiModels.Countdown result = execute(api.createCountdown(mutation));
+            DisplayCacheSyncWorker.enqueue(context);
+            return result;
         } catch (OrbitServiceException failure) {
             if (failure.statusCode() == -1) {
                 return offlineCountdowns.queueCreate(mutation);
@@ -363,7 +385,9 @@ public final class NetworkOrbitRepository implements OrbitRepository {
             return offlineCountdowns.queueUpdate(countdownId, mutation);
         }
         try {
-            return execute(api.updateCountdown(countdownId, mutation));
+            ApiModels.Countdown result = execute(api.updateCountdown(countdownId, mutation));
+            DisplayCacheSyncWorker.enqueue(context);
+            return result;
         } catch (OrbitServiceException failure) {
             if (failure.statusCode() == -1) {
                 return offlineCountdowns.queueUpdate(countdownId, mutation);
@@ -378,7 +402,9 @@ public final class NetworkOrbitRepository implements OrbitRepository {
             return offlineCountdowns.queueDelete(countdownId, request);
         }
         try {
-            return execute(api.deleteCountdown(countdownId, request));
+            ApiModels.Message result = execute(api.deleteCountdown(countdownId, request));
+            DisplayCacheSyncWorker.enqueue(context);
+            return result;
         } catch (OrbitServiceException failure) {
             if (failure.statusCode() == -1) {
                 return offlineCountdowns.queueDelete(countdownId, request);

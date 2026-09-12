@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { currentRelease, getCurrentRelease, hostedApkPath } from "./release";
+import { currentRelease, getCurrentRelease, hostedApkPath, hostedWearApkPath } from "./release";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -12,7 +12,8 @@ describe("release metadata", () => {
     expect(release).toEqual(currentRelease);
     expect(release.published).toBe(true);
     expect(release.sha256).toHaveLength(64);
-    expect(release.apkUrl).toBe("/api/v1/releases/1.0.0-rc.5/apk");
+    expect(release.apkUrl).toBe(hostedApkPath(currentRelease.version));
+    expect(release.wear?.apkUrl).toBe(hostedWearApkPath(currentRelease.version));
   });
 
   it("maps published API metadata to the signed APK download", async () => {
@@ -37,5 +38,7 @@ describe("release metadata", () => {
 
   it("escapes a release version before making a first-party path", () => {
     expect(hostedApkPath("1.0.0 rc.4")).toBe("/api/v1/releases/1.0.0%20rc.4/apk");
+    expect(hostedWearApkPath("1.0.0 rc.6"))
+      .toBe("/api/v1/releases/1.0.0%20rc.6/wear-apk");
   });
 });

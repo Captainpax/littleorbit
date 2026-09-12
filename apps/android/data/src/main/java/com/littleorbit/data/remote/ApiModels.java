@@ -18,6 +18,12 @@ public final class ApiModels {
         @Json(name = "size_bytes") public final long sizeBytes;
         @Json(name = "package_name") public final String packageName;
         @Json(name = "signer_sha256") public final String signerSha256;
+        @Json(name = "wear_apk_url") public final String wearApkUrl;
+        @Json(name = "wear_sha256") public final String wearSha256;
+        @Json(name = "wear_size_bytes") public final Long wearSizeBytes;
+        @Json(name = "wear_package_name") public final String wearPackageName;
+        @Json(name = "wear_version_code") public final Integer wearVersionCode;
+        @Json(name = "wear_minimum_android") public final Integer wearMinimumAndroid;
         @Json(name = "minimum_android") public final int minimumAndroid;
         @Json(name = "minimum_supported_version_code")
         public final int minimumSupportedVersionCode;
@@ -40,18 +46,16 @@ public final class ApiModels {
                 String requiredAfter,
                 String releaseNotes,
                 String publishedAt) {
-            this.version = version;
-            this.versionCode = versionCode;
-            this.apkUrl = apkUrl;
-            this.githubReleaseUrl = githubReleaseUrl;
-            this.sha256 = sha256;
-            this.sizeBytes = sizeBytes;
-            this.packageName = packageName;
-            this.signerSha256 = signerSha256;
+            this.version = version; this.versionCode = versionCode;
+            this.apkUrl = apkUrl; this.githubReleaseUrl = githubReleaseUrl;
+            this.sha256 = sha256; this.sizeBytes = sizeBytes;
+            this.packageName = packageName; this.signerSha256 = signerSha256;
+            this.wearApkUrl = null; this.wearSha256 = null;
+            this.wearSizeBytes = null; this.wearPackageName = null;
+            this.wearVersionCode = null; this.wearMinimumAndroid = null;
             this.minimumAndroid = minimumAndroid;
             this.minimumSupportedVersionCode = minimumSupportedVersionCode;
-            this.requiredAfter = requiredAfter;
-            this.releaseNotes = releaseNotes;
+            this.requiredAfter = requiredAfter; this.releaseNotes = releaseNotes;
             this.publishedAt = publishedAt;
         }
     }
@@ -467,18 +471,15 @@ public final class ApiModels {
         @Json(name = "intimacy_enabled") public final Boolean intimacyEnabled;
         @Json(name = "location_enabled") public final Boolean locationEnabled;
         @Json(name = "proximity_threshold_m") public final Double thresholdM;
-        @Json(name = "anniversary_date") public final String anniversaryDate;
 
         /** Creates an explicit consent mutation. */
         public PreferencesMutation(
                 Boolean intimacyEnabled,
                 Boolean locationEnabled,
-                Double thresholdM,
-                String anniversaryDate) {
+                Double thresholdM) {
             this.intimacyEnabled = intimacyEnabled;
             this.locationEnabled = locationEnabled;
             this.thresholdM = thresholdM;
-            this.anniversaryDate = anniversaryDate;
         }
     }
 

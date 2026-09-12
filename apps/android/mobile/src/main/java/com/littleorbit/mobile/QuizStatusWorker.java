@@ -1,7 +1,6 @@
 package com.littleorbit.mobile;
 
 import android.Manifest;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -30,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 /** Polls content-free quiz state and announces only meaningful partner transitions. */
 @HiltWorker
 public final class QuizStatusWorker extends Worker {
-    private static final String CHANNEL = "quiz_updates";
     private static final String PREFS = "quiz_status";
     private final OrbitRepository orbit;
 
@@ -67,6 +65,10 @@ public final class QuizStatusWorker extends Worker {
         SharedPreferences preferences = getApplicationContext()
                 .getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String priorDate = preferences.getString("quiz_date", "");
+        if (!priorDate.equals(status.quizDate)) {
+            storeBaseline(preferences, status);
+            return;
+        }
         boolean priorPartner = priorDate.equals(status.quizDate)
                 && preferences.getBoolean("partner_finished", false);
         boolean priorReveal = priorDate.equals(status.quizDate)
@@ -76,6 +78,11 @@ public final class QuizStatusWorker extends Worker {
         } else if (!priorPartner && status.partnerFinished && !status.revealed) {
             notifyUser("Your partner finished today’s orbit", "Finish yours when you’re ready.", 5201);
         }
+        storeBaseline(preferences, status);
+    }
+
+    private static void storeBaseline(
+            SharedPreferences preferences, QuizApiModels.Status status) {
         preferences.edit()
                 .putString("quiz_date", status.quizDate)
                 .putBoolean("partner_finished", status.partnerFinished)
@@ -88,12 +95,10 @@ public final class QuizStatusWorker extends Worker {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) return;
         NotificationManager manager = context.getSystemService(NotificationManager.class);
-        manager.createNotificationChannel(new NotificationChannel(
-                CHANNEL, "Daily quiz", NotificationManager.IMPORTANCE_DEFAULT));
         Intent intent = new Intent(context, QuizActivity.class);
         PendingIntent pending = PendingIntent.getActivity(
                 context, id, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        manager.notify(id, new NotificationCompat.Builder(context, CHANNEL)
+        manager.notify(id, new NotificationCompat.Builder(context, NotificationChannels.QUIZ)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(title)
                 .setContentText(text)
@@ -117,5 +122,10 @@ public final class QuizStatusWorker extends Worker {
                 .build();
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 "little-orbit-quiz-status", ExistingPeriodicWorkPolicy.UPDATE, request);
+    }
+
+    /** Stops polling immediately when permission or the local session is absent. */
+    public static void cancel(Context context) {
+        WorkManager.getInstance(context).cancelUniqueWork("little-orbit-quiz-status");
     }
 }

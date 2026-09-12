@@ -29,7 +29,7 @@ import javax.inject.Inject;
 
 /** Shared countdown CRUD with optimistic revisions and local reminder scheduling. */
 @AndroidEntryPoint
-public final class CountdownActivity extends AppCompatActivity {
+public final class CountdownActivity extends InsetAwareActivity {
     @Inject OrbitRepository orbit;
     private ActivityCountdownBinding binding;
     private List<ApiModels.Countdown> countdowns = List.of();
@@ -39,6 +39,7 @@ public final class CountdownActivity extends AppCompatActivity {
                     new ActivityResultContracts.RequestPermission(),
                     granted -> {
                         if (granted && pendingReminder != null) {
+                            QuizStatusWorker.schedule(this);
                             scheduleReminder(pendingReminder);
                         } else if (!granted) {
                             binding.statusText.setText(R.string.notifications_needed);

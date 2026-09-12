@@ -18,10 +18,14 @@ public final class LittleOrbitTileService extends TileService {
     @Override
     protected ListenableFuture<TileBuilders.Tile> onTileRequest(@NonNull RequestBuilders.TileRequest request) {
         WearDisplayCache.State cache = WearDisplayCache.read(this);
-        LayoutElementBuilders.Text text = new LayoutElementBuilders.Text.Builder()
-                .setText(cache.togetherText() + " · " + cache.statusText())
+        LayoutElementBuilders.Column column = new LayoutElementBuilders.Column.Builder()
+                .addContent(text("LITTLE ORBIT"))
+                .addContent(text(cache.relationshipText()))
+                .addContent(text(cache.nearbyText()))
+                .addContent(text(cache.statusText()))
                 .build();
-        LayoutElementBuilders.Layout layout = new LayoutElementBuilders.Layout.Builder().setRoot(text).build();
+        LayoutElementBuilders.Layout layout =
+                new LayoutElementBuilders.Layout.Builder().setRoot(column).build();
         TileBuilders.Tile tile = new TileBuilders.Tile.Builder()
                 .setResourcesVersion(RESOURCES_VERSION)
                 .setTileTimeline(new TimelineBuilders.Timeline.Builder()
@@ -29,6 +33,10 @@ public final class LittleOrbitTileService extends TileService {
                         .build())
                 .build();
         return Futures.immediateFuture(tile);
+    }
+
+    private static LayoutElementBuilders.Text text(String value) {
+        return new LayoutElementBuilders.Text.Builder().setText(value).build();
     }
 
     @NonNull

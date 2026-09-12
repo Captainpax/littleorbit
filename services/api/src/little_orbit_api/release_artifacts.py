@@ -30,6 +30,12 @@ def hosted_apk_url(version: str) -> str:
     return f"https://{PUBLIC_RELEASE_HOST}/api/v1/releases/{version}/apk"
 
 
+def hosted_wear_apk_url(version: str) -> str:
+    """Return the public first-party Wear OS APK URL for a version."""
+
+    return f"https://{PUBLIC_RELEASE_HOST}/api/v1/releases/{version}/wear-apk"
+
+
 def is_hosted_apk_url(value: str, version: str) -> bool:
     """Accept only the query-free HTTPS endpoint for the matching release."""
 
@@ -46,6 +52,22 @@ def is_hosted_apk_url(value: str, version: str) -> bool:
     )
 
 
+def is_hosted_wear_apk_url(value: str, version: str) -> bool:
+    """Accept only the query-free Wear endpoint for the matching release."""
+
+    url = urlsplit(value)
+    return (
+        url.scheme == "https"
+        and url.hostname == PUBLIC_RELEASE_HOST
+        and url.port in (None, 443)
+        and url.username is None
+        and url.password is None
+        and url.path == f"/api/v1/releases/{version}/wear-apk"
+        and not url.query
+        and not url.fragment
+    )
+
+
 def verify_release_artifact(
     storage_root: Path,
     version: str,
@@ -55,6 +77,46 @@ def verify_release_artifact(
     """Verify the deterministic release file before it is published or served."""
 
     filename = f"little-orbit-{version}.apk"
+    path = storage_root / filename
+    try:
+        before = path.stat()
+        if not path.is_file() or before.st_size != expected_size:
+            raise ReleaseArtifactUnavailable("release artifact size mismatch")
+        digest = _sha256(path)
+        after = path.stat()
+    except OSError as error:
+        raise ReleaseArtifactUnavailable("release artifact unavailable") from error
+    if before.st_mtime_ns != after.st_mtime_ns or before.st_size != after.st_size:
+        raise ReleaseArtifactUnavailable("release artifact changed during verification")
+    if not compare_digest(digest, expected_sha256):
+        raise ReleaseArtifactUnavailable("release artifact checksum mismatch")
+    return VerifiedReleaseArtifact(path=path, filename=filename, stat=after)
+
+
+def verify_wear_release_artifact(
+    storage_root: Path,
+    version: str,
+    expected_size: int,
+    expected_sha256: str,
+) -> VerifiedReleaseArtifact:
+    """Verify one immutable self-hosted Wear OS APK."""
+
+    return _verify_named_artifact(
+        storage_root,
+        f"little-orbit-wear-{version}.apk",
+        expected_size,
+        expected_sha256,
+    )
+
+
+def _verify_named_artifact(
+    storage_root: Path,
+    filename: str,
+    expected_size: int,
+    expected_sha256: str,
+) -> VerifiedReleaseArtifact:
+    """Verify a named artifact without following mutable metadata."""
+
     path = storage_root / filename
     try:
         before = path.stat()

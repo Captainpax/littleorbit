@@ -1,0 +1,5 @@
+<resources>
+    <string-array name="android_wear_capabilities">
+        <item>little_orbit_display_v2</item>
+    </string-array>
+</resources>

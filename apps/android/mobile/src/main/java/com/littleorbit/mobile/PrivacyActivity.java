@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Build;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
@@ -19,7 +20,7 @@ import org.json.JSONObject;
 
 /** Revocable consent, export, unpair, and deletion controls. */
 @AndroidEntryPoint
-public final class PrivacyActivity extends AppCompatActivity {
+public final class PrivacyActivity extends InsetAwareActivity {
     @Inject OrbitRepository orbit;
     private ActivityPrivacyBinding binding;
     private final ActivityResultLauncher<String[]> foregroundLocation =
@@ -79,11 +80,31 @@ public final class PrivacyActivity extends AppCompatActivity {
     }
 
     private void requestBackgroundOrSave() {
+        if (binding.locationSwitch.isChecked()
+                && !PermissionChecks.fineLocationGranted(this)) {
+            binding.statusText.setText(R.string.location_exact_needed);
+            binding.locationSwitch.setChecked(false);
+            return;
+        }
         boolean granted = ContextCompat.checkSelfPermission(
                 this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 == PackageManager.PERMISSION_GRANTED;
         if (binding.locationSwitch.isChecked() && !granted) {
-            backgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
+            String label = Build.VERSION.SDK_INT >= 30
+                    ? getPackageManager().getBackgroundPermissionOptionLabel().toString()
+                    : getString(R.string.allow_all_time);
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.background_location_title)
+                    .setMessage(getString(R.string.background_location_explanation, label))
+                    .setNegativeButton(R.string.later, (dialog, which) -> {
+                        binding.locationSwitch.setChecked(false);
+                        savePreferences();
+                    })
+                    .setPositiveButton(
+                            R.string.continue_label,
+                            (dialog, which) -> backgroundLocation.launch(
+                                    Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+                    .show();
         } else {
             savePreferences();
         }
@@ -100,8 +121,7 @@ public final class PrivacyActivity extends AppCompatActivity {
         ApiModels.PreferencesMutation mutation = new ApiModels.PreferencesMutation(
                 binding.intimacySwitch.isChecked(),
                 binding.locationSwitch.isChecked(),
-                threshold,
-                null);
+                threshold);
         AsyncUi.observe(this, orbit.updatePreferences(mutation), binding.statusText, result -> {
             binding.statusText.setText(R.string.preferences_saved);
             load();

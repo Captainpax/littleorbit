@@ -58,6 +58,7 @@ function Publish-Apk(
         Set-Content -LiteralPath "$Destination.sha256" -Encoding ascii
     return [pscustomobject]@{
         ApkSha256 = $hash
+        SizeBytes = (Get-Item -LiteralPath $Destination).Length
         CertificateSha256 = $Matches[1]
     }
 }
@@ -122,7 +123,9 @@ if ($phone.CertificateSha256 -ne $wear.CertificateSha256) {
     Version = $versionName
     PhoneApk = $phoneDestination
     PhoneSha256 = $phone.ApkSha256
+    PhoneSizeBytes = $phone.SizeBytes
     WearApk = $wearDestination
     WearSha256 = $wear.ApkSha256
+    WearSizeBytes = $wear.SizeBytes
     CertificateSha256 = $phone.CertificateSha256
 }

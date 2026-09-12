@@ -4,6 +4,7 @@ import android.app.Application;
 import androidx.hilt.work.HiltWorkerFactory;
 import androidx.work.Configuration;
 import com.littleorbit.data.ReleaseCheckWorker;
+import com.littleorbit.data.security.SessionStore;
 import dagger.hilt.android.HiltAndroidApp;
 import javax.inject.Inject;
 
@@ -11,12 +12,18 @@ import javax.inject.Inject;
 @HiltAndroidApp
 public final class LittleOrbitApplication extends Application implements Configuration.Provider {
     @Inject HiltWorkerFactory workerFactory;
+    @Inject SessionStore sessions;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        NotificationChannels.create(this);
         ReleaseCheckWorker.schedule(this);
-        QuizStatusWorker.schedule(this);
+        if (sessions.read().isPresent() && PermissionChecks.notificationsGranted(this)) {
+            QuizStatusWorker.schedule(this);
+        } else {
+            QuizStatusWorker.cancel(this);
+        }
     }
 
     /** Routes WorkManager construction through Hilt without a global service locator. */

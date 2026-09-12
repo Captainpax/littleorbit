@@ -146,6 +146,25 @@ public interface LittleOrbitApi {
     @GET("api/v1/together-time")
     Call<ApiModels.TogetherSummary> togetherSummary();
 
+    /** Loads separate relationship-age and nearby-time values. */
+    @GET("api/v2/together-time")
+    Call<TogetherTimeModels.Summary> togetherSummaryV2();
+
+    /** Loads thirty coordinate-free UTC days of nearby estimates. */
+    @GET("api/v2/together-time/history")
+    Call<java.util.List<TogetherTimeModels.HistoryDay>> togetherHistory(@Query("days") int days);
+
+    /** Proposes a shared start date for partner approval. */
+    @POST("api/v2/together-time/start-date-proposals")
+    Call<TogetherTimeModels.StartDateProposal> proposeStartDate(
+            @Body TogetherTimeModels.ProposalRequest request);
+
+    /** Decides a current shared start-date proposal. */
+    @POST("api/v2/together-time/start-date-proposals/{proposalId}/decision")
+    Call<TogetherTimeModels.StartDateProposal> decideStartDate(
+            @Path("proposalId") String proposalId,
+            @Body TogetherTimeModels.DecisionRequest request);
+
     /** Lists coordinate-free correctable estimate minutes. */
     @GET("api/v1/together-time/buckets")
     Call<java.util.List<ApiModels.TogetherBucket>> togetherBuckets();
@@ -157,8 +176,9 @@ public interface LittleOrbitApi {
             @Body ApiModels.TogetherCorrectionRequest request);
 
     /** Uploads a bounded encrypted-queue batch after consent checks. */
-    @POST("api/v1/together-time/locations")
-    Call<ApiModels.LocationBatchResult> uploadLocations(@Body ApiModels.LocationBatch request);
+    @POST("api/v2/together-time/locations")
+    Call<TogetherTimeModels.LocationBatchResult> uploadLocations(
+            @Body ApiModels.LocationBatch request);
 
     /** Loads member and mutual privacy settings. */
     @GET("api/v1/couple/preferences")

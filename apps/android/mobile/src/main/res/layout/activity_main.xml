@@ -154,45 +154,67 @@
                     android:layout_marginTop="24dp"
                     android:orientation="vertical">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/togetherButton"
-                        style="@style/Widget.LittleOrbit.Button.Outline"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="86dp"
-                        android:gravity="center_vertical|start"
-                        android:text="@string/together_details" />
-                    <TextView
-                        android:id="@+id/togetherText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="18dp"
-                        android:layout_marginTop="-46dp"
-                        android:layout_marginBottom="26dp"
-                        android:importantForAccessibility="no"
-                        android:text="Not connected"
-                        android:textColor="@color/cloud"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        android:layout_height="86dp">
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/togetherButton"
+                            style="@style/Widget.LittleOrbit.Button.Outline"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="top|start"
+                            android:paddingTop="14dp"
+                            android:text="@string/together_details" />
+                        <TextView
+                            android:id="@+id/togetherText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_vertical|start"
+                            android:layout_marginStart="18dp"
+                            android:layout_marginTop="8dp"
+                            android:importantForAccessibility="no"
+                            android:text="Not connected"
+                            android:textColor="@color/cloud"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/nearbyText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom|start"
+                            android:layout_marginStart="18dp"
+                            android:layout_marginBottom="10dp"
+                            android:importantForAccessibility="no"
+                            android:text="0h 0m nearby · estimate"
+                            android:textColor="@color/muted"
+                            android:textSize="12sp" />
+                    </FrameLayout>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/countdownsButton"
-                        style="@style/Widget.LittleOrbit.Button.Outline"
+                    <FrameLayout
                         android:layout_width="match_parent"
                         android:layout_height="86dp"
-                        android:gravity="center_vertical|start"
-                        android:text="@string/countdown_label" />
-                    <TextView
-                        android:id="@+id/countdownText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="18dp"
-                        android:layout_marginTop="-46dp"
-                        android:layout_marginBottom="26dp"
-                        android:importantForAccessibility="no"
-                        android:text="No countdown yet"
-                        android:textColor="@color/cloud"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:layout_marginTop="12dp">
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/countdownsButton"
+                            style="@style/Widget.LittleOrbit.Button.Outline"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="top|start"
+                            android:paddingTop="14dp"
+                            android:text="@string/countdown_label" />
+                        <TextView
+                            android:id="@+id/countdownText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom|start"
+                            android:layout_marginStart="18dp"
+                            android:layout_marginBottom="14dp"
+                            android:importantForAccessibility="no"
+                            android:text="No countdown yet"
+                            android:textColor="@color/cloud"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/quizButton"
@@ -304,6 +326,42 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/app_updates" />
+                <TextView
+                    android:id="@+id/notificationStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:textColor="@color/muted" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/notificationSetupButton"
+                    style="@style/Widget.LittleOrbit.Button.Outline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/check_notification_permission" />
+                <TextView
+                    android:id="@+id/locationStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:textColor="@color/muted" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/locationSetupButton"
+                    style="@style/Widget.LittleOrbit.Button.Outline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/location_setup" />
+                <TextView
+                    android:id="@+id/wearStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:textColor="@color/muted" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/wearInstallButton"
+                    style="@style/Widget.LittleOrbit.Button.Outline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/install_watch_app" />
                 <TextView
                     android:id="@+id/versionText"
                     android:layout_width="wrap_content"

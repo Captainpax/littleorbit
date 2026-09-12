@@ -18,7 +18,7 @@ import java.util.Map;
 
 /** Focused five-question flow with private drafts, review, and atomic reveal. */
 @AndroidEntryPoint
-public final class QuizActivity extends AppCompatActivity {
+public final class QuizActivity extends InsetAwareActivity {
     public static final String EXTRA_QUIZ_DATE = "quiz_date";
     private ActivityQuizBinding binding;
     private QuizViewModel model;

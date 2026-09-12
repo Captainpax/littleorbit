@@ -72,6 +72,12 @@ def main() -> None:
     release.add_argument("--size-bytes", required=True, type=int)
     release.add_argument("--package-name", default="com.littleorbit.mobile")
     release.add_argument("--signer-sha256", required=True)
+    release.add_argument("--wear-apk-url")
+    release.add_argument("--wear-sha256")
+    release.add_argument("--wear-size-bytes", type=int)
+    release.add_argument("--wear-package-name")
+    release.add_argument("--wear-version-code", type=int)
+    release.add_argument("--wear-minimum-android", type=int)
     release.add_argument("--minimum-android", required=True, type=int)
     release.add_argument("--minimum-supported-version-code", default=1, type=int)
     release.add_argument("--required-after")
@@ -89,6 +95,12 @@ def main() -> None:
             size_bytes=arguments.size_bytes,
             package_name=arguments.package_name,
             signer_sha256=arguments.signer_sha256,
+            wear_apk_url=arguments.wear_apk_url,
+            wear_sha256=arguments.wear_sha256,
+            wear_size_bytes=arguments.wear_size_bytes,
+            wear_package_name=arguments.wear_package_name,
+            wear_version_code=arguments.wear_version_code,
+            wear_minimum_android=arguments.wear_minimum_android,
             minimum_android=arguments.minimum_android,
             minimum_supported_version_code=arguments.minimum_supported_version_code,
             required_after=arguments.required_after,

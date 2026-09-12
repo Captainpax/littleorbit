@@ -49,6 +49,7 @@ public abstract class DisplayModule {
         return Room.databaseBuilder(context, LittleOrbitDatabase.class, "little-orbit.db")
                 .addMigrations(DatabaseMigrations.MIGRATION_1_2)
                 .addMigrations(DatabaseMigrations.MIGRATION_2_3)
+                .addMigrations(DatabaseMigrations.MIGRATION_3_4)
                 .build();
     }
 

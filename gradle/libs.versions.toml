@@ -32,6 +32,7 @@ androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmode
 androidx-lifecycle-livedata = { module = "androidx.lifecycle:lifecycle-livedata", version.ref = "androidx-lifecycle" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "work" }
 material = { module = "com.google.android.material:material", version.ref = "material" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }

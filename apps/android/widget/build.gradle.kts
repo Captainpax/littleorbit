@@ -15,4 +15,5 @@ dependencies {
     implementation(project(":apps:android:domain"))
     implementation(project(":apps:android:data"))
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.work.runtime)
 }
