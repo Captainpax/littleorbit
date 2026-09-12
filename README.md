@@ -68,7 +68,7 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Local development](docs/operations/LOCAL-DEVELOPMENT.md)
 - [Deployment runbook](docs/operations/DEPLOYMENT.md)
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
-- [Latest verification record](docs/operations/VERIFICATION-2026-09-11.md)
+- [Latest verification record](docs/operations/VERIFICATION-2026-09-12.md)
 
 ## License and support
 
