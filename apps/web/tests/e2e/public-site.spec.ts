@@ -26,7 +26,7 @@ test("download remains available when release API metadata is unavailable", asyn
   await page.goto("/download");
   const download = page.getByRole("link", { name: "Download signed APK" });
   await expect(page.getByText("Available", { exact: true })).toBeVisible();
-  await expect(page.getByText("94f6a8a6393d0a76680996dc8ee7274859969b0993bca99bece0d1a665bb69d6")).toBeVisible();
+  await expect(page.getByText("56dd74a4640c0fd91f029c3e59c227521284d524e3bb4f6035b2a38dad88c234")).toBeVisible();
   await expect(download).toBeVisible();
   await expect(download).toHaveAttribute(
     "href",

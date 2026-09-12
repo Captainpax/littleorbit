@@ -73,7 +73,7 @@ docker compose --env-file .env -f infra/compose.yaml exec api python -m little_o
   --version 1.0.0-rc.4 `
   --apk-url https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk `
   --github-release-url https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.4 `
-  --sha256 94f6a8a6393d0a76680996dc8ee7274859969b0993bca99bece0d1a665bb69d6 `
+  --sha256 56dd74a4640c0fd91f029c3e59c227521284d524e3bb4f6035b2a38dad88c234 `
   --release-notes "First-party resumable APK downloads with unchanged signature verification." `
   --version-code 4 --size-bytes 15747217 `
   --package-name com.littleorbit.mobile `

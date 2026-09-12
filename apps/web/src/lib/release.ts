@@ -19,7 +19,7 @@ export const currentRelease: ReleaseMetadata = {
   version: "1.0.0-rc.4",
   versionCode: 4,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "94f6a8a6393d0a76680996dc8ee7274859969b0993bca99bece0d1a665bb69d6",
+  sha256: "56dd74a4640c0fd91f029c3e59c227521284d524e3bb4f6035b2a38dad88c234",
   releaseNotes: [
     "Downloads signed APKs directly from Little Orbit instead of GitHub.",
     "Supports interrupted-download resume with exact content length and byte ranges.",

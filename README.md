@@ -51,7 +51,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.4`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.4) is the current signed phone and Wear OS release candidate. The [primary phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk) is served by Little Orbit with byte-range resume support; GitHub keeps a release mirror, checksums, and source history. The updater checks the exact size, SHA-256, package, version, and [pinned signing certificate](docs/signing/README.md). RC3 users need one manual RC4 install because RC3 trusted only GitHub APK URLs; later first-party updates can run through the app. This remains a test release until the real-device launch gate is complete.
+[`1.0.0-rc.4`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.4) is the current signed phone and Wear OS release candidate. The [primary phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk) is served by Little Orbit with byte-range resume support; GitHub keeps a release mirror, checksums, and source history. The phone APK SHA-256 is `56dd74a4640c0fd91f029c3e59c227521284d524e3bb4f6035b2a38dad88c234`. The updater also checks size, package, version, and the [pinned signing certificate](docs/signing/README.md). RC3 users need one manual RC4 install because RC3 trusted only GitHub APK URLs; later first-party updates can run through the app. This remains a test release until the real-device launch gate is complete.
 
 ## Privacy promise
 
