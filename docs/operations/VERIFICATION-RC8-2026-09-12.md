@@ -9,9 +9,11 @@ This record covers the RC8 home redesign, private profile images, phone-hosted W
 | API style | `python -m ruff check services/api` in the API virtual environment | Passed |
 | API types | `python -m mypy services/api` | Passed, 69 source files |
 | API behavior | `python -m pytest services/api/tests` | Passed, 56 tests |
+| API and AI integration | `python -m pytest -q services/api/tests services/ai/tests` | Passed, 64 tests |
 | Android domain/data/mobile/Wear | Unit suites plus phone and Wear `lintDebug` | Passed |
 | Web style and types | `npm run lint` and `npm run typecheck` | Passed |
 | Web behavior | `npm run test` | Passed, 20 tests in 3 files |
+| Web browser flows | `npm run test:e2e` | Passed, 16 desktop/mobile tests |
 | Web production build | `npm run build` | Passed; `/patch-notes`, `/patch-notes.xml`, and `/app/install-wear` emitted |
 | Signed Android release | `infra/scripts/build-signed-android.ps1` | Passed for phone and Wear; signer matched |
 | API 36 emulator | Install signed RC8, cold launch, screenshot, and accessibility-tree dump | Passed; system bars did not overlap content |
@@ -28,7 +30,17 @@ The API image tests use generated solid-color fixtures. They verify metadata-fre
 
 ## Deployment verification
 
-Pending final RC8 publication and live proxy checks. This section must record container health, migration `0011`, current/history metadata, complete and ranged phone/Wear downloads, patch-note HTML, RSS XML, Android App Links, and public HTTPS before the release is considered deployed.
+- API, web, worker, PostgreSQL, gateway, and Ollama started successfully; API, web, PostgreSQL, gateway, and Ollama reported healthy.
+- Alembic reported migration `0011 (head)` after API startup.
+- The immutable current-release response returned RC8, code 8, the two exact hashes and sizes, the pinned signer, no `required_after`, and minimum supported phone code 6. Release history returned RC8 first.
+- Full phone and Wear downloads completed through public HTTPS with exact byte counts and SHA-256 hashes.
+- Public 1,024-byte range requests returned `206`, exact `Content-Range`, `Content-Length: 1024`, immutable cache headers, ETag, and `X-Checksum-SHA256` for both artifacts.
+- `/patch-notes` contained RC8 and the RSS action. `/patch-notes.xml` parsed as RSS 2.0 and contained RC8. `/app/install-wear` described the phone flow.
+- `/.well-known/assetlinks.json` returned package `com.littleorbit.mobile` with the pinned certificate fingerprint.
+- The GitHub prerelease tag and mirror exposed both APKs and checksum sidecars.
+- Anonymous profile metadata and image requests carrying the current Android version headers passed the version floor and returned `401`; requests without a qualifying version returned the expected pre-authentication `426`. The migration table existed without inspecting any image content.
+
+Public checks used `https://lil-orb.pax-kun.com` through Nginx Proxy Manager and the gateway, rather than direct container ports.
 
 ## Open physical-device gate
 
