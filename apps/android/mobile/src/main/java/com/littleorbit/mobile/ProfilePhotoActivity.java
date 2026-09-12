@@ -1,21 +1,19 @@
 package com.littleorbit.mobile;
 
-import android.graphics.Bitmap;
+import android.app.Activity;
+import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import com.canhub.cropper.CropImageContract;
-import com.canhub.cropper.CropImageContractOptions;
-import com.canhub.cropper.CropImageOptions;
-import com.canhub.cropper.CropImageView;
 import com.littleorbit.data.repository.ProfileRepository;
 import com.littleorbit.mobile.databinding.ActivityProfilePhotoBinding;
 import dagger.hilt.android.AndroidEntryPoint;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import javax.inject.Inject;
 
 /** Private profile-photo picker with explicit square crop and server replacement. */
@@ -26,9 +24,16 @@ public final class ProfilePhotoActivity extends InsetAwareActivity {
     @Inject ProfileRepository profiles;
 
     private final ActivityResultLauncher<String> pickPhoto = registerForActivityResult(
-            new ActivityResultContracts.GetContent(), uri -> { if (uri != null) crop(uri); });
-    private final ActivityResultLauncher<CropImageContractOptions> cropPhoto =
-            registerForActivityResult(new CropImageContract(), this::handleCrop);
+            new ActivityResultContracts.GetContent(), uri -> {
+                if (uri != null) openCrop(uri);
+            });
+    private final ActivityResultLauncher<Intent> cropPhoto = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), result -> {
+                Intent data = result.getData();
+                if (result.getResultCode() == Activity.RESULT_OK && data != null) {
+                    handleCrop(data.getData());
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,37 +46,37 @@ public final class ProfilePhotoActivity extends InsetAwareActivity {
         profiles.refresh().thenAccept(state -> runOnUiThread(() -> render(state)));
     }
 
-    private void crop(Uri source) {
-        CropImageOptions options = new CropImageOptions();
-        options.fixAspectRatio = true;
-        options.aspectRatioX = 1;
-        options.aspectRatioY = 1;
-        options.cropShape = CropImageView.CropShape.OVAL;
-        options.outputCompressFormat = Bitmap.CompressFormat.WEBP;
-        options.outputCompressQuality = 88;
-        options.outputRequestWidth = 512;
-        options.outputRequestHeight = 512;
-        options.activityTitle = getString(R.string.crop_profile_photo);
-        cropPhoto.launch(new CropImageContractOptions(source, options));
+    private void openCrop(Uri source) {
+        cropPhoto.launch(ProfileCropActivity.intent(this, source));
     }
 
-    private void handleCrop(CropImageView.CropResult result) {
-        if (!result.isSuccessful()) {
-            if (result.getError() != null) binding.profileStatus.setText(R.string.photo_crop_failed);
+    private void handleCrop(Uri resultUri) {
+        if (resultUri == null) {
+            binding.profileStatus.setText(R.string.photo_crop_failed);
             return;
         }
         try {
-            Bitmap bitmap = result.getBitmap(this);
-            if (bitmap == null) throw new IOException("Crop output is unavailable");
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            if (!bitmap.compress(Bitmap.CompressFormat.WEBP, 88, output)) {
-                throw new IOException("Could not encode crop");
-            }
-            byte[] webp = output.toByteArray();
-            if (webp.length > MAX_UPLOAD_BYTES) throw new IOException("Crop is too large");
-            upload(webp);
+            upload(readBounded(resultUri));
         } catch (IOException | RuntimeException failure) {
             binding.profileStatus.setText(R.string.photo_crop_failed);
+        } finally {
+            getContentResolver().delete(resultUri, null, null);
+        }
+    }
+
+    private byte[] readBounded(Uri uri) throws IOException {
+        try (InputStream input = getContentResolver().openInputStream(uri);
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            if (input == null) throw new IOException("Crop output is unavailable");
+            byte[] buffer = new byte[8192];
+            int total = 0;
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                total += count;
+                if (total > MAX_UPLOAD_BYTES) throw new IOException("Crop is too large");
+                output.write(buffer, 0, count);
+            }
+            return output.toByteArray();
         }
     }
 
@@ -81,7 +86,10 @@ public final class ProfilePhotoActivity extends InsetAwareActivity {
             render(state);
             binding.profileStatus.setText(R.string.profile_photo_saved);
             setBusy(false);
-        })).exceptionally(failure -> { runOnUiThread(() -> fail()); return null; });
+        })).exceptionally(failure -> {
+            runOnUiThread(this::fail);
+            return null;
+        });
     }
 
     private void removePhoto() {
@@ -90,7 +98,10 @@ public final class ProfilePhotoActivity extends InsetAwareActivity {
             render(state);
             binding.profileStatus.setText(R.string.profile_photo_removed);
             setBusy(false);
-        })).exceptionally(failure -> { runOnUiThread(() -> fail()); return null; });
+        })).exceptionally(failure -> {
+            runOnUiThread(this::fail);
+            return null;
+        });
     }
 
     private void render(ProfileRepository.State state) {
@@ -115,7 +126,10 @@ public final class ProfilePhotoActivity extends InsetAwareActivity {
         binding.removePhoto.setEnabled(!busy && profiles.cached().myPhoto() != null);
     }
 
-    private void fail() { setBusy(false); binding.profileStatus.setText(R.string.request_failed); }
+    private void fail() {
+        setBusy(false);
+        binding.profileStatus.setText(R.string.request_failed);
+    }
 
     private static String initial(String name) {
         return name == null || name.isBlank() ? "Y" : name.substring(0, 1).toUpperCase();

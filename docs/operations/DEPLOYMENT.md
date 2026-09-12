@@ -105,3 +105,9 @@ Migration `0011` stores normalized profile-photo variants in PostgreSQL. Before 
 The website no longer distributes a PowerShell watch installer. `/app/install-wear` is an Android App Link into the phone installer, and `/.well-known/assetlinks.json` pins the same release certificate used by both APKs. Keep the raw Wear APK endpoint for advanced recovery. Validate the installer on a physical phone/watch pair before calling it release-ready: discovery grant and denial, manual address fallback, first pairing, remembered authorization, old-patch warning, upgrade, current-version result, downgrade rejection, wrong-device rejection, and **Forget watch authorization**.
 
 RC8 artifacts use phone version code 8 and Wear version code 8. Phone size is 23,277,980 bytes with SHA-256 `a20947a885959f0201f7559052b272fcd1a7d4f3f6057029d49521627270d156`; Wear size is 14,130,618 bytes with SHA-256 `de1b1e5af6b983b412e89e46702396bd5db027a0a689697c5f28d577b5ef723c`. The compatibility floor remains version code 6 and RC8 has no enforcement time.
+
+## RC9 corrective release
+
+RC9 moves home-widget database reads and rendering from broadcast-receiver callbacks into unique WorkManager jobs, adds a fixed quiz-reveal exit, and replaces the removed library crop activity with an internal inset-safe crop screen. Confirm the merged release manifest contains only the non-exported `ProfileCropActivity` and no exported `com.canhub.cropper.CropImageActivity` before publication.
+
+RC9 artifacts use phone version code 9 and Wear version code 9. Phone size is 23,285,988 bytes with SHA-256 `28cdcbc6cd58b26507979e77562de6123e15628766b605108e1c98c26da016b3`; Wear size is 14,130,618 bytes with SHA-256 `e51241347840273667956e60dc36c560ef2e9b4dab2b57f7f89374dfae4c4036`. The compatibility floor remains version code 6 and RC9 has no enforcement time.

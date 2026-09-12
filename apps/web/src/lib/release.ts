@@ -37,23 +37,23 @@ export function hostedWearApkPath(version: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.8",
-  versionCode: 8,
+  version: "1.0.0-rc.9",
+  versionCode: 9,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "a20947a885959f0201f7559052b272fcd1a7d4f3f6057029d49521627270d156",
+  sha256: "28cdcbc6cd58b26507979e77562de6123e15628766b605108e1c98c26da016b3",
   releaseNotes: [
-    "Refreshes the home screen with photo-capable couple planets, nearby-time focus, filled feature cards, and compact navigation.",
-    "Adds private normalized profile photos for the phone and Wear launcher with initials as the fallback.",
-    "Installs the verified self-hosted Wear app directly from the phone over user-approved wireless debugging.",
-    "Adds immutable website patch notes and an RSS 2.0 release feed.",
+    "Fixes the home-widget refresh crash found on a physical Pixel after completing a quiz.",
+    "Adds a fixed Done action and explicit completed state to the shared quiz reveal.",
+    "Adds an inset-safe Little Orbit crop screen with visible Cancel and Use photo actions.",
+    "Keeps widget cache reads and rendering inside retry-safe WorkManager jobs.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.8",
-  apkUrl: hostedApkPath("1.0.0-rc.8"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.9",
+  apkUrl: hostedApkPath("1.0.0-rc.9"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.8"),
-    sha256: "de1b1e5af6b983b412e89e46702396bd5db027a0a689697c5f28d577b5ef723c",
+    apkUrl: hostedWearApkPath("1.0.0-rc.9"),
+    sha256: "e51241347840273667956e60dc36c560ef2e9b4dab2b57f7f89374dfae4c4036",
     sizeBytes: 14130618,
-    versionCode: 8,
+    versionCode: 9,
     minimumAndroid: 30,
   },
   published: true,
@@ -138,7 +138,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-12T19:10:17.158654Z",
+    publishedAt: "2026-09-12T21:38:41Z",
   }];
 }
 

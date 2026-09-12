@@ -34,6 +34,8 @@
         </provider>
         <activity android:name=".PrivacyActivity" android:exported="false" />
         <activity android:name=".ProfilePhotoActivity" android:exported="false" />
+        <activity android:name=".ProfileCropActivity" android:exported="false" />
+        <activity android:name="com.canhub.cropper.CropImageActivity" tools:node="remove" />
         <activity android:name=".WearInstallerActivity" android:exported="true">
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />

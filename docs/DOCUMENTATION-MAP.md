@@ -60,6 +60,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-RC6-2026-09-12.md` — RC6 relationship/location/Wear verification evidence.
 - `docs/operations/VERIFICATION-RC7-2026-09-12.md` — RC7 round-Wear correction evidence.
 - `docs/operations/VERIFICATION-RC8-2026-09-12.md` — RC8 profile, installer, patch-note, build, and deployment evidence.
+- `docs/operations/VERIFICATION-RC9-2026-09-12.md` — RC9 widget, quiz exit, crop, physical-Pixel, build, and deployment evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -72,6 +73,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.6.md` — RC6 insets, relationship age, proximity, permissions, and Wear.
 - `docs/releases/1.0.0-rc.7.md` — RC7 round-display correction.
 - `docs/releases/1.0.0-rc.8.md` — RC8 home, photos, in-app Wear install, and patch notes.
+- `docs/releases/1.0.0-rc.9.md` — RC9 widget crash, quiz completion, and profile-crop corrections.
 <!-- documentation-inventory:end -->
 
 ## Review routing

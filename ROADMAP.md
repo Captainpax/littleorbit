@@ -20,6 +20,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Gate every versioned Android route, including RC6 together-time endpoints, behind the activated minimum-client floor.
 - [x] Verify the Wear launcher on a round emulator, make its fallback fit and scroll safely, and publish the immutable RC7 correction.
 - [x] Publish RC8 with the concept-led home hierarchy, account profile photos on phone and Wear, a phone-hosted wireless-ADB Wear installer, and public patch notes with RSS.
+- [x] Publish RC9 with lifecycle-safe widget refreshes, a fixed quiz-completion exit, and an inset-safe first-party profile crop flow.
 - [x] Require every major-system agent guide to inventory all Markdown, update every affected document, and always review this roadmap.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.

@@ -6,7 +6,7 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.0 release candidate. The implemented flows pass automated API, protocol, web, signed Android release, gateway, email, deletion, and backup-restore checks. Public HTTPS and the source-restricted Windows Firewall rule are live. Real-device photo, wireless-watch-install, privacy/permission testing, the DHCP reservation, and legal review remain launch gates, so do not use the public deployment for real relationship data yet.
+> **Project status:** 1.0 release candidate. The implemented flows pass automated API, protocol, web, signed Android release, gateway, email, deletion, and backup-restore checks. RC9 also passed quiz-completion, crop/upload, and post-crash-log checks on a physical Pixel 8 Pro. Two-phone, physical-Wear, privacy/permission, DHCP-reservation, and legal review remain launch gates, so do not use the public deployment for real relationship data yet.
 
 ## What 1.0 includes
 
@@ -55,7 +55,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.8`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.8) is the current signed phone and Wear OS release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.8/apk) and [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.8/wear-apk) are served by Little Orbit with byte-range resume support; GitHub keeps a release mirror, checksums, and source history. The phone SHA-256 is `a20947a885959f0201f7559052b272fcd1a7d4f3f6057029d49521627270d156`; the Wear SHA-256 is `de1b1e5af6b983b412e89e46702396bd5db027a0a689697c5f28d577b5ef723c`. RC8 refreshes the home hierarchy, adds private profile photos, moves Wear installation into the phone app, and publishes website patch notes with RSS. The updater and watch installer verify size, package, version, hash, and the [pinned signing certificate](docs/signing/README.md). This remains a test release until the real-device launch gate is complete.
+[`1.0.0-rc.9`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.9) is the current signed phone and Wear OS release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.9/apk) and [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.9/wear-apk) are served by Little Orbit with byte-range resume support; GitHub keeps a release mirror, checksums, and source history. The phone SHA-256 is `28cdcbc6cd58b26507979e77562de6123e15628766b605108e1c98c26da016b3`; the Wear SHA-256 is `e51241347840273667956e60dc36c560ef2e9b4dab2b57f7f89374dfae4c4036`. RC9 fixes widget refresh crashes, gives completed quizzes a fixed Done action, and replaces the clipped library crop activity with an inset-safe Little Orbit crop screen. The updater and watch installer verify size, package, version, hash, and the [pinned signing certificate](docs/signing/README.md). This remains a test release until the real-device launch gate is complete.
 
 ## Privacy promise
 
@@ -74,7 +74,7 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Deployment runbook](docs/operations/DEPLOYMENT.md)
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
 - [Documentation map](docs/DOCUMENTATION-MAP.md)
-- [Latest verification record](docs/operations/VERIFICATION-RC8-2026-09-12.md)
+- [Latest verification record](docs/operations/VERIFICATION-RC9-2026-09-12.md)
 
 ## License and support
 

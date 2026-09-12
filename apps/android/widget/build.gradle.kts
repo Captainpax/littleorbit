@@ -16,4 +16,5 @@ dependencies {
     implementation(project(":apps:android:data"))
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.work.runtime)
+    testImplementation(libs.junit4)
 }

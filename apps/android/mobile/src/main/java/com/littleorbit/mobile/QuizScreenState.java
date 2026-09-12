@@ -4,6 +4,9 @@ import com.littleorbit.data.remote.QuizApiModels;
 
 /** Immutable presentation state for the focused daily quiz flow. */
 public final class QuizScreenState {
+    /** Mutually exclusive screen modes in render priority order. */
+    public enum Mode { LOADING, REVEALED, WAITING, REVIEW, QUESTION }
+
     public final QuizApiModels.Day day;
     public final int questionIndex;
     public final boolean loading;
@@ -42,5 +45,14 @@ public final class QuizScreenState {
     /** Returns whether all five private drafts are present. */
     public boolean allAnswered() {
         return day != null && day.questions.stream().allMatch(item -> item.myAnswer != null);
+    }
+
+    /** Resolves one deterministic presentation mode from the server and local edit state. */
+    public Mode mode() {
+        if (loading || day == null) return Mode.LOADING;
+        if (day.revealed) return Mode.REVEALED;
+        if (day.myFinished) return Mode.WAITING;
+        if (reviewing) return Mode.REVIEW;
+        return Mode.QUESTION;
     }
 }

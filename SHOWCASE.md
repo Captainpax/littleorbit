@@ -30,7 +30,7 @@ This generated RC5 design study is the visual target for daily questions. The im
 
 ![Implemented RC3 More screen on an API 36 emulator](docs/assets/android-more-rc3.png)
 
-The RC8 API 36 emulator capture verifies the refreshed signed-out planet hierarchy, action treatment, icon navigation, and status/navigation-bar insets. The earlier RC3 captures preserve the first implemented Inter type system, persistent navigation, More hierarchy, and Wear update boundary. RC4 changed the verified download transport and RC5 brought the daily quiz into the same visual system. RC6 separated relationship age and nearby-time, added guided device setup, and refreshed the widget, tile, and complication cache contract. Paired photo and live-data states still need physical-device captures.
+The RC8 API 36 emulator capture verifies the refreshed signed-out planet hierarchy, action treatment, icon navigation, and status/navigation-bar insets. The earlier RC3 captures preserve the first implemented Inter type system, persistent navigation, More hierarchy, and Wear update boundary. RC4 changed the verified download transport and RC5 brought the daily quiz into the same visual system. RC6 separated relationship age and nearby-time, added guided device setup, and refreshed the widget, tile, and complication cache contract. RC9 gives a revealed quiz a fixed action above navigation, moves widget rendering into lifecycle-safe background work, and adds a Little Orbit crop screen whose Cancel and Use photo controls remain inside the system insets. Paired two-phone and live-data captures still remain open.
 
 ![Signed RC7 Wear OS fallback state on a round Wear OS 5 emulator](docs/assets/wear-rc7-signed-emulator.png)
 
@@ -64,7 +64,8 @@ The console exposes service health, delivery and generation status, moderation q
 
 ## Screenshot checklist
 
-- [ ] Real phone: RC8 inset behavior, profile crop/upload/remove, notification/location setup, pairing, focused daily question, review/wait/reveal, countdown, notes conflict, relationship date, nearby-time, and privacy controls.
+- [x] Real Pixel 8 Pro: signed RC9 upgrade with retained account data, revealed-quiz Done return, profile crop approval/upload, and no new widget or Android runtime crash after the reproduced RC8 failure.
+- [ ] Real phone follow-up: two-phone profile sync/removal, notification/location setup, pairing, focused daily-question entry/review/wait, countdown, notes conflict, relationship date, nearby-time, and privacy controls.
 - [x] API 36 emulator: signed RC8 install, cold launch, signed-out home hierarchy, status/navigation-bar insets, and accessibility-tree dump.
 - [ ] Home widget: fresh, stale, signed-out, and server-offline states.
 - [ ] Wear OS: in-app wireless install, remembered authorization, old-patch warning, profile-photo sync, phone capability detection, tile, complication, loading, stale, and disconnected states.

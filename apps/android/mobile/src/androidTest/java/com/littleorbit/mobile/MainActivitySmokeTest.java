@@ -39,13 +39,25 @@ public final class MainActivitySmokeTest {
                 NotesActivity.class,
                 PrivacyActivity.class,
                 ArchivesActivity.class,
-                TogetherTimeActivity.class);
+                TogetherTimeActivity.class,
+                ProfileCropActivity.class);
         for (Class<? extends android.app.Activity> activityType : activities) {
             try (ActivityScenario<? extends android.app.Activity> scenario =
                     ActivityScenario.launch(activityType)) {
                 scenario.onActivity(
                         activity -> assertNotNull(activity.getWindow().getDecorView()));
             }
+        }
+    }
+
+    @Test
+    public void cropScreenAlwaysExposesCancelAndApprovalActions() {
+        try (ActivityScenario<ProfileCropActivity> scenario =
+                ActivityScenario.launch(ProfileCropActivity.class)) {
+            scenario.onActivity(activity -> {
+                assertEquals(View.VISIBLE, activity.findViewById(R.id.cancelCrop).getVisibility());
+                assertEquals(View.VISIBLE, activity.findViewById(R.id.usePhoto).getVisibility());
+            });
         }
     }
 }

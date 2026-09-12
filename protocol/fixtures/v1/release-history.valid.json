@@ -1,11 +1,11 @@
 [
   {
-    "version": "1.0.0-rc.8",
-    "version_code": 8,
-    "github_release_url": "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.8",
+    "version": "1.0.0-rc.9",
+    "version_code": 9,
+    "github_release_url": "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.9",
     "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "minimum_android": 29,
-    "release_notes": "In-app Wear installation",
+    "release_notes": "Quiz, widget, and profile-crop reliability",
     "published_at": "2026-09-12T12:00:00Z"
   }
 ]

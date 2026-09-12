@@ -8,7 +8,6 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import com.littleorbit.data.remote.QuizApiModels;
 import com.littleorbit.mobile.databinding.ActivityQuizBinding;
@@ -49,26 +48,26 @@ public final class QuizActivity extends InsetAwareActivity {
         binding.previousButton.setOnClickListener(view -> model.previous());
         binding.nextButton.setOnClickListener(view -> model.next());
         binding.primaryButton.setOnClickListener(view -> primaryAction());
+        binding.resultDoneButton.setOnClickListener(view -> returnHome());
         binding.reportButton.setOnClickListener(view -> showReportReasons());
     }
 
     private void render(QuizScreenState state) {
         rendered = state;
         binding.statusText.setText(state.error == null ? "" : state.error);
-        setContentVisible(!state.loading && state.day != null);
-        if (state.loading || state.day == null) {
+        QuizScreenState.Mode mode = state.mode();
+        setContentVisible(mode != QuizScreenState.Mode.LOADING);
+        if (mode == QuizScreenState.Mode.LOADING) {
             binding.statusText.setText(state.error == null ? getString(R.string.loading) : state.error);
             return;
         }
         renderProgress(state);
-        if (state.day.revealed) {
-            renderReveal(state.day);
-        } else if (state.day.myFinished) {
-            renderWaiting(state.day);
-        } else if (state.reviewing) {
-            renderReview(state.day);
-        } else {
-            renderQuestion(state);
+        switch (mode) {
+            case REVEALED -> renderReveal(state.day);
+            case WAITING -> renderWaiting(state.day);
+            case REVIEW -> renderReview(state.day);
+            case QUESTION -> renderQuestion(state);
+            case LOADING -> throw new IllegalStateException("Loading handled before render");
         }
     }
 
@@ -81,9 +80,11 @@ public final class QuizActivity extends InsetAwareActivity {
         binding.nextButton.setVisibility(value);
         binding.primaryButton.setVisibility(value);
         binding.reportButton.setVisibility(value);
+        binding.resultDoneButton.setVisibility(View.GONE);
     }
 
     private void renderQuestion(QuizScreenState state) {
+        binding.resultDoneButton.setVisibility(View.GONE);
         QuizApiModels.Question question = state.day.questions.get(state.questionIndex);
         binding.categoryChip.setText(categoryLabel(question));
         binding.questionText.setText(question.prompt);
@@ -113,6 +114,7 @@ public final class QuizActivity extends InsetAwareActivity {
     }
 
     private void renderReview(QuizApiModels.Day day) {
+        binding.resultDoneButton.setVisibility(View.GONE);
         binding.categoryChip.setText(R.string.review_answers);
         binding.questionText.setText(R.string.review_answers);
         binding.questionHint.setText(R.string.quiz_review_hint);
@@ -137,6 +139,7 @@ public final class QuizActivity extends InsetAwareActivity {
     }
 
     private void renderWaiting(QuizApiModels.Day day) {
+        binding.resultDoneButton.setVisibility(View.GONE);
         binding.categoryChip.setText(R.string.answers_ready);
         binding.questionText.setText(R.string.waiting_for_answers);
         binding.questionHint.setText(R.string.quiz_utc_hint);
@@ -155,7 +158,8 @@ public final class QuizActivity extends InsetAwareActivity {
             addRevealRow(question);
         }
         hideSecondaryActions();
-        binding.primaryButton.setText(R.string.back);
+        binding.primaryButton.setVisibility(View.GONE);
+        binding.resultDoneButton.setVisibility(View.VISIBLE);
     }
 
     private void addRevealRow(QuizApiModels.Question question) {
@@ -231,14 +235,17 @@ public final class QuizActivity extends InsetAwareActivity {
         binding.progressContainer.removeAllViews();
         int total = state.day.questions.size();
         int completed = (int) state.day.questions.stream().filter(item -> item.myAnswer != null).count();
-        binding.progressText.setText(state.reviewing
-                ? getString(R.string.review_answers)
-                : getString(R.string.question_progress, state.questionIndex + 1, total));
+        binding.progressText.setText(state.day.revealed
+                ? getString(R.string.quiz_complete)
+                : state.reviewing
+                        ? getString(R.string.review_answers)
+                        : getString(R.string.question_progress, state.questionIndex + 1, total));
         for (int index = 0; index < total; index++) {
             View segment = new View(this);
             GradientDrawable bar = new GradientDrawable();
             bar.setCornerRadius(dp(4));
-            bar.setColor(getColor(index < completed ? R.color.coral : R.color.orbit_border));
+            bar.setColor(getColor(state.day.revealed || index < completed
+                    ? R.color.coral : R.color.orbit_border));
             segment.setBackground(bar);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(5), 1);
             if (index > 0) params.leftMargin = dp(5);
@@ -310,5 +317,12 @@ public final class QuizActivity extends InsetAwareActivity {
 
     private void open(Class<?> activity) {
         startActivity(new Intent(this, activity));
+    }
+
+    private void returnHome() {
+        Intent intent = new Intent(this, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
+        finish();
     }
 }

@@ -7,6 +7,7 @@
     <string name="profile_photo_intro">Choose a photo for your shared orbit. Little Orbit crops it to a square, removes metadata on the server, and shares a small private copy only with your current partner’s phone and watch.</string>
     <string name="choose_and_crop_photo">Choose and crop photo</string>
     <string name="crop_profile_photo">Crop your profile photo</string>
+    <string name="use_photo">Use photo</string>
     <string name="remove_profile_photo">Remove photo</string>
     <string name="profile_photo_saved">Your orbit photo is updated.</string>
     <string name="profile_photo_removed">Your orbit photo was removed.</string>
@@ -103,6 +104,7 @@
     <string name="wear_no_watch">No connected Wear OS watch found</string>
     <string name="wear_status_unavailable">Watch status is temporarily unavailable</string>
     <string name="done">Done</string>
+    <string name="quiz_complete">Quiz complete</string>
     <string name="together_for">TOGETHER FOR</string>
     <string name="today_orbit">TODAY’S ORBIT</string>
     <string name="question_placeholder">What made you smile today?</string>

@@ -207,14 +207,18 @@ flowchart LR
     API -->|accepted state| Room
     API -->|stale revision| Conflict[Explicit local/server reconciliation]
     Phone[Phone cache publisher] -->|Versioned Wearable Data Layer| Watch[Wear OS cache]
-    Room --> Widget[Home-screen widget]
+    Room --> Sync[Bounded display-cache sync worker]
+    Sync --> Render[Unique widget-render worker]
+    Render --> Widget[Home-screen widget]
+    Widget -->|User refresh| Sync
+    Render -->|Cache unavailable| Unavailable[Unavailable state]
     Watch --> Tile[Wear OS tile]
     Watch --> Complication[Watch-face complication]
     Room -->|age threshold| Stale[Stale-data indicator]
     Watch -->|age threshold| Stale
 ```
 
-Tokens stay in Android Keystore-backed storage. The offline queue contains encrypted countdown mutations. Widget, tile, and complication caches contain only the accepted relationship start date, coordinate-free nearby seconds and process time, next countdown, and cache-sync time. The separate Wear launcher profile cache contains only display names and server-normalized 128-pixel thumbnails received through the Wearable Data Layer. RC6 publishes the v2 display cache plus the legacy v1 path for one release so an older watch fails stale rather than displaying a new value with the wrong meaning.
+Tokens stay in Android Keystore-backed storage. The offline queue contains encrypted countdown mutations. Widget, tile, and complication caches contain only the accepted relationship start date, coordinate-free nearby seconds and process time, next countdown, and cache-sync time. The separate Wear launcher profile cache contains only display names and server-normalized 128-pixel thumbnails received through the Wearable Data Layer. RC6 publishes the v2 display cache plus the legacy v1 path for one release so an older watch fails stale rather than displaying a new value with the wrong meaning. RC9 coalesces home-widget rendering through WorkManager so cache reads finish under a worker-owned lifecycle; receiver callbacks only enqueue bounded work.
 
 ## Profile photo processing and synchronization
 
