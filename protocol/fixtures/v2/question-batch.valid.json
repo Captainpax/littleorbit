@@ -1,0 +1,16 @@
+{
+  "schema_version": "2",
+  "date": "2026-09-13",
+  "questions": [
+    {"client_id":"rc5-01","kind":"single_choice","prompt":"Which small welcome would feel nicest after a long day?","category":"everyday","intimacy":false,"options":["A long hug","A favorite snack","Quiet company","A funny story"],"option_icons":["heart","meal","rest","chat"],"scale_low_label":null,"scale_high_label":null},
+    {"client_id":"rc5-02","kind":"multiple_choice","prompt":"Which tiny adventures should we make time for this month?","category":"dreams","intimacy":false,"options":["Try a cafe","Walk somewhere new","Cook a new meal","Visit a bookshop"],"option_icons":["meal","outdoors","home","star"],"scale_low_label":null,"scale_high_label":null},
+    {"client_id":"rc5-03","kind":"free_text","prompt":"What ordinary moment with us has stayed in your mind lately?","category":"memories","intimacy":false,"options":[],"option_icons":[],"scale_low_label":null,"scale_high_label":null},
+    {"client_id":"rc5-04","kind":"partner_guess","prompt":"On a completely free evening, what would you choose first?","category":"playful","intimacy":false,"options":["Movie night","Go for a drive","Play a game","Early bedtime"],"option_icons":["movie","travel","play","rest"],"scale_low_label":null,"scale_high_label":null},
+    {"client_id":"rc5-05","kind":"weighted_choice","prompt":"How much would each plan help you feel connected this weekend?","category":"connection","intimacy":false,"options":["A shared meal","A long talk","A quiet walk"],"option_icons":["meal","chat","outdoors"],"scale_low_label":"Not much","scale_high_label":"Very much"},
+    {"client_id":"rc5-06","kind":"single_choice","prompt":"What kind of encouragement would help you most tomorrow?","category":"connection","intimacy":false,"options":["A kind message","Practical help","A pep talk","Quiet belief"],"option_icons":["chat","home","star","heart"],"scale_low_label":null,"scale_high_label":null},
+    {"client_id":"rc5-07","kind":"free_text","prompt":"What is one thing about our teamwork you appreciate right now?","category":"values","intimacy":false,"options":[],"option_icons":[],"scale_low_label":null,"scale_high_label":null},
+    {"client_id":"rc5-08","kind":"partner_guess","prompt":"Which comfort would you pick for our next cozy night?","category":"playful","intimacy":false,"options":["Blanket fort","Favorite film","Takeout picnic","Music and tea"],"option_icons":["home","movie","meal","music"],"scale_low_label":null,"scale_high_label":null},
+    {"client_id":"rc5-09","kind":"single_choice","prompt":"Which gentle kind of closeness would feel best tonight?","category":"intimacy","intimacy":true,"options":["Hold hands","Cuddle","Slow dance","Sit close"],"option_icons":["heart","rest","music","home"],"scale_low_label":null,"scale_high_label":null},
+    {"client_id":"rc5-10","kind":"free_text","prompt":"What helps you feel safe and cared for during affectionate moments?","category":"intimacy","intimacy":true,"options":[],"option_icons":[],"scale_low_label":null,"scale_high_label":null}
+  ]
+}

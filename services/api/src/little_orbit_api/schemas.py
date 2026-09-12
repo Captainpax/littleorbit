@@ -6,21 +6,66 @@ from uuid import UUID
 
 from pydantic import (
     AnyHttpUrl,
-    BaseModel,
-    ConfigDict,
     EmailStr,
     Field,
-    StringConstraints,
     model_validator,
 )
 
-StrictText = Annotated[str, StringConstraints(strip_whitespace=True)]
-
-
-class StrictModel(BaseModel):
-    """Base model that rejects undeclared network fields."""
-
-    model_config = ConfigDict(extra="forbid")
+from .quiz_v2_schemas import (
+    CustomQuestionV2Request as CustomQuestionV2Request,
+)
+from .quiz_v2_schemas import (
+    CustomQuestionV2Response as CustomQuestionV2Response,
+)
+from .quiz_v2_schemas import (
+    CustomQueueResponse as CustomQueueResponse,
+)
+from .quiz_v2_schemas import (
+    FreeTextAnswer as FreeTextAnswer,
+)
+from .quiz_v2_schemas import (
+    LegacyWeightedAnswer as LegacyWeightedAnswer,
+)
+from .quiz_v2_schemas import (
+    MultipleChoiceAnswer as MultipleChoiceAnswer,
+)
+from .quiz_v2_schemas import (
+    PartnerGuessAnswer as PartnerGuessAnswer,
+)
+from .quiz_v2_schemas import (
+    QuestionReportV2Request as QuestionReportV2Request,
+)
+from .quiz_v2_schemas import (
+    QuizAnswerV2 as QuizAnswerV2,
+)
+from .quiz_v2_schemas import (
+    QuizDayMutation as QuizDayMutation,
+)
+from .quiz_v2_schemas import (
+    QuizDayResponse as QuizDayResponse,
+)
+from .quiz_v2_schemas import (
+    QuizDraftMutation as QuizDraftMutation,
+)
+from .quiz_v2_schemas import (
+    QuizHistoryItem as QuizHistoryItem,
+)
+from .quiz_v2_schemas import (
+    QuizOptionV2 as QuizOptionV2,
+)
+from .quiz_v2_schemas import (
+    QuizQuestionV2 as QuizQuestionV2,
+)
+from .quiz_v2_schemas import (
+    QuizStatusResponse as QuizStatusResponse,
+)
+from .quiz_v2_schemas import (
+    SingleChoiceAnswer as SingleChoiceAnswer,
+)
+from .quiz_v2_schemas import (
+    WeightedChoiceAnswer as WeightedChoiceAnswer,
+)
+from .schema_base import StrictModel, StrictText
 
 
 class PublicMessage(StrictModel):
@@ -397,16 +442,24 @@ class CuratedQuestionInput(StrictModel):
         "multiple_choice",
         "free_text",
         "partner_guess",
-        "weighted_scale",
+        "weighted_choice",
     ]
     prompt: Annotated[StrictText, Field(min_length=12, max_length=240)]
     category: Literal[
         "everyday", "memories", "dreams", "values", "playful", "connection", "intimacy"
     ]
     intimacy: bool
-    options: list[Annotated[StrictText, Field(min_length=1, max_length=80)]] = Field(
-        max_length=8
+    options: list[Annotated[StrictText, Field(min_length=1, max_length=64)]] = Field(
+        max_length=6
     )
+    option_icons: list[
+        Literal[
+            "heart", "chat", "home", "meal", "movie", "music", "outdoors", "play",
+            "rest", "star", "travel", "surprise"
+        ]
+    ] = Field(max_length=6)
+    scale_low_label: Annotated[StrictText, Field(min_length=1, max_length=32)] | None = None
+    scale_high_label: Annotated[StrictText, Field(min_length=1, max_length=32)] | None = None
     enabled: bool = True
 
 

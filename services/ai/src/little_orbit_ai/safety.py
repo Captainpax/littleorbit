@@ -6,7 +6,7 @@ import unicodedata
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 
-from .schemas import CandidateQuestion
+from .schemas import CandidateQuestion, QuestionKind
 
 UNSAFE_PATTERNS: dict[str, tuple[str, ...]] = {
     "identifying_information": (
@@ -20,6 +20,12 @@ UNSAFE_PATTERNS: dict[str, tuple[str, ...]] = {
     "graphic_sexual": (r"\b(explicit sex act|graphic sexual)\b",),
     "unsafe_location": (r"\b(real[- ]time location|secretly locate|gps coordinates)\b",),
 }
+
+GENERIC_PATTERNS = (
+    r"\bsomeone you trust\b",
+    r"\ba new person\b",
+    r"\bpeople in general\b",
+)
 
 
 @dataclass(frozen=True)
@@ -62,16 +68,48 @@ def validate_candidate(candidate: CandidateQuestion, recent: list[str]) -> Valid
     """Apply deterministic safety and answerability gates to one candidate."""
 
     normalized = normalize_question(candidate.prompt)
+    reasons = _content_reasons(candidate, normalized)
+    reasons.extend(_interaction_reasons(candidate, normalized))
+    if is_near_duplicate(candidate.prompt, recent):
+        reasons.append("near_duplicate")
+    return ValidationResult(not reasons, tuple(reasons), normalized_hash(candidate.prompt))
+
+
+def _content_reasons(candidate: CandidateQuestion, normalized: str) -> list[str]:
+    """Return policy and basic answerability failures."""
+
     reasons: list[str] = []
     for reason, patterns in UNSAFE_PATTERNS.items():
         if any(re.search(pattern, normalized) for pattern in patterns):
             reasons.append(reason)
     if not candidate.prompt.rstrip().endswith("?"):
         reasons.append("not_a_question")
-    if is_near_duplicate(candidate.prompt, recent):
-        reasons.append("near_duplicate")
+    if any(re.search(pattern, normalized) for pattern in GENERIC_PATTERNS):
+        reasons.append("not_couple_focused")
+    if candidate.intimacy != (candidate.category.value == "intimacy"):
+        reasons.append("intimacy_category_mismatch")
     if candidate.category.value == "intimacy" and any(
         term in normalized for term in ("must", "should agree", "owe your partner")
     ):
         reasons.append("missing_consent_boundary")
-    return ValidationResult(not reasons, tuple(reasons), normalized_hash(candidate.prompt))
+    return reasons
+
+
+def _interaction_reasons(candidate: CandidateQuestion, normalized: str) -> list[str]:
+    """Return failures specific to an answer interaction."""
+
+    reasons: list[str] = []
+    if candidate.kind is QuestionKind.PARTNER_GUESS and re.search(
+        r"\b(your partner|partner s)\b", normalized
+    ):
+        reasons.append("partner_guess_not_self_answerable")
+    if candidate.kind is QuestionKind.WEIGHTED and re.search(
+        r"\b(scale|1 to 10|one to ten)\b", normalized
+    ):
+        reasons.append("scale_embedded_in_prompt")
+    if any(
+        normalize_question(option) in {"all of the above", "none of the above"}
+        for option in candidate.options
+    ):
+        reasons.append("ambiguous_option")
+    return reasons

@@ -1,4 +1,4 @@
-"""Strict, versioned model-output schemas."""
+"""Strict, versioned model-output schemas for public question generation."""
 
 from datetime import date
 from enum import StrEnum
@@ -14,7 +14,7 @@ class QuestionKind(StrEnum):
     MULTIPLE = "multiple_choice"
     FREE_TEXT = "free_text"
     PARTNER_GUESS = "partner_guess"
-    WEIGHTED = "weighted_scale"
+    WEIGHTED = "weighted_choice"
 
 
 class Category(StrEnum):
@@ -29,6 +29,23 @@ class Category(StrEnum):
     INTIMACY = "intimacy"
 
 
+class IconKey(StrEnum):
+    """Small audited icon vocabulary implemented by every client."""
+
+    HEART = "heart"
+    CHAT = "chat"
+    HOME = "home"
+    MEAL = "meal"
+    MOVIE = "movie"
+    MUSIC = "music"
+    OUTDOORS = "outdoors"
+    PLAY = "play"
+    REST = "rest"
+    STAR = "star"
+    TRAVEL = "travel"
+    SURPRISE = "surprise"
+
+
 class CandidateQuestion(BaseModel):
     """One untrusted model candidate before deterministic validation."""
 
@@ -39,46 +56,84 @@ class CandidateQuestion(BaseModel):
     prompt: str = Field(min_length=12, max_length=240)
     category: Category
     intimacy: bool
-    options: list[str] = Field(max_length=8)
+    options: list[str] = Field(default_factory=list, max_length=6)
+    option_icons: list[IconKey] = Field(default_factory=list, max_length=6)
+    scale_low_label: str | None = Field(default=None, min_length=1, max_length=32)
+    scale_high_label: str | None = Field(default=None, min_length=1, max_length=32)
 
     @model_validator(mode="after")
     def validate_shape(self) -> "CandidateQuestion":
-        """Enforce option and intimacy fields that vary by kind."""
+        """Enforce interaction-specific option, icon, scale, and consent fields."""
 
-        option_kinds = {QuestionKind.SINGLE, QuestionKind.MULTIPLE, QuestionKind.PARTNER_GUESS}
-        if self.kind in option_kinds and not 2 <= len(self.options) <= 8:
-            raise ValueError("choice questions require 2-8 options")
-        if self.kind not in option_kinds and self.options:
-            raise ValueError("free text and weighted scale questions have no options")
-        if len(set(self.options)) != len(self.options):
-            raise ValueError("options must be unique")
-        if any(not option.strip() or len(option) > 80 for option in self.options):
-            raise ValueError("options must contain 1-80 visible characters")
-        if self.intimacy != (self.category is Category.INTIMACY):
-            raise ValueError("intimacy flag must match the intimacy category")
+        self._validate_options()
+        self._validate_scale()
         return self
+
+    def _validate_options(self) -> None:
+        """Validate bounded, unique options and their audited icon keys."""
+
+        self._validate_option_count()
+        if len(self.option_icons) != len(self.options):
+            raise ValueError("every option requires one audited icon key")
+        normalized = {item.casefold().strip() for item in self.options}
+        if len(normalized) != len(self.options):
+            raise ValueError("options must be unique after normalization")
+        if any(not option.strip() or len(option.strip()) > 64 for option in self.options):
+            raise ValueError("options must contain 1-64 visible characters")
+
+    def _validate_option_count(self) -> None:
+        """Apply the interaction-specific option count."""
+
+        choices = {QuestionKind.SINGLE, QuestionKind.MULTIPLE, QuestionKind.PARTNER_GUESS}
+        option_kind = self.kind in choices or self.kind is QuestionKind.WEIGHTED
+        upper = 5 if self.kind is QuestionKind.WEIGHTED else 6
+        if option_kind and not 2 <= len(self.options) <= upper:
+            raise ValueError("choice interactions require 2-6 options")
+        if not option_kind and self.options:
+            raise ValueError("free-text questions cannot contain options")
+
+    def _validate_scale(self) -> None:
+        """Require two distinct anchors only for weighted choices."""
+
+        has_anchors = self.scale_low_label is not None and self.scale_high_label is not None
+        if (self.kind is QuestionKind.WEIGHTED) != has_anchors:
+            raise ValueError("only weighted choices require two scale anchors")
+        if self.scale_low_label == self.scale_high_label and has_anchors:
+            raise ValueError("scale anchors must differ")
 
 
 class GeneratedChoiceQuestion(CandidateQuestion):
-    """Generated choice question with options encoded in its JSON Schema."""
+    """Generated single, multiple, or partner-guess interaction."""
 
-    kind: Literal[
-        QuestionKind.SINGLE,
-        QuestionKind.MULTIPLE,
-        QuestionKind.PARTNER_GUESS,
-    ]
-    options: list[str] = Field(min_length=2, max_length=8)
+    kind: Literal[QuestionKind.SINGLE, QuestionKind.MULTIPLE, QuestionKind.PARTNER_GUESS]
+    options: list[str] = Field(min_length=2, max_length=6)
+    option_icons: list[IconKey] = Field(min_length=2, max_length=6)
+    scale_low_label: None = None
+    scale_high_label: None = None
+
+
+class GeneratedWeightedQuestion(CandidateQuestion):
+    """Generated choices that are each rated independently from one to five."""
+
+    kind: Literal[QuestionKind.WEIGHTED]
+    options: list[str] = Field(min_length=2, max_length=5)
+    option_icons: list[IconKey] = Field(min_length=2, max_length=5)
+    scale_low_label: str = Field(min_length=1, max_length=32)
+    scale_high_label: str = Field(min_length=1, max_length=32)
 
 
 class GeneratedOpenQuestion(CandidateQuestion):
-    """Generated free-text or weighted question with an empty option list."""
+    """Generated free-text interaction."""
 
-    kind: Literal[QuestionKind.FREE_TEXT, QuestionKind.WEIGHTED]
+    kind: Literal[QuestionKind.FREE_TEXT]
     options: list[str] = Field(max_length=0)
+    option_icons: list[IconKey] = Field(max_length=0)
+    scale_low_label: None = None
+    scale_high_label: None = None
 
 
 GeneratedCandidate = Annotated[
-    GeneratedChoiceQuestion | GeneratedOpenQuestion,
+    GeneratedChoiceQuestion | GeneratedWeightedQuestion | GeneratedOpenQuestion,
     Field(discriminator="kind"),
 ]
 
@@ -88,9 +143,9 @@ class GeneratedBatch(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = Field(pattern=r"^1$")
+    schema_version: Literal["2"]
     date: date
-    questions: list[GeneratedCandidate] = Field(min_length=5, max_length=12)
+    questions: list[GeneratedCandidate] = Field(min_length=10, max_length=10)
 
 
 class PublishedPool(BaseModel):

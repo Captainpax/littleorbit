@@ -7,7 +7,7 @@ export default function AppSignInPage() {
   return <main id="main">
     <PageIntro eyebrow="Email verified" title="Return to your little orbit">
       Android should open the verified Little Orbit app link. If the app is not installed,
-      download a signed release from GitHub.
+      download the signed release directly from Little Orbit.
     </PageIntro>
     <section className="shell release-card">
       <h2>Your account is ready</h2>

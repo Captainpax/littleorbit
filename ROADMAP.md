@@ -8,7 +8,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Runnable website/API/AI/container foundation and versioned protocol fixtures.
 - [x] Complete registration, verification, recovery, session rotation, and deletion flows.
 - [x] Complete confirmed atomic two-person pairing and private unpair archives.
-- [x] Complete daily questions, custom questions, mutual intimacy opt-in, reports, and reveal gating.
+- [x] Complete stable UTC daily sets, typed interactions, private drafts, review/finish, atomic reveal, seven-day catch-up, custom FIFO questions, mutual intimacy opt-in, and reports.
 - [x] Complete shared countdowns, encrypted offline mutation queues, and local reminder scheduling.
 - [x] Complete operational-transform note editing, reconnect convergence, drafts, and history.
 - [x] Complete consented together-time processing, corrections, and raw-coordinate expiry.
@@ -25,6 +25,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - Question-quality feedback and community-contributed curated questions.
 - Operational dashboards, backup drills, and incident playbooks.
 - Improved offline reconciliation and battery measurements.
+- Device-tested notification timing and richer quiz reveal motion under reduced-motion controls.
 
 ## 2.0 — Explicitly reviewed sensitive features
 

@@ -19,6 +19,7 @@ from ..models import (
     Note,
     QuizAnswer,
 )
+from ..quiz_v2_service import revoke_unrevealed_intimacy
 from ..schemas import (
     ArchiveDetail,
     ArchiveSummary,
@@ -75,6 +76,8 @@ async def update_preferences(
         raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
     if payload.intimacy_enabled is not None:
         member.intimacy_enabled = payload.intimacy_enabled
+        if not payload.intimacy_enabled:
+            await revoke_unrevealed_intimacy(session, member.couple_id)
     if payload.location_enabled is not None:
         member.location_enabled = payload.location_enabled
         if not payload.location_enabled:

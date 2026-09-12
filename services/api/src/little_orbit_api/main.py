@@ -20,6 +20,7 @@ from .routes import (
     notes,
     pairing,
     quizzes,
+    quizzes_v2,
     releases,
 )
 
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(pairing.router)
     app.include_router(couples.router)
     app.include_router(quizzes.router)
+    app.include_router(quizzes_v2.router)
     app.include_router(countdowns.router)
     app.include_router(locations.router)
     app.include_router(account.router)

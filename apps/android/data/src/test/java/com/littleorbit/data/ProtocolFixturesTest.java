@@ -31,14 +31,23 @@ public final class ProtocolFixturesTest {
     @Test
     public void canonicalFixturesKeepExpectedValidAndInvalidShapes() throws IOException {
         for (String name : NAMES) {
-            assertTrue(name, hasValidShape(name, read(name + ".valid.json")));
-            assertFalse(name, hasValidShape(name, read(name + ".invalid.json")));
+            assertTrue(name, hasValidShape(name, read("v1", name + ".valid.json")));
+            assertFalse(name, hasValidShape(name, read("v1", name + ".invalid.json")));
         }
     }
 
-    private Map<String, Object> read(String filename) throws IOException {
+    @Test
+    public void rc5QuizFixturesKeepTypedAnswerAndPrivacyShapes() throws IOException {
+        assertTrue(validQuestionBatchV2(read("v2", "question-batch.valid.json")));
+        assertFalse(validQuestionBatchV2(read("v2", "question-batch.invalid.json")));
+        assertTrue(validQuizDay(read("v2", "quiz-day.valid.json")));
+        assertFalse(validQuizDay(read("v2", "quiz-day.invalid.json")));
+    }
+
+    private Map<String, Object> read(String version, String filename) throws IOException {
         Path fixture = repositoryRoot()
-                .resolve("protocol/fixtures/v1")
+                .resolve("protocol/fixtures")
+                .resolve(version)
                 .resolve(filename);
         String json = new String(Files.readAllBytes(fixture), StandardCharsets.UTF_8);
         Map<String, Object> parsed = adapter.fromJson(json);
@@ -111,6 +120,35 @@ public final class ProtocolFixturesTest {
         return list.stream().allMatch(item -> item instanceof Map<?, ?> question
                 && question.get("prompt") instanceof String prompt
                 && prompt.length() >= 12);
+    }
+
+    private static boolean validQuestionBatchV2(Map<String, Object> value) {
+        Object questions = value.get("questions");
+        if (!"2".equals(value.get("schema_version"))
+                || !(questions instanceof List<?> list)
+                || list.size() != 10) {
+            return false;
+        }
+        return list.stream().allMatch(item -> item instanceof Map<?, ?> question
+                && question.get("prompt") instanceof String prompt
+                && prompt.length() >= 12
+                && question.get("options") instanceof List<?> options
+                && question.get("option_icons") instanceof List<?> icons
+                && options.size() == icons.size());
+    }
+
+    private static boolean validQuizDay(Map<String, Object> value) {
+        Object questions = value.get("questions");
+        if (!(questions instanceof List<?> list)
+                || list.size() != 5
+                || !numberIn(value.get("revision"), 0, Integer.MAX_VALUE)) {
+            return false;
+        }
+        boolean revealed = Boolean.TRUE.equals(value.get("revealed"));
+        return list.stream().allMatch(item -> item instanceof Map<?, ?> question
+                && numberIn(question.get("position"), 1, 5)
+                && numberIn(question.get("interaction_version"), 2, 2)
+                && (revealed || question.get("partner_answer") == null));
     }
 
     private static boolean isUuid(Object value) {

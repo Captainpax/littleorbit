@@ -6,30 +6,34 @@ import addFormats from "ajv-formats";
 import { describe, expect, it } from "vitest";
 
 const protocol = path.resolve(process.cwd(), "../../protocol");
-const names = ["location-batch", "note-operation", "pairing", "question-batch"];
+const contracts = [
+  ["v1", "location-batch"], ["v1", "note-operation"],
+  ["v1", "pairing"], ["v1", "question-batch"],
+  ["v2", "question-batch"], ["v2", "quiz-day"],
+] as const;
 
 function readJson(file: string): unknown {
   return JSON.parse(fs.readFileSync(file, "utf8").replace(/^\uFEFF/, "")) as unknown;
 }
 
-function validator(name: string) {
+function validator(version: string, name: string) {
   const ajv = new Ajv2020({ allErrors: true });
   addFormats(ajv);
-  const schema = readJson(path.join(protocol, "schemas/v1", `${name}.schema.json`));
+  const schema = readJson(path.join(protocol, "schemas", version, `${name}.schema.json`));
   return ajv.compile(schema as AnySchema);
 }
 
 describe("versioned protocol fixtures", () => {
-  for (const name of names) {
-    it(`${name} accepts the valid fixture`, () => {
-      expect(validator(name)(readJson(
-        path.join(protocol, "fixtures/v1", `${name}.valid.json`),
+  for (const [version, name] of contracts) {
+    it(`${version}/${name} accepts the valid fixture`, () => {
+      expect(validator(version, name)(readJson(
+        path.join(protocol, "fixtures", version, `${name}.valid.json`),
       ))).toBe(true);
     });
 
-    it(`${name} rejects the invalid fixture`, () => {
-      expect(validator(name)(readJson(
-        path.join(protocol, "fixtures/v1", `${name}.invalid.json`),
+    it(`${version}/${name} rejects the invalid fixture`, () => {
+      expect(validator(version, name)(readJson(
+        path.join(protocol, "fixtures", version, `${name}.invalid.json`),
       ))).toBe(false);
     });
   }

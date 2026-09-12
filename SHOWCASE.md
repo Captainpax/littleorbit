@@ -18,13 +18,17 @@ The dashboard leads with the relationship rather than system controls. Daily que
 
 The companion study defines the updater and settings direction: the same planet motif, a visible verification step, calm progress language, and one More destination for pairing, privacy, archives, and app updates. RC4 moves the actual APK transfer to Little Orbit's resumable first-party endpoint.
 
+![Generated RC5 quiz flow concept showing focused questions, partner guessing, private waiting, and shared reveal](docs/assets/android-quiz-rc5-concept.png)
+
+This generated RC5 design study is the visual target for daily questions. The implementation uses one focused card, five progress segments, question-specific controls, private drafts, an explicit Review and Finish step, and a calm side-by-side reveal. Partner guessing records each person's own choice and guess, then celebrates a match without points or rankings.
+
 ### Current Android implementation
 
 ![Implemented signed RC3 signed-out Android dashboard on an API 36 emulator](docs/assets/android-home-rc3-signed.png)
 
 ![Implemented RC3 More screen on an API 36 emulator](docs/assets/android-more-rc3.png)
 
-The RC3 emulator captures verify the Inter type system, paired planet motif, lavender primary action, persistent Home/Quiz/Notes/More navigation, sparse signed-out states, and Wear update boundary. RC4 keeps that interface and changes the verified download transport. Feature forms share the same cosmic background, inset fields, and action styles. Portrait, large-text, updater installation, widget, and Wear OS captures remain part of the physical-device release gate.
+The RC3 emulator captures verify the Inter type system, paired planet motif, lavender primary action, persistent Home/Quiz/Notes/More navigation, sparse signed-out states, and Wear update boundary. RC4 changed the verified download transport. RC5 brings the daily quiz and custom-question composer into the same visual system. Portrait, large-text, updater installation, quiz reveal, widget, and Wear OS captures remain part of the physical-device release gate.
 
 ## Public website
 
@@ -52,7 +56,7 @@ The console exposes service health, delivery and generation status, moderation q
 
 ## Screenshot checklist
 
-- [ ] Real phone: signed-out, pairing, daily question, both-answered reveal, countdown, notes conflict, together-time, privacy controls.
+- [ ] Real phone: signed-out, pairing, focused RC5 daily question, review/wait/reveal, countdown, notes conflict, together-time, privacy controls.
 - [x] API 36 emulator: RC3 debug APK install, launch, signed-out dashboard and More hierarchy, landscape rendering, and runtime-crash check.
 - [ ] Home widget: fresh, stale, signed-out, and server-offline states.
 - [ ] Wear OS: tile, complication, loading, stale, and disconnected states.

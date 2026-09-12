@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/background_cosmic"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/stepText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.Eyebrow" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/custom_question_title"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
+
+        <TextView
+            android:id="@+id/guidanceText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+        <LinearLayout
+            android:id="@+id/basicsStep"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:orientation="vertical">
+
+            <EditText
+                android:id="@+id/promptInput"
+                style="@style/Widget.LittleOrbit.Input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/custom_prompt"
+                android:inputType="textCapSentences|textMultiLine"
+                android:minHeight="112dp" />
+
+            <Spinner
+                android:id="@+id/kindInput"
+                style="@style/Widget.LittleOrbit.Spinner"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp" />
+
+            <Spinner
+                android:id="@+id/categoryInput"
+                style="@style/Widget.LittleOrbit.Spinner"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/detailsStep"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/optionsInput"
+                style="@style/Widget.LittleOrbit.Input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/custom_options_lines"
+                android:inputType="textCapSentences|textMultiLine"
+                android:minHeight="120dp" />
+
+            <EditText
+                android:id="@+id/lowAnchorInput"
+                style="@style/Widget.LittleOrbit.Input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/low_anchor" />
+
+            <EditText
+                android:id="@+id/highAnchorInput"
+                style="@style/Widget.LittleOrbit.Input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/high_anchor" />
+
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/surpriseInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:checked="true"
+                android:minHeight="56dp"
+                android:text="@string/surprise_question"
+                android:textColor="@color/cloud" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/previewStep"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/quiz_card_background"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/previewText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/cloud"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:accessibilityLiveRegion="polite"
+            android:textColor="@color/coral_soft" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/previousButton"
+                style="@style/Widget.LittleOrbit.Button.Outline"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:text="@string/back" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/nextButton"
+                style="@style/Widget.LittleOrbit.Button.Primary"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:text="@string/next_question" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/custom_queue_title"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+        <LinearLayout
+            android:id="@+id/queueContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical" />
+    </LinearLayout>
+</ScrollView>

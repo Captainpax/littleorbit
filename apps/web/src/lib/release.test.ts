@@ -12,7 +12,7 @@ describe("release metadata", () => {
     expect(release).toEqual(currentRelease);
     expect(release.published).toBe(true);
     expect(release.sha256).toHaveLength(64);
-    expect(release.apkUrl).toBe("/api/v1/releases/1.0.0-rc.4/apk");
+    expect(release.apkUrl).toBe("/api/v1/releases/1.0.0-rc.5/apk");
   });
 
   it("maps published API metadata to the signed APK download", async () => {

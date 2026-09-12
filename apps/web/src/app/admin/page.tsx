@@ -58,6 +58,24 @@ function count(values: Record<string, unknown>, key: string): number {
   return typeof value === "number" ? value : 0;
 }
 
+function BatchPreview({ batch }: { batch: Record<string, unknown> }) {
+  const snapshot = Array.isArray(batch.candidate_snapshot)
+    ? batch.candidate_snapshot.filter((item): item is Record<string, unknown> =>
+      typeof item === "object" && item !== null)
+    : [];
+  const duration = typeof batch.duration_ms === "number"
+    ? `${(batch.duration_ms / 1000).toFixed(1)}s`
+    : "not recorded";
+  return <details className="batch-preview">
+    <summary>{snapshot.length} validated candidates · {duration}</summary>
+    <ol>{snapshot.map((candidate, index) => <li key={`${String(batch.id)}-${index}`}>
+      <b>{String(candidate.prompt ?? "Prompt unavailable")}</b>
+      <small>{String(candidate.kind ?? "unknown")} · {String(candidate.category ?? "unknown")}
+        {candidate.intimacy ? " · mutual intimacy" : ""}</small>
+    </li>)}</ol>
+  </details>;
+}
+
 export default async function AdminPage() {
   const session = await requireAdminSession();
   const [overview, batches, reports, accounts, couples, events, bank] = await Promise.all([
@@ -115,6 +133,7 @@ export default async function AdminPage() {
               <div className="progress"><i style={{ width: "100%" }} /></div>
               <b>{String(batch.selected_count)} selected</b>
               <small>{batch.fallback_reason ? `fallback: ${String(batch.fallback_reason)}` : String(batch.model)}</small>
+              <BatchPreview batch={batch} />
               <form action={regenerateBatch}>
                 <input type="hidden" name="publish_date" value={String(batch.publish_date)} />
                 <button className="text-button" type="submit">Regenerate</button>
@@ -166,12 +185,12 @@ export default async function AdminPage() {
           <form action={setRegistration}><input type="hidden" name="enabled" value="false" /><button type="submit">Pause registration</button></form>
         </div>
         <form action={publishRelease} className="admin-form-grid">
-          <label>Version<input name="version" required placeholder="1.0.0-rc.4" /></label>
-          <label>Version code<input name="version_code" type="number" min="1" defaultValue="4" required /></label>
+          <label>Version<input name="version" required placeholder="1.0.0-rc.5" /></label>
+          <label>Version code<input name="version_code" type="number" min="1" defaultValue="5" required /></label>
           <label>Minimum Android<input name="minimum_android" type="number" min="29" max="36" defaultValue="29" required /></label>
-          <label>Compatibility floor<input name="minimum_supported_version_code" type="number" min="1" defaultValue="1" required /></label>
+          <label>Compatibility floor<input name="minimum_supported_version_code" type="number" min="1" defaultValue="5" required /></label>
           <label>Require after (optional)<input name="required_after" type="datetime-local" /></label>
-          <label>First-party APK URL<input name="apk_url" type="url" placeholder="https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk" required /></label>
+          <label>First-party APK URL<input name="apk_url" type="url" placeholder="https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.5/apk" required /></label>
           <label>GitHub Release URL<input name="github_release_url" type="url" required /></label>
           <label>SHA-256<input name="sha256" pattern="[a-f0-9]{64}" required /></label>
           <label>APK bytes<input name="size_bytes" type="number" min="1" required /></label>

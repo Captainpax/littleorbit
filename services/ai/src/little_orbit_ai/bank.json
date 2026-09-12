@@ -1,45 +1,3422 @@
 [
-  {"client_id":"bank-comfort","kind":"single_choice","prompt":"Which small comfort would make this evening feel especially good?","category":"everyday","intimacy":false,"options":["A favorite snack","A quiet walk","A cozy show","An early night"]},
-  {"client_id":"bank-dream-trip","kind":"multiple_choice","prompt":"Which kinds of places would you enjoy exploring together someday?","category":"dreams","intimacy":false,"options":["A new city","A forest trail","A museum","A small town"]},
-  {"client_id":"bank-memory","kind":"free_text","prompt":"What ordinary memory of the two of you still makes you smile?","category":"memories","intimacy":false,"options":[]},
-  {"client_id":"bank-guess","kind":"partner_guess","prompt":"What would your partner choose for an unplanned free afternoon?","category":"playful","intimacy":false,"options":["Stay home","Go outside","Try a cafe","See friends"]},
-  {"client_id":"bank-quiet","kind":"weighted_scale","prompt":"How much quiet time would feel restorative this weekend?","category":"connection","intimacy":false,"options":[]},
-  {"client_id":"bank-kindness","kind":"free_text","prompt":"What is one small kindness from your partner that you noticed lately?","category":"connection","intimacy":false,"options":[]},
-  {"client_id":"bank-tradition","kind":"single_choice","prompt":"Which simple tradition would be most fun to begin together?","category":"values","intimacy":false,"options":["Weekly walk","Monthly photo","Shared playlist","Sunday breakfast"]},
-  {"client_id":"bank-laugh","kind":"free_text","prompt":"What reliably makes the two of you laugh when a day feels heavy?","category":"playful","intimacy":false,"options":[]},
-  {"client_id":"bank-support","kind":"weighted_scale","prompt":"How supported have you felt in the small parts of this week?","category":"connection","intimacy":false,"options":[]},
-  {"client_id":"bank-breakfast","kind":"single_choice","prompt":"Which breakfast would make a slow morning together feel special?","category":"everyday","intimacy":false,"options":["Pancakes","Fresh fruit","Something savory","Coffee and pastries"]},
-  {"client_id":"bank-skill","kind":"free_text","prompt":"What is one skill you would have fun learning side by side?","category":"dreams","intimacy":false,"options":[]},
-  {"client_id":"bank-song","kind":"partner_guess","prompt":"Which kind of song would your partner add to a shared road-trip playlist?","category":"playful","intimacy":false,"options":["A sing-along classic","Something calm","A dance track","A surprise pick"]},
-  {"client_id":"bank-energy","kind":"weighted_scale","prompt":"How much social energy do you have available for the coming week?","category":"everyday","intimacy":false,"options":[]},
-  {"client_id":"bank-home","kind":"multiple_choice","prompt":"Which details make a shared space feel most like home to you?","category":"values","intimacy":false,"options":["Familiar music","Good smells","Soft lighting","Useful routines","Personal objects"]},
-  {"client_id":"bank-proud","kind":"free_text","prompt":"What is something your partner did recently that made you feel proud?","category":"connection","intimacy":false,"options":[]},
-  {"client_id":"bank-weather","kind":"single_choice","prompt":"What weather best matches the kind of date you would enjoy right now?","category":"playful","intimacy":false,"options":["Warm sunshine","Gentle rain","Crisp snow","A breezy evening"]},
-  {"client_id":"bank-routine","kind":"free_text","prompt":"Which part of your ordinary routine feels better because you share it?","category":"everyday","intimacy":false,"options":[]},
-  {"client_id":"bank-decision","kind":"weighted_scale","prompt":"How much planning would help the next weekend feel easy and enjoyable?","category":"connection","intimacy":false,"options":[]},
-  {"client_id":"bank-keepsake","kind":"partner_guess","prompt":"Which shared keepsake would your partner save first in a memory box?","category":"memories","intimacy":false,"options":["A photograph","A ticket","A handwritten note","A small souvenir"]},
-  {"client_id":"bank-celebrate","kind":"multiple_choice","prompt":"Which ways of celebrating good news feel most meaningful to you?","category":"values","intimacy":false,"options":["A special meal","Quiet time together","Calling loved ones","A small gift","A new experience"]},
-  {"client_id":"bank-replay","kind":"free_text","prompt":"Which day together would you happily replay exactly as it happened?","category":"memories","intimacy":false,"options":[]},
-  {"client_id":"bank-treat","kind":"single_choice","prompt":"Which tiny surprise would brighten a completely ordinary afternoon?","category":"playful","intimacy":false,"options":["A kind message","A favorite drink","A funny photo","A spontaneous visit"]},
-  {"client_id":"bank-listen","kind":"weighted_scale","prompt":"How listened to have you felt during conversations this week?","category":"connection","intimacy":false,"options":[]},
-  {"client_id":"bank-future-home","kind":"multiple_choice","prompt":"Which qualities matter most in a place you could enjoy living together?","category":"dreams","intimacy":false,"options":["Peace and quiet","Walkable places","Room for hobbies","Near loved ones","Nature nearby"]},
-  {"client_id":"bank-lesson","kind":"free_text","prompt":"What has your relationship taught you about being a good teammate?","category":"values","intimacy":false,"options":[]},
-  {"client_id":"bank-dessert","kind":"partner_guess","prompt":"Which dessert would your partner choose if every option were available?","category":"playful","intimacy":false,"options":["Chocolate","Fruit","Ice cream","Something baked"]},
-  {"client_id":"bank-space","kind":"weighted_scale","prompt":"How much independent time would help you feel balanced this week?","category":"connection","intimacy":false,"options":[]},
-  {"client_id":"bank-photo","kind":"free_text","prompt":"Which photo of the two of you has a story worth telling again?","category":"memories","intimacy":false,"options":[]},
-  {"client_id":"bank-kind-day","kind":"single_choice","prompt":"Which gentle plan sounds best after a tiring day?","category":"everyday","intimacy":false,"options":["Cook together","Order something easy","Take a walk","Rest in the same room"]},
-  {"client_id":"bank-project","kind":"multiple_choice","prompt":"Which shared project would be satisfying to finish as a team?","category":"dreams","intimacy":false,"options":["A room refresh","A recipe collection","A garden","A travel plan","A photo album"]},
-  {"client_id":"bank-courage","kind":"free_text","prompt":"When has your partner helped you feel a little more courageous?","category":"connection","intimacy":false,"options":[]},
-  {"client_id":"bank-weekend","kind":"partner_guess","prompt":"Which pace would your partner choose for an ideal weekend?","category":"everyday","intimacy":false,"options":["Fully planned","One main outing","Mostly restful","Completely spontaneous"]},
-  {"client_id":"bank-curiosity","kind":"weighted_scale","prompt":"How curious do you feel about trying something unfamiliar together?","category":"dreams","intimacy":false,"options":[]},
-  {"client_id":"bank-appreciation","kind":"free_text","prompt":"What part of your partner's personality have you appreciated most lately?","category":"connection","intimacy":false,"options":[]},
-  {"client_id":"bank-season","kind":"single_choice","prompt":"Which season holds the best possibilities for time together?","category":"playful","intimacy":false,"options":["Spring","Summer","Autumn","Winter"]},
-  {"client_id":"bank-reset","kind":"multiple_choice","prompt":"Which activities help the two of you reset after a stressful week?","category":"everyday","intimacy":false,"options":["Sleep","Exercise","A quiet meal","Time outdoors","A good conversation"]},
-  {"client_id":"bank-intimacy-affection","kind":"free_text","prompt":"What kind of affectionate moment would help you feel close this week?","category":"intimacy","intimacy":true,"options":[]},
-  {"client_id":"bank-intimacy-comfort","kind":"single_choice","prompt":"Which optional kind of closeness sounds most comforting tonight?","category":"intimacy","intimacy":true,"options":["Holding hands","A long hug","Sitting close","Quiet time nearby"]},
-  {"client_id":"bank-intimacy-pace","kind":"weighted_scale","prompt":"How much affectionate closeness would feel comfortable for you today?","category":"intimacy","intimacy":true,"options":[]},
-  {"client_id":"bank-intimacy-words","kind":"free_text","prompt":"Which caring words help you feel safe and close when affection is welcome?","category":"intimacy","intimacy":true,"options":[]},
-  {"client_id":"bank-intimacy-gesture","kind":"multiple_choice","prompt":"Which optional affectionate gestures help you feel connected?","category":"intimacy","intimacy":true,"options":["A gentle hug","Holding hands","A kind note","Sitting close"]},
-  {"client_id":"bank-intimacy-checkin","kind":"free_text","prompt":"How would you like your partner to check in before an affectionate moment?","category":"intimacy","intimacy":true,"options":[]},
-  {"client_id":"bank-intimacy-setting","kind":"partner_guess","prompt":"Which calm setting would your partner choose for an affectionate evening?","category":"intimacy","intimacy":true,"options":["A cozy room","A quiet walk","Music at home","Watching the sunset"]}
+  {
+    "client_id": "bank-cozy-evening-1",
+    "kind": "single_choice",
+    "prompt": "Which part of a cozy evening at home would feel best right now?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Favorite film",
+      "Comfort meal",
+      "Quiet reading",
+      "Early bedtime"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "heart",
+      "chat",
+      "home",
+      "meal"
+    ]
+  },
+  {
+    "client_id": "bank-cozy-evening-2",
+    "kind": "multiple_choice",
+    "prompt": "What would you happily include in a cozy evening at home?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Favorite film",
+      "Comfort meal",
+      "Quiet reading",
+      "Early bedtime"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-cozy-evening-3",
+    "kind": "free_text",
+    "prompt": "What makes an ordinary evening together feel especially cozy?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-cozy-evening-4",
+    "kind": "partner_guess",
+    "prompt": "If a cozy evening at home started now, which option would you pick?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Favorite film",
+      "Comfort meal",
+      "Quiet reading",
+      "Early bedtime"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-cozy-evening-5",
+    "kind": "weighted_choice",
+    "prompt": "How welcome would each option feel during a cozy evening at home?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Favorite film",
+      "Comfort meal",
+      "Quiet reading",
+      "Early bedtime"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-slow-morning-1",
+    "kind": "single_choice",
+    "prompt": "If you chose one thing for a slow morning together, what would it be?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Breakfast in bed",
+      "Coffee outside",
+      "Music and chores",
+      "Sleep a little longer"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-slow-morning-2",
+    "kind": "multiple_choice",
+    "prompt": "Which choices could make a slow morning together feel worthwhile?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Breakfast in bed",
+      "Coffee outside",
+      "Music and chores",
+      "Sleep a little longer"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-slow-morning-3",
+    "kind": "free_text",
+    "prompt": "What small morning ritual helps the two of you start gently?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-slow-morning-4",
+    "kind": "partner_guess",
+    "prompt": "Which choice best matches your mood for a slow morning together?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Breakfast in bed",
+      "Coffee outside",
+      "Music and chores",
+      "Sleep a little longer"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-slow-morning-5",
+    "kind": "weighted_choice",
+    "prompt": "How much energy would you have for each part of a slow morning together?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Breakfast in bed",
+      "Coffee outside",
+      "Music and chores",
+      "Sleep a little longer"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-weekend-reset-1",
+    "kind": "single_choice",
+    "prompt": "What sounds most inviting when you picture a weekend reset?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Tidy one room",
+      "Take a long walk",
+      "Plan the week",
+      "Do absolutely nothing"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-weekend-reset-2",
+    "kind": "multiple_choice",
+    "prompt": "What belongs in your ideal version of a weekend reset?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Tidy one room",
+      "Take a long walk",
+      "Plan the week",
+      "Do absolutely nothing"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-weekend-reset-3",
+    "kind": "free_text",
+    "prompt": "What would help this weekend feel restoring for both of you?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-weekend-reset-4",
+    "kind": "partner_guess",
+    "prompt": "What would be your first vote for a weekend reset?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Tidy one room",
+      "Take a long walk",
+      "Plan the week",
+      "Do absolutely nothing"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-weekend-reset-5",
+    "kind": "weighted_choice",
+    "prompt": "How helpful would each choice be for a weekend reset?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Tidy one room",
+      "Take a long walk",
+      "Plan the week",
+      "Do absolutely nothing"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-shared-meal-1",
+    "kind": "single_choice",
+    "prompt": "Which option would make a shared meal feel most like you?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Cook a favorite",
+      "Try a new recipe",
+      "Order takeout",
+      "Build a snack plate"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-shared-meal-2",
+    "kind": "multiple_choice",
+    "prompt": "Which ingredients would help you enjoy a shared meal?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Cook a favorite",
+      "Try a new recipe",
+      "Order takeout",
+      "Build a snack plate"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-shared-meal-3",
+    "kind": "free_text",
+    "prompt": "Which meal together has felt memorable for a simple reason?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-shared-meal-4",
+    "kind": "partner_guess",
+    "prompt": "Which part of a shared meal feels most appealing to you?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Cook a favorite",
+      "Try a new recipe",
+      "Order takeout",
+      "Build a snack plate"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-shared-meal-5",
+    "kind": "weighted_choice",
+    "prompt": "How appealing would each part of a shared meal feel this week?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Cook a favorite",
+      "Try a new recipe",
+      "Order takeout",
+      "Build a snack plate"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-rainy-day-1",
+    "kind": "single_choice",
+    "prompt": "Where would you begin with a rainy day indoors?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Blanket and movie",
+      "Bake something",
+      "Play a game",
+      "Nap near each other"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-rainy-day-2",
+    "kind": "multiple_choice",
+    "prompt": "What might you both try during a rainy day indoors?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Blanket and movie",
+      "Bake something",
+      "Play a game",
+      "Nap near each other"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-rainy-day-3",
+    "kind": "free_text",
+    "prompt": "What kind of rainy-day moment would you love to share?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-rainy-day-4",
+    "kind": "partner_guess",
+    "prompt": "For a rainy day indoors, which would you choose first?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Blanket and movie",
+      "Bake something",
+      "Play a game",
+      "Nap near each other"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-rainy-day-5",
+    "kind": "weighted_choice",
+    "prompt": "How much would each option improve a rainy day indoors for you?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Blanket and movie",
+      "Bake something",
+      "Play a game",
+      "Nap near each other"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-welcome-home-1",
+    "kind": "single_choice",
+    "prompt": "What would you most look forward to in reconnecting after a long day?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "A long hug",
+      "A quiet check-in",
+      "A funny story",
+      "A little space first"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-welcome-home-2",
+    "kind": "multiple_choice",
+    "prompt": "Which parts of reconnecting after a long day sound good to you?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "A long hug",
+      "A quiet check-in",
+      "A funny story",
+      "A little space first"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-welcome-home-3",
+    "kind": "free_text",
+    "prompt": "What welcome helps you feel seen after a tiring day?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-welcome-home-4",
+    "kind": "partner_guess",
+    "prompt": "When you imagine reconnecting after a long day, what grabs your attention first?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "A long hug",
+      "A quiet check-in",
+      "A funny story",
+      "A little space first"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-welcome-home-5",
+    "kind": "weighted_choice",
+    "prompt": "How strongly does each choice fit your ideal reconnecting after a long day?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "A long hug",
+      "A quiet check-in",
+      "A funny story",
+      "A little space first"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "star",
+      "travel",
+      "surprise",
+      "heart"
+    ]
+  },
+  {
+    "client_id": "bank-phone-free-1",
+    "kind": "single_choice",
+    "prompt": "Which part of a phone-free hour would feel best right now?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Talk on the couch",
+      "Take a walk",
+      "Make a snack",
+      "Listen to music"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-phone-free-2",
+    "kind": "multiple_choice",
+    "prompt": "What would you happily include in a phone-free hour?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Talk on the couch",
+      "Take a walk",
+      "Make a snack",
+      "Listen to music"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-phone-free-3",
+    "kind": "free_text",
+    "prompt": "What would make a phone-free hour feel easy and worthwhile?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-phone-free-4",
+    "kind": "partner_guess",
+    "prompt": "If a phone-free hour started now, which option would you pick?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Talk on the couch",
+      "Take a walk",
+      "Make a snack",
+      "Listen to music"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "star",
+      "travel",
+      "surprise",
+      "heart"
+    ]
+  },
+  {
+    "client_id": "bank-phone-free-5",
+    "kind": "weighted_choice",
+    "prompt": "How welcome would each option feel during a phone-free hour?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Talk on the couch",
+      "Take a walk",
+      "Make a snack",
+      "Listen to music"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "travel",
+      "surprise",
+      "heart",
+      "chat"
+    ]
+  },
+  {
+    "client_id": "bank-celebration-1",
+    "kind": "single_choice",
+    "prompt": "If you chose one thing for a tiny celebration, what would it be?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Dessert run",
+      "Kitchen dance",
+      "Dress up at home",
+      "Take a silly photo"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-celebration-2",
+    "kind": "multiple_choice",
+    "prompt": "Which choices could make a tiny celebration feel worthwhile?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Dessert run",
+      "Kitchen dance",
+      "Dress up at home",
+      "Take a silly photo"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-celebration-3",
+    "kind": "free_text",
+    "prompt": "What recent win deserves a small celebration together?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-celebration-4",
+    "kind": "partner_guess",
+    "prompt": "Which choice best matches your mood for a tiny celebration?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Dessert run",
+      "Kitchen dance",
+      "Dress up at home",
+      "Take a silly photo"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "travel",
+      "surprise",
+      "heart",
+      "chat"
+    ]
+  },
+  {
+    "client_id": "bank-celebration-5",
+    "kind": "weighted_choice",
+    "prompt": "How much energy would you have for each part of a tiny celebration?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Dessert run",
+      "Kitchen dance",
+      "Dress up at home",
+      "Take a silly photo"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "surprise",
+      "heart",
+      "chat",
+      "home"
+    ]
+  },
+  {
+    "client_id": "bank-next-month-1",
+    "kind": "single_choice",
+    "prompt": "What sounds most inviting when you picture planning next month?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Protect rest time",
+      "Choose a date night",
+      "Start a small goal",
+      "Leave room for surprises"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-next-month-2",
+    "kind": "multiple_choice",
+    "prompt": "What belongs in your ideal version of planning next month?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Protect rest time",
+      "Choose a date night",
+      "Start a small goal",
+      "Leave room for surprises"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "star",
+      "travel",
+      "surprise",
+      "heart"
+    ]
+  },
+  {
+    "client_id": "bank-next-month-3",
+    "kind": "free_text",
+    "prompt": "What would you like the two of you to make space for next month?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-next-month-4",
+    "kind": "partner_guess",
+    "prompt": "What would be your first vote for planning next month?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Protect rest time",
+      "Choose a date night",
+      "Start a small goal",
+      "Leave room for surprises"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "surprise",
+      "heart",
+      "chat",
+      "home"
+    ]
+  },
+  {
+    "client_id": "bank-next-month-5",
+    "kind": "weighted_choice",
+    "prompt": "How helpful would each choice be for planning next month?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Protect rest time",
+      "Choose a date night",
+      "Start a small goal",
+      "Leave room for surprises"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "heart",
+      "chat",
+      "home",
+      "meal"
+    ]
+  },
+  {
+    "client_id": "bank-future-home-1",
+    "kind": "single_choice",
+    "prompt": "Which option would make imagining a future home feel most like you?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "A cozy kitchen",
+      "A sunny window",
+      "A quiet corner",
+      "Space for friends"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "star",
+      "travel",
+      "surprise",
+      "heart"
+    ]
+  },
+  {
+    "client_id": "bank-future-home-2",
+    "kind": "multiple_choice",
+    "prompt": "Which ingredients would help you enjoy imagining a future home?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "A cozy kitchen",
+      "A sunny window",
+      "A quiet corner",
+      "Space for friends"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "travel",
+      "surprise",
+      "heart",
+      "chat"
+    ]
+  },
+  {
+    "client_id": "bank-future-home-3",
+    "kind": "free_text",
+    "prompt": "Which detail would make a future home feel most like yours together?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-future-home-4",
+    "kind": "partner_guess",
+    "prompt": "Which part of imagining a future home feels most appealing to you?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "A cozy kitchen",
+      "A sunny window",
+      "A quiet corner",
+      "Space for friends"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "heart",
+      "chat",
+      "home",
+      "meal"
+    ]
+  },
+  {
+    "client_id": "bank-future-home-5",
+    "kind": "weighted_choice",
+    "prompt": "How appealing would each part of imagining a future home feel this week?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "A cozy kitchen",
+      "A sunny window",
+      "A quiet corner",
+      "Space for friends"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-local-adventure-1",
+    "kind": "single_choice",
+    "prompt": "Where would you begin with a local adventure?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Unknown cafe",
+      "Scenic walk",
+      "Small museum",
+      "Nearby market"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "travel",
+      "surprise",
+      "heart",
+      "chat"
+    ]
+  },
+  {
+    "client_id": "bank-local-adventure-2",
+    "kind": "multiple_choice",
+    "prompt": "What might you both try during a local adventure?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Unknown cafe",
+      "Scenic walk",
+      "Small museum",
+      "Nearby market"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "surprise",
+      "heart",
+      "chat",
+      "home"
+    ]
+  },
+  {
+    "client_id": "bank-local-adventure-3",
+    "kind": "free_text",
+    "prompt": "What place close to home would be fun to discover together?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-local-adventure-4",
+    "kind": "partner_guess",
+    "prompt": "For a local adventure, which would you choose first?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Unknown cafe",
+      "Scenic walk",
+      "Small museum",
+      "Nearby market"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-local-adventure-5",
+    "kind": "weighted_choice",
+    "prompt": "How much would each option improve a local adventure for you?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Unknown cafe",
+      "Scenic walk",
+      "Small museum",
+      "Nearby market"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-day-trip-1",
+    "kind": "single_choice",
+    "prompt": "What would you most look forward to in an unplanned day trip?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Coast or lake",
+      "Mountain town",
+      "Big city",
+      "Country road"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "surprise",
+      "heart",
+      "chat",
+      "home"
+    ]
+  },
+  {
+    "client_id": "bank-day-trip-2",
+    "kind": "multiple_choice",
+    "prompt": "Which parts of an unplanned day trip sound good to you?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Coast or lake",
+      "Mountain town",
+      "Big city",
+      "Country road"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "heart",
+      "chat",
+      "home",
+      "meal"
+    ]
+  },
+  {
+    "client_id": "bank-day-trip-3",
+    "kind": "free_text",
+    "prompt": "What would make a spontaneous day trip feel exciting instead of stressful?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-day-trip-4",
+    "kind": "partner_guess",
+    "prompt": "When you imagine an unplanned day trip, what grabs your attention first?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Coast or lake",
+      "Mountain town",
+      "Big city",
+      "Country road"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-day-trip-5",
+    "kind": "weighted_choice",
+    "prompt": "How strongly does each choice fit your ideal an unplanned day trip?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Coast or lake",
+      "Mountain town",
+      "Big city",
+      "Country road"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-dream-trip-1",
+    "kind": "single_choice",
+    "prompt": "Which part of a dream trip someday would feel best right now?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Food and culture",
+      "Nature and quiet",
+      "History and museums",
+      "Pure relaxation"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "heart",
+      "chat",
+      "home",
+      "meal"
+    ]
+  },
+  {
+    "client_id": "bank-dream-trip-2",
+    "kind": "multiple_choice",
+    "prompt": "What would you happily include in a dream trip someday?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Food and culture",
+      "Nature and quiet",
+      "History and museums",
+      "Pure relaxation"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-dream-trip-3",
+    "kind": "free_text",
+    "prompt": "What feeling would you most want to bring home from a trip together?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-dream-trip-4",
+    "kind": "partner_guess",
+    "prompt": "If a dream trip someday started now, which option would you pick?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Food and culture",
+      "Nature and quiet",
+      "History and museums",
+      "Pure relaxation"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-dream-trip-5",
+    "kind": "weighted_choice",
+    "prompt": "How welcome would each option feel during a dream trip someday?",
+    "category": "dreams",
+    "intimacy": false,
+    "options": [
+      "Food and culture",
+      "Nature and quiet",
+      "History and museums",
+      "Pure relaxation"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-learn-together-1",
+    "kind": "single_choice",
+    "prompt": "If you chose one thing for learning something together, what would it be?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "A new recipe",
+      "A few dance steps",
+      "A language phrase",
+      "A practical skill"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-learn-together-2",
+    "kind": "multiple_choice",
+    "prompt": "Which choices could make learning something together feel worthwhile?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "A new recipe",
+      "A few dance steps",
+      "A language phrase",
+      "A practical skill"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-learn-together-3",
+    "kind": "free_text",
+    "prompt": "What would be fun to be beginners at side by side?",
+    "category": "values",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-learn-together-4",
+    "kind": "partner_guess",
+    "prompt": "Which choice best matches your mood for learning something together?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "A new recipe",
+      "A few dance steps",
+      "A language phrase",
+      "A practical skill"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-learn-together-5",
+    "kind": "weighted_choice",
+    "prompt": "How much energy would you have for each part of learning something together?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "A new recipe",
+      "A few dance steps",
+      "A language phrase",
+      "A practical skill"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-tradition-1",
+    "kind": "single_choice",
+    "prompt": "What sounds most inviting when you picture starting a simple tradition?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Weekly walk",
+      "Monthly photo",
+      "Seasonal meal",
+      "Yearly letter"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-tradition-2",
+    "kind": "multiple_choice",
+    "prompt": "What belongs in your ideal version of starting a simple tradition?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Weekly walk",
+      "Monthly photo",
+      "Seasonal meal",
+      "Yearly letter"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-tradition-3",
+    "kind": "free_text",
+    "prompt": "What existing little ritual already feels like a tradition?",
+    "category": "values",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-tradition-4",
+    "kind": "partner_guess",
+    "prompt": "What would be your first vote for starting a simple tradition?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Weekly walk",
+      "Monthly photo",
+      "Seasonal meal",
+      "Yearly letter"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-tradition-5",
+    "kind": "weighted_choice",
+    "prompt": "How helpful would each choice be for starting a simple tradition?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Weekly walk",
+      "Monthly photo",
+      "Seasonal meal",
+      "Yearly letter"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-free-treat-1",
+    "kind": "single_choice",
+    "prompt": "Which option would make a no-cost treat feel most like you?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Sunset walk",
+      "Living-room picnic",
+      "Shared playlist",
+      "Memory slideshow"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-free-treat-2",
+    "kind": "multiple_choice",
+    "prompt": "Which ingredients would help you enjoy a no-cost treat?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Sunset walk",
+      "Living-room picnic",
+      "Shared playlist",
+      "Memory slideshow"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-free-treat-3",
+    "kind": "free_text",
+    "prompt": "What simple free thing reliably lifts the mood for both of you?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-free-treat-4",
+    "kind": "partner_guess",
+    "prompt": "Which part of a no-cost treat feels most appealing to you?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Sunset walk",
+      "Living-room picnic",
+      "Shared playlist",
+      "Memory slideshow"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-free-treat-5",
+    "kind": "weighted_choice",
+    "prompt": "How appealing would each part of a no-cost treat feel this week?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Sunset walk",
+      "Living-room picnic",
+      "Shared playlist",
+      "Memory slideshow"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-teamwork-1",
+    "kind": "single_choice",
+    "prompt": "Where would you begin with sharing a busy task?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Make a quick plan",
+      "Divide and conquer",
+      "Work side by side",
+      "Trade encouragement"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-teamwork-2",
+    "kind": "multiple_choice",
+    "prompt": "What might you both try during sharing a busy task?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Make a quick plan",
+      "Divide and conquer",
+      "Work side by side",
+      "Trade encouragement"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-teamwork-3",
+    "kind": "free_text",
+    "prompt": "When have the two of you made a difficult task feel lighter?",
+    "category": "values",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-teamwork-4",
+    "kind": "partner_guess",
+    "prompt": "For sharing a busy task, which would you choose first?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Make a quick plan",
+      "Divide and conquer",
+      "Work side by side",
+      "Trade encouragement"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-teamwork-5",
+    "kind": "weighted_choice",
+    "prompt": "How much would each option improve sharing a busy task for you?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Make a quick plan",
+      "Divide and conquer",
+      "Work side by side",
+      "Trade encouragement"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-repair-1",
+    "kind": "single_choice",
+    "prompt": "What would you most look forward to in repairing after a disagreement?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Gentle apology",
+      "Quiet listening",
+      "A reassuring touch",
+      "Time then a talk"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-repair-2",
+    "kind": "multiple_choice",
+    "prompt": "Which parts of repairing after a disagreement sound good to you?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Gentle apology",
+      "Quiet listening",
+      "A reassuring touch",
+      "Time then a talk"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-repair-3",
+    "kind": "free_text",
+    "prompt": "What helps a hard conversation return to warmth?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-repair-4",
+    "kind": "partner_guess",
+    "prompt": "When you imagine repairing after a disagreement, what grabs your attention first?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Gentle apology",
+      "Quiet listening",
+      "A reassuring touch",
+      "Time then a talk"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-repair-5",
+    "kind": "weighted_choice",
+    "prompt": "How strongly does each choice fit your ideal repairing after a disagreement?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Gentle apology",
+      "Quiet listening",
+      "A reassuring touch",
+      "Time then a talk"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "star",
+      "travel",
+      "surprise",
+      "heart"
+    ]
+  },
+  {
+    "client_id": "bank-daily-support-1",
+    "kind": "single_choice",
+    "prompt": "Which part of support on a demanding day would feel best right now?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Kind message",
+      "Practical help",
+      "Pep talk",
+      "Quiet confidence"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-daily-support-2",
+    "kind": "multiple_choice",
+    "prompt": "What would you happily include in support on a demanding day?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Kind message",
+      "Practical help",
+      "Pep talk",
+      "Quiet confidence"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-daily-support-3",
+    "kind": "free_text",
+    "prompt": "What kind of support has felt especially useful lately?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-daily-support-4",
+    "kind": "partner_guess",
+    "prompt": "If support on a demanding day started now, which option would you pick?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Kind message",
+      "Practical help",
+      "Pep talk",
+      "Quiet confidence"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "star",
+      "travel",
+      "surprise",
+      "heart"
+    ]
+  },
+  {
+    "client_id": "bank-daily-support-5",
+    "kind": "weighted_choice",
+    "prompt": "How welcome would each option feel during support on a demanding day?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Kind message",
+      "Practical help",
+      "Pep talk",
+      "Quiet confidence"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "travel",
+      "surprise",
+      "heart",
+      "chat"
+    ]
+  },
+  {
+    "client_id": "bank-rest-needs-1",
+    "kind": "single_choice",
+    "prompt": "If you chose one thing for making room for rest, what would it be?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Alone time",
+      "Quiet time together",
+      "An early night",
+      "A slow morning"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-rest-needs-2",
+    "kind": "multiple_choice",
+    "prompt": "Which choices could make making room for rest feel worthwhile?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Alone time",
+      "Quiet time together",
+      "An early night",
+      "A slow morning"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-rest-needs-3",
+    "kind": "free_text",
+    "prompt": "How can the two of you protect each other's rest this week?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-rest-needs-4",
+    "kind": "partner_guess",
+    "prompt": "Which choice best matches your mood for making room for rest?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Alone time",
+      "Quiet time together",
+      "An early night",
+      "A slow morning"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "travel",
+      "surprise",
+      "heart",
+      "chat"
+    ]
+  },
+  {
+    "client_id": "bank-rest-needs-5",
+    "kind": "weighted_choice",
+    "prompt": "How much energy would you have for each part of making room for rest?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Alone time",
+      "Quiet time together",
+      "An early night",
+      "A slow morning"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "surprise",
+      "heart",
+      "chat",
+      "home"
+    ]
+  },
+  {
+    "client_id": "bank-inside-joke-1",
+    "kind": "single_choice",
+    "prompt": "What sounds most inviting when you picture a guaranteed laugh?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Old inside joke",
+      "Silly impression",
+      "Funny video",
+      "Playful challenge"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-inside-joke-2",
+    "kind": "multiple_choice",
+    "prompt": "What belongs in your ideal version of a guaranteed laugh?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Old inside joke",
+      "Silly impression",
+      "Funny video",
+      "Playful challenge"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "star",
+      "travel",
+      "surprise",
+      "heart"
+    ]
+  },
+  {
+    "client_id": "bank-inside-joke-3",
+    "kind": "free_text",
+    "prompt": "Which shared joke still gets you every time?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-inside-joke-4",
+    "kind": "partner_guess",
+    "prompt": "What would be your first vote for a guaranteed laugh?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Old inside joke",
+      "Silly impression",
+      "Funny video",
+      "Playful challenge"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "surprise",
+      "heart",
+      "chat",
+      "home"
+    ]
+  },
+  {
+    "client_id": "bank-inside-joke-5",
+    "kind": "weighted_choice",
+    "prompt": "How helpful would each choice be for a guaranteed laugh?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Old inside joke",
+      "Silly impression",
+      "Funny video",
+      "Playful challenge"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "heart",
+      "chat",
+      "home",
+      "meal"
+    ]
+  },
+  {
+    "client_id": "bank-nostalgia-1",
+    "kind": "single_choice",
+    "prompt": "Which option would make revisiting an old memory feel most like you?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First photo",
+      "Early message",
+      "Favorite date",
+      "Unexpected adventure"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "star",
+      "travel",
+      "surprise",
+      "heart"
+    ]
+  },
+  {
+    "client_id": "bank-nostalgia-2",
+    "kind": "multiple_choice",
+    "prompt": "Which ingredients would help you enjoy revisiting an old memory?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First photo",
+      "Early message",
+      "Favorite date",
+      "Unexpected adventure"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "travel",
+      "surprise",
+      "heart",
+      "chat"
+    ]
+  },
+  {
+    "client_id": "bank-nostalgia-3",
+    "kind": "free_text",
+    "prompt": "What early moment hinted that this relationship was special?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-nostalgia-4",
+    "kind": "partner_guess",
+    "prompt": "Which part of revisiting an old memory feels most appealing to you?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First photo",
+      "Early message",
+      "Favorite date",
+      "Unexpected adventure"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "heart",
+      "chat",
+      "home",
+      "meal"
+    ]
+  },
+  {
+    "client_id": "bank-nostalgia-5",
+    "kind": "weighted_choice",
+    "prompt": "How appealing would each part of revisiting an old memory feel this week?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First photo",
+      "Early message",
+      "Favorite date",
+      "Unexpected adventure"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-music-1",
+    "kind": "single_choice",
+    "prompt": "Where would you begin with a soundtrack for your relationship?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First shared song",
+      "Road-trip favorite",
+      "Kitchen-dance song",
+      "Current repeat"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "travel",
+      "surprise",
+      "heart",
+      "chat"
+    ]
+  },
+  {
+    "client_id": "bank-music-2",
+    "kind": "multiple_choice",
+    "prompt": "What might you both try during a soundtrack for your relationship?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First shared song",
+      "Road-trip favorite",
+      "Kitchen-dance song",
+      "Current repeat"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "surprise",
+      "heart",
+      "chat",
+      "home"
+    ]
+  },
+  {
+    "client_id": "bank-music-3",
+    "kind": "free_text",
+    "prompt": "Which song carries a vivid memory of the two of you?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-music-4",
+    "kind": "partner_guess",
+    "prompt": "For a soundtrack for your relationship, which would you choose first?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First shared song",
+      "Road-trip favorite",
+      "Kitchen-dance song",
+      "Current repeat"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-music-5",
+    "kind": "weighted_choice",
+    "prompt": "How much would each option improve a soundtrack for your relationship for you?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First shared song",
+      "Road-trip favorite",
+      "Kitchen-dance song",
+      "Current repeat"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-movie-night-1",
+    "kind": "single_choice",
+    "prompt": "What would you most look forward to in choosing a movie night?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Comfort rewatch",
+      "Big adventure",
+      "Funny comedy",
+      "Something new"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "surprise",
+      "heart",
+      "chat",
+      "home"
+    ]
+  },
+  {
+    "client_id": "bank-movie-night-2",
+    "kind": "multiple_choice",
+    "prompt": "Which parts of choosing a movie night sound good to you?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Comfort rewatch",
+      "Big adventure",
+      "Funny comedy",
+      "Something new"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "heart",
+      "chat",
+      "home",
+      "meal"
+    ]
+  },
+  {
+    "client_id": "bank-movie-night-3",
+    "kind": "free_text",
+    "prompt": "What movie scene or quote has become part of your shared language?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-movie-night-4",
+    "kind": "partner_guess",
+    "prompt": "When you imagine choosing a movie night, what grabs your attention first?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Comfort rewatch",
+      "Big adventure",
+      "Funny comedy",
+      "Something new"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-movie-night-5",
+    "kind": "weighted_choice",
+    "prompt": "How strongly does each choice fit your ideal choosing a movie night?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Comfort rewatch",
+      "Big adventure",
+      "Funny comedy",
+      "Something new"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-game-night-1",
+    "kind": "single_choice",
+    "prompt": "Which part of a playful game night would feel best right now?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Cooperative game",
+      "Friendly competition",
+      "Trivia",
+      "Cards"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "heart",
+      "chat",
+      "home",
+      "meal"
+    ]
+  },
+  {
+    "client_id": "bank-game-night-2",
+    "kind": "multiple_choice",
+    "prompt": "What would you happily include in a playful game night?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Cooperative game",
+      "Friendly competition",
+      "Trivia",
+      "Cards"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-game-night-3",
+    "kind": "free_text",
+    "prompt": "What kind of play brings out the best energy between you?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-game-night-4",
+    "kind": "partner_guess",
+    "prompt": "If a playful game night started now, which option would you pick?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Cooperative game",
+      "Friendly competition",
+      "Trivia",
+      "Cards"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-game-night-5",
+    "kind": "weighted_choice",
+    "prompt": "How welcome would each option feel during a playful game night?",
+    "category": "playful",
+    "intimacy": false,
+    "options": [
+      "Cooperative game",
+      "Friendly competition",
+      "Trivia",
+      "Cards"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-outside-1",
+    "kind": "single_choice",
+    "prompt": "If you chose one thing for time outdoors together, what would it be?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Neighborhood walk",
+      "Picnic",
+      "Forest trail",
+      "Watch the sunset"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-outside-2",
+    "kind": "multiple_choice",
+    "prompt": "Which choices could make time outdoors together feel worthwhile?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Neighborhood walk",
+      "Picnic",
+      "Forest trail",
+      "Watch the sunset"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-outside-3",
+    "kind": "free_text",
+    "prompt": "What outdoor moment together helped you breathe easier?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-outside-4",
+    "kind": "partner_guess",
+    "prompt": "Which choice best matches your mood for time outdoors together?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Neighborhood walk",
+      "Picnic",
+      "Forest trail",
+      "Watch the sunset"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-outside-5",
+    "kind": "weighted_choice",
+    "prompt": "How much energy would you have for each part of time outdoors together?",
+    "category": "everyday",
+    "intimacy": false,
+    "options": [
+      "Neighborhood walk",
+      "Picnic",
+      "Forest trail",
+      "Watch the sunset"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-food-memory-1",
+    "kind": "single_choice",
+    "prompt": "What sounds most inviting when you picture recreating a favorite food memory?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First-date food",
+      "Holiday dish",
+      "Late-night snack",
+      "Travel favorite"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-food-memory-2",
+    "kind": "multiple_choice",
+    "prompt": "What belongs in your ideal version of recreating a favorite food memory?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First-date food",
+      "Holiday dish",
+      "Late-night snack",
+      "Travel favorite"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-food-memory-3",
+    "kind": "free_text",
+    "prompt": "Which shared food memory can instantly take you back?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-food-memory-4",
+    "kind": "partner_guess",
+    "prompt": "What would be your first vote for recreating a favorite food memory?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First-date food",
+      "Holiday dish",
+      "Late-night snack",
+      "Travel favorite"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-food-memory-5",
+    "kind": "weighted_choice",
+    "prompt": "How helpful would each choice be for recreating a favorite food memory?",
+    "category": "memories",
+    "intimacy": false,
+    "options": [
+      "First-date food",
+      "Holiday dish",
+      "Late-night snack",
+      "Travel favorite"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-social-energy-1",
+    "kind": "single_choice",
+    "prompt": "Which option would make balancing social energy feel most like you?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Host at home",
+      "See close friends",
+      "Meet new people",
+      "Keep the day quiet"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-social-energy-2",
+    "kind": "multiple_choice",
+    "prompt": "Which ingredients would help you enjoy balancing social energy?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Host at home",
+      "See close friends",
+      "Meet new people",
+      "Keep the day quiet"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-social-energy-3",
+    "kind": "free_text",
+    "prompt": "What helps you respect each other's different social batteries?",
+    "category": "values",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-social-energy-4",
+    "kind": "partner_guess",
+    "prompt": "Which part of balancing social energy feels most appealing to you?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Host at home",
+      "See close friends",
+      "Meet new people",
+      "Keep the day quiet"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-social-energy-5",
+    "kind": "weighted_choice",
+    "prompt": "How appealing would each part of balancing social energy feel this week?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Host at home",
+      "See close friends",
+      "Meet new people",
+      "Keep the day quiet"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-gentle-affection-1",
+    "kind": "single_choice",
+    "prompt": "Where would you begin with everyday affection?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Hold hands",
+      "Long hug",
+      "Head on shoulder",
+      "Warm compliment"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-gentle-affection-2",
+    "kind": "multiple_choice",
+    "prompt": "What might you both try during everyday affection?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Hold hands",
+      "Long hug",
+      "Head on shoulder",
+      "Warm compliment"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-gentle-affection-3",
+    "kind": "free_text",
+    "prompt": "Which ordinary affectionate gesture means more than it seems?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-gentle-affection-4",
+    "kind": "partner_guess",
+    "prompt": "For everyday affection, which would you choose first?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Hold hands",
+      "Long hug",
+      "Head on shoulder",
+      "Warm compliment"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-gentle-affection-5",
+    "kind": "weighted_choice",
+    "prompt": "How much would each option improve everyday affection for you?",
+    "category": "connection",
+    "intimacy": false,
+    "options": [
+      "Hold hands",
+      "Long hug",
+      "Head on shoulder",
+      "Warm compliment"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-gratitude-1",
+    "kind": "single_choice",
+    "prompt": "What would you most look forward to in showing appreciation?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Say it directly",
+      "Leave a note",
+      "Do a helpful task",
+      "Plan a small surprise"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-gratitude-2",
+    "kind": "multiple_choice",
+    "prompt": "Which parts of showing appreciation sound good to you?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Say it directly",
+      "Leave a note",
+      "Do a helpful task",
+      "Plan a small surprise"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-gratitude-3",
+    "kind": "free_text",
+    "prompt": "What is one quality in your relationship you feel grateful for today?",
+    "category": "values",
+    "intimacy": false,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-gratitude-4",
+    "kind": "partner_guess",
+    "prompt": "When you imagine showing appreciation, what grabs your attention first?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Say it directly",
+      "Leave a note",
+      "Do a helpful task",
+      "Plan a small surprise"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-gratitude-5",
+    "kind": "weighted_choice",
+    "prompt": "How strongly does each choice fit your ideal showing appreciation?",
+    "category": "values",
+    "intimacy": false,
+    "options": [
+      "Say it directly",
+      "Leave a note",
+      "Do a helpful task",
+      "Plan a small surprise"
+    ],
+    "scale_low_label": "Not for me",
+    "scale_high_label": "Exactly right",
+    "option_icons": [
+      "star",
+      "travel",
+      "surprise",
+      "heart"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-soft-closeness-1",
+    "kind": "single_choice",
+    "prompt": "If you chose one thing for gentle closeness, what would it be?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Hold hands",
+      "Cuddle quietly",
+      "Slow dance",
+      "Sit shoulder to shoulder"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "heart",
+      "chat",
+      "home",
+      "meal"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-soft-closeness-2",
+    "kind": "multiple_choice",
+    "prompt": "Which choices could make gentle closeness feel worthwhile?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Hold hands",
+      "Cuddle quietly",
+      "Slow dance",
+      "Sit shoulder to shoulder"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-soft-closeness-3",
+    "kind": "free_text",
+    "prompt": "What kind of gentle closeness helps you feel most secure and cared for?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-intimacy-soft-closeness-4",
+    "kind": "partner_guess",
+    "prompt": "Which choice best matches your mood for gentle closeness?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Hold hands",
+      "Cuddle quietly",
+      "Slow dance",
+      "Sit shoulder to shoulder"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-soft-closeness-5",
+    "kind": "weighted_choice",
+    "prompt": "How much energy would you have for each part of gentle closeness?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Hold hands",
+      "Cuddle quietly",
+      "Slow dance",
+      "Sit shoulder to shoulder"
+    ],
+    "scale_low_label": "Not comfortable",
+    "scale_high_label": "Very comfortable",
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-affectionate-greeting-1",
+    "kind": "single_choice",
+    "prompt": "What sounds most inviting when you picture an affectionate greeting?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Long hug",
+      "Forehead kiss",
+      "Warm words",
+      "Hold both hands"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "chat",
+      "home",
+      "meal",
+      "movie"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-affectionate-greeting-2",
+    "kind": "multiple_choice",
+    "prompt": "What belongs in your ideal version of an affectionate greeting?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Long hug",
+      "Forehead kiss",
+      "Warm words",
+      "Hold both hands"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-affectionate-greeting-3",
+    "kind": "free_text",
+    "prompt": "What makes an affectionate hello feel warm and welcome to you?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-intimacy-affectionate-greeting-4",
+    "kind": "partner_guess",
+    "prompt": "What would be your first vote for an affectionate greeting?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Long hug",
+      "Forehead kiss",
+      "Warm words",
+      "Hold both hands"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-affectionate-greeting-5",
+    "kind": "weighted_choice",
+    "prompt": "How helpful would each choice be for an affectionate greeting?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Long hug",
+      "Forehead kiss",
+      "Warm words",
+      "Hold both hands"
+    ],
+    "scale_low_label": "Not comfortable",
+    "scale_high_label": "Very comfortable",
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-romantic-evening-1",
+    "kind": "single_choice",
+    "prompt": "Which option would make a romantic evening at home feel most like you?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Candlelit meal",
+      "Favorite music",
+      "Dress up a little",
+      "Cozy conversation"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "home",
+      "meal",
+      "movie",
+      "music"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-romantic-evening-2",
+    "kind": "multiple_choice",
+    "prompt": "Which ingredients would help you enjoy a romantic evening at home?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Candlelit meal",
+      "Favorite music",
+      "Dress up a little",
+      "Cozy conversation"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-romantic-evening-3",
+    "kind": "free_text",
+    "prompt": "What detail makes an at-home romantic moment feel thoughtful to you?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-intimacy-romantic-evening-4",
+    "kind": "partner_guess",
+    "prompt": "Which part of a romantic evening at home feels most appealing to you?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Candlelit meal",
+      "Favorite music",
+      "Dress up a little",
+      "Cozy conversation"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-romantic-evening-5",
+    "kind": "weighted_choice",
+    "prompt": "How appealing would each part of a romantic evening at home feel this week?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Candlelit meal",
+      "Favorite music",
+      "Dress up a little",
+      "Cozy conversation"
+    ],
+    "scale_low_label": "Not comfortable",
+    "scale_high_label": "Very comfortable",
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-meaningful-touch-1",
+    "kind": "single_choice",
+    "prompt": "Where would you begin with comfortable affectionate touch?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Hand on shoulder",
+      "Linked arms",
+      "Back rub",
+      "Head on chest"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "meal",
+      "movie",
+      "music",
+      "outdoors"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-meaningful-touch-2",
+    "kind": "multiple_choice",
+    "prompt": "What might you both try during comfortable affectionate touch?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Hand on shoulder",
+      "Linked arms",
+      "Back rub",
+      "Head on chest"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-meaningful-touch-3",
+    "kind": "free_text",
+    "prompt": "How do you like to communicate comfort around affectionate touch?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-intimacy-meaningful-touch-4",
+    "kind": "partner_guess",
+    "prompt": "For comfortable affectionate touch, which would you choose first?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Hand on shoulder",
+      "Linked arms",
+      "Back rub",
+      "Head on chest"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-meaningful-touch-5",
+    "kind": "weighted_choice",
+    "prompt": "How much would each option improve comfortable affectionate touch for you?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Hand on shoulder",
+      "Linked arms",
+      "Back rub",
+      "Head on chest"
+    ],
+    "scale_low_label": "Not comfortable",
+    "scale_high_label": "Very comfortable",
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-reassuring-affection-1",
+    "kind": "single_choice",
+    "prompt": "What would you most look forward to in reassuring affection?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Ask first",
+      "Move slowly",
+      "Use warm words",
+      "Check in gently"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "movie",
+      "music",
+      "outdoors",
+      "play"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-reassuring-affection-2",
+    "kind": "multiple_choice",
+    "prompt": "Which parts of reassuring affection sound good to you?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Ask first",
+      "Move slowly",
+      "Use warm words",
+      "Check in gently"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-reassuring-affection-3",
+    "kind": "free_text",
+    "prompt": "What helps affection feel safe, mutual, and unhurried?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-intimacy-reassuring-affection-4",
+    "kind": "partner_guess",
+    "prompt": "When you imagine reassuring affection, what grabs your attention first?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Ask first",
+      "Move slowly",
+      "Use warm words",
+      "Check in gently"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "play",
+      "rest",
+      "star",
+      "travel"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-reassuring-affection-5",
+    "kind": "weighted_choice",
+    "prompt": "How strongly does each choice fit your ideal reassuring affection?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Ask first",
+      "Move slowly",
+      "Use warm words",
+      "Check in gently"
+    ],
+    "scale_low_label": "Not comfortable",
+    "scale_high_label": "Very comfortable",
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-close-wind-down-1",
+    "kind": "single_choice",
+    "prompt": "Which part of winding down close together would feel best right now?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Quiet cuddle",
+      "Talk in bed",
+      "Share music",
+      "Hold hands"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "music",
+      "outdoors",
+      "play",
+      "rest"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-close-wind-down-2",
+    "kind": "multiple_choice",
+    "prompt": "What would you happily include in winding down close together?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Quiet cuddle",
+      "Talk in bed",
+      "Share music",
+      "Hold hands"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "outdoors",
+      "play",
+      "rest",
+      "star"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-close-wind-down-3",
+    "kind": "free_text",
+    "prompt": "What helps you feel emotionally close while winding down?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": []
+  },
+  {
+    "client_id": "bank-intimacy-close-wind-down-4",
+    "kind": "partner_guess",
+    "prompt": "If winding down close together started now, which option would you pick?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Quiet cuddle",
+      "Talk in bed",
+      "Share music",
+      "Hold hands"
+    ],
+    "scale_low_label": null,
+    "scale_high_label": null,
+    "option_icons": [
+      "rest",
+      "star",
+      "travel",
+      "surprise"
+    ]
+  },
+  {
+    "client_id": "bank-intimacy-close-wind-down-5",
+    "kind": "weighted_choice",
+    "prompt": "How welcome would each option feel during winding down close together?",
+    "category": "intimacy",
+    "intimacy": true,
+    "options": [
+      "Quiet cuddle",
+      "Talk in bed",
+      "Share music",
+      "Hold hands"
+    ],
+    "scale_low_label": "Not comfortable",
+    "scale_high_label": "Very comfortable",
+    "option_icons": [
+      "star",
+      "travel",
+      "surprise",
+      "heart"
+    ]
+  }
 ]

@@ -35,6 +35,8 @@
         <activity android:name=".NotesActivity" android:exported="false" />
         <activity android:name=".CountdownActivity" android:exported="false" />
         <activity android:name=".QuizActivity" android:exported="false" />
+        <activity android:name=".QuizHistoryActivity" android:exported="false" />
+        <activity android:name=".CustomQuestionActivity" android:exported="false" />
         <activity android:name=".PairingActivity" android:exported="false" />
         <activity
             android:name=".SignInActivity"

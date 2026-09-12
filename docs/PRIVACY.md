@@ -11,7 +11,8 @@ This document describes the intended 1.0 behavior while the project is under dev
 | Email, password hash, verification state | Account access and recovery | Account owner; limited admin metadata | Until deletion plus bounded backup expiry |
 | Session identifiers and security events | Authentication and abuse response | Account owner sessions; privacy-limited admins | App sessions expire after 30 days; admin sessions after 30 minutes; revoked sessions are removed on the operational cleanup schedule |
 | Pairing state | Connect exactly two verified adults | The two accounts; limited admin metadata | Active pairing plus private archive references |
-| Quiz responses | Reveal after both partners answer | Current couple only | Until user deletion/export policy applies |
+| Quiz drafts and responses | Private revisioned editing, then one reveal after both people finish all five | Author before reveal; current couple after reveal | Until user deletion/export policy applies |
+| Quiz status polling | Notify about partner completion or shared reveal | Device owner; content-free server response | Latest UTC date and booleans in private app storage |
 | Plain-text notes and revision history | Shared editing and recovery | Current couple only | Until deletion or private unpair archive policy applies |
 | Countdown details | Shared events and reminders | Current couple only | Until deleted/archive policy applies |
 | Location samples and accuracy | Estimate proximity sessions | Processing service; never admin UI | Raw coordinates deleted within 24 hours |
@@ -30,13 +31,15 @@ Unpairing stops new sharing immediately. Each person receives a private read-onl
 
 The owner console exposes account state, service health, security events, batch status, reports, and privacy-safe counts. It has no route or viewer for note text, quiz answers, precise locations, or couple exports. Secrets are redacted at the API boundary and again in the web view.
 
+Daily quiz notifications poll only the UTC date, state revision, and completion/reveal booleans. The polling response contains no prompt or answer content. Android may deliver the notification 15 minutes or more after the change because WorkManager controls timing. If either person disables intimacy questions, unrevealed intimacy prompts are replaced immediately, affected drafts are deleted, and both completion markers are reset so the replacement must be reviewed.
+
 ## Location processing
 
 Clients send consented, bounded batches with timestamp, coordinate, accuracy, and a stable sample ID. The server rejects unauthorized samples and values outside its timestamp, coordinate, and accuracy bounds; deduplicates uploads; applies an initial configurable 100-metre threshold with accuracy-aware distance bounds; and stores at most one estimated bucket per couple and minute. Results are labelled estimates and show last update time. Corrections are audited without rewriting raw history silently.
 
 ## AI boundary
 
-Ollama has no published port. The worker reaches it through an internal AI network; the one-shot initializer is the only other caller. Ollama has a separate egress-only bridge so it can download the pinned model manifest, while no gateway, web, API, or database service shares that bridge. Prompts contain a calendar date, public generation rules, and limited recent question text used for duplicate prevention. They contain no profiles, answers, notes, locations, relationship history, email addresses, or identifiers.
+Ollama has no published port. The worker reaches it through an internal AI network; the one-shot initializer is the only other caller. Ollama has a separate egress-only bridge so it can download the pinned model manifest, while no gateway, web, API, or database service shares that bridge. Prompts contain a calendar date, public generation rules, and limited recent global question text used for duplicate prevention. Generated candidates are site-wide and stored for administrator quality review. Prompts contain no profiles, answers, custom couple questions, notes, locations, relationship history, email addresses, or identifiers.
 
 The planned 2.0 cycle tracker is outside this policy. It requires a separate health-data privacy, encryption, consent, deletion, abuse-risk, and medical-boundary review before implementation. Cycle data remains outside AI by default.
 

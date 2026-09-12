@@ -11,6 +11,7 @@ import com.littleorbit.data.local.DisplayCacheEntity;
 import com.littleorbit.data.local.LocationQueueDao;
 import com.littleorbit.data.remote.ApiModels;
 import com.littleorbit.data.remote.LittleOrbitApi;
+import com.littleorbit.data.remote.QuizApiModels;
 import com.littleorbit.data.security.SessionStore;
 import java.io.IOException;
 import java.time.Instant;
@@ -151,6 +152,61 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     public CompletableFuture<ApiModels.Message> reportQuestion(
             String questionId, ApiModels.QuestionReportRequest request) {
         return async(api.reportQuestion(questionId, request));
+    }
+
+    @Override
+    public CompletableFuture<QuizApiModels.Day> quizToday() {
+        return async(api.quizToday());
+    }
+
+    @Override
+    public CompletableFuture<QuizApiModels.Day> quizDay(String quizDate) {
+        return async(api.quizDay(quizDate));
+    }
+
+    @Override
+    public CompletableFuture<List<QuizApiModels.HistoryItem>> quizHistory() {
+        return async(api.quizHistory(30));
+    }
+
+    @Override
+    public CompletableFuture<QuizApiModels.Status> quizStatus() {
+        return async(api.quizStatus());
+    }
+
+    @Override
+    public CompletableFuture<QuizApiModels.Day> saveQuizDraft(
+            String quizDate, String questionId, QuizApiModels.DraftMutation mutation) {
+        return async(api.saveQuizDraft(quizDate, questionId, mutation));
+    }
+
+    @Override
+    public CompletableFuture<QuizApiModels.Day> finishQuiz(
+            String quizDate, QuizApiModels.DayMutation mutation) {
+        return async(api.finishQuiz(quizDate, mutation));
+    }
+
+    @Override
+    public CompletableFuture<QuizApiModels.Day> reopenQuiz(
+            String quizDate, QuizApiModels.DayMutation mutation) {
+        return async(api.reopenQuiz(quizDate, mutation));
+    }
+
+    @Override
+    public CompletableFuture<QuizApiModels.CustomQueue> customQuizQueue() {
+        return async(api.customQuizQueue());
+    }
+
+    @Override
+    public CompletableFuture<QuizApiModels.CustomQuestion> createCustomQuiz(
+            QuizApiModels.CustomMutation mutation) {
+        return async(api.createCustomQuiz(mutation));
+    }
+
+    @Override
+    public CompletableFuture<ApiModels.Message> reportQuizQuestion(
+            String questionId, QuizApiModels.ReportMutation mutation) {
+        return async(api.reportQuizQuestion(questionId, mutation));
     }
 
     @Override

@@ -162,6 +162,23 @@ class Question(Base):
             unique=True,
             postgresql_nulls_not_distinct=True,
         ),
+        Index(
+            "uq_global_question_order",
+            "publish_date",
+            "display_order",
+            unique=True,
+            postgresql_where=sql_text(
+                "couple_id IS NULL AND intimacy IS FALSE AND display_order IS NOT NULL"
+            ),
+        ),
+        Index(
+            "uq_custom_question_slot",
+            "couple_id",
+            "publish_date",
+            "custom_slot",
+            unique=True,
+            postgresql_where=sql_text("couple_id IS NOT NULL AND custom_slot IS NOT NULL"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
@@ -171,6 +188,13 @@ class Question(Base):
     category: Mapped[str] = mapped_column(String(32), nullable=False)
     intimacy: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     options: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    option_icons: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    scale_low_label: Mapped[str | None] = mapped_column(String(32))
+    scale_high_label: Mapped[str | None] = mapped_column(String(32))
+    interaction_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    display_order: Mapped[int | None] = mapped_column(Integer)
+    custom_slot: Mapped[int | None] = mapped_column(Integer)
+    surprise: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     source: Mapped[str] = mapped_column(String(32), nullable=False)
     normalized_hash: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
     couple_id: Mapped[UUID | None] = mapped_column(
@@ -194,6 +218,103 @@ class QuizAnswer(Base):
     account_id: Mapped[UUID] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"))
     answer: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class QuizDay(Base):
+    """Stable five-question snapshot and atomic shared-reveal state."""
+
+    __tablename__ = "quiz_days"
+    __table_args__ = (
+        UniqueConstraint("couple_id", "quiz_date"),
+        CheckConstraint("revision >= 0"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    couple_id: Mapped[UUID] = mapped_column(
+        ForeignKey("couples.id", ondelete="CASCADE"), index=True
+    )
+    quiz_date: Mapped[date] = mapped_column(Date, index=True, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    revealed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class QuizDayQuestion(Base):
+    """Ordered question selected for one couple's immutable daily snapshot."""
+
+    __tablename__ = "quiz_day_questions"
+    __table_args__ = (
+        UniqueConstraint("quiz_day_id", "position"),
+        UniqueConstraint("quiz_day_id", "question_id"),
+        CheckConstraint("position BETWEEN 1 AND 5"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    quiz_day_id: Mapped[UUID] = mapped_column(
+        ForeignKey("quiz_days.id", ondelete="CASCADE"), index=True
+    )
+    question_id: Mapped[UUID] = mapped_column(
+        ForeignKey("questions.id", ondelete="RESTRICT"), index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class QuizDayMember(Base):
+    """One member's reversible finish marker before shared reveal."""
+
+    __tablename__ = "quiz_day_members"
+    __table_args__ = (UniqueConstraint("quiz_day_id", "account_id"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    quiz_day_id: Mapped[UUID] = mapped_column(
+        ForeignKey("quiz_days.id", ondelete="CASCADE"), index=True
+    )
+    account_id: Mapped[UUID] = mapped_column(
+        ForeignKey("accounts.id", ondelete="CASCADE"), index=True
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class QuizDraft(Base):
+    """One revisioned private answer draft for a v2 daily question."""
+
+    __tablename__ = "quiz_drafts"
+    __table_args__ = (
+        UniqueConstraint("quiz_day_id", "question_id", "account_id"),
+        CheckConstraint("revision >= 1"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    quiz_day_id: Mapped[UUID] = mapped_column(
+        ForeignKey("quiz_days.id", ondelete="CASCADE"), index=True
+    )
+    question_id: Mapped[UUID] = mapped_column(
+        ForeignKey("questions.id", ondelete="RESTRICT"), index=True
+    )
+    account_id: Mapped[UUID] = mapped_column(
+        ForeignKey("accounts.id", ondelete="CASCADE"), index=True
+    )
+    answer: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class QuizOperation(Base):
+    """Retry-safe quiz mutation result scoped to one authenticated member."""
+
+    __tablename__ = "quiz_operations"
+    __table_args__ = (UniqueConstraint("couple_id", "account_id", "operation_id"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    couple_id: Mapped[UUID] = mapped_column(
+        ForeignKey("couples.id", ondelete="CASCADE"), index=True
+    )
+    account_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL"), index=True
+    )
+    operation_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    result: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class Note(Timestamped, Base):
@@ -354,8 +475,12 @@ class GenerationBatch(Base):
     prompt_version: Mapped[str] = mapped_column(String(80), nullable=False)
     parameters: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     validation_results: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
+    candidate_snapshot: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     selected_question_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     fallback_reason: Mapped[str | None] = mapped_column(String(120))
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -371,6 +496,9 @@ class CuratedBankQuestion(Timestamped, Base):
     category: Mapped[str] = mapped_column(String(32), nullable=False)
     intimacy: Mapped[bool] = mapped_column(Boolean, nullable=False)
     options: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    option_icons: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    scale_low_label: Mapped[str | None] = mapped_column(String(32))
+    scale_high_label: Mapped[str | None] = mapped_column(String(32))
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("accounts.id", ondelete="SET NULL")

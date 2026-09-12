@@ -80,22 +80,49 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    Schedule[Daily scheduler] --> Dates[Find gaps in next 7 UTC calendar dates]
+    Schedule[Daily scheduler] --> Dates[Find gaps for today + 7 future UTC dates]
     Dates --> Prompt[Versioned prompt<br/>no couple data]
     Prompt --> Ollama[Qwen3 4B in Ollama]
-    Ollama --> Parse[Strict JSON parse]
+    Ollama --> Parse[Strict v2 JSON parse<br/>exactly 10 candidates]
     Parse --> Validate{Schema + safety + answerability}
     Validate -->|reject| Quarantine[Quarantine with reasons]
     Validate -->|accept| Dedupe{Exact hash + trigram + repetition}
     Dedupe -->|duplicate| Quarantine
     Dedupe -->|unique| Pool[Candidate pool]
-    Pool --> Select[Select 5 general + intimacy alternatives]
+    Pool --> Select[Balance tone, type, and category<br/>select 5 general + intimacy alternatives]
     Bank[Curated bank] -->|timeout, OOM, shortage| Select
     Select --> Publish[Publish date pool]
     Publish --> Audit[Model digest, prompt version, parameters, validation, fallback]
 ```
 
-Invalid model output is quarantined rather than repaired. Curated fallback guarantees five general questions for each of the next seven dates.
+Invalid model output is quarantined rather than repaired. A 180-question curated bank guarantees five general questions plus a consent-gated intimacy alternative for today and seven future dates while the model is unavailable.
+
+## Daily quiz, custom queue, and reveal
+
+```mermaid
+sequenceDiagram
+    actor A as Partner A
+    actor B as Partner B
+    participant API
+    participant DB as PostgreSQL
+    A->>API: GET today's UTC quiz
+    API->>DB: Lock couple; snapshot 5 questions once
+    Note over DB: Due custom FIFO slots first,<br/>then eligible global questions
+    API-->>A: Stable ordered set; no partner answers
+    A->>API: PUT private draft(op_id, answer revision)
+    API->>DB: Authorize, dedupe op_id, validate type, increment revision
+    A->>API: POST finish(day revision)
+    API->>DB: Mark A finished; keep reveal closed
+    B->>API: Save all five drafts + finish
+    API->>DB: Lock both member rows; set one revealed_at timestamp
+    API-->>B: Both complete; include both answer sets
+    A->>API: Poll content-free status through WorkManager
+    API-->>A: revealed=true; no answer content in notification response
+    A->>API: GET day
+    API-->>A: Side-by-side shared reveal
+```
+
+A person may reopen and edit a finished set only before the shared reveal. Past incomplete days remain editable for seven days and remain visible for 30. Custom questions take the next available UTC slot, up to all five questions, and surprise content is hidden from the other partner until its day arrives. Non-surprise custom questions appear in both partners' pending queue. Intimacy-tagged custom or global questions require both partners' current consent. If either person opts out, every unrevealed intimacy prompt is replaced atomically, its drafts are cleared, and both people review the safe replacement before finishing again.
 
 ## Together-time processing
 

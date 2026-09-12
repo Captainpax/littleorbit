@@ -1,6 +1,7 @@
 package com.littleorbit.data.repository;
 
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.QuizApiModels;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -45,6 +46,41 @@ public interface OrbitRepository {
     /** Immediately hides and reports a question. */
     CompletableFuture<ApiModels.Message> reportQuestion(
             String questionId, ApiModels.QuestionReportRequest request);
+
+    /** Loads today's shared UTC quiz state. */
+    CompletableFuture<QuizApiModels.Day> quizToday();
+
+    /** Loads one current or historical UTC quiz state. */
+    CompletableFuture<QuizApiModels.Day> quizDay(String quizDate);
+
+    /** Loads thirty days of quiz navigation state. */
+    CompletableFuture<List<QuizApiModels.HistoryItem>> quizHistory();
+
+    /** Loads content-free quiz state for delayed background notifications. */
+    CompletableFuture<QuizApiModels.Status> quizStatus();
+
+    /** Saves one revisioned private quiz draft. */
+    CompletableFuture<QuizApiModels.Day> saveQuizDraft(
+            String quizDate, String questionId, QuizApiModels.DraftMutation mutation);
+
+    /** Marks the caller's reviewed quiz complete. */
+    CompletableFuture<QuizApiModels.Day> finishQuiz(
+            String quizDate, QuizApiModels.DayMutation mutation);
+
+    /** Reopens a finished quiz before shared reveal. */
+    CompletableFuture<QuizApiModels.Day> reopenQuiz(
+            String quizDate, QuizApiModels.DayMutation mutation);
+
+    /** Loads the privacy-limited custom question queue. */
+    CompletableFuture<QuizApiModels.CustomQueue> customQuizQueue();
+
+    /** Queues one guided custom question. */
+    CompletableFuture<QuizApiModels.CustomQuestion> createCustomQuiz(
+            QuizApiModels.CustomMutation mutation);
+
+    /** Hides and reports one RC5 question. */
+    CompletableFuture<ApiModels.Message> reportQuizQuestion(
+            String questionId, QuizApiModels.ReportMutation mutation);
 
     /** Loads countdowns. */
     CompletableFuture<List<ApiModels.Countdown>> countdowns();

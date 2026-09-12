@@ -67,6 +67,54 @@ public interface LittleOrbitApi {
             @Path("questionId") String questionId,
             @Body ApiModels.QuestionReportRequest request);
 
+    /** Loads the server-authoritative UTC quiz day for RC5. */
+    @GET("api/v2/quizzes/today")
+    Call<QuizApiModels.Day> quizToday();
+
+    /** Loads one current or historical UTC quiz day. */
+    @GET("api/v2/quizzes/days/{quizDate}")
+    Call<QuizApiModels.Day> quizDay(@Path("quizDate") String quizDate);
+
+    /** Loads the fixed thirty-day content-free history. */
+    @GET("api/v2/quizzes/history")
+    Call<java.util.List<QuizApiModels.HistoryItem>> quizHistory(@Query("days") int days);
+
+    /** Loads content-free quiz completion state for delayed polling. */
+    @GET("api/v2/quizzes/status")
+    Call<QuizApiModels.Status> quizStatus();
+
+    /** Saves one revisioned private answer draft. */
+    @PUT("api/v2/quizzes/days/{quizDate}/questions/{questionId}/draft")
+    Call<QuizApiModels.Day> saveQuizDraft(
+            @Path("quizDate") String quizDate,
+            @Path("questionId") String questionId,
+            @Body QuizApiModels.DraftMutation request);
+
+    /** Finishes the caller's reviewed daily quiz. */
+    @POST("api/v2/quizzes/days/{quizDate}/finish")
+    Call<QuizApiModels.Day> finishQuiz(
+            @Path("quizDate") String quizDate, @Body QuizApiModels.DayMutation request);
+
+    /** Reopens the caller's daily quiz while shared reveal is pending. */
+    @POST("api/v2/quizzes/days/{quizDate}/reopen")
+    Call<QuizApiModels.Day> reopenQuiz(
+            @Path("quizDate") String quizDate, @Body QuizApiModels.DayMutation request);
+
+    /** Loads creator-visible custom prompts and a partner surprise count. */
+    @GET("api/v2/quizzes/custom")
+    Call<QuizApiModels.CustomQueue> customQuizQueue();
+
+    /** Queues a guided custom question. */
+    @POST("api/v2/quizzes/custom")
+    Call<QuizApiModels.CustomQuestion> createCustomQuiz(
+            @Body QuizApiModels.CustomMutation request);
+
+    /** Hides one question and requests a safe replacement. */
+    @POST("api/v2/quizzes/questions/{questionId}/report")
+    Call<ApiModels.Message> reportQuizQuestion(
+            @Path("questionId") String questionId,
+            @Body QuizApiModels.ReportMutation request);
+
     /** Loads active shared countdowns. */
     @GET("api/v1/countdowns")
     Call<java.util.List<ApiModels.Countdown>> countdowns();

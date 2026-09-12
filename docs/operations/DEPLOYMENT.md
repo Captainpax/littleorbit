@@ -70,24 +70,25 @@ Publish in this order:
 
 ```powershell
 docker compose --env-file .env -f infra/compose.yaml exec api python -m little_orbit_api.cli publish-release `
-  --version 1.0.0-rc.4 `
-  --apk-url https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk `
-  --github-release-url https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.4 `
-  --sha256 56dd74a4640c0fd91f029c3e59c227521284d524e3bb4f6035b2a38dad88c234 `
-  --release-notes "First-party resumable APK downloads with unchanged signature verification." `
-  --version-code 4 --size-bytes 15747217 `
+  --version 1.0.0-rc.5 `
+  --apk-url https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.5/apk `
+  --github-release-url https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.5 `
+  --sha256 044c7c068fde480407ed3f1d29ec7df4bdf19d1b855e334f4e30a769732848ed `
+  --release-notes "Focused daily quizzes, shared reveal, custom questions, and validated AI pools." `
+  --version-code 5 --size-bytes 15823790 `
   --package-name com.littleorbit.mobile `
   --signer-sha256 43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337 `
-  --minimum-android 29 --minimum-supported-version-code 1
+  --minimum-android 29 --minimum-supported-version-code 5 `
+  --required-after 2026-09-12T15:45:00Z
 ```
 
-Verify both a complete response and a resumed slice through the public proxy. The range request must return `206`, `Content-Range: bytes 0-1023/15747217`, and exactly 1,024 bytes:
+Verify both a complete response and a resumed slice through the public proxy. The range request must return `206`, `Content-Range: bytes 0-1023/15823790`, and exactly 1,024 bytes:
 
 ```powershell
-curl.exe -fSI https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk
-curl.exe -fsS -H "Range: bytes=0-1023" -D - -o range-check.bin https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.4/apk
+curl.exe -fSI https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.5/apk
+curl.exe -fsS -H "Range: bytes=0-1023" -D - -o range-check.bin https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.5/apk
 ```
 
-Omit `--required-after` for normal optional releases. Before scheduling a compatibility floor, confirm that the excluded build can discover and install the published APK, then use an explicit timezone-aware UTC value. Once a published record exists, corrections require a new version and new tag; the API deliberately rejects edits and unpublishing.
+Omit `--required-after` for normal optional releases. RC5 deliberately sets an immediate floor at version code 5 after the RC4 first-party updater path was deployed. Before scheduling any later compatibility floor, confirm that the excluded build can discover and install the published APK, then use an explicit timezone-aware UTC value. Once a published record exists, corrections require a new version and new tag; the API deliberately rejects edits and unpublishing.
 
 The public certificate and expected fingerprint are documented in [`../signing/README.md`](../signing/README.md).

@@ -2,25 +2,42 @@
 
 from datetime import date
 
-PROMPT_VERSION = "question-batch-v1"
+PROMPT_VERSION = "question-batch-v2"
 
 
 def build_prompt(target_date: date, recent_questions: list[str]) -> str:
     """Build a bounded prompt using only public generation context."""
 
-    recent = "\n".join(f"- {question[:240]}" for question in recent_questions[-40:]) or "- none"
-    return f"""You generate safe, warm daily questions for an adult couples app.
-Return JSON only, matching schema version 1. Target calendar date: {target_date.isoformat()}.
-Create 10 candidates: at least 7 general and up to 3 optional non-graphic intimacy questions.
-Use all supported kinds: single_choice, multiple_choice, free_text, partner_guess, weighted_scale.
-Choice kinds need 2-8 short unique options. Other kinds need an empty options array.
-Use a lowercase client_id of 3-48 letters, numbers, or hyphens. Allowed categories are:
-everyday, memories, dreams, values, playful, connection, and intimacy.
-Questions must be answerable, specific, kind, and useful without knowing either person.
-Never ask for identifying information, precise location, secrets, diagnosis, medical/legal/financial
-advice, coercion, manipulation, self-harm, minors, or graphic sexual content. Intimacy questions
-must stay optional and consent-centered. Do not repeat recent wording:
+    recent = "\n".join(f"- {item[:240]}" for item in recent_questions[-60:]) or "- none"
+    return f"""You write warm daily questions for Little Orbit, a private adult couples app.
+Return JSON only for schema version 2 and calendar date {target_date.isoformat()}.
+
+Create exactly 10 candidates: exactly 8 general questions and exactly 2 optional,
+non-graphic intimacy questions. Use at least four interaction kinds and four categories.
+Every prompt must be a natural question ending in ?. It must help two partners learn about
+each other without needing any private context. Prefer specific, conversational wording.
+
+Interaction rules:
+- single_choice and multiple_choice: 2-6 short answer options.
+- free_text: no options.
+- partner_guess: ask what the respondent themselves would choose. The app separately asks
+  them to guess their partner's choice from the same options. Never phrase it as an ordinary
+  guess about a partner.
+- weighted_choice: 2-5 things to rate independently from 1-5, plus short low/high labels
+  appropriate to that prompt. Never mention a 1-10 scale.
+- Give every option one icon from: heart, chat, home, meal, movie, music, outdoors, play,
+  rest, star, travel, surprise. Free-text questions use empty option and icon arrays.
+- Non-weighted questions use null scale labels.
+
+Use a warm balance of everyday, playful, memories, dreams, values, and connection. Start
+light and include meaningful prompts without therapy, judgment, pressure, or a scoreboard.
+Intimacy prompts must be optional, consent-centered, non-graphic, and answerable with comfort.
+Never ask for identity, contact details, secrets, precise location, diagnosis, medical/legal/
+financial advice, coercion, manipulation, self-harm, minors, or graphic sexual content.
+
+Avoid recent ideas and wording:
 {recent}
 
-Output object keys: schema_version, date, questions. Question keys: client_id, kind, prompt,
-category, intimacy, options. Do not include markdown or commentary."""
+Output keys: schema_version, date, questions. Every question has client_id, kind, prompt,
+category, intimacy, options, option_icons, scale_low_label, scale_high_label. Use lowercase
+client_id values of 3-48 letters, numbers, or hyphens. Do not add markdown or commentary."""

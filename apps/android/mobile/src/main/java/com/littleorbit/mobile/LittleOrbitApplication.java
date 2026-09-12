@@ -16,6 +16,7 @@ public final class LittleOrbitApplication extends Application implements Configu
     public void onCreate() {
         super.onCreate();
         ReleaseCheckWorker.schedule(this);
+        QuizStatusWorker.schedule(this);
     }
 
     /** Routes WorkManager construction through Hilt without a global service locator. */

@@ -175,6 +175,10 @@ body:has(.admin-shell) .site-footer { display: none; }
 .pipeline-metrics div { padding: 15px; border-radius: 12px; background: rgba(255,255,255,.035); }.pipeline-metrics b, .pipeline-metrics span { display: block; }.pipeline-metrics b { font-size: 1.4rem; }.pipeline-metrics span { color: var(--muted); font-size: .7rem; }
 .batch-row { display: grid; grid-template-columns: 70px minmax(70px, 1fr) 60px 120px auto; align-items: center; gap: 10px; min-height: 48px; border-top: 1px solid var(--line); font-size: .76rem; }
 .batch-row small { color: var(--muted); }.progress { height: 4px; border-radius: 99px; background: rgba(255,255,255,.06); }.progress i { display: block; height: 100%; border-radius: inherit; background: var(--green); }
+.batch-preview { grid-column: 1 / -1; padding: 4px 0 12px; color: var(--muted); }
+.batch-preview summary { cursor: pointer; color: var(--lavender); }
+.batch-preview ol { display: grid; gap: 8px; margin: 10px 0 0; padding-left: 24px; }
+.batch-preview li b, .batch-preview li small { display: block; }
 .attention > article { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 12px; padding: 16px 0; border-top: 1px solid var(--line); }.attention > article > b { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: rgba(255,116,109,.1); color: var(--coral-light); }.attention strong, .attention span { display: block; }.attention span { margin-top: 3px; color: var(--muted); font-size: .72rem; }.attention button { border: 0; background: transparent; color: var(--lavender); cursor: pointer; }
 .registration-panel { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }.registration-panel p { margin: 4px 0 0; color: var(--muted); font-size: .8rem; }.switch { width: 48px; height: 26px; padding: 3px; border-radius: 99px; background: var(--green); }.switch i { display: block; width: 20px; height: 20px; margin-left: auto; border-radius: 50%; background: #10182c; }
 .admin-privacy { color: var(--muted); font-size: .75rem; }

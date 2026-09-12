@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from little_orbit_ai.pipeline import load_curated_bank
-from little_orbit_ai.schemas import CandidateQuestion, Category, QuestionKind
+from little_orbit_ai.schemas import CandidateQuestion, Category, IconKey, QuestionKind
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
@@ -26,6 +26,7 @@ from ..models import (
     Question,
     QuestionReport,
     QuizAnswer,
+    QuizDayQuestion,
     RuntimeSetting,
     SecurityEvent,
     Session,
@@ -235,8 +236,10 @@ async def question_batches(
                 "prompt_version": item.prompt_version,
                 "parameters": item.parameters,
                 "validation_results": item.validation_results,
+                "candidate_snapshot": item.candidate_snapshot,
                 "selected_count": len(item.selected_question_ids),
                 "fallback_reason": item.fallback_reason,
+                "duration_ms": item.duration_ms,
                 "created_at": item.created_at,
             }
             for item in records
@@ -260,6 +263,8 @@ async def regenerate_batch(
     )
     if await _row_count(session, QuizAnswer, QuizAnswer.question_id.in_(global_ids)):
         raise HTTPException(status.HTTP_409_CONFLICT, "Answered questions cannot be regenerated")
+    if await _row_count(session, QuizDayQuestion, QuizDayQuestion.question_id.in_(global_ids)):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Materialized questions cannot be regenerated")
     await session.execute(delete(Question).where(Question.id.in_(global_ids)))
     await session.execute(
         delete(GenerationBatch).where(GenerationBatch.publish_date == publish_date)
@@ -289,7 +294,7 @@ async def question_reports(
                 "question_id": str(question.id),
                 "prompt": question.prompt if question.couple_id is None else "[couple-created]",
                 "source": question.source,
-                "reason": report.reason,
+                "reason": report.reason if question.couple_id is None else "private custom report",
                 "created_at": report.created_at,
             }
             for report, question in records
@@ -337,6 +342,9 @@ def _curated_input(record: CuratedBankQuestion) -> CuratedQuestionInput:
             "category": record.category,
             "intimacy": record.intimacy,
             "options": record.options,
+            "option_icons": record.option_icons,
+            "scale_low_label": record.scale_low_label,
+            "scale_high_label": record.scale_high_label,
             "enabled": record.enabled,
         }
     )
@@ -381,6 +389,9 @@ async def replace_curated_bank(
             category=Category(item.category),
             intimacy=item.intimacy,
             options=item.options,
+            option_icons=[IconKey(icon) for icon in item.option_icons],
+            scale_low_label=item.scale_low_label,
+            scale_high_label=item.scale_high_label,
         )
         for item in payload.questions
     ]
@@ -401,6 +412,9 @@ async def replace_curated_bank(
                 category=item.category,
                 intimacy=item.intimacy,
                 options=item.options,
+                option_icons=item.option_icons,
+                scale_low_label=item.scale_low_label,
+                scale_high_label=item.scale_high_label,
                 enabled=item.enabled,
                 updated_by=admin.id,
                 created_at=now,

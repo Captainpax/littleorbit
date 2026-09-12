@@ -16,18 +16,18 @@ export function hostedApkPath(version: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.4",
-  versionCode: 4,
+  version: "1.0.0-rc.5",
+  versionCode: 5,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "56dd74a4640c0fd91f029c3e59c227521284d524e3bb4f6035b2a38dad88c234",
+  sha256: "044c7c068fde480407ed3f1d29ec7df4bdf19d1b855e334f4e30a769732848ed",
   releaseNotes: [
-    "Downloads signed APKs directly from Little Orbit instead of GitHub.",
-    "Supports interrupted-download resume with exact content length and byte ranges.",
-    "Refuses to publish or serve local APK bytes when their size or SHA-256 differs.",
-    "Keeps GitHub as the matching source and release-history mirror.",
+    "Introduces a focused five-question flow with drafts, review, waiting, and shared reveal.",
+    "Adds playful partner guesses, weighted choices, history, catch-up, and a guided custom-question composer.",
+    "Polls only completion status in the background and keeps answer content inside the open app.",
+    "Uses validated global Ollama questions with curated fallback and owner review evidence.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.4",
-  apkUrl: hostedApkPath("1.0.0-rc.4"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.5",
+  apkUrl: hostedApkPath("1.0.0-rc.5"),
   published: true,
 };
 

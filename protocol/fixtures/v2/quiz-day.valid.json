@@ -1,0 +1,16 @@
+{
+  "quiz_date": "2026-09-13",
+  "status": "in_progress",
+  "revision": 2,
+  "my_finished": false,
+  "partner_finished": false,
+  "revealed": false,
+  "editable": true,
+  "questions": [
+    {"id":"10000000-0000-4000-8000-000000000001","position":1,"interaction_version":2,"kind":"single_choice","prompt":"Which small welcome would feel nicest after a long day?","category":"everyday","intimacy":false,"options":[{"id":"o1","label":"A hug","icon_key":"heart"},{"id":"o2","label":"Quiet company","icon_key":"rest"}],"scale_low_label":null,"scale_high_label":null,"my_answer":{"kind":"single_choice","selected_option_id":"o1"},"my_answer_revision":1,"partner_answer":null},
+    {"id":"10000000-0000-4000-8000-000000000002","position":2,"interaction_version":2,"kind":"multiple_choice","prompt":"Which tiny adventures should we make time for this month?","category":"dreams","intimacy":false,"options":[{"id":"o1","label":"A cafe","icon_key":"meal"},{"id":"o2","label":"A walk","icon_key":"outdoors"}],"scale_low_label":null,"scale_high_label":null,"my_answer":null,"my_answer_revision":0,"partner_answer":null},
+    {"id":"10000000-0000-4000-8000-000000000003","position":3,"interaction_version":2,"kind":"free_text","prompt":"What ordinary moment with us has stayed in your mind lately?","category":"memories","intimacy":false,"options":[],"scale_low_label":null,"scale_high_label":null,"my_answer":null,"my_answer_revision":0,"partner_answer":null},
+    {"id":"10000000-0000-4000-8000-000000000004","position":4,"interaction_version":2,"kind":"partner_guess","prompt":"On a completely free evening, what would you choose first?","category":"playful","intimacy":false,"options":[{"id":"o1","label":"Movie","icon_key":"movie"},{"id":"o2","label":"Game","icon_key":"play"}],"scale_low_label":null,"scale_high_label":null,"my_answer":null,"my_answer_revision":0,"partner_answer":null},
+    {"id":"10000000-0000-4000-8000-000000000005","position":5,"interaction_version":2,"kind":"weighted_choice","prompt":"How much would each plan help you feel connected this weekend?","category":"connection","intimacy":false,"options":[{"id":"o1","label":"A shared meal","icon_key":"meal"},{"id":"o2","label":"A long talk","icon_key":"chat"}],"scale_low_label":"Not much","scale_high_label":"Very much","my_answer":null,"my_answer_revision":0,"partner_answer":null}
+  ]
+}
