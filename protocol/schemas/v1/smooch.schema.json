@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v1/smooch.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operation_id", "emoji"],
+  "properties": {
+    "operation_id": { "type": "string", "format": "uuid" },
+    "emoji": {
+      "type": "string",
+      "enum": ["😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑"]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "paired_at": "2026-09-01T18:30:00Z",
+  "paired_days": 10,
+  "nearby_estimated_seconds": 21600,
+  "nearby_last_processed_at": "2026-09-12T01:20:00Z",
+  "proximity_threshold_m": 100.0,
+  "location_enabled_by_me": true,
+  "location_enabled_by_both": true,
+  "label": "estimate"
+}

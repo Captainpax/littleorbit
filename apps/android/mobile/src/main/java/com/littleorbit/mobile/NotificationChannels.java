@@ -8,6 +8,9 @@ import android.content.Context;
 final class NotificationChannels {
     static final String QUIZ = "quiz_updates";
     static final String COUNTDOWNS = "countdowns";
+    static final String LOCATION = "nearby_time";
+    static final String SMOOCHES = "smooches";
+    static final String UPDATES = "app_updates";
 
     private NotificationChannels() {}
 
@@ -18,6 +21,16 @@ final class NotificationChannels {
         manager.createNotificationChannel(new NotificationChannel(
                 COUNTDOWNS,
                 context.getString(R.string.countdowns),
+                NotificationManager.IMPORTANCE_DEFAULT));
+        manager.createNotificationChannel(new NotificationChannel(
+                LOCATION,
+                context.getString(R.string.nearby_tracking_channel),
+                NotificationManager.IMPORTANCE_LOW));
+        manager.createNotificationChannel(new NotificationChannel(
+                SMOOCHES, context.getString(R.string.smooches),
+                NotificationManager.IMPORTANCE_DEFAULT));
+        manager.createNotificationChannel(new NotificationChannel(
+                UPDATES, context.getString(R.string.app_updates),
                 NotificationManager.IMPORTANCE_DEFAULT));
     }
 }

@@ -47,6 +47,10 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0012-relationship-age-proximity-and-wear-delivery.md` — relationship date, proximity, and original Wear delivery.
 - `docs/adr/0013-private-profile-images.md` — normalized owner/current-partner profile images.
 - `docs/adr/0014-phone-hosted-wear-installation.md` — in-app local wireless-ADB installation.
+- `docs/adr/0015-pair-instant-and-continuous-proximity.md` — pairing-based age and visible continuous proximity collection.
+- `docs/adr/0016-durable-smooches.md` — bounded private signals, weekly history, archive, and deletion rules.
+- `docs/adr/0017-note-workspace-lifecycle.md` — multiple titled notes, presence, metadata operations, and archive recovery.
+- `docs/adr/0018-opt-in-update-discovery.md` — scheduled metadata discovery while APK transfer remains user-driven.
 
 ## Operations and verification
 
@@ -61,6 +65,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-RC7-2026-09-12.md` — RC7 round-Wear correction evidence.
 - `docs/operations/VERIFICATION-RC8-2026-09-12.md` — RC8 profile, installer, patch-note, build, and deployment evidence.
 - `docs/operations/VERIFICATION-RC9-2026-09-12.md` — RC9 widget, quiz exit, crop, physical-Pixel, build, and deployment evidence.
+- `docs/operations/VERIFICATION-RC10-2026-09-12.md` — RC10 pair age, proximity, Smooch, notes, updater, Wear, build, deployment, and device evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -74,6 +79,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.7.md` — RC7 round-display correction.
 - `docs/releases/1.0.0-rc.8.md` — RC8 home, photos, in-app Wear install, and patch notes.
 - `docs/releases/1.0.0-rc.9.md` — RC9 widget crash, quiz completion, and profile-crop corrections.
+- `docs/releases/1.0.0-rc.10.md` — RC10 pair age, continuous proximity, Smooches, notes workspace, update discovery, and Wear recovery.
 <!-- documentation-inventory:end -->
 
 ## Review routing

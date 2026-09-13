@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -32,8 +33,9 @@ import javax.inject.Singleton;
 @Singleton
 public final class AndroidUpdateCoordinator {
     private static final String STORE = "little-orbit-updater-state";
-    private static final Duration FOREGROUND_CHECK_INTERVAL = Duration.ofHours(12);
-    private static final Duration OPTIONAL_SNOOZE = Duration.ofHours(24);
+    private static final Duration FOREGROUND_CHECK_INTERVAL = Duration.ofHours(1);
+    private static final Duration DOWNLOAD_STALL = Duration.ofMinutes(5);
+    private static final AtomicBoolean AUTO_PROMPTED_THIS_PROCESS = new AtomicBoolean();
     private final Context context;
     private final ReleaseRepository releases;
     private final ApkVerifier verifier;
@@ -64,6 +66,30 @@ public final class AndroidUpdateCoordinator {
         /** Renders one sanitized updater snapshot. */
         void onUpdateState(UpdatePresentation presentation);
     }
+
+    /** Returns whether this install has recorded the user's detection choice. */
+    public boolean hasAutoDetectionChoice() {
+        return preferences.contains("auto_detection_enabled");
+    }
+
+    /** Returns the current optional-update detection preference. */
+    public boolean autoDetectionEnabled() {
+        return preferences.getBoolean("auto_detection_enabled", false);
+    }
+
+    /** Persists detection choice and reconciles its background metadata worker. */
+    public void setAutoDetectionEnabled(boolean enabled) {
+        preferences.edit().putBoolean("auto_detection_enabled", enabled).apply();
+        UpdateDiscoveryWorker.schedule(context);
+    }
+
+    /** Allows one optional-update sheet per cold application process. */
+    public boolean claimAutomaticPrompt() {
+        return autoDetectionEnabled() && AUTO_PROMPTED_THIS_PROCESS.compareAndSet(false, true);
+    }
+
+    /** Returns the last metadata-check instant for settings display. */
+    public long lastCheckedAtMillis() { return releases.lastCheckedAtMillis(); }
 
     /** Checks immediately or uses a recent validated response, then reconciles Android services. */
     public void check(boolean force, Listener observer) {
@@ -96,15 +122,13 @@ public final class AndroidUpdateCoordinator {
         main.removeCallbacks(this::reconcile);
     }
 
-    /** Defers only an optional release for one day. */
+    /** Dismisses an optional release for this foreground session only. */
     public void deferOptional() {
         ReleaseUpdate release = releases.cached().orElse(null);
         if (release == null) return;
         UpdatePolicy.Decision decision = decision(release);
         if (decision == UpdatePolicy.Decision.OPTIONAL) {
-            releases.defer(
-                    release.releaseId(), System.currentTimeMillis() + OPTIONAL_SNOOZE.toMillis());
-            persist(machine().deferred());
+            persist(machine().available(false));
             dispatch();
         }
     }
@@ -189,11 +213,8 @@ public final class AndroidUpdateCoordinator {
             return;
         }
         if (!sameRelease && selected.hasResumableWork()) removeObsoleteWork();
-        boolean deferred = !force
-                && decision == UpdatePolicy.Decision.OPTIONAL
-                && releases.isDeferred(release.releaseId(), System.currentTimeMillis());
         selected.select(release.releaseId(), decision == UpdatePolicy.Decision.REQUIRED);
-        persist(deferred ? selected.deferred() : selected.snapshot());
+        persist(selected.snapshot());
     }
 
     private void removeObsoleteWork() {
@@ -232,7 +253,11 @@ public final class AndroidUpdateCoordinator {
                 downloadManager().remove(id);
                 return;
             }
-            preferences.edit().putLong("download_id", id).apply();
+            preferences.edit()
+                    .putLong("download_id", id)
+                    .putLong("download_progress_bytes", 0)
+                    .putLong("download_progress_at", System.currentTimeMillis())
+                    .apply();
             persist(machine().downloading(0, release.sizeBytes()));
             dispatchAndPoll();
         } catch (RuntimeException failure) {
@@ -264,6 +289,11 @@ public final class AndroidUpdateCoordinator {
             long total = Math.max(release.sizeBytes(), columnLong(
                     cursor, DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
             if (!ownsOperation(generation)) return;
+            if (downloadStalled(id, status, bytes, total)) {
+                persist(machine().retryDownload("download_stalled", bytes, total));
+                dispatch();
+                return;
+            }
             if (status == DownloadManager.STATUS_SUCCESSFUL) {
                 persist(machine().verifying(bytes));
                 dispatch();
@@ -481,6 +511,25 @@ public final class AndroidUpdateCoordinator {
             return "download_http";
         }
         return "download_failed";
+    }
+
+    private boolean downloadStalled(long id, int status, long bytes, long total) {
+        boolean canStall = status == DownloadManager.STATUS_RUNNING
+                || status == DownloadManager.STATUS_PAUSED;
+        if (!canStall || bytes >= total) return false;
+        long previous = preferences.getLong("download_progress_bytes", -1);
+        long progressAt = preferences.getLong("download_progress_at", System.currentTimeMillis());
+        if (bytes != previous) {
+            preferences.edit()
+                    .putLong("download_progress_bytes", bytes)
+                    .putLong("download_progress_at", System.currentTimeMillis())
+                    .apply();
+            return false;
+        }
+        if (System.currentTimeMillis() - progressAt < DOWNLOAD_STALL.toMillis()) return false;
+        downloadManager().remove(id);
+        preferences.edit().remove("download_id").apply();
+        return true;
     }
 
     private static boolean isVerifiedPhase(String phase) {

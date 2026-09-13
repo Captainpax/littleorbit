@@ -1,6 +1,7 @@
 """Couple consent, unpairing, and private read-only archive routes."""
 
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import delete, select
@@ -10,6 +11,7 @@ from ..clock import SystemClock
 from ..couple_access import active_member, both_members_consent
 from ..database import session_scope
 from ..dependencies import current_account
+from ..interaction_models import Smooch
 from ..models import (
     Account,
     Countdown,
@@ -49,6 +51,7 @@ async def _preferences(
         location_enabled_by_both=await both_members_consent(
             session, couple.id, "location_enabled"
         ),
+        home_timezone=couple.home_timezone,
     )
 
 
@@ -86,6 +89,14 @@ async def update_preferences(
             )
     if payload.proximity_threshold_m is not None:
         couple.proximity_threshold_m = payload.proximity_threshold_m
+    if payload.home_timezone is not None:
+        try:
+            ZoneInfo(payload.home_timezone)
+        except ZoneInfoNotFoundError as exc:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY, "Timezone is invalid"
+            ) from exc
+        couple.home_timezone = payload.home_timezone
     couple.updated_at = SystemClock().now()
     await session.commit()
     return await _preferences(session, member)
@@ -201,6 +212,9 @@ async def archive_detail(
     answers = list(
         await session.scalars(select(QuizAnswer).where(QuizAnswer.couple_id == archive_id))
     )
+    smooches = list(
+        await session.scalars(select(Smooch).where(Smooch.couple_id == archive_id))
+    )
     return ArchiveDetail(
         **summary.model_dump(),
         notes=[
@@ -225,5 +239,16 @@ async def archive_detail(
                 "submitted_at": item.submitted_at,
             }
             for item in answers
+        ],
+        smooches=[
+            {
+                "id": str(item.id),
+                "sender_id": str(item.sender_id) if item.sender_id else None,
+                "recipient_id": str(item.recipient_id) if item.recipient_id else None,
+                "emoji": item.emoji,
+                "phrase_key": item.phrase_key,
+                "sent_at": item.sent_at,
+            }
+            for item in smooches
         ],
     )

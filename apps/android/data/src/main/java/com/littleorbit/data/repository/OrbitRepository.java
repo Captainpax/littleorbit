@@ -1,7 +1,9 @@
 package com.littleorbit.data.repository;
 
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.remote.QuizApiModels;
+import com.littleorbit.data.remote.SmoochApiModels;
 import com.littleorbit.data.remote.TogetherTimeModels;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +105,21 @@ public interface OrbitRepository {
     /** Loads separate relationship-age and location-derived nearby values. */
     CompletableFuture<TogetherTimeModels.Summary> togetherSummaryV2();
 
+    /** Loads pair age from the immutable pairing instant and the nearby estimate. */
+    CompletableFuture<TogetherTimeModels.PairSummary> togetherSummaryV3();
+
+    /** Sends one of the fixed Smooch choices. */
+    CompletableFuture<SmoochApiModels.Sent> sendSmooch(SmoochApiModels.SendRequest request);
+
+    /** Loads pending partner Smooches for notification. */
+    CompletableFuture<List<SmoochApiModels.Delivery>> pendingSmooches();
+
+    /** Acknowledges notifications only after they were rendered. */
+    CompletableFuture<Void> acknowledgeSmooches(List<String> ids);
+
+    /** Loads durable weekly Smooch totals. */
+    CompletableFuture<List<SmoochApiModels.Week>> smoochWeeks(int weeks);
+
     /** Loads thirty coordinate-free UTC days of nearby estimates. */
     CompletableFuture<List<TogetherTimeModels.HistoryDay>> togetherHistory();
 
@@ -122,10 +139,25 @@ public interface OrbitRepository {
             String bucketId, ApiModels.TogetherCorrectionRequest request);
 
     /** Loads note snapshots. */
-    CompletableFuture<List<ApiModels.Note>> notes();
+    CompletableFuture<List<NoteApiModels.Note>> notes();
 
     /** Creates a note while its draft remains local. */
-    CompletableFuture<ApiModels.Note> createNote(ApiModels.NoteCreateRequest request);
+    CompletableFuture<NoteApiModels.Note> createNote(NoteApiModels.CreateRequest request);
+
+    /** Loads archived notes still eligible for undo. */
+    CompletableFuture<List<NoteApiModels.Note>> archivedNotes();
+
+    /** Renames one note idempotently. */
+    CompletableFuture<NoteApiModels.Note> renameNote(
+            String noteId, NoteApiModels.TitleRequest request);
+
+    /** Archives one note idempotently. */
+    CompletableFuture<NoteApiModels.Note> archiveNote(
+            String noteId, NoteApiModels.ArchiveRequest request);
+
+    /** Restores one archived note idempotently. */
+    CompletableFuture<NoteApiModels.Note> restoreNote(
+            String noteId, NoteApiModels.ArchiveRequest request);
 
     /** Loads revocable privacy settings. */
     CompletableFuture<ApiModels.Preferences> preferences();

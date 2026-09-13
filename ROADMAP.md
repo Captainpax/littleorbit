@@ -10,7 +10,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Complete confirmed atomic two-person pairing and private unpair archives.
 - [x] Complete stable UTC daily sets, typed interactions, private drafts, review/finish, atomic reveal, seven-day catch-up, custom FIFO questions, mutual intimacy opt-in, and reports.
 - [x] Complete shared countdowns, encrypted offline mutation queues, and local reminder scheduling.
-- [x] Complete operational-transform note editing, reconnect convergence, drafts, and history.
+- [x] Complete operational-transform multi-note editing, reconnect convergence, titles, unique-account presence, archives, seven-day undo, drafts, and history.
 - [x] Complete consented together-time processing, corrections, and raw-coordinate expiry.
 - [x] Complete Android phone app, home widget, Wear OS tile, and complication implementation.
 - [x] Complete owner-console workflows, TOTP recovery, and metadata-only privacy review.
@@ -21,6 +21,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Verify the Wear launcher on a round emulator, make its fallback fit and scroll safely, and publish the immutable RC7 correction.
 - [x] Publish RC8 with the concept-led home hierarchy, account profile photos on phone and Wear, a phone-hosted wireless-ADB Wear installer, and public patch notes with RSS.
 - [x] Publish RC9 with lifecycle-safe widget refreshes, a fixed quiz-completion exit, and an inset-safe first-party profile crop flow.
+- [x] Publish RC10 with pairing-instant relationship age, continuous consented proximity collection, Smooches and weekly history, a multi-note workspace, opt-in update discovery, hardened wireless-Wear pairing, and migration-gated worker startup.
 - [x] Require every major-system agent guide to inventory all Markdown, update every affected document, and always review this roadmap.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.
@@ -36,6 +37,8 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - Physical-device battery measurements and OEM-specific background-location recovery guidance.
 - Guided watch-installer usability improvements based on physical phone/watch testing.
 - Profile-photo accessibility, transfer retry, and storage measurements on physical phone/watch pairs.
+- Smooch notification timing, weekly-boundary, offline-outbox, and lock-screen privacy measurements on two physical phones.
+- Nearby-time battery and reliability measurements across OEM background limits without weakening the two-sample confidence rule.
 
 ## 2.0 — Explicitly reviewed sensitive features
 

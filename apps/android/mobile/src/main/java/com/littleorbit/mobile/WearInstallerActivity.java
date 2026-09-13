@@ -11,6 +11,8 @@ import androidx.appcompat.app.AlertDialog;
 import com.littleorbit.mobile.databinding.ActivityWearInstallerBinding;
 import dagger.hilt.android.AndroidEntryPoint;
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.inject.Inject;
@@ -23,6 +25,7 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     private NsdWatchDiscovery.Session discovery;
     private volatile NsdWatchDiscovery.Endpoint pairing;
     private volatile NsdWatchDiscovery.Endpoint connect;
+    private final Map<String, NsdWatchDiscovery.Endpoint> connectCandidates = new HashMap<>();
     private volatile WearReleaseMetadata release;
     private volatile File verifiedApk;
     @Inject WearReleaseClient releases;
@@ -81,12 +84,20 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     }
 
     private void discovered(NsdWatchDiscovery.Endpoint value, boolean pairEndpoint) {
-        NsdWatchDiscovery.Endpoint other = pairEndpoint ? connect : pairing;
-        if (other != null && !other.host().equals(value.host())) return;
-        if (pairEndpoint) pairing = value; else connect = value;
-        binding.wearHost.setText(value.host());
-        if (pairEndpoint) binding.wearPairPort.setText(Integer.toString(value.port()));
-        else binding.wearConnectPort.setText(Integer.toString(value.port()));
+        if (!pairEndpoint) {
+            connectCandidates.put(value.host(), value);
+            if (pairing == null || !pairing.host().equals(value.host())) return;
+            connect = value;
+            binding.wearConnectPort.setText(Integer.toString(value.port()));
+        } else {
+            pairing = value;
+            connect = connectCandidates.get(value.host());
+            binding.wearHost.setText(value.host());
+            binding.wearPairPort.setText(Integer.toString(value.port()));
+            if (connect != null) {
+                binding.wearConnectPort.setText(Integer.toString(connect.port()));
+            }
+        }
         binding.wearDiscoveryStatus.setText(
                 pairing != null && connect != null ? R.string.wear_found : R.string.wear_searching);
     }
@@ -123,12 +134,20 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     }
 
     private void connectInspectAndInstall(EndpointInput input) {
+        String stage = "connect";
         try {
             KadbWatchClient.Device device;
             if (keys.isRemembered()) {
                 try { device = adb.connectAndInspect(input.host, input.connectPort); }
-                catch (Exception expired) { device = pairAndInspect(input); }
-            } else device = pairAndInspect(input);
+                catch (Exception expired) {
+                    stage = "pair";
+                    device = pairAndInspect(input);
+                }
+            } else {
+                stage = "pair";
+                device = pairAndInspect(input);
+            }
+            stage = "inspect";
             WearInstallPolicy.Decision decision = WearInstallPolicy.decide(release, device);
             if (decision == WearInstallPolicy.Decision.WARN_OLD_PATCH) {
                 warnOldPatch(input, device);
@@ -139,13 +158,22 @@ public final class WearInstallerActivity extends InsetAwareActivity {
             } else if (decision == WearInstallPolicy.Decision.REJECT_DOWNGRADE) {
                 status(R.string.wear_downgrade_blocked, false, true);
             } else status(R.string.wear_not_compatible, false, true);
-        } catch (Exception failure) { status(R.string.wear_install_failed, false, true); }
+        } catch (Exception failure) { failure(stage); }
     }
 
     private KadbWatchClient.Device pairAndInspect(EndpointInput input) throws Exception {
         if (input.code.length() != 6 || input.pairPort <= 0) throw new Exception("Pairing code required");
         adb.pair(input.host, input.pairPort, input.code);
-        return adb.connectAndInspect(input.host, input.connectPort);
+        Exception last = null;
+        for (int attempt = 0; attempt < 8; attempt++) {
+            try {
+                return adb.connectAndInspect(input.host, activeConnectPort(input));
+            } catch (Exception unavailable) {
+                last = unavailable;
+                Thread.sleep(1_500);
+            }
+        }
+        throw new Exception("Paired, but the watch TLS service did not become ready", last);
     }
 
     private void warnOldPatch(EndpointInput input, KadbWatchClient.Device device) {
@@ -162,16 +190,16 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     private void install(EndpointInput input) {
         try {
             status(R.string.wear_installing, true, false);
-            adb.install(input.host, input.connectPort, verifiedApk);
+            adb.install(input.host, activeConnectPort(input), verifiedApk);
             status(R.string.wear_install_complete, false, false);
         } catch (Exception failure) { status(R.string.wear_install_failed, false, true); }
     }
 
     private EndpointInput endpointInput() {
         String manualHost = binding.wearHost.getText().toString().trim();
-        String host = connect != null ? connect.host() : manualHost;
-        int pairPort = pairing != null ? pairing.port() : number(binding.wearPairPort.getText().toString());
-        int connectPort = connect != null ? connect.port() : number(binding.wearConnectPort.getText().toString());
+        String host = manualHost;
+        int pairPort = number(binding.wearPairPort.getText().toString());
+        int connectPort = number(binding.wearConnectPort.getText().toString());
         String code = binding.wearPairingCode.getText().toString().trim();
         return host.isBlank() || connectPort <= 0
                 ? null : new EndpointInput(host, pairPort, connectPort, code);
@@ -186,6 +214,22 @@ public final class WearInstallerActivity extends InsetAwareActivity {
 
     private void setBusy(int message) { status(message, true, false); }
     private void setReady() { status(R.string.wear_ready, false, true); }
+
+    private int activeConnectPort(EndpointInput input) {
+        NsdWatchDiscovery.Endpoint latest = connect;
+        return latest != null && latest.host().equals(input.host)
+                ? latest.port() : input.connectPort;
+    }
+
+    private void failure(String stage) {
+        int message = switch (stage) {
+            case "pair" -> R.string.wear_pair_failed;
+            case "inspect" -> R.string.wear_inspect_failed;
+            default -> R.string.wear_connect_failed;
+        };
+        status(message, false, true);
+        runOnUiThread(() -> binding.manualWearFields.setVisibility(View.VISIBLE));
+    }
 
     private void status(int message, boolean busy, boolean enabled) {
         runOnUiThread(() -> {

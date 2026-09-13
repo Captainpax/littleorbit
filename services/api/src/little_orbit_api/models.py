@@ -113,6 +113,9 @@ class Couple(Timestamped, Base):
     proximity_algorithm_version: Mapped[int] = mapped_column(
         Integer, nullable=False, default=2
     )
+    home_timezone: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="America/Los_Angeles"
+    )
 
 
 class CoupleMember(Base):
@@ -333,7 +336,10 @@ class Note(Timestamped, Base):
     """Shared plain-text note with a monotonic server revision."""
 
     __tablename__ = "notes"
-    __table_args__ = (CheckConstraint("revision >= 0"),)
+    __table_args__ = (
+        CheckConstraint("revision >= 0"),
+        CheckConstraint("metadata_revision >= 0"),
+    )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     creation_operation_id: Mapped[UUID] = mapped_column(Uuid, unique=True, nullable=False)
@@ -343,6 +349,9 @@ class Note(Timestamped, Base):
     title: Mapped[str] = mapped_column(String(120), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    metadata_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    purge_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
 
 
 class NoteOperation(Base):

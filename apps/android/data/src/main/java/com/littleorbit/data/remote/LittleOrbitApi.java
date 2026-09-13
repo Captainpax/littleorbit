@@ -162,11 +162,46 @@ public interface LittleOrbitApi {
 
     /** Loads note snapshots for offline caching. */
     @GET("api/v1/notes")
-    Call<java.util.List<ApiModels.Note>> notes();
+    Call<java.util.List<NoteApiModels.Note>> notes();
 
     /** Creates a note while keeping the local draft until acknowledgement. */
     @POST("api/v1/notes")
-    Call<ApiModels.Note> createNote(@Body ApiModels.NoteCreateRequest request);
+    Call<NoteApiModels.Note> createNote(@Body NoteApiModels.CreateRequest request);
+
+    /** Loads notes still inside their seven-day undo window. */
+    @GET("api/v1/notes/archived")
+    Call<java.util.List<NoteApiModels.Note>> archivedNotes();
+
+    /** Renames a note without advancing body OT revisions. */
+    @PATCH("api/v1/notes/{noteId}")
+    Call<NoteApiModels.Note> renameNote(
+            @Path("noteId") String noteId, @Body NoteApiModels.TitleRequest request);
+
+    /** Archives a note for seven-day undo. */
+    @POST("api/v1/notes/{noteId}/archive")
+    Call<NoteApiModels.Note> archiveNote(
+            @Path("noteId") String noteId, @Body NoteApiModels.ArchiveRequest request);
+
+    /** Restores a note during its undo window. */
+    @POST("api/v1/notes/{noteId}/restore")
+    Call<NoteApiModels.Note> restoreNote(
+            @Path("noteId") String noteId, @Body NoteApiModels.ArchiveRequest request);
+
+    /** Sends one fixed-emoji Smooch idempotently. */
+    @POST("api/v1/smooches")
+    Call<SmoochApiModels.Sent> sendSmooch(@Body SmoochApiModels.SendRequest request);
+
+    /** Loads pending Smooch notifications for this recipient. */
+    @GET("api/v1/smooches/pending")
+    Call<java.util.List<SmoochApiModels.Delivery>> pendingSmooches();
+
+    /** Marks rendered Smooch notifications as delivered. */
+    @POST("api/v1/smooches/deliveries/ack")
+    Call<Void> acknowledgeSmooches(@Body SmoochApiModels.DeliveryAck request);
+
+    /** Loads calendar-week Smooch history. */
+    @GET("api/v1/smooches/weeks")
+    Call<java.util.List<SmoochApiModels.Week>> smoochWeeks(@Query("weeks") int weeks);
 
     /** Loads the current estimate without coordinates. */
     @GET("api/v1/together-time")
@@ -175,6 +210,10 @@ public interface LittleOrbitApi {
     /** Loads separate relationship-age and nearby-time values. */
     @GET("api/v2/together-time")
     Call<TogetherTimeModels.Summary> togetherSummaryV2();
+
+    /** Loads immutable pair age and the separate location-derived estimate. */
+    @GET("api/v3/together-time")
+    Call<TogetherTimeModels.PairSummary> togetherSummaryV3();
 
     /** Loads thirty coordinate-free UTC days of nearby estimates. */
     @GET("api/v2/together-time/history")

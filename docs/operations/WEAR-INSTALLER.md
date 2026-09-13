@@ -14,16 +14,20 @@ Little Orbit installs its self-hosted Wear companion from the Android phone app.
 
 The phone keeps its ADB identity encrypted so later Little Orbit Wear updates normally reconnect without a new pairing code. **Forget watch authorization** deletes that local identity. The watch may still list the old authorization until it is removed in watch developer settings.
 
+The watch can change its TLS connection port after pairing. Leave the wireless-debug screen open until installation finishes. RC10 resolves pairing and connection services sequentially, ignores callbacks from an older discovery attempt, keeps both endpoints on the same resolved host, and refreshes the active connection port after pairing. If discovery remains incomplete, enter the current pairing and connection ports shown on the watch; do not reuse a port from an earlier wireless-debug session.
+
 ## Verification checklist
 
 - Metadata and APK URL use the exact current versioned `lil-orb.pax-kun.com` HTTPS endpoint.
 - Downloaded byte count, SHA-256, package, version, watch feature, and signing certificate match published metadata.
 - Discovery grant finds both endpoints from one host; discovery denial exposes manual fields without a crash.
+- Starting discovery twice cannot let the first attempt overwrite the second, and a post-pair port change is used for install.
 - A wrong pairing code fails without logging the code; retry with a new code works.
 - A phone target, unsupported watch SDK, same version, and higher installed version produce their respective safe outcomes.
 - An old or unreadable patch level warns and cancel performs no install.
 - A current patch installs with replace only; no downgrade or uninstall flag is used.
 - A second update reconnects through the encrypted identity; forgetting it requires pairing again.
 - The installed launcher, tile, complication, and profile synchronization work after wireless debugging is disabled.
+- Stage text distinguishes discovery, pairing, TLS transition, device inspection, verification, and installation so a failure can be reported without addresses or codes.
 
 Do not capture pairing codes, local watch addresses, private keys, profile photos, or device identifiers in issue reports. Record only a sanitized outcome and OS/API level.

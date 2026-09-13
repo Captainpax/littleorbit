@@ -1,0 +1,10 @@
+{
+  "paired_at": "a date someone selected",
+  "paired_days": -1,
+  "nearby_estimated_seconds": -30,
+  "nearby_last_processed_at": null,
+  "proximity_threshold_m": 0,
+  "location_enabled_by_me": true,
+  "location_enabled_by_both": true,
+  "label": "exact"
+}

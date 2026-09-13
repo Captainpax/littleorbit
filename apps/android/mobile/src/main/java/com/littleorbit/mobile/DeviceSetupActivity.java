@@ -2,7 +2,6 @@ package com.littleorbit.mobile;
 
 import android.Manifest;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -67,6 +66,7 @@ public final class DeviceSetupActivity extends InsetAwareActivity {
     private void reconcileNotifications() {
         if (PermissionChecks.notificationsGranted(this)) {
             QuizStatusWorker.schedule(this);
+            SmoochStatusWorker.schedule(this, orbit.isSignedIn());
         }
         refreshStatus();
     }
@@ -163,9 +163,7 @@ public final class DeviceSetupActivity extends InsetAwareActivity {
     }
 
     private void openWearGuide() {
-        startActivity(new Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("https://lil-orb.pax-kun.com/download#wear")));
+        startActivity(new Intent(this, WearInstallerActivity.class));
     }
 
     private void openNotificationSettings() {

@@ -3,7 +3,6 @@ package com.littleorbit.mobile;
 import android.app.Application;
 import androidx.hilt.work.HiltWorkerFactory;
 import androidx.work.Configuration;
-import com.littleorbit.data.ReleaseCheckWorker;
 import com.littleorbit.data.security.SessionStore;
 import dagger.hilt.android.HiltAndroidApp;
 import javax.inject.Inject;
@@ -18,11 +17,13 @@ public final class LittleOrbitApplication extends Application implements Configu
     public void onCreate() {
         super.onCreate();
         NotificationChannels.create(this);
-        ReleaseCheckWorker.schedule(this);
+        UpdateDiscoveryWorker.schedule(this);
         if (sessions.read().isPresent() && PermissionChecks.notificationsGranted(this)) {
             QuizStatusWorker.schedule(this);
+            SmoochStatusWorker.schedule(this, true);
         } else {
             QuizStatusWorker.cancel(this);
+            SmoochStatusWorker.schedule(this, false);
         }
     }
 

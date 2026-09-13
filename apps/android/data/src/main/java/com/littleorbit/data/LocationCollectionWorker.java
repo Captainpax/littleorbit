@@ -1,130 +1,57 @@
 package com.littleorbit.data;
 
-import android.Manifest;
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.location.Location;
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.hilt.work.HiltWorker;
-import androidx.work.OneTimeWorkRequest;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.Priority;
-import com.google.android.gms.tasks.CancellationTokenSource;
-import com.google.android.gms.tasks.Tasks;
-import com.littleorbit.data.local.LocationQueueDao;
-import com.littleorbit.data.local.QueuedLocationEntity;
-import com.littleorbit.data.remote.ApiModels;
-import com.littleorbit.data.remote.LittleOrbitApi;
-import com.littleorbit.data.security.SessionStore;
 import dagger.assisted.Assisted;
 import dagger.assisted.AssistedInject;
-import java.time.Instant;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import org.json.JSONException;
-import org.json.JSONObject;
-import retrofit2.Response;
 
-/** Collects one balanced-power location only after local and server consent checks. */
+/** Balanced-power fallback sampler for periods when foreground tracking cannot run. */
 @HiltWorker
 public final class LocationCollectionWorker extends Worker {
-    private final Context context;
-    private final LocationQueueDao queue;
-    private final SessionStore cipher;
-    private final LittleOrbitApi api;
+    private static final String UNIQUE_WORK = "little-orbit-location";
+    public static final String ACTION_COLLECTION_DISABLED =
+            "com.littleorbit.action.LOCATION_COLLECTION_DISABLED";
+    private final LocationSampler sampler;
 
-    /** Creates an injected privacy-gated collection worker. */
+    /** Creates the fallback worker around the shared privacy-gated sampler. */
     @AssistedInject
-    public LocationCollectionWorker(
-            @Assisted @NonNull Context context,
-            @Assisted @NonNull WorkerParameters parameters,
-            LocationQueueDao queue,
-            SessionStore cipher,
-            LittleOrbitApi api) {
+    public LocationCollectionWorker(@Assisted @NonNull Context context,
+            @Assisted @NonNull WorkerParameters parameters, LocationSampler sampler) {
         super(context, parameters);
-        this.context = context;
-        this.queue = queue;
-        this.cipher = cipher;
-        this.api = api;
+        this.sampler = sampler;
     }
 
-    /** Verifies consent, encrypts one sample, and schedules upload. */
+    /** Samples once; permission or consent removal stops retries. */
     @NonNull
     @Override
     public Result doWork() {
-        if (!hasLocationPermissions()) {
-            queue.clear();
-            return Result.failure();
-        }
-        if (serverConsentDenied()) {
-            queue.clear();
-            return Result.failure();
-        }
-        try {
-            Location location = Tasks.await(
-                    LocationServices.getFusedLocationProviderClient(context).getCurrentLocation(
-                            Priority.PRIORITY_BALANCED_POWER_ACCURACY,
-                            new CancellationTokenSource().getToken()),
-                    20,
-                    TimeUnit.SECONDS);
-            if (!usable(location)) {
-                return Result.retry();
-            }
-            enqueue(location);
-            WorkManager.getInstance(context).enqueue(
-                    new OneTimeWorkRequest.Builder(LocationUploadWorker.class).build());
-            return Result.success();
-        } catch (SecurityException exception) {
-            queue.clear();
-            return Result.failure();
-        } catch (Exception exception) {
-            return Result.retry();
-        }
+        return switch (sampler.collect(false)) {
+            case COLLECTED -> Result.success();
+            case TEMPORARY_FAILURE -> Result.retry();
+            case DISABLED -> Result.failure();
+        };
     }
 
-    private boolean serverConsentDenied() {
-        try {
-            Response<ApiModels.Preferences> response = api.preferences().execute();
-            if (response.isSuccessful() && response.body() != null) {
-                return !response.body().locationByBoth;
-            }
-            return response.code() >= 400 && response.code() < 500;
-        } catch (java.io.IOException offline) {
-            // Local opt-in and encryption allow collection while temporarily offline.
-            return false;
+    /** Reconciles the unique fifteen-minute fallback with current server consent. */
+    public static void schedule(Context context, boolean enabled) {
+        WorkManager work = WorkManager.getInstance(context);
+        if (!enabled) {
+            work.cancelUniqueWork(UNIQUE_WORK);
+            context.sendBroadcast(new android.content.Intent(ACTION_COLLECTION_DISABLED)
+                    .setPackage(context.getPackageName()));
+            return;
         }
-    }
-
-    private boolean hasLocationPermissions() {
-        return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-                        == PackageManager.PERMISSION_GRANTED
-                && ContextCompat.checkSelfPermission(
-                                context, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                        == PackageManager.PERMISSION_GRANTED;
-    }
-
-    private void enqueue(Location location) throws JSONException {
-        String sampleId = UUID.randomUUID().toString();
-        long recordedAt = location.getTime();
-        JSONObject payload = new JSONObject()
-                .put("recorded_at", Instant.ofEpochMilli(recordedAt).toString())
-                .put("latitude", location.getLatitude())
-                .put("longitude", location.getLongitude())
-                .put("accuracy_m", location.getAccuracy());
-        queue.insert(new QueuedLocationEntity(
-                sampleId, cipher.seal(payload.toString()), recordedAt));
-        queue.trimToLimit();
-    }
-
-    private static boolean usable(Location location) {
-        if (location == null || !location.hasAccuracy() || location.getAccuracy() > 1000) {
-            return false;
-        }
-        long ageMillis = System.currentTimeMillis() - location.getTime();
-        return ageMillis >= 0 && ageMillis <= TimeUnit.MINUTES.toMillis(2);
+        PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
+                LocationCollectionWorker.class, 15, TimeUnit.MINUTES)
+                .build();
+        work.enqueueUniquePeriodicWork(
+                UNIQUE_WORK, ExistingPeriodicWorkPolicy.UPDATE, request);
     }
 }

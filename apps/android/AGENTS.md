@@ -16,14 +16,15 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 - Production source is Java 17 and XML Views. Do not add Kotlin production code or Compose.
 - Activities/fragments render immutable state and forward actions. Repositories own I/O; meaningful cross-repository workflows belong in use cases.
 - Store access tokens only in encrypted app storage and never expose them to widgets, complications, logs, intents, or backups.
-- Location collection requires explicit consent and current permission. Queue bounded, encrypted samples; stop immediately after permission or sharing is revoked.
+- Location collection requires explicit consent and current permission. The foreground service stays visible, WorkManager remains a bounded recovery path, and both may collect offline. Queue encrypted samples; stop immediately and clear the queue after permission or sharing is revoked.
 - Widgets and wear surfaces read a minimal cache containing together-time, next countdown, update instant, and no relationship content.
 - Every cached surface shows when data is stale or unavailable.
-- Offline changes need stable operation IDs. Preserve note drafts when the server revision diverges.
+- Offline changes need stable operation IDs. Preserve note drafts when the server revision diverges. Bind asynchronous note results to the note ID that initiated them.
+- Queue at most five encrypted Smooch sends for at most 15 minutes. Never manufacture delivery after expiration, and keep lock-screen content private by default.
 - Release APKs require all four `ANDROID_SIGNING_*` values, use the same protected key for phone and Wear OS, and must pass `apksigner verify` before publication. Never commit or replace the private release key.
 - Increase `versionCode` for every published update. A reused code or different certificate prevents safe upgrades.
 - Fetch release metadata only from the public API. Accept APK links only from the exact versioned `lil-orb.pax-kun.com` API endpoint or the historical canonical GitHub repository, then verify byte count, SHA-256, package name, increasing version code, and the pinned certificate before opening Android's installer.
-- Keep updater progress restart-safe. Background work may fetch metadata but must never download or install an APK without a user action. Required updates begin only after the server's explicit UTC enforcement time.
+- Keep updater progress restart-safe and detect a running or paused transfer with no progress for five minutes. Background work may fetch metadata but must never download or install an APK without a user action. Required updates begin only after the server's explicit UTC enforcement time.
 - Inventory every repository-owned Markdown file for each Android update. Update or create all affected public, operations, architecture, release, and contributor documents, and always review and update `ROADMAP.md` for behavior, scope, milestone, or release changes.
 
 ## Start here

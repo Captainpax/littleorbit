@@ -107,7 +107,7 @@ final class WearDisplayCache {
 
         String relationshipText(LocalDate today) {
             return relationshipStartEpochDay < 0
-                    ? "Start date unset"
+                    ? "Pair date unavailable"
                     : Math.max(0, today.toEpochDay() - relationshipStartEpochDay) + " days";
         }
 

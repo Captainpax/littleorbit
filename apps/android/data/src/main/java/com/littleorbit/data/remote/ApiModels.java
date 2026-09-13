@@ -309,38 +309,6 @@ public final class ApiModels {
         }
     }
 
-    /** Shared plain-text note response. */
-    public static final class Note {
-        public final String id;
-        public final String title;
-        public final String body;
-        public final int revision;
-        @Json(name = "updated_at") public final String updatedAt;
-
-        /** Creates decoded note state. */
-        public Note(String id, String title, String body, int revision, String updatedAt) {
-            this.id = id;
-            this.title = title;
-            this.body = body;
-            this.revision = revision;
-            this.updatedAt = updatedAt;
-        }
-    }
-
-    /** Retry-safe note creation request. */
-    public static final class NoteCreateRequest {
-        @Json(name = "operation_id") public final String operationId;
-        public final String title;
-        public final String body;
-
-        /** Creates note input while a draft stays local. */
-        public NoteCreateRequest(String operationId, String title, String body) {
-            this.operationId = operationId;
-            this.title = title;
-            this.body = body;
-        }
-    }
-
     /** Together-time aggregate without coordinates. */
     public static final class TogetherSummary {
         @Json(name = "estimated_seconds") public final long estimatedSeconds;
@@ -446,6 +414,7 @@ public final class ApiModels {
         @Json(name = "intimacy_enabled_by_both") public final boolean intimacyByBoth;
         @Json(name = "location_enabled_by_me") public final boolean locationByMe;
         @Json(name = "location_enabled_by_both") public final boolean locationByBoth;
+        @Json(name = "home_timezone") public final String homeTimezone;
 
         /** Creates decoded privacy settings. */
         public Preferences(
@@ -456,6 +425,20 @@ public final class ApiModels {
                 boolean intimacyByBoth,
                 boolean locationByMe,
                 boolean locationByBoth) {
+            this(coupleId, anniversaryDate, thresholdM, intimacyByMe, intimacyByBoth,
+                    locationByMe, locationByBoth, "America/Los_Angeles");
+        }
+
+        /** Creates decoded consent and couple calendar settings. */
+        public Preferences(
+                String coupleId,
+                String anniversaryDate,
+                double thresholdM,
+                boolean intimacyByMe,
+                boolean intimacyByBoth,
+                boolean locationByMe,
+                boolean locationByBoth,
+                String homeTimezone) {
             this.coupleId = coupleId;
             this.anniversaryDate = anniversaryDate;
             this.thresholdM = thresholdM;
@@ -463,6 +446,7 @@ public final class ApiModels {
             this.intimacyByBoth = intimacyByBoth;
             this.locationByMe = locationByMe;
             this.locationByBoth = locationByBoth;
+            this.homeTimezone = homeTimezone;
         }
     }
 
@@ -471,15 +455,26 @@ public final class ApiModels {
         @Json(name = "intimacy_enabled") public final Boolean intimacyEnabled;
         @Json(name = "location_enabled") public final Boolean locationEnabled;
         @Json(name = "proximity_threshold_m") public final Double thresholdM;
+        @Json(name = "home_timezone") public final String homeTimezone;
 
         /** Creates an explicit consent mutation. */
         public PreferencesMutation(
                 Boolean intimacyEnabled,
                 Boolean locationEnabled,
                 Double thresholdM) {
+            this(intimacyEnabled, locationEnabled, thresholdM, null);
+        }
+
+        /** Creates an explicit consent or home-calendar mutation. */
+        public PreferencesMutation(
+                Boolean intimacyEnabled,
+                Boolean locationEnabled,
+                Double thresholdM,
+                String homeTimezone) {
             this.intimacyEnabled = intimacyEnabled;
             this.locationEnabled = locationEnabled;
             this.thresholdM = thresholdM;
+            this.homeTimezone = homeTimezone;
         }
     }
 
@@ -525,6 +520,7 @@ public final class ApiModels {
         public final List<Map<String, Object>> notes;
         public final List<Map<String, Object>> countdowns;
         @Json(name = "quiz_answers") public final List<Map<String, Object>> quizAnswers;
+        public final List<Map<String, Object>> smooches;
 
         /** Creates an immutable archive response. */
         public ArchiveDetail(
@@ -534,11 +530,13 @@ public final class ApiModels {
                 String endedAt,
                 List<Map<String, Object>> notes,
                 List<Map<String, Object>> countdowns,
-                List<Map<String, Object>> quizAnswers) {
+                List<Map<String, Object>> quizAnswers,
+                List<Map<String, Object>> smooches) {
             super(archiveId, partnerDisplayName, joinedAt, endedAt);
             this.notes = List.copyOf(notes);
             this.countdowns = List.copyOf(countdowns);
             this.quizAnswers = List.copyOf(quizAnswers);
+            this.smooches = smooches == null ? List.of() : List.copyOf(smooches);
         }
     }
 

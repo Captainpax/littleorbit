@@ -1,118 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/background_cosmic">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/background_cosmic" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="24dp">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="@string/together_details"
-            android:textColor="@color/cloud"
-            android:textSize="30sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/summaryText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:textColor="@color/lavender" />
-
-        <EditText
-            android:id="@+id/startDateInput"
-            style="@style/Widget.LittleOrbit.Input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:hint="@string/start_date_hint"
-            android:inputType="date"
-            android:textColor="@color/cloud"
-            android:textColorHint="@color/muted" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/proposeDateButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/propose_start_date" />
-        <TextView
-            android:id="@+id/pendingDateText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:textColor="@color/lavender" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/acceptDateButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/accept_start_date"
-            android:visibility="gone" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/declineDateButton"
-            style="@style/Widget.LittleOrbit.Button.Outline"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/decline_start_date"
-            android:visibility="gone" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/cancelDateButton"
-            style="@style/Widget.LittleOrbit.Button.Outline"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/cancel_start_date"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/historyText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
+        <TextView android:id="@+id/summaryText" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="18dp"
+            android:background="@drawable/card_background_feature" android:padding="20dp"
+            android:textColor="@color/cloud" android:textSize="18sp" />
+        <TextView android:id="@+id/collectionState" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="12dp"
+            android:background="@drawable/card_background_muted" android:padding="14dp"
+            android:textColor="@color/lavender_soft" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="@string/nearby_history_title"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+        <TextView android:id="@+id/historyText" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="10dp"
             android:textColor="@color/muted" />
-
-        <Spinner
-            style="@style/Widget.LittleOrbit.Spinner"
-            android:id="@+id/bucketPicker"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp" />
-
-        <EditText
-            style="@style/Widget.LittleOrbit.Input"
-            android:id="@+id/secondsInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/correction_seconds"
-            android:inputType="number"
-            android:textColor="@color/cloud"
-            android:textColorHint="@color/muted" />
-
-        <EditText
-            style="@style/Widget.LittleOrbit.Input"
-            android:id="@+id/reasonInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/correction_reason"
-            android:textColor="@color/cloud"
-            android:textColorHint="@color/muted" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/correctButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="26dp" android:text="@string/correct_estimate_title"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+        <Spinner android:id="@+id/bucketPicker" style="@style/Widget.LittleOrbit.Spinner"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" />
+        <EditText android:id="@+id/secondsInput" style="@style/Widget.LittleOrbit.Input"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="@string/correction_seconds" android:inputType="number" />
+        <EditText android:id="@+id/reasonInput" style="@style/Widget.LittleOrbit.Input"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="@string/correction_reason" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/correctButton"
+            style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="16dp"
             android:text="@string/apply_correction" />
-
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:accessibilityLiveRegion="polite"
-            android:textColor="@color/lavender" />
+        <TextView android:id="@+id/statusText" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:accessibilityLiveRegion="polite" android:textColor="@color/lavender" />
     </LinearLayout>
 </ScrollView>

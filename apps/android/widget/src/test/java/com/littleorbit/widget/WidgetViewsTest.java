@@ -25,7 +25,7 @@ public final class WidgetViewsTest {
     @Test
     public void missingRelationshipDateKeepsSetupPrompt() {
         DisplayCacheEntity cache = cache(NOW, NOW, -1);
-        assertEquals("Set your start date", WidgetViews.relationshipText(
+        assertEquals("Pair to start your orbit", WidgetViews.relationshipText(
                 cache, LocalDate.parse("2026-09-12")));
     }
 

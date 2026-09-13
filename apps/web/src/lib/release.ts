@@ -37,23 +37,25 @@ export function hostedWearApkPath(version: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.9",
-  versionCode: 9,
+  version: "1.0.0-rc.10",
+  versionCode: 10,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "28cdcbc6cd58b26507979e77562de6123e15628766b605108e1c98c26da016b3",
+  sha256: "e6039a5397e1675e8d7548a6a65ede07096cc84f7a5fd82a2887a48c59220104",
   releaseNotes: [
-    "Fixes the home-widget refresh crash found on a physical Pixel after completing a quiz.",
-    "Adds a fixed Done action and explicit completed state to the shared quiz reveal.",
-    "Adds an inset-safe Little Orbit crop screen with visible Cancel and Use photo actions.",
-    "Keeps widget cache reads and rendering inside retry-safe WorkManager jobs.",
+    "Uses the couple's confirmed pairing instant automatically for relationship age.",
+    "Runs consented proximity collection continuously with a visible foreground-service status and an offline fallback.",
+    "Adds private Smooches, hourly limits, notifications, weekly totals, and retained history.",
+    "Turns shared notes into a multi-note workspace with titles, presence, archives, and seven-day undo.",
+    "Adds opt-in update detection, six-hour metadata checks, stalled-download recovery, and persistent update status.",
+    "Hardens phone-hosted Wear pairing against discovery races and changing wireless-debug ports.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.9",
-  apkUrl: hostedApkPath("1.0.0-rc.9"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.10",
+  apkUrl: hostedApkPath("1.0.0-rc.10"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.9"),
-    sha256: "e51241347840273667956e60dc36c560ef2e9b4dab2b57f7f89374dfae4c4036",
-    sizeBytes: 14130618,
-    versionCode: 9,
+    apkUrl: hostedWearApkPath("1.0.0-rc.10"),
+    sha256: "22f629a96b7a513ca9162a6fcff0b7e7dfdd42558b9c1ddce0cd1c0594934f8e",
+    sizeBytes: 14130626,
+    versionCode: 10,
     minimumAndroid: 30,
   },
   published: true,
@@ -138,7 +140,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-12T21:52:55.481551Z",
+    publishedAt: "2026-09-12T23:55:31.611659Z",
   }];
 }
 

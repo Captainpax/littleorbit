@@ -6,19 +6,20 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.0 release candidate. The implemented flows pass automated API, protocol, web, signed Android release, gateway, email, deletion, and backup-restore checks. RC9 also passed quiz-completion, crop/upload, and post-crash-log checks on a physical Pixel 8 Pro. Two-phone, physical-Wear, privacy/permission, DHCP-reservation, and legal review remain launch gates, so do not use the public deployment for real relationship data yet.
+> **Project status:** 1.0 release candidate. RC10 passes the automated API, protocol, web, signed Android, and repository checks for pairing-based relationship age, continuous consented proximity sampling, Smooches, multi-note workspaces, update discovery, and Wear pairing recovery. Two-phone, physical-Wear, battery, privacy/permission, DHCP-reservation, and legal review remain launch gates, so do not use the public deployment for real relationship data yet.
 
 ## What 1.0 includes
 
 - Five daily questions with private-until-both-answer reveal behavior.
 - Single choice, multiple choice, free text, partner guessing, and weighted 1–5 prompts.
-- Shared countdowns and plain-text live notes with offline drafts.
-- A mutually accepted relationship start date, shown separately from nearby-time estimates.
+- Shared countdowns and a titled multi-note workspace with live presence, offline drafts, archives, and seven-day undo.
+- Relationship age beginning automatically at the couple's confirmed pairing instant.
 - Estimated nearby time from mutually consented, accuracy-aware location samples.
+- Private Smooches using nine fixed emoji, a five-per-hour sender limit, notifications, weekly totals, and retained history.
 - Android home widget, Wear OS tile, and watch complication with refresh and honest stale states.
 - Private cropped profile photos for the couple planets on the phone and Wear launcher, with initials when a photo is absent.
 - An in-app, phone-hosted wireless-debugging installer for the self-hosted Wear APK; no computer script or app store is required.
-- A user-approved phone updater with resumable first-party downloads that verifies the APK hash, size, package, version, and pinned signing certificate before Android asks to install it.
+- An opt-in update detector that checks metadata every six hours and presents a once-per-launch update prompt; APK download and Android installation still require explicit approval and full verification.
 - Eight-character, single-use pairing with confirmation.
 - A public website for registration, account recovery, APK releases, privacy, and project documentation.
 - Public patch notes at `/patch-notes` and a standards-based RSS feed at `/patch-notes.xml`.
@@ -55,7 +56,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.9`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.9) is the current signed phone and Wear OS release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.9/apk) and [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.9/wear-apk) are served by Little Orbit with byte-range resume support; GitHub keeps a release mirror, checksums, and source history. The phone SHA-256 is `28cdcbc6cd58b26507979e77562de6123e15628766b605108e1c98c26da016b3`; the Wear SHA-256 is `e51241347840273667956e60dc36c560ef2e9b4dab2b57f7f89374dfae4c4036`. RC9 fixes widget refresh crashes, gives completed quizzes a fixed Done action, and replaces the clipped library crop activity with an inset-safe Little Orbit crop screen. The updater and watch installer verify size, package, version, hash, and the [pinned signing certificate](docs/signing/README.md). This remains a test release until the real-device launch gate is complete.
+[`1.0.0-rc.10`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.10) is the current signed phone and Wear OS release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.10/apk) and [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.10/wear-apk) are served by Little Orbit with byte-range resume support; GitHub keeps a release mirror, checksums, and source history. The phone is 23,389,918 bytes with SHA-256 `e6039a5397e1675e8d7548a6a65ede07096cc84f7a5fd82a2887a48c59220104`; the Wear APK is 14,130,626 bytes with SHA-256 `22f629a96b7a513ca9162a6fcff0b7e7dfdd42558b9c1ddce0cd1c0594934f8e`. RC10 makes pair age automatic, repairs foreground and offline proximity sampling, adds Smooches and the multi-note workspace, enables opt-in update discovery, and hardens wireless watch pairing. Both installers verify size, package, version, hash, and the [pinned signing certificate](docs/signing/README.md). This remains a test release until the real-device launch gate is complete.
 
 ## Privacy promise
 
@@ -74,7 +75,7 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Deployment runbook](docs/operations/DEPLOYMENT.md)
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
 - [Documentation map](docs/DOCUMENTATION-MAP.md)
-- [Latest verification record](docs/operations/VERIFICATION-RC9-2026-09-12.md)
+- [Latest verification record](docs/operations/VERIFICATION-RC10-2026-09-12.md)
 
 ## License and support
 

@@ -6,6 +6,32 @@ import com.squareup.moshi.Json;
 public final class TogetherTimeModels {
     private TogetherTimeModels() {}
 
+    /** RC10 pair-age state derived from the immutable server pairing instant. */
+    public static final class PairSummary {
+        @Json(name = "paired_at") public final String pairedAt;
+        @Json(name = "paired_days") public final long pairedDays;
+        @Json(name = "nearby_estimated_seconds") public final long nearbyEstimatedSeconds;
+        @Json(name = "nearby_last_processed_at") public final String nearbyLastProcessedAt;
+        @Json(name = "proximity_threshold_m") public final double proximityThresholdM;
+        @Json(name = "location_enabled_by_me") public final boolean locationByMe;
+        @Json(name = "location_enabled_by_both") public final boolean locationByBoth;
+        public final String label;
+
+        /** Creates one decoded privacy-limited pair and estimate summary. */
+        public PairSummary(String pairedAt, long pairedDays, long nearbyEstimatedSeconds,
+                String nearbyLastProcessedAt, double proximityThresholdM,
+                boolean locationByMe, boolean locationByBoth, String label) {
+            this.pairedAt = pairedAt;
+            this.pairedDays = pairedDays;
+            this.nearbyEstimatedSeconds = nearbyEstimatedSeconds;
+            this.nearbyLastProcessedAt = nearbyLastProcessedAt;
+            this.proximityThresholdM = proximityThresholdM;
+            this.locationByMe = locationByMe;
+            this.locationByBoth = locationByBoth;
+            this.label = label;
+        }
+    }
+
     /** Separate relationship-age and nearby-time state. */
     public static final class Summary {
         @Json(name = "relationship_start_date") public final String relationshipStartDate;

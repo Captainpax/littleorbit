@@ -19,7 +19,9 @@ Own authenticated HTTP/WSS behavior, application transactions, persistence, sche
 - Hash passwords with Argon2id. Hash one-use tokens and recovery codes. Encrypt TOTP secrets at rest.
 - Pair redemption uses a row lock and one transaction. A couple ends at two active members.
 - Mutations exposed to retries require scoped idempotency keys.
-- WSS connections authenticate before subscription; note revisions are monotonic and operation IDs unique per note.
+- WSS connections authenticate before subscription and reauthorize after hub registration; note revisions are monotonic, operation IDs are unique per note, presence counts unique accounts, and archived notes reject edits.
+- Lock the couple row for relationship-content mutations that must not race unpairing. Relationship age derives from the confirmed pairing instant.
+- Enforce the Smooch rolling-hour limit in the same transaction that inserts the event. Private old-pairing history remains authorized to its original participant and is erased by either participant's account deletion.
 - Audit security events with identifiers and outcomes, never credentials or relationship content.
 - Trust forwarded client IP only when the direct peer equals the configured NPM address.
 - Never mutate or unpublish a published APK record. A compatibility floor applies before authentication only after its explicit timezone-aware `required_after` instant.

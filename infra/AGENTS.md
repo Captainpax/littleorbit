@@ -16,6 +16,7 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 - Keep secrets in environment/secret files outside Git and redact diagnostic output.
 - Permit forwarded headers only from `192.168.50.6` and restrict Windows Firewall port 8180 to that source for production.
 - Use bounded container logs, health checks, restart policies, automated database backups, retention, and a tested restore path.
+- Start migration-aware workers only after the API health check proves Alembic reached head; a healthy database alone does not prove the current schema exists.
 - Do not enable HSTS until HTTPS, certificate renewal, rollback, and direct recovery access are verified.
 - Never run destructive Compose, volume, database, firewall, DHCP, DNS, or proxy actions without inspecting the target state.
 - Copy immutable signed APK bytes into the ignored release directory and verify their size, hash, and API range response before publishing metadata. Keep GitHub as a release mirror. Run migrations and health checks before a version floor can be scheduled.

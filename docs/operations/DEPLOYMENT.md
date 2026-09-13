@@ -111,3 +111,13 @@ RC8 artifacts use phone version code 8 and Wear version code 8. Phone size is 23
 RC9 moves home-widget database reads and rendering from broadcast-receiver callbacks into unique WorkManager jobs, adds a fixed quiz-reveal exit, and replaces the removed library crop activity with an internal inset-safe crop screen. Confirm the merged release manifest contains only the non-exported `ProfileCropActivity` and no exported `com.canhub.cropper.CropImageActivity` before publication.
 
 RC9 artifacts use phone version code 9 and Wear version code 9. Phone size is 23,285,988 bytes with SHA-256 `28cdcbc6cd58b26507979e77562de6123e15628766b605108e1c98c26da016b3`; Wear size is 14,130,618 bytes with SHA-256 `e51241347840273667956e60dc36c560ef2e9b4dab2b57f7f89374dfae4c4036`. The compatibility floor remains version code 6 and RC9 has no enforcement time.
+
+## RC10 data and client release
+
+Take a PostgreSQL backup before migration `0012`. After upgrade, verify the new Smooch, note-metadata-operation, note archive, and couple-home-timezone structures; run account-deletion cleanup in a transaction-safe test before enabling public Smooch traffic. The API must still exclude note and Smooch content from owner-console routes.
+
+The worker depends on a healthy API as well as PostgreSQL and model initialization. The API health gate runs only after its Alembic entrypoint finishes, preventing scheduled maintenance from querying RC10 columns during the migration window. After a deployment, inspect both API and worker logs and restart the worker if an older Compose revision allowed it to race migration.
+
+RC10 artifacts use phone version code 10 and Wear version code 10. Phone size is 23,389,918 bytes with SHA-256 `e6039a5397e1675e8d7548a6a65ede07096cc84f7a5fd82a2887a48c59220104`; Wear size is 14,130,626 bytes with SHA-256 `22f629a96b7a513ca9162a6fcff0b7e7dfdd42558b9c1ddce0cd1c0594934f8e`. The compatibility floor remains version code 6 and RC10 has no enforcement time.
+
+After publication, verify `/api/v1/releases/current`, both complete APK downloads, a 1,024-byte range from each, `/download`, `/patch-notes`, and `/patch-notes.xml`. On the phone, verify the automatic-check choice without starting a download, the persistent update banner, the visible location foreground service after mutual consent, immediate stop after opt-out, Smooch notification privacy, and the Wear installer's manual-address fallback. A phone-side installer smoke test does not close the physical-Wear gate.

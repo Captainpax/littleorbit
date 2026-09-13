@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from time import perf_counter
 
 from little_orbit_ai.ollama import OllamaClient, OllamaSettings
@@ -21,14 +21,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .clock import SystemClock
 from .config import get_settings
 from .database import SessionFactory
+from .interaction_models import Smooch
 from .mail import deliver_pending_mail
 from .models import (
     Account,
+    CoupleMember,
     CuratedBankQuestion,
     DeletionJob,
     GenerationBatch,
     LocationSample,
     MailOutbox,
+    Note,
     OneUseToken,
     Question,
     QuizAnswer,
@@ -52,6 +55,9 @@ async def run_maintenance_once() -> None:
             )
         )
         await session.execute(delete(Session).where(Session.expires_at <= now - timedelta(days=7)))
+        await session.execute(
+            delete(Note).where(Note.purge_after.is_not(None), Note.purge_after <= now)
+        )
         await session.execute(
             update(RelationshipStartProposal)
             .where(
@@ -83,16 +89,25 @@ async def run_maintenance_once() -> None:
             )
         )
         for job in jobs:
-            account = await session.get(Account, job.account_id)
-            job.status = "completed"
-            job.completed_at = now
-            job.account_id = None
-            if account is not None:
-                await session.execute(
-                    delete(MailOutbox).where(MailOutbox.recipient == account.email_normalized)
-                )
-                await session.delete(account)
+            await _complete_deletion_job(session, job, now)
         await session.commit()
+
+
+async def _complete_deletion_job(
+    session: AsyncSession, job: DeletionJob, completed_at: datetime
+) -> None:
+    """Erase an account and durable Smooch history when its grace period ends."""
+
+    account = await session.get(Account, job.account_id)
+    job.status = "completed"
+    job.completed_at = completed_at
+    job.account_id = None
+    if account is None:
+        return
+    couple_ids = select(CoupleMember.couple_id).where(CoupleMember.account_id == account.id)
+    await session.execute(delete(Smooch).where(Smooch.couple_id.in_(couple_ids)))
+    await session.execute(delete(MailOutbox).where(MailOutbox.recipient == account.email_normalized))
+    await session.delete(account)
 
 
 def _ollama_settings() -> OllamaSettings:

@@ -23,6 +23,7 @@ from .routes import (
     quizzes,
     quizzes_v2,
     releases,
+    smooches,
     together_time_v2,
 )
 
@@ -64,12 +65,14 @@ def create_app() -> FastAPI:
     app.include_router(countdowns.router)
     app.include_router(locations.router)
     app.include_router(together_time_v2.router)
+    app.include_router(together_time_v2.v3_router)
     app.include_router(account.router)
     app.include_router(profile_photos.router)
     app.include_router(releases.router)
     app.include_router(admin.router)
     app.include_router(admin_console.router)
     app.include_router(notes.router)
+    app.include_router(smooches.router)
     return app
 
 

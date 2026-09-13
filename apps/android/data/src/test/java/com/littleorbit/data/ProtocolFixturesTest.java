@@ -19,7 +19,7 @@ import org.junit.Test;
 /** Cross-language smoke checks over the canonical protocol fixtures. */
 public final class ProtocolFixturesTest {
     private static final List<String> NAMES = List.of(
-            "location-batch", "note-operation", "pairing", "question-batch", "orbit-profile");
+            "location-batch", "note-operation", "pairing", "question-batch", "orbit-profile", "smooch");
     private final JsonAdapter<Map<String, Object>> adapter;
 
     /** Creates a generic JSON adapter without coupling protocol payloads to Room entities. */
@@ -42,6 +42,12 @@ public final class ProtocolFixturesTest {
         assertFalse(validQuestionBatchV2(read("v2", "question-batch.invalid.json")));
         assertTrue(validQuizDay(read("v2", "quiz-day.valid.json")));
         assertFalse(validQuizDay(read("v2", "quiz-day.invalid.json")));
+    }
+
+    @Test
+    public void rc10TogetherTimeUsesServerPairingAndEstimatedNearbyShapes() throws IOException {
+        assertTrue(validTogetherTime(read("v3", "together-time.valid.json")));
+        assertFalse(validTogetherTime(read("v3", "together-time.invalid.json")));
     }
 
     @Test
@@ -93,8 +99,27 @@ public final class ProtocolFixturesTest {
             case "pairing" -> validPairing(value);
             case "question-batch" -> validQuestionBatch(value);
             case "orbit-profile" -> validOrbitProfile(value);
+            case "smooch" -> validSmooch(value);
             default -> false;
         };
+    }
+
+    private static boolean validSmooch(Map<String, Object> value) {
+        return value.size() == 2
+                && isUuid(value.get("operation_id"))
+                && List.of("😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑")
+                        .contains(value.get("emoji"));
+    }
+
+    private static boolean validTogetherTime(Map<String, Object> value) {
+        return value.size() == 8
+                && String.valueOf(value.get("paired_at")).matches("^.+T.+(?:Z|[+-].+)$")
+                && numberIn(value.get("paired_days"), 0, Integer.MAX_VALUE)
+                && numberIn(value.get("nearby_estimated_seconds"), 0, Integer.MAX_VALUE)
+                && numberIn(value.get("proximity_threshold_m"), 10, 1000)
+                && value.get("location_enabled_by_me") instanceof Boolean
+                && value.get("location_enabled_by_both") instanceof Boolean
+                && "estimate".equals(value.get("label"));
     }
 
     private static boolean validOrbitProfile(Map<String, Object> value) {

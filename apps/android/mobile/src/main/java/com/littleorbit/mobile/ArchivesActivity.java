@@ -58,7 +58,8 @@ public final class ArchivesActivity extends InsetAwareActivity {
         binding.archiveDates.setText(archive.joinedAt + " — " + archive.endedAt);
         String content = "Notes\n" + new JSONArray(archive.notes)
                 + "\n\nCountdowns\n" + new JSONArray(archive.countdowns)
-                + "\n\nQuiz answers\n" + new JSONArray(archive.quizAnswers);
+                + "\n\nQuiz answers\n" + new JSONArray(archive.quizAnswers)
+                + "\n\nSmooch history\n" + new JSONArray(archive.smooches);
         binding.archiveContent.setText(content);
     }
 

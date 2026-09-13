@@ -6,6 +6,7 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 from little_orbit_api import (
+    interaction_models,  # noqa: F401
     models,  # noqa: F401
     profile_models,  # noqa: F401
     together_models,  # noqa: F401

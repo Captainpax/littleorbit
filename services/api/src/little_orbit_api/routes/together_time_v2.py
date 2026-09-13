@@ -28,6 +28,7 @@ from ..schemas import (
     RelationshipStartProposalResponse,
     TogetherHistoryDay,
     TogetherSummaryV2,
+    TogetherSummaryV3,
 )
 from ..together_models import RelationshipStartProposal
 from ..together_time_service import (
@@ -41,6 +42,7 @@ from ..together_time_service import (
 )
 
 router = APIRouter(prefix="/v2/together-time", tags=["together-time-v2"])
+v3_router = APIRouter(prefix="/v3/together-time", tags=["together-time-v3"])
 
 
 async def _locked_couple(session: AsyncSession, couple_id: UUID) -> Couple:
@@ -79,6 +81,37 @@ async def together_summary_v2(
         ),
         label="estimate",
         pending_start_date=proposal_response(proposal, actor.id) if proposal else None,
+    )
+
+
+@v3_router.get("", response_model=TogetherSummaryV3)
+async def together_summary_v3(
+    actor: Account = Depends(current_account),
+    session: AsyncSession = Depends(session_scope),
+) -> TogetherSummaryV3:
+    """Return pair age from the immutable pairing instant plus the nearby estimate."""
+
+    member = await active_member(session, actor.id)
+    couple = await session.get(Couple, member.couple_id)
+    if couple is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
+    total = await session.scalar(
+        select(func.coalesce(func.sum(TogetherBucket.duration_seconds), 0)).where(
+            TogetherBucket.couple_id == couple.id
+        )
+    )
+    paired_days = max(0, (SystemClock().now() - couple.created_at).days)
+    return TogetherSummaryV3(
+        paired_at=couple.created_at,
+        paired_days=paired_days,
+        nearby_estimated_seconds=int(total or 0),
+        nearby_last_processed_at=couple.proximity_processed_through,
+        proximity_threshold_m=couple.proximity_threshold_m,
+        location_enabled_by_me=member.location_enabled,
+        location_enabled_by_both=await both_members_consent(
+            session, couple.id, "location_enabled"
+        ),
+        label="estimate",
     )
 
 

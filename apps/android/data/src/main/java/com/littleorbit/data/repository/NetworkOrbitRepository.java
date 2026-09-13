@@ -1,16 +1,15 @@
 package com.littleorbit.data.repository;
 
 import android.content.Context;
-import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.PeriodicWorkRequest;
-import androidx.work.WorkManager;
 import com.littleorbit.data.LocationCollectionWorker;
 import com.littleorbit.data.DisplayCacheSynchronizer;
 import com.littleorbit.data.DisplayCacheSyncWorker;
 import com.littleorbit.data.local.LocationQueueDao;
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.remote.LittleOrbitApi;
 import com.littleorbit.data.remote.QuizApiModels;
+import com.littleorbit.data.remote.SmoochApiModels;
 import com.littleorbit.data.remote.TogetherTimeModels;
 import com.littleorbit.data.security.SessionStore;
 import java.io.IOException;
@@ -19,7 +18,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import dagger.hilt.android.qualifiers.ApplicationContext;
 import javax.inject.Inject;
@@ -37,8 +35,8 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     private final DisplayCacheSynchronizer displaySynchronizer;
     private final Context context;
     private final CountdownOfflineStore offlineCountdowns;
-    private final WorkManager workManager;
     private final ProfileRepository profiles;
+    private final SmoochOutbox smoochOutbox;
     private final ExecutorService executor = Executors.newFixedThreadPool(3, runnable -> {
         Thread thread = new Thread(runnable, "orbit-network-" + threadIds.incrementAndGet());
         thread.setDaemon(true);
@@ -54,6 +52,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
             DisplayCacheSynchronizer displaySynchronizer,
             CountdownOfflineStore offlineCountdowns,
             ProfileRepository profiles,
+            SmoochOutbox smoochOutbox,
             @ApplicationContext Context context) {
         this.api = api;
         this.sessions = sessions;
@@ -62,7 +61,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         this.context = context;
         this.offlineCountdowns = offlineCountdowns;
         this.profiles = profiles;
-        this.workManager = WorkManager.getInstance(context);
+        this.smoochOutbox = smoochOutbox;
     }
 
     @Override
@@ -252,6 +251,34 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     @Override
+    public CompletableFuture<TogetherTimeModels.PairSummary> togetherSummaryV3() {
+        return async(api.togetherSummaryV3());
+    }
+
+    @Override
+    public CompletableFuture<SmoochApiModels.Sent> sendSmooch(
+            SmoochApiModels.SendRequest request) {
+        return async(api.sendSmooch(request));
+    }
+
+    @Override
+    public CompletableFuture<List<SmoochApiModels.Delivery>> pendingSmooches() {
+        return async(api.pendingSmooches());
+    }
+
+    @Override
+    public CompletableFuture<Void> acknowledgeSmooches(List<String> ids) {
+        return CompletableFuture.runAsync(
+                () -> executeVoid(api.acknowledgeSmooches(new SmoochApiModels.DeliveryAck(ids))),
+                executor);
+    }
+
+    @Override
+    public CompletableFuture<List<SmoochApiModels.Week>> smoochWeeks(int weeks) {
+        return async(api.smoochWeeks(weeks));
+    }
+
+    @Override
     public CompletableFuture<List<TogetherTimeModels.HistoryDay>> togetherHistory() {
         return async(api.togetherHistory(30));
     }
@@ -286,13 +313,36 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     @Override
-    public CompletableFuture<List<ApiModels.Note>> notes() {
+    public CompletableFuture<List<NoteApiModels.Note>> notes() {
         return async(api.notes());
     }
 
     @Override
-    public CompletableFuture<ApiModels.Note> createNote(ApiModels.NoteCreateRequest request) {
+    public CompletableFuture<NoteApiModels.Note> createNote(NoteApiModels.CreateRequest request) {
         return async(api.createNote(request));
+    }
+
+    @Override
+    public CompletableFuture<List<NoteApiModels.Note>> archivedNotes() {
+        return async(api.archivedNotes());
+    }
+
+    @Override
+    public CompletableFuture<NoteApiModels.Note> renameNote(
+            String noteId, NoteApiModels.TitleRequest request) {
+        return async(api.renameNote(noteId, request));
+    }
+
+    @Override
+    public CompletableFuture<NoteApiModels.Note> archiveNote(
+            String noteId, NoteApiModels.ArchiveRequest request) {
+        return async(api.archiveNote(noteId, request));
+    }
+
+    @Override
+    public CompletableFuture<NoteApiModels.Note> restoreNote(
+            String noteId, NoteApiModels.ArchiveRequest request) {
+        return async(api.restoreNote(noteId, request));
     }
 
     @Override
@@ -353,6 +403,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         DisplayCacheSyncWorker.cancel(context);
         displaySynchronizer.clear();
         profiles.clearPartner();
+        smoochOutbox.clear();
     }
 
     private void configureLocationWork(boolean enabled) {
@@ -360,15 +411,11 @@ public final class NetworkOrbitRepository implements OrbitRepository {
             disableLocationWork();
             return;
         }
-        PeriodicWorkRequest request =
-                new PeriodicWorkRequest.Builder(LocationCollectionWorker.class, 15, TimeUnit.MINUTES)
-                        .build();
-        workManager.enqueueUniquePeriodicWork(
-                "little-orbit-location", ExistingPeriodicWorkPolicy.UPDATE, request);
+        LocationCollectionWorker.schedule(context, true);
     }
 
     private void disableLocationWork() {
-        workManager.cancelUniqueWork("little-orbit-location");
+        LocationCollectionWorker.schedule(context, false);
         locationQueue.clear();
     }
 
@@ -431,6 +478,15 @@ public final class NetworkOrbitRepository implements OrbitRepository {
                 throw new OrbitServiceException(response.code());
             }
             return body;
+        } catch (IOException exception) {
+            throw new OrbitServiceException(exception);
+        }
+    }
+
+    private static void executeVoid(Call<Void> call) {
+        try {
+            Response<Void> response = call.execute();
+            if (!response.isSuccessful()) throw new OrbitServiceException(response.code());
         } catch (IOException exception) {
             throw new OrbitServiceException(exception);
         }

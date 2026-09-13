@@ -37,9 +37,12 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Quiz responses remain hidden until both partners submit.
 - Intimacy questions require both partners' current opt-in; either opt-out takes effect immediately.
 - Note operation IDs are idempotent and server revisions increase monotonically.
-- Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates.
+- Note presence counts unique authenticated accounts; archived notes reject content operations and are recoverable for seven days.
+- Relationship age begins at the immutable confirmed pairing instant. Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates.
+- A Smooch uses one approved emoji and phrase key, is limited to five sends per account in a rolling hour, survives unpairing in private archives, and is erased when either original participant deletes their account.
 - Only the gateway binds a public host port. Ollama remains internal and accepts calls only from the AI service.
 - Published APK metadata and first-party APK bytes are immutable. Android accepts an update only when its trusted URL, package, increasing version code, exact byte count, APK hash, and pinned signing certificate all match.
+- Background update checks fetch metadata only. APK download and installation always follow an explicit person action.
 
 ## Owl discipline
 

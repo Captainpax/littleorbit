@@ -10,7 +10,6 @@ import com.littleorbit.data.remote.TogetherTimeModels;
 import dagger.hilt.android.qualifiers.ApplicationContext;
 import java.io.IOException;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -40,10 +39,10 @@ public final class DisplayCacheSynchronizer {
 
     /** Loads current authorized state and publishes one internally consistent cache row. */
     public void refresh() throws SyncException {
-        TogetherTimeModels.Summary summary;
+        TogetherTimeModels.PairSummary summary;
         List<ApiModels.Countdown> countdowns;
         try {
-            summary = body(api.togetherSummaryV2().execute());
+            summary = body(api.togetherSummaryV3().execute());
             countdowns = body(api.countdowns().execute());
         } catch (IOException failure) {
             throw new SyncException(failure);
@@ -54,9 +53,8 @@ public final class DisplayCacheSynchronizer {
                 .orElse(null);
         DisplayCacheEntity cache = new DisplayCacheEntity(
                 "primary",
-                summary.relationshipStartDate == null
-                        ? -1
-                        : LocalDate.parse(summary.relationshipStartDate).toEpochDay(),
+                Instant.parse(summary.pairedAt).atZone(java.time.ZoneOffset.UTC)
+                        .toLocalDate().toEpochDay(),
                 summary.nearbyEstimatedSeconds,
                 instantMillis(summary.nearbyLastProcessedAt),
                 next == null ? "No countdown yet" : next.title,

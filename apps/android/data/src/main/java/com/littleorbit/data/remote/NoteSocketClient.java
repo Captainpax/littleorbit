@@ -119,6 +119,9 @@ public final class NoteSocketClient {
 
         /** Called for transport, authorization, or malformed-response failure. */
         void onFailure();
+
+        /** Reports transient connected editor count without exposing identity. */
+        default void onPresence(int editors) {}
     }
 
     /** Close handle owned by an activity or view model. */
@@ -231,6 +234,8 @@ public final class NoteSocketClient {
                     listener.onSynced(message.optString("body"), message.getInt("revision"));
                 } else if ("note.conflict".equals(type)) {
                     listener.onConflict(message.optString("body"), message.getInt("revision"));
+                } else if ("note.presence".equals(type)) {
+                    listener.onPresence(message.optInt("editors"));
                 }
             } catch (JSONException exception) {
                 listener.onFailure();

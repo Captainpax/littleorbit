@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v3/together-time.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "paired_at",
+    "paired_days",
+    "nearby_estimated_seconds",
+    "nearby_last_processed_at",
+    "proximity_threshold_m",
+    "location_enabled_by_me",
+    "location_enabled_by_both",
+    "label"
+  ],
+  "properties": {
+    "paired_at": { "type": "string", "format": "date-time" },
+    "paired_days": { "type": "integer", "minimum": 0 },
+    "nearby_estimated_seconds": { "type": "integer", "minimum": 0 },
+    "nearby_last_processed_at": {
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "proximity_threshold_m": { "type": "number", "minimum": 10, "maximum": 1000 },
+    "location_enabled_by_me": { "type": "boolean" },
+    "location_enabled_by_both": { "type": "boolean" },
+    "label": { "const": "estimate" }
+  }
+}

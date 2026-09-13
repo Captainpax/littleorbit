@@ -44,7 +44,7 @@ final class WidgetViews {
 
     static String relationshipText(DisplayCacheEntity cache, LocalDate today) {
         if (cache.relationshipStartEpochDay < 0) {
-            return "Set your start date";
+            return "Pair to start your orbit";
         }
         long days = Math.max(0, today.toEpochDay() - cache.relationshipStartEpochDay);
         return days + " days together";

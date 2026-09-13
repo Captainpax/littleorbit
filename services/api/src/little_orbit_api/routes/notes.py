@@ -1,5 +1,6 @@
 """Authenticated WebSocket note synchronization with idempotent acknowledgements."""
 
+from datetime import timedelta
 from typing import cast
 from uuid import UUID
 
@@ -21,9 +22,22 @@ from ..couple_access import active_member, lock_couple
 from ..database import SessionFactory, session_scope
 from ..dependencies import current_account
 from ..domain.notes import Delete, Edit, Insert, InvalidEdit, apply_edit, transform
-from ..models import Account, CoupleMember, Note, NoteOperation, Session
+from ..interaction_models import NoteMetadataOperation
+from ..interaction_schemas import (
+    NoteArchiveRequest,
+    NoteCreateRequest,
+    NoteHistoryEntry,
+    NoteResponse,
+    NoteTitleRequest,
+)
+from ..models import (
+    Account,
+    CoupleMember,
+    Note,
+    NoteOperation,
+    Session,
+)
 from ..notes_hub import NoteConnectionHub
-from ..schemas import NoteCreateRequest, NoteHistoryEntry, NoteResponse
 from ..security import hash_token
 
 router = APIRouter(tags=["notes"])
@@ -68,6 +82,7 @@ async def _authorized_snapshot(account_id: UUID, note_id: UUID) -> dict[str, obj
                 CoupleMember.account_id == account_id,
                 CoupleMember.left_at.is_(None),
                 Note.id == note_id,
+                Note.archived_at.is_(None),
             )
         )
         if note is None:
@@ -135,17 +150,22 @@ async def _transform_since(
 
 async def _apply(note_id: UUID, account_id: UUID, message: NoteEditMessage) -> dict[str, object]:
     async with SessionFactory() as db:
-        authorized = await db.scalar(
-            select(CoupleMember.id)
+        authorized_couple_id = await db.scalar(
+            select(CoupleMember.couple_id)
             .join(Note, Note.couple_id == CoupleMember.couple_id)
             .where(
                 CoupleMember.account_id == account_id,
                 CoupleMember.left_at.is_(None),
                 Note.id == note_id,
+                Note.archived_at.is_(None),
             )
         )
-        if authorized is None:
+        if authorized_couple_id is None:
             raise NoteAccessRevoked
+        try:
+            await lock_couple(db, authorized_couple_id)
+        except HTTPException as revoked:
+            raise NoteAccessRevoked from revoked
         note = await db.scalar(select(Note).where(Note.id == note_id).with_for_update())
         existing = await db.scalar(
             select(NoteOperation).where(
@@ -216,7 +236,10 @@ def _note_response(note: Note) -> NoteResponse:
         title=note.title,
         body=note.body,
         revision=note.revision,
+        metadata_revision=note.metadata_revision,
         updated_at=note.updated_at,
+        archived_at=note.archived_at,
+        purge_after=note.purge_after,
     )
 
 
@@ -230,7 +253,9 @@ async def list_notes(
     member = await active_member(session, actor.id)
     notes = list(
         await session.scalars(
-            select(Note).where(Note.couple_id == member.couple_id).order_by(Note.updated_at.desc())
+            select(Note)
+            .where(Note.couple_id == member.couple_id, Note.archived_at.is_(None))
+            .order_by(Note.updated_at.desc())
         )
     )
     return [_note_response(note) for note in notes]
@@ -266,6 +291,151 @@ async def create_note(
     session.add(note)
     await session.commit()
     return _note_response(note)
+
+
+@router.get("/v1/notes/archived", response_model=list[NoteResponse])
+async def list_archived_notes(
+    actor: Account = Depends(current_account),
+    session: AsyncSession = Depends(session_scope),
+) -> list[NoteResponse]:
+    """List notes still within their seven-day undo window."""
+
+    member = await active_member(session, actor.id)
+    notes = list(
+        await session.scalars(
+            select(Note)
+            .where(
+                Note.couple_id == member.couple_id,
+                Note.archived_at.is_not(None),
+                Note.purge_after > SystemClock().now(),
+            )
+            .order_by(Note.archived_at.desc())
+        )
+    )
+    return [_note_response(note) for note in notes]
+
+
+@router.patch("/v1/notes/{note_id}", response_model=NoteResponse)
+async def rename_note(
+    note_id: UUID,
+    payload: NoteTitleRequest,
+    actor: Account = Depends(current_account),
+    session: AsyncSession = Depends(session_scope),
+) -> NoteResponse:
+    """Rename an active note without disturbing body OT revisions."""
+
+    member = await active_member(session, actor.id)
+    note, prior = await _locked_note_metadata(
+        session, note_id, member, payload.operation_id
+    )
+    if prior is not None:
+        return NoteResponse.model_validate(prior.result)
+    _expect_metadata_revision(note, payload.expected_metadata_revision)
+    if note.archived_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Note is archived")
+    note.title = payload.title
+    return await _finish_metadata(session, note, actor.id, payload.operation_id)
+
+
+@router.post("/v1/notes/{note_id}/archive", response_model=NoteResponse)
+async def archive_note(
+    note_id: UUID,
+    payload: NoteArchiveRequest,
+    actor: Account = Depends(current_account),
+    session: AsyncSession = Depends(session_scope),
+) -> NoteResponse:
+    """Archive an active note and schedule it for purge after seven days."""
+
+    member = await active_member(session, actor.id)
+    note, prior = await _locked_note_metadata(
+        session, note_id, member, payload.operation_id
+    )
+    if prior is not None:
+        return NoteResponse.model_validate(prior.result)
+    _expect_metadata_revision(note, payload.expected_metadata_revision)
+    if note.archived_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Note is already archived")
+    now = SystemClock().now()
+    note.archived_at = now
+    note.purge_after = now + timedelta(days=7)
+    return await _finish_metadata(session, note, actor.id, payload.operation_id)
+
+
+@router.post("/v1/notes/{note_id}/restore", response_model=NoteResponse)
+async def restore_note(
+    note_id: UUID,
+    payload: NoteArchiveRequest,
+    actor: Account = Depends(current_account),
+    session: AsyncSession = Depends(session_scope),
+) -> NoteResponse:
+    """Restore an archived note while its undo window remains open."""
+
+    member = await active_member(session, actor.id)
+    note, prior = await _locked_note_metadata(
+        session, note_id, member, payload.operation_id
+    )
+    if prior is not None:
+        return NoteResponse.model_validate(prior.result)
+    _expect_metadata_revision(note, payload.expected_metadata_revision)
+    if note.archived_at is None or (
+        note.purge_after is not None and note.purge_after <= SystemClock().now()
+    ):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Note cannot be restored")
+    note.archived_at = None
+    note.purge_after = None
+    return await _finish_metadata(session, note, actor.id, payload.operation_id)
+
+
+async def _locked_note_metadata(
+    session: AsyncSession,
+    note_id: UUID,
+    member: CoupleMember,
+    operation_id: UUID,
+) -> tuple[Note, NoteMetadataOperation | None]:
+    """Authorize first, then lock one note and read an idempotent prior result."""
+
+    await lock_couple(session, member.couple_id)
+    note = await session.scalar(
+        select(Note)
+        .where(Note.id == note_id, Note.couple_id == member.couple_id)
+        .with_for_update()
+    )
+    if note is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Note is unavailable")
+    prior = await session.scalar(
+        select(NoteMetadataOperation).where(
+            NoteMetadataOperation.note_id == note.id,
+            NoteMetadataOperation.operation_id == operation_id,
+        )
+    )
+    return note, prior
+
+
+def _expect_metadata_revision(note: Note, expected: int) -> None:
+    if note.metadata_revision != expected:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Note metadata changed; refresh")
+
+
+async def _finish_metadata(
+    session: AsyncSession, note: Note, actor_id: UUID, operation_id: UUID
+) -> NoteResponse:
+    """Advance metadata once and persist the exact retry response."""
+
+    note.metadata_revision += 1
+    note.updated_at = SystemClock().now()
+    result = _note_response(note)
+    session.add(
+        NoteMetadataOperation(
+            note_id=note.id,
+            operation_id=operation_id,
+            actor_id=actor_id,
+            resulting_revision=note.metadata_revision,
+            result=result.model_dump(mode="json"),
+            applied_at=note.updated_at,
+        )
+    )
+    await session.commit()
+    return result
 
 
 @router.get("/v1/notes/{note_id}/history", response_model=list[NoteHistoryEntry])
@@ -322,8 +492,14 @@ async def note_socket(websocket: WebSocket, note_id: UUID) -> None:
         return
     await websocket.accept()
     hub = cast(NoteConnectionHub, websocket.app.state.note_connections)
-    hub.add(note_id, websocket)
-    await websocket.send_json(snapshot)
+    hub.add(note_id, websocket, account_id)
+    live_snapshot = await _authorized_snapshot(account_id, note_id)
+    if live_snapshot is None:
+        hub.remove(note_id, websocket)
+        await websocket.close(code=4403)
+        return
+    await websocket.send_json(live_snapshot)
+    await hub.broadcast(note_id, {"type": "note.presence", "editors": hub.count(note_id)})
     await _run_note_socket(websocket, note_id, account_id, hub)
 
 
@@ -373,4 +549,7 @@ async def _run_note_socket(
                 result = {"type": "note.error", "message": str(exc)}
             await hub.broadcast(note_id, result)
     except WebSocketDisconnect:
+        pass
+    finally:
         hub.remove(note_id, websocket)
+        await hub.broadcast(note_id, {"type": "note.presence", "editors": hub.count(note_id)})

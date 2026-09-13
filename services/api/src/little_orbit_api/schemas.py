@@ -160,6 +160,7 @@ class CouplePreferencesRequest(StrictModel):
     intimacy_enabled: bool | None = None
     location_enabled: bool | None = None
     proximity_threshold_m: float | None = Field(default=None, ge=25, le=1000)
+    home_timezone: Annotated[StrictText, Field(min_length=1, max_length=64)] | None = None
 
 
 class CouplePreferencesResponse(StrictModel):
@@ -172,6 +173,7 @@ class CouplePreferencesResponse(StrictModel):
     intimacy_enabled_by_both: bool
     location_enabled_by_me: bool
     location_enabled_by_both: bool
+    home_timezone: str
 
 
 class UnpairResponse(StrictModel):
@@ -196,6 +198,7 @@ class ArchiveDetail(ArchiveSummary):
     notes: list[dict[str, object]]
     countdowns: list[dict[str, object]]
     quiz_answers: list[dict[str, object]]
+    smooches: list[dict[str, object]]
 
 
 class CustomQuestionRequest(StrictModel):
@@ -376,6 +379,19 @@ class TogetherSummaryV2(StrictModel):
     pending_start_date: RelationshipStartProposalResponse | None
 
 
+class TogetherSummaryV3(StrictModel):
+    """Pair-age clock plus a separate, explicitly estimated nearby total."""
+
+    paired_at: datetime
+    paired_days: int
+    nearby_estimated_seconds: int
+    nearby_last_processed_at: datetime | None
+    proximity_threshold_m: float
+    location_enabled_by_me: bool
+    location_enabled_by_both: bool
+    label: Literal["estimate"]
+
+
 class TogetherHistoryDay(StrictModel):
     """One UTC day of coordinate-free nearby history."""
 
@@ -390,35 +406,6 @@ class LocationBatchV2Response(StrictModel):
     accepted: int
     duplicates: int
     nearby_seconds_recomputed: int
-
-
-class NoteCreateRequest(StrictModel):
-    """Idempotent shared note creation request."""
-
-    operation_id: UUID
-    title: Annotated[StrictText, Field(min_length=1, max_length=120)]
-    body: Annotated[str, Field(max_length=100_000)] = ""
-
-
-class NoteResponse(StrictModel):
-    """Current shared note revision."""
-
-    id: UUID
-    title: str
-    body: str
-    revision: int
-    updated_at: datetime
-
-
-class NoteHistoryEntry(StrictModel):
-    """Applied note operation for revision history and reconciliation."""
-
-    operation_id: UUID
-    actor_id: UUID | None
-    base_revision: int
-    resulting_revision: int
-    edit: dict[str, object]
-    applied_at: datetime
 
 
 class AccountExportResponse(StrictModel):

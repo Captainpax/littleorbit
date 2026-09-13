@@ -28,10 +28,10 @@ public final class WearDisplayCacheTest {
     }
 
     @Test
-    public void missingStartDateIsHonest() {
+    public void missingPairDateIsHonest() {
         WearDisplayCache.State state = new WearDisplayCache.State(-1, 0, 0, "None", 0, 0);
 
-        assertEquals("Start date unset", state.relationshipText(LocalDate.of(2026, 9, 12)));
+        assertEquals("Pair date unavailable", state.relationshipText(LocalDate.of(2026, 9, 12)));
         assertTrue(state.stale(Instant.parse("2026-09-12T18:00:00Z")));
     }
 }

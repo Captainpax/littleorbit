@@ -23,7 +23,7 @@ final class HomeStateMapper {
     static HomeScreenState fromCache(
             DisplayCacheEntity cache, boolean signedIn, Instant now) {
         String relationship = cache.relationshipStartEpochDay < 0
-                ? "Set your start date"
+                ? "Pair to start your orbit"
                 : Math.max(
                         0,
                         now.atZone(ZoneOffset.UTC).toLocalDate().toEpochDay()

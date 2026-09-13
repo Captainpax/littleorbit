@@ -21,6 +21,9 @@ import com.littleorbit.mobile.databinding.ActivityMainBinding;
 import com.littleorbit.mobile.databinding.DialogUpdateBinding;
 import dagger.hilt.android.AndroidEntryPoint;
 import javax.inject.Inject;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 /** Cosmic phone shell that renders home, More, and the persistent verified updater. */
 @AndroidEntryPoint
@@ -33,6 +36,7 @@ public final class MainActivity extends InsetAwareActivity
     private UpdatePresentation activeUpdate;
     private boolean manualUpdateCheck;
     private boolean setupLookupStarted;
+    private boolean notificationRequestedUpdate;
     @Inject OrbitRepository orbit;
     @Inject ProfileRepository profiles;
     @Inject AndroidUpdateCoordinator updates;
@@ -52,6 +56,8 @@ public final class MainActivity extends InsetAwareActivity
         bindFeatureActions();
         bindNavigation();
         bindUpdateActions();
+        notificationRequestedUpdate = getIntent().getBooleanExtra("show_update", false);
+        configureAutomaticUpdates();
         binding.versionText.setText(getString(
                 R.string.update_version, BuildConfig.VERSION_NAME));
     }
@@ -80,6 +86,8 @@ public final class MainActivity extends InsetAwareActivity
         binding.quizButton.setOnClickListener(view -> open(QuizActivity.class));
         binding.countdownsButton.setOnClickListener(view -> open(CountdownActivity.class));
         binding.moreCountdownsButton.setOnClickListener(view -> open(CountdownActivity.class));
+        binding.moreSmoochButton.setOnClickListener(view -> open(SmoochActivity.class));
+        binding.smoochSpark.setOnClickListener(view -> open(SmoochActivity.class));
         binding.notesButton.setOnClickListener(view -> open(NotesActivity.class));
         binding.privacyButton.setOnClickListener(view -> open(PrivacyActivity.class));
         binding.archivesButton.setOnClickListener(view -> open(ArchivesActivity.class));
@@ -87,6 +95,7 @@ public final class MainActivity extends InsetAwareActivity
         binding.moreTogetherButton.setOnClickListener(view -> open(TogetherTimeActivity.class));
         binding.notificationSetupButton.setOnClickListener(view -> open(DeviceSetupActivity.class));
         binding.locationSetupButton.setOnClickListener(view -> open(DeviceSetupActivity.class));
+        binding.pauseNearbyButton.setOnClickListener(view -> pauseNearbyTracking());
         binding.wearInstallButton.setOnClickListener(view -> open(WearInstallerActivity.class));
         binding.profilePhotoButton.setOnClickListener(view -> open(ProfilePhotoActivity.class));
         binding.myPlanet.setOnClickListener(view -> {
@@ -96,6 +105,8 @@ public final class MainActivity extends InsetAwareActivity
         binding.signOutButton.setOnClickListener(
                 view -> orbit.signOut().thenRun(() -> runOnUiThread(() -> {
                     QuizStatusWorker.cancel(this);
+                    SmoochStatusWorker.schedule(this, false);
+                    ForegroundLocationService.stop(this);
                     finish();
                 })));
     }
@@ -115,6 +126,37 @@ public final class MainActivity extends InsetAwareActivity
             updates.check(true, this);
             Toast.makeText(this, R.string.loading, Toast.LENGTH_SHORT).show();
         });
+        binding.autoUpdateDetection.setOnCheckedChangeListener((button, checked) -> {
+            if (button.isPressed()) updates.setAutoDetectionEnabled(checked);
+        });
+    }
+
+    private void configureAutomaticUpdates() {
+        binding.autoUpdateDetection.setChecked(updates.autoDetectionEnabled());
+        renderLastUpdateCheck();
+        if (updates.hasAutoDetectionChoice()) return;
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.auto_update_prompt_title)
+                .setMessage(R.string.auto_update_prompt_message)
+                .setNegativeButton(R.string.not_now, (dialog, which) -> {
+                    updates.setAutoDetectionEnabled(false);
+                    binding.autoUpdateDetection.setChecked(false);
+                })
+                .setPositiveButton(R.string.enable_auto_updates, (dialog, which) -> {
+                    updates.setAutoDetectionEnabled(true);
+                    binding.autoUpdateDetection.setChecked(true);
+                    updates.check(true, this);
+                })
+                .show();
+    }
+
+    private void renderLastUpdateCheck() {
+        long checked = updates.lastCheckedAtMillis();
+        String value = checked <= 0 ? getString(R.string.never)
+                : DateTimeFormatter.ofPattern("MMM d · h:mm a")
+                        .withZone(ZoneId.systemDefault())
+                        .format(Instant.ofEpochMilli(checked));
+        binding.lastUpdateCheck.setText(getString(R.string.last_update_check, value));
     }
 
     private void renderHome(HomeScreenState state) {
@@ -133,6 +175,8 @@ public final class MainActivity extends InsetAwareActivity
         binding.morePairingButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
         binding.profilePhotoButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
         binding.moreCountdownsButton.setVisibility(state.connected() ? View.VISIBLE : View.GONE);
+        binding.moreSmoochButton.setVisibility(state.connected() ? View.VISIBLE : View.GONE);
+        binding.smoochSpark.setVisibility(state.connected() ? View.VISIBLE : View.GONE);
         binding.moreTogetherButton.setVisibility(state.connected() ? View.VISIBLE : View.GONE);
         binding.privacyButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
         binding.archivesButton.setVisibility(state.signedIn() ? View.VISIBLE : View.GONE);
@@ -184,8 +228,11 @@ public final class MainActivity extends InsetAwareActivity
     private void reconcileQuizNotifications() {
         if (orbit.isSignedIn() && PermissionChecks.notificationsGranted(this)) {
             QuizStatusWorker.schedule(this);
+            SmoochStatusWorker.schedule(this, true);
+            SmoochStatusWorker.enqueue(this);
         } else {
             QuizStatusWorker.cancel(this);
+            SmoochStatusWorker.schedule(this, false);
         }
     }
 
@@ -200,7 +247,7 @@ public final class MainActivity extends InsetAwareActivity
                 locationReady ? R.string.location_permission_ready : R.string.location_permission_off);
         if (orbit.isSignedIn() && locationReady) {
             orbit.preferences().thenAccept(preferences -> runOnUiThread(() ->
-                    renderLocationStatus(preferences))).exceptionally(failure -> null);
+                    reconcileLocation(preferences))).exceptionally(failure -> null);
         }
         wearStatus.check().thenAccept(state -> runOnUiThread(() -> renderWearStatus(state)));
     }
@@ -213,6 +260,31 @@ public final class MainActivity extends InsetAwareActivity
                         : preferences.locationByMe
                                 ? R.string.location_waiting_partner
                                 : R.string.location_server_off);
+    }
+
+    private void reconcileLocation(com.littleorbit.data.remote.ApiModels.Preferences preferences) {
+        renderLocationStatus(preferences);
+        binding.pauseNearbyButton.setVisibility(
+                preferences.locationByMe ? View.VISIBLE : View.GONE);
+        com.littleorbit.data.LocationCollectionWorker.schedule(this, preferences.locationByMe);
+        if (preferences.locationByBoth) ForegroundLocationService.start(this);
+        else ForegroundLocationService.stop(this);
+    }
+
+    private void pauseNearbyTracking() {
+        binding.pauseNearbyButton.setEnabled(false);
+        orbit.updatePreferences(new com.littleorbit.data.remote.ApiModels.PreferencesMutation(
+                        null, false, null))
+                .whenComplete((value, failure) -> runOnUiThread(() -> {
+                    binding.pauseNearbyButton.setEnabled(true);
+                    if (failure == null) {
+                        ForegroundLocationService.stop(this);
+                        com.littleorbit.data.LocationCollectionWorker.schedule(this, false);
+                        reconcileLocation(value);
+                    } else {
+                        Toast.makeText(this, R.string.request_failed, Toast.LENGTH_LONG).show();
+                    }
+                }));
     }
 
     private void renderWearStatus(WearStatusChecker.State state) {
@@ -272,12 +344,18 @@ public final class MainActivity extends InsetAwareActivity
         binding.updateBanner.setVisibility(offer && !hidden ? View.VISIBLE : View.GONE);
         binding.updateBannerText.setText(getString(
                 R.string.update_version, presentation.release().version()));
-        if (presentation.required() || isActivePhase(phase)) showUpdateSheet();
+        boolean automatic = offer && !hidden && updates.claimAutomaticPrompt();
+        if (presentation.required() || isActivePhase(phase)
+                || notificationRequestedUpdate || automatic) {
+            notificationRequestedUpdate = false;
+            showUpdateSheet();
+        }
         if (manualUpdateCheck) {
             manualUpdateCheck = false;
             handleManualCheck(presentation, hidden);
         }
         renderUpdateSheet();
+        renderLastUpdateCheck();
     }
 
     private void handleManualCheck(UpdatePresentation presentation, boolean hidden) {

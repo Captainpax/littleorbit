@@ -1,7 +1,7 @@
 """Authenticated export and privacy-preserving account deletion lifecycle."""
 
 from base64 import b64encode
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..clock import SystemClock
 from ..database import session_scope
 from ..dependencies import current_account
+from ..interaction_models import Smooch
 from ..models import (
     Account,
     Countdown,
@@ -47,6 +48,9 @@ async def _relationship_export(
             select(QuizAnswer).where(QuizAnswer.couple_id == membership.couple_id)
         )
     )
+    smooches = list(
+        await session.scalars(select(Smooch).where(Smooch.couple_id == membership.couple_id))
+    )
     total = await session.scalar(
         select(func.sum(TogetherBucket.duration_seconds)).where(
             TogetherBucket.couple_id == membership.couple_id
@@ -81,6 +85,20 @@ async def _relationship_export(
             for item in answers
         ],
         "estimated_together_seconds": int(total or 0),
+        "smooches": [_smooch_export(item) for item in smooches],
+    }
+
+
+def _smooch_export(item: Smooch) -> dict[str, UUID | str | datetime | None]:
+    """Serialize one relationship signal without adding notification delivery metadata."""
+
+    return {
+        "id": str(item.id),
+        "sender_id": str(item.sender_id) if item.sender_id else None,
+        "recipient_id": str(item.recipient_id) if item.recipient_id else None,
+        "emoji": item.emoji,
+        "phrase_key": item.phrase_key,
+        "sent_at": item.sent_at,
     }
 
 

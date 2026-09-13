@@ -29,6 +29,8 @@ The phone requests `https://lil-orb.pax-kun.com/api/v1/releases/current` and acc
 
 End-to-end installation needs a signed older build on an emulator or test phone and a newer, already-published test release using the same signing certificate. Never weaken URL, hash, package, version, or certificate checks to make a local fake APK pass. A first install may require Android's **Install unknown apps** permission; the app requests it only after the person starts an update.
 
+RC10 asks once whether optional metadata discovery should run, schedules checks about every six hours when enabled, and keeps required-floor checks active. Validate that the worker never creates a DownloadManager request, Later suppresses only the current process, and a running or paused transfer with no progress for five minutes becomes stalled.
+
 ## Phone-hosted Wear installer development
 
 The More-tab installer uses Wear OS wireless debugging directly from the phone. The phone and watch must be on the same trusted Wi-Fi network. On the watch, enable developer options, wireless debugging, and **Pair new device**, then enter the displayed six-digit code in the phone app. Android 13 and later may request nearby-device permission for DNS-SD discovery; manual host and ports remain available after denial.
@@ -40,6 +42,14 @@ The phone downloads only the exact `wear_apk_url` from current release metadata.
 ```
 
 Kadb 2.1.1 is isolated behind `KadbWatchClient` because its published Android bytecode targets Java 21 while Little Orbit production source stays Java 17 and compileSdk 36. Do not import Kadb types outside that adapter or increase its version without checking bytecode, compileSdk metadata, license, and a physical pairing/install flow. Turn off wireless debugging on the watch after testing and use **Forget watch authorization** before handing a device to someone else.
+
+When reproducing RC10 pairing failures, keep the watch's wireless-debug page visible and record only the named stage. Test a second discovery while the first resolves, a changed post-pair connection port, remembered authorization, and manual host/port entry. Never record the host, ports, pairing code, or key material in committed logs.
+
+## Smooch and proximity development
+
+Use two disposable verified accounts for delivery tests. Cover the sixth send inside a rolling hour, exact hour expiry, duplicate operation IDs, a queued send older than 15 minutes, notification privacy, DST week boundaries, unpair archives, repairing isolation, and either account's deletion. Do not place message content in admin fixtures.
+
+Location testing requires both the Android runtime permission and both accounts' in-app consent. Confirm the foreground-service notification remains visible, the first fix is requested promptly, WorkManager can queue while offline, and either consent or permission removal stops the service and clears local samples. Server acceptance proves only that a sample arrived; only two consecutive accurate, nearby matched pairs can establish estimated nearby time.
 
 ## Profile photo development
 
