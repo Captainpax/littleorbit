@@ -41,8 +41,9 @@ This record covers the RC12 shell, private activity, Markdown controls, attachme
 - The production database was backed up before deployment, and the hosted API applied migration `0014` transactionally. API, web, gateway, PostgreSQL, ClamAV, and Ollama reported healthy after replacement; the background worker and media worker remained running. The leftover development Mailpit container was removed from the hosted Compose project.
 - The public and loopback readiness routes returned HTTP 200 through the gateway. No database, API, web, worker, media, ClamAV, or Ollama host ports were added.
 - RC12 was published at `2026-09-13T15:00:54.652421Z` with phone version code 16, Wear version code 15, the expected hashes, and the unchanged minimum supported phone version code 6.
-- Complete-download `HEAD` checks returned 35,616,669 phone bytes and 14,133,466 Wear bytes with `Accept-Ranges: bytes`. Both first-kilobyte checks returned HTTP 206, exactly 1,024 bytes, and correct `Content-Range` totals.
+- `HEAD` checks returned 35,616,669 phone bytes and 14,133,466 Wear bytes with `Accept-Ranges: bytes`. Both first-kilobyte checks returned HTTP 206, exactly 1,024 bytes, and correct `Content-Range` totals. Fresh complete downloads from both public API endpoints reproduced the manifest byte counts and SHA-256 values.
 - `/download`, `/patch-notes`, `/patch-notes.xml`, and `/showcase` returned HTTP 200 over the public domain; the feed used `application/rss+xml`.
+- GitHub prerelease `v1.0.0-rc.12` targets source commit `26ca30d19e3aa0f50c47f994f9212ab24a26d18a`; GitHub's uploaded-asset metadata reports the same APK sizes and SHA-256 values as the first-party API.
 
 ## Open gates
 
