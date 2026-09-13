@@ -28,7 +28,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Implement RC11 with a five-tab concept-led shell, a dedicated Smooch orbit experience, cursor-stable single-session note synchronization, CommonMark/GFM preview, and private resumable note attachments with malware scanning, metadata removal, offline copies, deletion, and bounded quotas.
 - [x] Publish RC11.1 after a real RC10.1 updater run found that long release notes hid the action buttons; keep summaries bounded in-app and full notes on the website/GitHub.
 - [x] Publish RC11.2 after the same upgrade run exposed an abandoned package session; close and sync every session stream before requesting Android installation.
-- [ ] Use RC11.3 to exercise the repaired RC11.2 updater across download, verification, permission, Android confirmation, and in-place replacement; document the one-time manual boundary for RC10.1 and RC11.1.
+- [x] Use RC11.3 to exercise the repaired RC11.2 updater across download, verification, permission, Android confirmation, and in-place replacement; document the one-time manual boundary for RC10.1 and RC11.1.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.
 
