@@ -17,7 +17,7 @@ import java.util.Map;
 
 /** Focused five-question flow with private drafts, review, and atomic reveal. */
 @AndroidEntryPoint
-public final class QuizActivity extends InsetAwareActivity {
+public final class QuizActivity extends OrbitShellActivity {
     public static final String EXTRA_QUIZ_DATE = "quiz_date";
     private ActivityQuizBinding binding;
     private QuizViewModel model;
@@ -33,15 +33,18 @@ public final class QuizActivity extends InsetAwareActivity {
         model = new ViewModelProvider(this).get(QuizViewModel.class);
         answerRenderer = new QuizAnswerRenderer(this, binding.answerContainer);
         bindActions();
+        setOrbitContextActions(List.of(
+                new ContextAction(getString(R.string.today_orbit), () -> model.load(null)),
+                new ContextAction(getString(R.string.quiz_history),
+                        () -> open(QuizHistoryActivity.class)),
+                new ContextAction(getString(R.string.create_custom_question),
+                        () -> open(CustomQuestionActivity.class))));
         model.state().observe(this, this::render);
         model.load(getIntent().getStringExtra(EXTRA_QUIZ_DATE));
     }
 
     private void bindActions() {
         binding.backButton.setOnClickListener(view -> finish());
-        OrbitTabNavigation.bind(this, binding.navHome, binding.navQuiz,
-                binding.navSmooch, binding.navSpace, binding.navMore);
-        binding.navQuiz.setOnClickListener(view -> model.load(null));
         binding.historyButton.setOnClickListener(view -> open(QuizHistoryActivity.class));
         binding.customButton.setOnClickListener(view -> open(CustomQuestionActivity.class));
         binding.previousButton.setOnClickListener(view -> model.previous());
@@ -49,6 +52,11 @@ public final class QuizActivity extends InsetAwareActivity {
         binding.primaryButton.setOnClickListener(view -> primaryAction());
         binding.resultDoneButton.setOnClickListener(view -> returnHome());
         binding.reportButton.setOnClickListener(view -> showReportReasons());
+    }
+
+    @Override
+    protected OrbitDestination orbitDestination() {
+        return OrbitDestination.QUIZ;
     }
 
     private void render(QuizScreenState state) {

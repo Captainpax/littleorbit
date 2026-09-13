@@ -144,12 +144,4 @@
             </LinearLayout>
         </ScrollView>
     </FrameLayout>
-
-    <LinearLayout android:layout_width="match_parent" android:layout_height="76dp" android:background="@drawable/bottom_nav_background" android:gravity="center" android:orientation="horizontal" android:paddingHorizontal="6dp">
-        <com.google.android.material.button.MaterialButton android:id="@+id/homeNav" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/home" app:icon="@drawable/ic_home" app:iconGravity="top" app:iconPadding="2dp" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/quizNav" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/quiz" app:icon="@drawable/ic_quiz" app:iconGravity="top" app:iconPadding="2dp" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/smoochNav" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/smooch" app:icon="@drawable/ic_smooch" app:iconGravity="top" app:iconPadding="2dp" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/spaceNav" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/space" app:icon="@drawable/ic_notes" app:iconGravity="top" app:iconPadding="2dp" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/moreNav" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/more" app:icon="@drawable/ic_more" app:iconGravity="top" app:iconPadding="2dp" />
-    </LinearLayout>
 </LinearLayout>

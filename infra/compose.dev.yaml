@@ -4,11 +4,19 @@ services:
       LITTLE_ORBIT_ENV: development
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
+      SMTP_FROM: hello@little-orbit.local
+      SMTP_STARTTLS: "false"
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
   worker:
     environment:
       LITTLE_ORBIT_ENV: development
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
+      SMTP_FROM: hello@little-orbit.local
+      SMTP_STARTTLS: "false"
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
   mailpit:
     image: axllent/mailpit:v1.27.8
     restart: unless-stopped

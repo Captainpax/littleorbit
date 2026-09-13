@@ -110,7 +110,8 @@ sequenceDiagram
     AV-->>Media: Clean, found, or unavailable
     alt clean and sanitization succeeds
         Media->>Files: Write metadata-free type-specific copy
-        Media->>DB: Store sanitized size/hash; mark available
+        Media->>DB: Re-lock couple; recheck final size/quota; mark available
+        Media->>DB: Append content-free attachment-ready activity
         A->>API: GET sanitized content
         API->>DB: Reauthorize current couple and note
         API-->>A: Private no-store bytes + exact digest
@@ -122,7 +123,32 @@ sequenceDiagram
     end
 ```
 
-The API accepts only the allow-listed media types, at most 100 MiB per file and 2 GiB per current couple. Request streams are bounded before buffering, operation-ID replays must describe the same bytes, and neither staging nor ClamAV has a published port. Android verifies the sanitized hash before preview or **Keep offline**. Deletion removes server bytes immediately; note expiry removes remaining volume objects after the database transaction.
+The API accepts only the allow-listed media types, at most 100 MiB per file and 2 GiB per current couple. Request streams are bounded before buffering, operation-ID replays must describe the same bytes, and neither staging nor ClamAV has a published port. The media worker permits bounded sanitizer growth, then rechecks the final 100 MiB limit and couple quota while holding the couple lock. Android inserts an `attachment://` reference only after availability and verifies the sanitized hash before preview or **Keep offline**. Deletion removes server bytes immediately; note expiry removes remaining volume objects after the database transaction.
+
+## Private couple activity
+
+```mermaid
+sequenceDiagram
+    actor A as Current partner
+    participant Feature as Note / attachment / countdown / quiz / Smooch service
+    participant API
+    participant DB as PostgreSQL
+    participant Phone as Android Home panel
+    Feature->>DB: Hold couple lock and complete mutation
+    Feature->>DB: Append deduped content-free event at sequence N+1
+    Note over DB: Kind, actor, target ID/title, optional fixed emoji<br/>No note body, attachment name, quiz answer, or location
+    Phone->>API: Fetch newest activity page
+    API->>DB: Authorize current active membership before lookup
+    DB-->>API: Couple-only events + private seen watermark
+    API-->>Phone: Content-free activity page
+    A->>Phone: Open right Home panel
+    Phone->>API: Mark highest visible sequence seen
+    API->>DB: Lock couple and advance watermark monotonically
+    DB->>DB: Worker deletes events older than 30 days
+    Note over DB: Unpair deletes the active-couple feed immediately
+```
+
+The timeline helps each partner notice shared changes without creating another copy of private content. Event insertion shares the mutation's couple lock, dedupe keys make retries harmless, and sequence and seen watermarks only move forward. Administrators have no feed viewer.
 
 ## Daily AI generation
 

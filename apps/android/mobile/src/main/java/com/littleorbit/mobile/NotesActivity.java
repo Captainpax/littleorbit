@@ -8,6 +8,7 @@ import android.text.Editable;
 import android.text.Selection;
 import android.text.TextWatcher;
 import android.view.View;
+import android.widget.PopupMenu;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import com.littleorbit.data.remote.NoteApiModels;
@@ -22,7 +23,7 @@ import javax.inject.Inject;
 
 /** Library-first Our Space workspace with Markdown, private files, and stable live editing. */
 @AndroidEntryPoint
-public final class NotesActivity extends InsetAwareActivity {
+public final class NotesActivity extends OrbitShellActivity {
     @Inject OrbitRepository orbit;
     @Inject NoteDraftStore drafts;
     @Inject NoteSocketClient sockets;
@@ -43,21 +44,22 @@ public final class NotesActivity extends InsetAwareActivity {
     private final Runnable bodySave = this::sync;
     private final Runnable titleSave = this::rename;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = ActivityNotesBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         markdown = new MarkdownRenderer(this);
         attachmentViews = new NoteAttachmentViews(
                 this, orbit, binding.attachmentContainer, binding.statusText,
-                this::reloadAttachments);
+                this::reloadAttachments, this::insertAttachmentLink,
+                ignored -> chooseAttachment());
         attachmentUploads = new NoteAttachmentUploadCoordinator(this, orbit, binding.statusText);
         library = new SpaceLibraryViews(
                 this, binding.noteListContainer, binding.archivedNotesContainer,
                 binding.searchInput, this::select, this::restore);
         bindActions();
         bindEditors();
+        showLibrary();
         load();
     }
 
@@ -77,8 +79,36 @@ public final class NotesActivity extends InsetAwareActivity {
         binding.checkButton.setOnClickListener(view -> insertAtCursor("- [ ] "));
         binding.linkButton.setOnClickListener(view -> wrapSelection("[", "](https://)"));
         binding.attachButton.setOnClickListener(view -> chooseAttachment());
-        OrbitTabNavigation.bind(this, binding.homeNav, binding.quizNav,
-                binding.smoochNav, binding.spaceNav, binding.moreNav);
+        binding.formattingMoreButton.setOnClickListener(this::showFormattingMenu);
+    }
+
+    private void showFormattingMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add(0, 1, 0, R.string.format_numbered_list);
+        menu.getMenu().add(0, 2, 1, R.string.format_quote);
+        menu.getMenu().add(0, 3, 2, R.string.format_code);
+        menu.getMenu().add(0, 4, 3, R.string.format_table);
+        menu.getMenu().add(0, 5, 4, R.string.format_strikethrough);
+        menu.getMenu().add(0, 6, 5, R.string.format_divider);
+        menu.setOnMenuItemClickListener(item -> applyExtraFormat(item.getItemId()));
+        menu.show();
+    }
+
+    private boolean applyExtraFormat(int itemId) {
+        switch (itemId) {
+            case 1 -> insertAtCursor("1. ");
+            case 2 -> insertAtCursor("> ");
+            case 3 -> wrapSelection("`", "`");
+            case 4 -> insertAtCursor("| Column | Column |\n| --- | --- |\n|  |  |\n");
+            case 5 -> wrapSelection("~~", "~~");
+            case 6 -> insertAtCursor("\n---\n");
+            default -> { return false; }
+        }
+        return true;
+    }
+
+    @Override protected OrbitDestination orbitDestination() {
+        return OrbitDestination.SPACE;
     }
 
     private void bindEditors() {
@@ -109,10 +139,28 @@ public final class NotesActivity extends InsetAwareActivity {
     }
 
     private void load() {
-        AsyncUi.observe(this, orbit.notes(), binding.libraryPresenceText, notes -> {
+        orbit.notes().whenComplete((notes, failure) -> runOnUiThread(() -> {
+            if (failure != null) {
+                binding.libraryPresenceText.setText(R.string.request_failed);
+                return;
+            }
+            binding.libraryPresenceText.setText(R.string.note_presence_solo);
             library.setNotes(notes);
+            updateNoteDirectory(notes);
             loadArchived();
-        });
+        }));
+    }
+
+    private void updateNoteDirectory(java.util.List<NoteApiModels.Note> notes) {
+        java.util.ArrayList<ContextAction> actions = new java.util.ArrayList<>();
+        actions.add(new ContextAction(getString(R.string.create_space_document), this::newNote));
+        actions.add(new ContextAction(getString(R.string.search_space), this::returnToLibrary));
+        for (NoteApiModels.Note note : notes) {
+            if (note.archivedAt == null && actions.size() < 10) {
+                actions.add(new ContextAction(note.title, () -> select(note)));
+            }
+        }
+        setOrbitContextActions(actions);
     }
 
     private void loadArchived() {
@@ -236,11 +284,16 @@ public final class NotesActivity extends InsetAwareActivity {
     private void restore(NoteApiModels.Note note) {
         NoteApiModels.ArchiveRequest request = new NoteApiModels.ArchiveRequest(
                 UUID.randomUUID().toString(), note.metadataRevision);
-        AsyncUi.observe(this, orbit.restoreNote(note.id, request), binding.libraryPresenceText,
-                restored -> {
+        orbit.restoreNote(note.id, request).whenComplete((restored, failure) ->
+                runOnUiThread(() -> {
+                    if (failure != null) {
+                        binding.libraryPresenceText.setText(R.string.request_failed);
+                        return;
+                    }
+                    binding.libraryPresenceText.setText(R.string.note_presence_solo);
                     library.upsert(restored);
                     loadArchived();
-                });
+                }));
     }
 
     private void returnToLibrary() {
@@ -336,7 +389,6 @@ public final class NotesActivity extends InsetAwareActivity {
     private void attachmentUploaded(
             String noteId, NoteApiModels.Attachment attachment) {
         if (current == null || !noteId.equals(current.id)) return;
-        insertAttachmentLink(attachment);
         binding.statusText.setText(R.string.attachment_scanning_status);
         attachmentPolls = 0;
         loadAttachments(noteId);
@@ -378,6 +430,7 @@ public final class NotesActivity extends InsetAwareActivity {
 
     private void showLibrary() {
         binding.editorScroll.setVisibility(View.GONE);
+        binding.formattingScroll.setVisibility(View.GONE);
         binding.libraryScroll.setVisibility(View.VISIBLE);
     }
 
@@ -394,8 +447,7 @@ public final class NotesActivity extends InsetAwareActivity {
         rendering = false;
     }
 
-    @Override
-    protected void onPause() {
+    @Override protected void onPause() {
         debounce.removeCallbacks(bodySave);
         debounce.removeCallbacks(titleSave);
         if (current != null && !binding.bodyInput.getText().toString().equals(serverBody)) {
@@ -404,8 +456,7 @@ public final class NotesActivity extends InsetAwareActivity {
         super.onPause();
     }
 
-    @Override
-    protected void onDestroy() {
+    @Override protected void onDestroy() {
         editor.close();
         debounce.removeCallbacksAndMessages(null);
         super.onDestroy();

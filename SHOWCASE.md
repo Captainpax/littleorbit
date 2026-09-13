@@ -30,21 +30,37 @@ RC11 makes shared notes feel like a small couple library. The library leads with
 
 Smooches now have their own centered destination. The primary screen keeps the selected emoji and partner at the center, shows the remaining rolling-hour allowance before sending, and turns successful delivery into a warm orbit pulse. Weekly memories use shared totals and emoji distribution without rankings.
 
+![RC12 application-shell concept with a left destination drawer and a private recent-activity panel](docs/assets/android-shell-rc12-concept.png)
+
+RC12 gives the whole app one predictable shell. A phone opens the complete destination list from the left, a wide tablet keeps the same list visible as a rail, and the right control opens actions and recent context for the current screen. Home's panel uses content-free event metadata and a private per-person seen position.
+
+![RC12 Our Space editor concept with a calm Markdown dock and contextual note directory](docs/assets/android-space-editor-rc12-concept.png)
+
+The RC12 editor keeps the most common formatting actions in a compact dock directly above the keyboard. Less frequent Markdown structures live in the overflow menu. The right panel searches or switches documents without leaving the current editor, while attachments remain explicit cards with Insert, Preview, Delete, and Keep offline actions.
+
 ### Current Android implementation
 
 ![Implemented signed-out RC8 home on an API 36 emulator](docs/assets/android-home-rc8-emulator.png)
+
+![Implemented RC12 paired Home on an API 36 emulator](docs/assets/android-home-rc12-emulator.png)
+
+![Implemented RC12 complete left navigation on an API 36 emulator](docs/assets/android-navigation-rc12-emulator.png)
+
+![Implemented RC12 Markdown dock above the Android keyboard](docs/assets/android-space-rc12-emulator.png)
 
 ![Implemented signed RC3 signed-out Android dashboard on an API 36 emulator](docs/assets/android-home-rc3-signed.png)
 
 ![Implemented RC3 More screen on an API 36 emulator](docs/assets/android-more-rc3.png)
 
-The RC8 API 36 emulator capture verifies the refreshed signed-out planet hierarchy, action treatment, icon navigation, and status/navigation-bar insets. The earlier RC3 captures preserve the first implemented Inter type system, persistent navigation, More hierarchy, and Wear update boundary. RC4 changed the verified download transport and RC5 brought the daily quiz into the same visual system. RC6 separated relationship age and nearby-time, added guided device setup, and refreshed the widget, tile, and complication cache contract. RC9 gives a revealed quiz a fixed action above navigation, moves widget rendering into lifecycle-safe background work, and adds an inset-safe crop screen. RC10 derives relationship age from pairing and introduces Smooches and a multi-note workspace. RC10.1 physically verifies phone-hosted pairing, remembered reconnect, and session-based installation on a Pixel 8 Pro and Pixel Watch 3. RC11 completes the five-tab navigation, gives Smooches a dedicated concept-led screen, and rebuilds Notes as Our Space with Markdown and private attachments. RC11.1 keeps updater actions reachable when patch notes are long, RC11.2 repairs package-session ordering, and RC11.3 exercises that repaired path from an installed RC11.2 build. Paired two-phone and live-data captures remain open.
+The RC12 captures verify the paired Home hierarchy, complete left navigation, absence of bottom tabs, and keyboard-adjacent Markdown dock. The same isolated couple passed the Our Space and attachment smoke flow on API 29, API 30, API 36 phone, and a wide API 36 tablet. The tablet uses a static rail so visible navigation never blocks content touches. RC12 also adds the screen-specific right panel and a 30-day privacy-minimized activity view. Paired physical-phone and live-data captures remain open.
 
 ![Signed RC7 Wear OS fallback state on a round Wear OS 5 emulator](docs/assets/wear-rc7-signed-emulator.png)
 
+![RC12 Wear fallback state on a round API 34 emulator](docs/assets/wear-rc12-emulator.png)
+
 The signed RC7 Wear launcher capture verifies that the logo, relationship date fallback, nearby estimate, and stale status fit the round safe area. Its content remains scrollable for large text and smaller displays.
 
-RC8 adds synchronized, app-private couple thumbnails to the Wear launcher with styled initials as the fallback. Tile and complication surfaces remain text-only to keep their cache small and avoid putting faces on passive watch surfaces. The phone's More tab opens a guided installer that downloads and verifies the Wear APK, discovers wireless-debugging endpoints, pairs with the short-lived watch code, remembers the ADB identity in encrypted storage, and asks before proceeding on an old security patch. RC10.1 follows continuously updated service information, proves Kadb's lazy connection with an authenticated command, uses public Conscrypt APIs on Android 17, and commits the APK through a package session.
+RC8 adds synchronized, app-private couple thumbnails to the Wear launcher with styled initials as the fallback. Tile and complication surfaces remain text-only to keep their cache small and avoid putting faces on passive watch surfaces. The phone's Settings destination opens a guided installer that downloads and verifies the Wear APK, discovers wireless-debugging endpoints, pairs with the short-lived watch code, remembers the ADB identity in encrypted storage, and asks before proceeding on an old security patch. RC10.1 follows continuously updated service information, proves Kadb's lazy connection with an authenticated command, uses public Conscrypt APIs on Android 17, and commits the APK through a package session.
 
 ## Public website
 
@@ -77,9 +93,12 @@ The console exposes service health, delivery and generation status, moderation q
 - [x] Pixel 8 Pro to Pixel Watch 3: fresh wireless-debug pairing, desktop authorization cleanup, encrypted phone authorization retention, package-session installs, Wear launcher render, and no fatal Android runtime event. The published strict RC10.1 phone build upgraded the watch from RC10's actual code 9 to code 10, then reconnected without another pairing code and reported the watch current.
 - [ ] Real phone follow-up: two-phone profile sync/removal, notification/location setup, pairing, Smooch send/receive/history, focused daily-question entry/review/wait, countdown, multi-note conflict/archive/undo, automatic pair age, nearby-time, and privacy controls.
 - [x] API 36 emulator: signed RC8 install, cold launch, signed-out home hierarchy, status/navigation-bar insets, and accessibility-tree dump.
+- [x] RC12 isolated emulator matrix: paired-account Home, left navigation, Our Space, Markdown dock, transparent PNG/GIF availability, API 29, API 30, API 36 phone, and API 36 wide tablet.
+- [x] RC12 API 36 phone: dynamic Notes panel opened from the right and an authorized sanitized PNG downloaded, passed digest verification, and rendered in-app.
 - [ ] Home widget: fresh, stale, signed-out, and server-offline states.
 - [ ] Wear OS: in-app wireless install, remembered authorization, old-patch warning, profile-photo sync, phone capability detection, tile, complication, loading, stale, and disconnected states.
 - [x] Wear OS 5 round emulator: signed RC7 install, cold launch, safe-area fallback layout, and stale-state rendering.
+- [x] Wear API 34 round emulator: RC12 package launch, pairing-date fallback, nearby estimate, and explicit stale/open-phone state with no fatal runtime event.
 - [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
 - [ ] Website remaining: patch notes/RSS in a feed reader, recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.

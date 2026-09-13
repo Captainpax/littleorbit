@@ -29,7 +29,7 @@ import javax.inject.Inject;
 
 /** Shared countdown CRUD with optimistic revisions and local reminder scheduling. */
 @AndroidEntryPoint
-public final class CountdownActivity extends InsetAwareActivity {
+public final class CountdownActivity extends OrbitShellActivity {
     @Inject OrbitRepository orbit;
     private ActivityCountdownBinding binding;
     private List<ApiModels.Countdown> countdowns = List.of();
@@ -57,6 +57,11 @@ public final class CountdownActivity extends InsetAwareActivity {
         binding.deleteButton.setOnClickListener(view -> delete());
         binding.countdownPicker.setOnItemSelectedListener(new CountdownSelection());
         load();
+    }
+
+    @Override
+    protected OrbitDestination orbitDestination() {
+        return OrbitDestination.COUNTDOWNS;
     }
 
     private void load() {

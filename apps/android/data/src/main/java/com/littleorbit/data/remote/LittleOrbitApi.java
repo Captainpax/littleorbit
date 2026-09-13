@@ -161,6 +161,17 @@ public interface LittleOrbitApi {
             @Path("countdownId") String countdownId,
             @Body ApiModels.CountdownDeleteRequest request);
 
+    /** Loads the newest privacy-minimized in-app activity events. */
+    @GET("api/v1/activity")
+    Call<ActivityApiModels.Page> activity(
+            @Query("cursor") Long cursor,
+            @Query("limit") int limit,
+            @Query("unread_only") boolean unreadOnly);
+
+    /** Advances the current member's visible-event watermark. */
+    @PUT("api/v1/activity/seen")
+    Call<Void> markActivitySeen(@Body ActivityApiModels.SeenRequest request);
+
     /** Loads note snapshots for offline caching. */
     @GET("api/v1/notes")
     Call<java.util.List<NoteApiModels.Note>> notes();

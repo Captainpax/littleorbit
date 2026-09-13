@@ -20,7 +20,7 @@ import org.json.JSONObject;
 
 /** Revocable consent, export, unpair, and deletion controls. */
 @AndroidEntryPoint
-public final class PrivacyActivity extends InsetAwareActivity {
+public final class PrivacyActivity extends OrbitShellActivity {
     @Inject OrbitRepository orbit;
     private ActivityPrivacyBinding binding;
     private final ActivityResultLauncher<String[]> foregroundLocation =
@@ -43,11 +43,23 @@ public final class PrivacyActivity extends InsetAwareActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityPrivacyBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        setOrbitContextActions(java.util.List.of(
+                new ContextAction(getString(R.string.location_setup),
+                        () -> startActivity(new android.content.Intent(
+                                this, DeviceSetupActivity.class))),
+                new ContextAction(getString(R.string.past_archives),
+                        () -> startActivity(new android.content.Intent(
+                                this, ArchivesActivity.class)))));
         binding.saveButton.setOnClickListener(view -> ensureLocationThenSave());
         binding.exportButton.setOnClickListener(view -> exportData());
         binding.unpairButton.setOnClickListener(view -> confirmUnpair());
         binding.deleteButton.setOnClickListener(view -> confirmDeletion());
         load();
+    }
+
+    @Override
+    protected OrbitDestination orbitDestination() {
+        return OrbitDestination.PRIVACY;
     }
 
     private void load() {

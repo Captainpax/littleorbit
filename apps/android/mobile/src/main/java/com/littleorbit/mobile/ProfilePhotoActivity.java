@@ -18,7 +18,7 @@ import javax.inject.Inject;
 
 /** Private profile-photo picker with explicit square crop and server replacement. */
 @AndroidEntryPoint
-public final class ProfilePhotoActivity extends InsetAwareActivity {
+public final class ProfilePhotoActivity extends OrbitShellActivity {
     private static final int MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
     private ActivityProfilePhotoBinding binding;
     @Inject ProfileRepository profiles;
@@ -44,6 +44,11 @@ public final class ProfilePhotoActivity extends InsetAwareActivity {
         binding.removePhoto.setOnClickListener(view -> removePhoto());
         render(profiles.cached());
         profiles.refresh().thenAccept(state -> runOnUiThread(() -> render(state)));
+    }
+
+    @Override
+    protected OrbitDestination orbitDestination() {
+        return OrbitDestination.PROFILE;
     }
 
     private void openCrop(Uri source) {

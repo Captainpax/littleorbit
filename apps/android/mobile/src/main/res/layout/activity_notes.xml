@@ -183,77 +183,7 @@
                         android:text="@string/preview_markdown" />
                 </LinearLayout>
 
-                <HorizontalScrollView
-                    android:id="@+id/formattingScroll"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:scrollbars="none">
 
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/boldButton"
-                            style="@style/Widget.LittleOrbit.Button.Outline"
-                            android:layout_width="52dp"
-                            android:layout_height="48dp"
-                            android:contentDescription="@string/format_bold"
-                            android:text="B"
-                            android:textStyle="bold" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/italicButton"
-                            style="@style/Widget.LittleOrbit.Button.Outline"
-                            android:layout_width="52dp"
-                            android:layout_height="48dp"
-                            android:contentDescription="@string/format_italic"
-                            android:text="I"
-                            android:textStyle="italic" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/headingButton"
-                            style="@style/Widget.LittleOrbit.Button.Outline"
-                            android:layout_width="52dp"
-                            android:layout_height="48dp"
-                            android:contentDescription="@string/format_heading"
-                            android:text="H" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/listButton"
-                            style="@style/Widget.LittleOrbit.Button.Outline"
-                            android:layout_width="60dp"
-                            android:layout_height="48dp"
-                            android:contentDescription="@string/format_list"
-                            android:text="• list" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/checkButton"
-                            style="@style/Widget.LittleOrbit.Button.Outline"
-                            android:layout_width="58dp"
-                            android:layout_height="48dp"
-                            android:contentDescription="@string/format_checklist"
-                            android:text="☐" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/linkButton"
-                            style="@style/Widget.LittleOrbit.Button.Outline"
-                            android:layout_width="58dp"
-                            android:layout_height="48dp"
-                            android:contentDescription="@string/format_link"
-                            android:text="↗" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/attachButton"
-                            style="@style/Widget.LittleOrbit.Button.Outline"
-                            android:layout_width="58dp"
-                            android:layout_height="48dp"
-                            android:contentDescription="@string/attach_file"
-                            android:text="＋" />
-                    </LinearLayout>
-                </HorizontalScrollView>
 
                 <EditText
                     android:id="@+id/bodyInput"
@@ -360,64 +290,86 @@
             </LinearLayout>
         </ScrollView>
     </FrameLayout>
+    <HorizontalScrollView
+                    android:id="@+id/formattingScroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/markdown_dock_background"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="6dp"
+                    android:scrollbars="none">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="76dp"
-        android:background="@drawable/bottom_nav_background"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:paddingHorizontal="2dp">
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/homeNav"
-            style="@style/Widget.LittleOrbit.Button.Text"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="@string/home"
-            app:icon="@drawable/ic_home"
-            app:iconGravity="top" />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/boldButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_bold"
+                            android:text="B"
+                            android:textStyle="bold" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/quizNav"
-            style="@style/Widget.LittleOrbit.Button.Text"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="@string/quiz"
-            app:icon="@drawable/ic_quiz"
-            app:iconGravity="top" />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/italicButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_italic"
+                            android:text="I"
+                            android:textStyle="italic" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/smoochNav"
-            style="@style/Widget.LittleOrbit.Button.Text"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="@string/smooch"
-            app:icon="@drawable/ic_smooch"
-            app:iconGravity="top" />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/headingButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_heading"
+                            android:text="H" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/spaceNav"
-            style="@style/Widget.LittleOrbit.Button.Text"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="@string/space"
-            android:textColor="@color/lavender_soft"
-            app:icon="@drawable/ic_notes"
-            app:iconGravity="top" />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/listButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="52dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_list"
+                            android:text="-" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/moreNav"
-            style="@style/Widget.LittleOrbit.Button.Text"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="@string/more"
-            app:icon="@drawable/ic_more"
-            app:iconGravity="top" />
-    </LinearLayout>
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/checkButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_checklist"
+                            android:text="[ ]" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/linkButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_link"
+                            android:text="@" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/attachButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/attach_file"
+                            android:text="+" />
+
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/formattingMoreButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/more_formatting"
+                            android:text="…" />
+                    </LinearLayout>
+                </HorizontalScrollView>
 </LinearLayout>

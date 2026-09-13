@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..activity_models import ActivityEvent, ActivitySeen
 from ..clock import SystemClock
 from ..couple_access import active_member, both_members_consent
 from ..database import session_scope
@@ -134,6 +135,8 @@ async def unpair(
     await session.execute(
         delete(LocationSample).where(LocationSample.couple_id == couple.id)
     )
+    await session.execute(delete(ActivitySeen).where(ActivitySeen.couple_id == couple.id))
+    await session.execute(delete(ActivityEvent).where(ActivityEvent.couple_id == couple.id))
     await session.commit()
     from .notes import disconnect_couple_notes
 

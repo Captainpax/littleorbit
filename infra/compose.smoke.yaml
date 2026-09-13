@@ -1,0 +1,14 @@
+name: little-orbit-smoke
+
+# Disposable local test stack. The project name gives PostgreSQL, attachment,
+# ClamAV, and other volumes a namespace separate from the hosted service.
+services:
+  gateway:
+    ports: !override
+      - "127.0.0.1:18180:8180"
+  web:
+    environment:
+      NEXT_PUBLIC_BASE_URL: http://127.0.0.1:18180
+  mailpit:
+    ports: !override
+      - "127.0.0.1:18025:8025"

@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "id": "d2345678-1234-4234-8234-1234567890ab",
+      "sequence": 12,
+      "kind": "note_updated",
+      "partner_display_name": "Partner",
+      "target_type": "note",
+      "target_id": "e2345678-1234-4234-8234-1234567890ab",
+      "target_title": "Weekend plans",
+      "emoji": null,
+      "created_at": "2026-09-13T12:00:00Z",
+      "seen": false
+    }
+  ],
+  "next_cursor": null,
+  "seen_through": 11
+}

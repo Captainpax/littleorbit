@@ -185,19 +185,4 @@
         android:layout_marginBottom="12dp"
         android:text="@string/done"
         android:visibility="gone" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="70dp"
-        android:background="@drawable/bottom_nav_background"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:paddingHorizontal="4dp">
-
-        <TextView android:id="@+id/navHome" style="@style/TextAppearance.LittleOrbit.Body" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="@string/home" />
-        <TextView android:id="@+id/navQuiz" style="@style/TextAppearance.LittleOrbit.Body" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="@string/quiz" android:textColor="@color/coral" android:textStyle="bold" />
-        <TextView android:id="@+id/navSmooch" style="@style/TextAppearance.LittleOrbit.Body" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="@string/smooch" />
-        <TextView android:id="@+id/navSpace" style="@style/TextAppearance.LittleOrbit.Body" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="@string/space" />
-        <TextView android:id="@+id/navMore" style="@style/TextAppearance.LittleOrbit.Body" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="@string/more" />
-    </LinearLayout>
 </LinearLayout>

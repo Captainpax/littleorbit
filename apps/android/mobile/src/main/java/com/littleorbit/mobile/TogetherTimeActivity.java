@@ -16,7 +16,7 @@ import javax.inject.Inject;
 
 /** Pair-age clock, coordinate-free nearby estimate, and audited corrections. */
 @AndroidEntryPoint
-public final class TogetherTimeActivity extends InsetAwareActivity {
+public final class TogetherTimeActivity extends OrbitShellActivity {
     @Inject OrbitRepository orbit;
     private ActivityTogetherTimeBinding binding;
     private List<ApiModels.TogetherBucket> buckets = List.of();
@@ -26,8 +26,17 @@ public final class TogetherTimeActivity extends InsetAwareActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityTogetherTimeBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        setOrbitContextActions(java.util.List.of(
+                new ContextAction(getString(R.string.location_setup),
+                        () -> startActivity(new android.content.Intent(
+                                this, DeviceSetupActivity.class)))));
         binding.correctButton.setOnClickListener(view -> correct());
         load();
+    }
+
+    @Override
+    protected OrbitDestination orbitDestination() {
+        return OrbitDestination.TOGETHER;
     }
 
     private void load() {

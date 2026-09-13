@@ -12,11 +12,35 @@ export default function ShowcasePage() {
       <section className="shell showcase-stack">
         <figure>
           <Image
+            src="/concepts/android-shell-rc12-concept.png"
+            width={1312}
+            height={1199}
+            alt="RC12 concept showing the Little Orbit navigation drawer, Home dashboard, and contextual activity panel"
+            priority
+          />
+          <figcaption>
+            RC12 app shell: one calm destination drawer on the left and screen-specific tools on
+            the right.
+          </figcaption>
+        </figure>
+        <figure>
+          <Image
+            src="/concepts/android-space-editor-rc12-concept.png"
+            width={1222}
+            height={1287}
+            alt="RC12 concept showing the Our Space document library, Markdown keyboard dock, attachment cards, and document tools panel"
+          />
+          <figcaption>
+            Our Space keeps Markdown tools beside the keyboard and makes every attachment state
+            explicit.
+          </figcaption>
+        </figure>
+        <figure>
+          <Image
             src="/concepts/android-wear-concept.png"
             width={1536}
             height={1024}
             alt="Concept showing Little Orbit phone dashboard, quiz, notes, home widget and watch views"
-            priority
           />
           <figcaption>Phone, home widget, and Wear OS visual direction.</figcaption>
         </figure>

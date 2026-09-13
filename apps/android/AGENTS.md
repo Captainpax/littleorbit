@@ -22,6 +22,7 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 - Offline changes need stable operation IDs. Preserve note drafts when the server revision diverges. Bind asynchronous note results to the note ID that initiated them.
 - Keep one WSS session per open note, preserve UTF-16 cursor/selection while applying code-point server edits, render Markdown without raw HTML or automatic remote images, and verify sanitized attachment hashes before preview or app-private offline retention.
 - Our Space renders CommonMark/GFM without raw HTML or automatic remote images. Preserve cursor and selection when acknowledgements arrive. Attachment previews must verify sanitized hashes, stay app-private, and remove stale offline copies after deletion, unpairing, or account changes.
+- Top-level destinations live in the left navigation drawer. At 840dp and wider it becomes a static, non-modal rail; it must never consume touches aimed at screen content. The right drawer contains actions for the current destination and cannot open from the system-back edge.
 - Queue at most five encrypted Smooch sends for at most 15 minutes. Never manufacture delivery after expiration, and keep lock-screen content private by default.
 - Release APKs require all four `ANDROID_SIGNING_*` values, use the same protected key for phone and Wear OS, and must pass `apksigner verify` before publication. Never commit or replace the private release key.
 - Build against Android SDK 37 with Java 17 source. Keep target SDK 36 until the Android 17 local-network permission migration is designed and tested.
@@ -46,9 +47,11 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 ./gradlew :apps:android:wear:testDebugUnitTest :apps:android:wear:lintDebug
 ./gradlew :apps:android:mobile:connectedDebugAndroidTest
 .\infra\scripts\build-signed-android.ps1
+.\infra\scripts\android-smoke.ps1 -Serial <emulator-serial> -AccountIndex 0 -ResetApp
 ```
 
 Test DTO/domain separation, Room migrations, retries and duplicate work, stale cache rendering, permission removal, clock/timezone boundaries, updater corruption and restart recovery, process death, reboot, unauthorized responses, widget updates, and Wear disconnection.
+Run the isolated paired-account smoke flow on the supported API floor, an intermediate API, the current target API, and a wide tablet. Launch the Wear APK on a watch emulator and preserve screenshots under ignored verification output.
 
 ## Documentation impact
 

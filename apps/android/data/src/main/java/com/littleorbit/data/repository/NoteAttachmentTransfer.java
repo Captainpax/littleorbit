@@ -11,7 +11,6 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.HexFormat;
 import java.util.UUID;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
@@ -71,7 +70,7 @@ final class NoteAttachmentTransfer {
         ResponseBody response = execute(api.downloadNoteAttachment(noteId, attachment.id));
         try (InputStream input = response.byteStream();
                 FileOutputStream output = new FileOutputStream(target)) {
-            input.transferTo(output);
+            copyExpectedBytes(input, output, attachment.sizeBytes);
         } catch (IOException error) {
             target.delete();
             throw failure("attachment_download_failed", error);
@@ -88,7 +87,7 @@ final class NoteAttachmentTransfer {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] buffer = new byte[CLIENT_CHUNK_BYTES];
             for (int count; (count = input.read(buffer)) >= 0; ) digest.update(buffer, 0, count);
-            return HexFormat.of().formatHex(digest.digest());
+            return lowerHex(digest.digest());
         } catch (IOException | NoSuchAlgorithmException error) {
             throw failure("attachment_hash_failed", error);
         }
@@ -101,6 +100,30 @@ final class NoteAttachmentTransfer {
             if (skipped <= 0 && input.read() < 0) throw new IOException("resume offset is invalid");
             remaining -= Math.max(skipped, 1);
         }
+    }
+
+    private static void copyExpectedBytes(
+            InputStream input, FileOutputStream output, long expected) throws IOException {
+        byte[] buffer = new byte[64 * 1024];
+        long copied = 0;
+        for (int count; (count = input.read(buffer)) >= 0; ) {
+            if (count == 0) continue;
+            copied += count;
+            if (copied > expected) throw new IOException("attachment exceeded declared size");
+            output.write(buffer, 0, count);
+        }
+        if (copied != expected) throw new IOException("attachment did not match declared size");
+    }
+
+    private static String lowerHex(byte[] bytes) {
+        char[] result = new char[bytes.length * 2];
+        char[] digits = "0123456789abcdef".toCharArray();
+        for (int index = 0; index < bytes.length; index++) {
+            int value = bytes[index] & 0xff;
+            result[index * 2] = digits[value >>> 4];
+            result[index * 2 + 1] = digits[value & 0x0f];
+        }
+        return new String(result);
     }
 
     private static <T> T execute(Call<T> call) {

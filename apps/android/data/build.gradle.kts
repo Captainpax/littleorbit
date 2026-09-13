@@ -22,6 +22,18 @@ android {
             "CLIENT_VERSION_NAME",
             "\"${rootProject.extra["littleOrbitVersionName"] as String}\"",
         )
+        buildConfigField("String", "API_BASE_URL", "\"https://lil-orb.pax-kun.com/\"")
+        buildConfigField("String", "WS_BASE_URL", "\"wss://lil-orb.pax-kun.com/\"")
+    }
+    buildTypes {
+        create("smoke") {
+            val apiBase = providers.gradleProperty("littleOrbitSmokeApiBaseUrl")
+                .orElse("http://127.0.0.1:18180/").get()
+            val wsBase = providers.gradleProperty("littleOrbitSmokeWsBaseUrl")
+                .orElse("ws://127.0.0.1:18180/").get()
+            buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
+            buildConfigField("String", "WS_BASE_URL", "\"$wsBase\"")
+        }
     }
     buildFeatures { buildConfig = true }
     compileOptions {

@@ -19,6 +19,20 @@ Open `http://localhost:8180` for the website and `http://localhost:8025` for dev
 
 The first model initialization downloads roughly 2.5 GB. Add `-f infra/compose.gpu.yaml` only after NVIDIA container support works in Docker Desktop. CPU fallback is slower but retains curated-question coverage.
 
+## Isolated paired-account smoke stack
+
+Use the RC smoke project when Android needs real paired accounts, attachment processing, and Mailpit without touching hosted data or volumes. It binds the gateway to `127.0.0.1:18180` and Mailpit to `127.0.0.1:18025`; PostgreSQL, attachment bytes, and ClamAV definitions receive Compose-project-specific volumes. The development override explicitly clears Gmail credentials and production TLS settings before Mailpit starts.
+
+```powershell
+.\infra\scripts\smoke-stack.ps1 up
+.\.venv313\Scripts\python.exe infra\scripts\create_smoke_couple.py
+.\gradlew.bat :apps:android:mobile:assembleSmoke
+.\infra\scripts\android-smoke.ps1 -Serial emulator-5554 -AccountIndex 0 -ResetApp
+.\infra\scripts\smoke-stack.ps1 down
+```
+
+The account generator creates unique `@example.com` accounts, consumes their Mailpit verification links, confirms a pair, and writes credentials only to ignored `.inspect/smoke-accounts.json`. The Android smoke build targets the loopback gateway through `adb reverse tcp:18180 tcp:18180`. Its script signs in, checks the responsive shell, opens the synthetic Attachment smoke note, verifies both sanitized transparent PNG and GIF cards, confirms the Markdown dock, and stores an ignored screenshot. Run it sequentially on API 29, API 30, API 36 phone, and a wide API 36 tablet. Launch the Wear debug APK separately on the API 34 watch emulator and check the explicit stale fallback. Never point this workflow at the production Compose project.
+
 ## Our Space attachment development
 
 The API writes uploads to the private `attachment-data` volume. `media-worker` streams pending bytes to the internal-only `clamav` service, then rebuilds images and PDFs or remuxes audio/video before marking them available. ClamAV can take about 90 seconds to download definitions and become healthy on its first start. Scanner or sanitizer failure leaves content unavailable.
@@ -47,7 +61,7 @@ RC10 asks once whether optional metadata discovery should run, schedules checks 
 
 ## Phone-hosted Wear installer development
 
-The More-tab installer uses Wear OS wireless debugging directly from the phone. The phone and watch must be on the same trusted Wi-Fi network. On the watch, enable developer options, wireless debugging, and **Pair new device**, then enter the displayed six-digit code in the phone app. Android 13 and later may request nearby-device permission for DNS-SD discovery; manual host and ports remain available after denial. Android 17 local-network permission becomes relevant when the app targets SDK 37; RC10.1 compiles with SDK 37 but still targets SDK 36.
+The Settings installer uses Wear OS wireless debugging directly from the phone. The phone and watch must be on the same trusted Wi-Fi network. On the watch, enable developer options, wireless debugging, and **Pair new device**, then enter the displayed six-digit code in the phone app. Android 13 and later may request nearby-device permission for DNS-SD discovery; manual host and ports remain available after denial. Android 17 local-network permission becomes relevant when the app targets SDK 37; RC10.1 compiles with SDK 37 but still targets SDK 36.
 
 The phone downloads only the exact `wear_apk_url` from current release metadata. Before pairing it verifies size, SHA-256, package, version, required watch feature, and the pinned signer. After pairing it rejects phones, unsupported SDKs, and downgrades. A missing or pre-May-2026 watch patch level must show a user-overridable warning. Test the pure policy with:
 

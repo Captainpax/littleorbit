@@ -19,7 +19,7 @@ import org.junit.Test;
 /** Cross-language smoke checks over the canonical protocol fixtures. */
 public final class ProtocolFixturesTest {
     private static final List<String> NAMES = List.of(
-            "location-batch", "note-operation", "note-attachment", "pairing",
+            "activity-page", "location-batch", "note-operation", "note-attachment", "pairing",
             "question-batch", "orbit-profile", "smooch");
     private final JsonAdapter<Map<String, Object>> adapter;
 
@@ -95,6 +95,7 @@ public final class ProtocolFixturesTest {
 
     private static boolean hasValidShape(String name, Map<String, Object> value) {
         return switch (name) {
+            case "activity-page" -> validActivityPage(value);
             case "location-batch" -> validLocation(value);
             case "note-operation" -> validNote(value);
             case "note-attachment" -> validAttachment(value);
@@ -104,6 +105,45 @@ public final class ProtocolFixturesTest {
             case "smooch" -> validSmooch(value);
             default -> false;
         };
+    }
+
+    private static boolean validActivityPage(Map<String, Object> value) {
+        Object cursor = value.get("next_cursor");
+        if (value.size() != 3
+                || !numberIn(value.get("seen_through"), 0, Integer.MAX_VALUE)
+                || !(cursor == null || numberIn(cursor, 1, Integer.MAX_VALUE))
+                || !(value.get("items") instanceof List<?> items)
+                || items.size() > 100) {
+            return false;
+        }
+        return items.stream().allMatch(item -> item instanceof Map<?, ?> event
+                && validActivityEvent(event));
+    }
+
+    private static boolean validActivityEvent(Map<?, ?> event) {
+        Object targetId = event.get("target_id");
+        Object targetTitle = event.get("target_title");
+        return event.size() == 10
+                && isUuid(event.get("id"))
+                && numberIn(event.get("sequence"), 1, Integer.MAX_VALUE)
+                && List.of("note_created", "note_updated", "attachment_available",
+                        "countdown_created", "countdown_updated", "quiz_submitted",
+                        "quiz_revealed", "smooch_received").contains(event.get("kind"))
+                && boundedText(event.get("partner_display_name"), 120)
+                && (event.get("target_type") == null || List.of(
+                        "note", "countdown", "quiz", "smooch").contains(event.get("target_type")))
+                && (targetId == null || isUuid(targetId))
+                && (targetTitle == null || boundedText(targetTitle, 120))
+                && (event.get("emoji") == null || List.of(
+                        "😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑")
+                        .contains(event.get("emoji")))
+                && event.get("created_at") instanceof String instant
+                && instant.matches("^.+T.+(?:Z|[+-].+)$")
+                && event.get("seen") instanceof Boolean;
+    }
+
+    private static boolean boundedText(Object value, int maximum) {
+        return value instanceof String text && !text.isBlank() && text.length() <= maximum;
     }
 
     private static boolean validSmooch(Map<String, Object> value) {

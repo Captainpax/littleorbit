@@ -10,6 +10,7 @@ from .notes_hub import NoteConnectionHub
 from .rate_limit import FixedWindowLimiter
 from .routes import (
     account,
+    activity,
     admin,
     admin_console,
     attachments,
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(together_time_v2.router)
     app.include_router(together_time_v2.v3_router)
     app.include_router(account.router)
+    app.include_router(activity.router)
     app.include_router(profile_photos.router)
     app.include_router(releases.router)
     app.include_router(admin.router)

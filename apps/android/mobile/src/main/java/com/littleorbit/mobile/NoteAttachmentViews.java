@@ -32,16 +32,21 @@ public final class NoteAttachmentViews {
     private final LinearLayout container;
     private final TextView status;
     private final Removed removed;
+    private final Inserted inserted;
+    private final ChooseAgain chooseAgain;
 
     /** Creates an attachment presenter owned by one Our Space editor. */
     public NoteAttachmentViews(
             NotesActivity activity, OrbitRepository orbit,
-            LinearLayout container, TextView status, Removed removed) {
+            LinearLayout container, TextView status, Removed removed,
+            Inserted inserted, ChooseAgain chooseAgain) {
         this.activity = activity;
         this.orbit = orbit;
         this.container = container;
         this.status = status;
         this.removed = removed;
+        this.inserted = inserted;
+        this.chooseAgain = chooseAgain;
     }
 
     /** Replaces tray state with authorized server metadata. */
@@ -77,6 +82,8 @@ public final class NoteAttachmentViews {
         content.addView(detail);
         if ("available".equals(attachment.status)) {
             addAvailableActions(content, noteId, attachment);
+        } else if ("rejected".equals(attachment.status)) {
+            addRejectedActions(content, noteId, attachment);
         }
         card.addView(content);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -90,16 +97,33 @@ public final class NoteAttachmentViews {
             LinearLayout content, String noteId, NoteApiModels.Attachment attachment) {
         LinearLayout actions = new LinearLayout(activity);
         actions.setOrientation(LinearLayout.HORIZONTAL);
+        MaterialButton insert = button(R.string.insert_attachment);
+        insert.setOnClickListener(view -> inserted.completed(attachment));
         MaterialButton preview = button(R.string.preview_attachment);
         preview.setOnClickListener(view -> preview(noteId, attachment, content));
+        MaterialButton delete = button(R.string.delete_attachment);
+        delete.setOnClickListener(view -> confirmDelete(noteId, attachment));
+        actions.addView(insert, weighted());
+        actions.addView(preview, weighted());
+        actions.addView(delete, weighted());
+        content.addView(actions);
         MaterialButton keep = button(
                 pinned(attachment) ? R.string.remove_offline : R.string.keep_offline);
         keep.setOnClickListener(view -> togglePin(noteId, attachment, keep));
-        MaterialButton delete = button(R.string.delete_attachment);
-        delete.setOnClickListener(view -> confirmDelete(noteId, attachment));
-        actions.addView(preview, weighted());
-        actions.addView(keep, weighted());
-        actions.addView(delete, weighted());
+        content.addView(keep, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(44)));
+    }
+
+    private void addRejectedActions(
+            LinearLayout content, String noteId, NoteApiModels.Attachment attachment) {
+        LinearLayout actions = new LinearLayout(activity);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        MaterialButton retry = button(R.string.choose_again);
+        retry.setOnClickListener(view -> chooseAgain.completed(attachment));
+        MaterialButton remove = button(R.string.remove_attachment_card);
+        remove.setOnClickListener(view -> delete(noteId, attachment));
+        actions.addView(retry, weighted());
+        actions.addView(remove, weighted());
         content.addView(actions);
     }
 
@@ -300,9 +324,22 @@ public final class NoteAttachmentViews {
                     R.string.attachment_uploading, attachment.uploadedBytes, attachment.sizeBytes);
             case "pending_scan", "scanning" ->
                     activity.getString(R.string.attachment_scanning, size);
-            case "rejected" -> activity.getString(R.string.attachment_rejected);
+            case "rejected" -> rejectionDetail(attachment.rejectionReason);
             default -> attachment.mediaType + " · " + size;
         };
+    }
+
+    private String rejectionDetail(String reason) {
+        if ("malware_detected".equals(reason)) {
+            return activity.getString(R.string.attachment_rejected_malware);
+        }
+        if ("couple_quota_exceeded_after_sanitization".equals(reason)) {
+            return activity.getString(R.string.attachment_rejected_quota);
+        }
+        if ("sanitized_file_too_large".equals(reason)) {
+            return activity.getString(R.string.attachment_too_large);
+        }
+        return activity.getString(R.string.attachment_rejected);
     }
 
     private int dp(int value) {
@@ -313,5 +350,17 @@ public final class NoteAttachmentViews {
     public interface Removed {
         /** Reports the note whose authorized attachment list changed. */
         void completed(String noteId);
+    }
+
+    /** Callback that inserts an available attachment at the live editor cursor. */
+    public interface Inserted {
+        /** Inserts a reference only after the private scan completed. */
+        void completed(NoteApiModels.Attachment attachment);
+    }
+
+    /** Callback that opens the system picker after a terminal rejection. */
+    public interface ChooseAgain {
+        /** Starts a new, independently scanned selection. */
+        void completed(NoteApiModels.Attachment attachment);
     }
 }

@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.LittleOrbit" parent="Theme.LittleOrbit.Base">
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+    </style>
+</resources>

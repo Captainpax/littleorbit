@@ -37,22 +37,22 @@ export function hostedWearApkPath(version: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.11.3",
-  versionCode: 15,
+  version: "1.0.0-rc.12",
+  versionCode: 16,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "d477e6ca3372b5d98d01249ad3ef16a626de51552199765236f1616aefb1e26a",
+  sha256: "0169276a6008affe9b3806315ebde269120063ac86348655312622bf8c585966",
   releaseNotes: [
-    "Adds the RC11 Our Space, cursor-stable Markdown, private attachments, and dedicated Smooch tab.",
-    "Keeps update actions visible even when a release has longer notes.",
-    "Exercises the repaired package-session path from an installed RC11.2 build.",
+    "Adds responsive left navigation and screen-specific right action panels.",
+    "Refines the Markdown dock and repairs transparent PNG and GIF attachments.",
+    "Adds a private 30-day recent-activity view for the active couple.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.11.3",
-  apkUrl: hostedApkPath("1.0.0-rc.11.3"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.12",
+  apkUrl: hostedApkPath("1.0.0-rc.12"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.11.3"),
-    sha256: "6d609669fd079ec179d9c39be01a3d9485392681a637c769b43cf5cdeab5641c",
+    apkUrl: hostedWearApkPath("1.0.0-rc.12"),
+    sha256: "9227bbb70ecf127a36a70d3f33101938df35f4b4cf62d80b71ff4a653a1c1868",
     sizeBytes: 14133466,
-    versionCode: 14,
+    versionCode: 15,
     minimumAndroid: 30,
   },
   published: true,
@@ -137,7 +137,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-13T04:42:00Z",
+    publishedAt: "2026-09-13T15:00:54.652421Z",
   }];
 }
 

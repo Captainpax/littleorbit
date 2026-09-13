@@ -39,9 +39,10 @@ public final class SmoochOutbox {
     /** Returns only sends still within the short user-expected delivery window. */
     public synchronized List<Pending> pending(long now) {
         List<Pending> values = read();
-        List<Pending> current = values.stream()
-                .filter(item -> item.createdAt + LIFETIME_MILLIS > now)
-                .toList();
+        List<Pending> current = new ArrayList<>();
+        for (Pending item : values) {
+            if (item.createdAt + LIFETIME_MILLIS > now) current.add(item);
+        }
         if (current.size() != values.size()) write(current);
         return new ArrayList<>(current);
     }

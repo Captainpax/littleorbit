@@ -14,6 +14,15 @@ android {
         versionName = rootProject.extra["littleOrbitVersionName"] as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    buildTypes {
+        create("smoke") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".smoke"
+            versionNameSuffix = "-smoke"
+            signingConfig = getByName("debug").signingConfig
+            matchingFallbacks += listOf("debug")
+        }
+    }
     buildFeatures {
         viewBinding = true
         buildConfig = true
@@ -30,6 +39,7 @@ dependencies {
     implementation(project(":apps:android:widget"))
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity)
+    implementation(libs.androidx.drawerlayout)
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.lifecycle.livedata)
     implementation(libs.androidx.work.runtime)

@@ -40,6 +40,7 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Note attachments authorize the current couple before lookup, reserve bounded quota, remain unavailable until a clean scan and metadata-removal pass, and are verified by their sanitized digest before preview.
 - Note attachment uploads use exact offsets and stable operation IDs; unscanned bytes are never served, private files remain couple-authorized, and deletion or note purge removes stored bytes.
 - Note presence counts unique authenticated accounts; archived notes reject content operations and are recoverable for seven days.
+- Couple activity is a 30-day, content-free metadata timeline. It may name a note or countdown but never stores note bodies, attachment names, quiz answers, locations, or custom Smooch text.
 - Relationship age begins at the immutable confirmed pairing instant. Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates.
 - A Smooch uses one approved emoji and phrase key, is limited to five sends per account in a rolling hour, survives unpairing in private archives, and is erased when either original participant deletes their account.
 - Only the gateway binds a public host port. Ollama remains internal and accepts calls only from the AI service.
@@ -75,6 +76,8 @@ python -m mypy services
 npm --prefix apps/web run check
 npm --prefix apps/web run test
 ./gradlew :apps:android:mobile:testDebugUnitTest :apps:android:mobile:lintDebug
+./infra/scripts/smoke-stack.ps1 up
+./infra/scripts/android-smoke.ps1 -Serial <emulator-serial> -AccountIndex 0 -ResetApp
 ```
 
 ## Cross-system verification

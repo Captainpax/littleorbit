@@ -17,11 +17,13 @@ CLIENT_HEADER = "x-little-orbit-client"
 VERSION_CODE_HEADER = "x-little-orbit-version-code"
 MOBILE_PREFIXES = (
     "/v1/account",
+    "/v1/activity",
     "/v1/countdowns",
     "/v1/couple",
     "/v1/notes",
     "/v1/pairing",
     "/v1/quizzes",
+    "/v1/smooches",
     "/v1/together-time",
     "/v2/quizzes",
     "/v2/together-time",

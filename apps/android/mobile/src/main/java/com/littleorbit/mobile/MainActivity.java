@@ -27,7 +27,7 @@ import java.time.format.DateTimeFormatter;
 
 /** Cosmic phone shell that renders home, More, and the persistent verified updater. */
 @AndroidEntryPoint
-public final class MainActivity extends InsetAwareActivity
+public final class MainActivity extends OrbitShellActivity
         implements AndroidUpdateCoordinator.Listener {
     /** Intent flag used by focused tabs to open the More destination. */
     public static final String EXTRA_SHOW_MORE = "show_more";
@@ -39,6 +39,7 @@ public final class MainActivity extends InsetAwareActivity
     private boolean manualUpdateCheck;
     private boolean setupLookupStarted;
     private boolean notificationRequestedUpdate;
+    private HomeActivityPanel activityPanel;
     @Inject OrbitRepository orbit;
     @Inject ProfileRepository profiles;
     @Inject AndroidUpdateCoordinator updates;
@@ -54,10 +55,25 @@ public final class MainActivity extends InsetAwareActivity
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         model = new ViewModelProvider(this).get(HomeViewModel.class);
+        activityPanel = new HomeActivityPanel(
+                this, orbit, this::setOrbitContextActions, this::open);
         model.state().observe(this, this::renderHome);
         bindFeatureActions();
-        bindNavigation();
         if (getIntent().getBooleanExtra(EXTRA_SHOW_MORE, false)) showMore();
+        else showHome();
+        if (getIntent().getBooleanExtra(EXTRA_SHOW_MORE, false)) {
+            setOrbitContextActions(java.util.List.of(
+                    new ContextAction(getString(R.string.profile_photo),
+                            () -> open(ProfilePhotoActivity.class)),
+                    new ContextAction(getString(R.string.location_setup),
+                            () -> open(DeviceSetupActivity.class)),
+                    new ContextAction(getString(R.string.install_watch_app),
+                            () -> open(WearInstallerActivity.class)),
+                    new ContextAction(getString(R.string.pairing),
+                            () -> open(PairingActivity.class)),
+                    new ContextAction(getString(R.string.past_archives),
+                            () -> open(ArchivesActivity.class))));
+        }
         bindUpdateActions();
         notificationRequestedUpdate = getIntent().getBooleanExtra("show_update", false);
         configureAutomaticUpdates();
@@ -71,7 +87,10 @@ public final class MainActivity extends InsetAwareActivity
         reconcileQuizNotifications();
         refreshSetupStatus();
         model.refresh();
-        if (orbit.isSignedIn()) refreshProfile();
+        if (orbit.isSignedIn()) {
+            refreshProfile();
+            activityPanel.refresh();
+        }
         updates.check(false, this);
     }
 
@@ -112,15 +131,6 @@ public final class MainActivity extends InsetAwareActivity
                     ForegroundLocationService.stop(this);
                     finish();
                 })));
-    }
-
-    private void bindNavigation() {
-        binding.homeNav.setOnClickListener(view -> showHome());
-        binding.moreNav.setOnClickListener(view -> showMore());
-        binding.quizNav.setOnClickListener(view -> open(QuizActivity.class));
-        binding.smoochNav.setOnClickListener(view -> open(SmoochActivity.class));
-        binding.spaceNav.setOnClickListener(view -> open(NotesActivity.class));
-        showHome();
     }
 
     @Override
@@ -334,15 +344,23 @@ public final class MainActivity extends InsetAwareActivity
     private void showHome() {
         binding.homeScroll.setVisibility(View.VISIBLE);
         binding.moreScroll.setVisibility(View.GONE);
-        binding.homeNav.setTextColor(getColor(R.color.lavender_soft));
-        binding.moreNav.setTextColor(getColor(R.color.muted));
     }
 
     private void showMore() {
         binding.homeScroll.setVisibility(View.GONE);
         binding.moreScroll.setVisibility(View.VISIBLE);
-        binding.homeNav.setTextColor(getColor(R.color.muted));
-        binding.moreNav.setTextColor(getColor(R.color.lavender_soft));
+    }
+
+    @Override
+    protected OrbitDestination orbitDestination() {
+        return getIntent().getBooleanExtra(EXTRA_SHOW_MORE, false)
+                ? OrbitDestination.SETTINGS
+                : OrbitDestination.HOME;
+    }
+
+    @Override
+    protected void onOrbitContextOpened() {
+        if (activityPanel != null) activityPanel.markVisibleSeen();
     }
 
     @Override

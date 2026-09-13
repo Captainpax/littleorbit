@@ -13,11 +13,18 @@ from uuid import UUID
 
 from PIL import Image, ImageSequence
 from pypdf import PdfReader, PdfWriter
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from . import models as _models  # noqa: F401  # Register FK target tables for worker flushes.
+from .activity_service import record_activity
 from .attachment_models import NoteAttachment
-from .attachment_storage import MAX_FILE_BYTES, available_path, sha256_file, staging_path
+from .attachment_storage import (
+    COUPLE_QUOTA_BYTES,
+    MAX_FILE_BYTES,
+    available_path,
+    sha256_file,
+    staging_path,
+)
 from .clock import SystemClock
 from .config import Settings, get_settings
 from .database import SessionFactory
@@ -86,7 +93,19 @@ def _sanitize_image(source: Path, target: Path, media_type: str) -> None:
         "image/gif": "GIF",
     }[media_type]
     with Image.open(source) as image:
-        frames = [_clean_frame(frame, image_format) for frame in ImageSequence.Iterator(image)]
+        frames: list[Image.Image] = []
+        durations: list[int] = []
+        pixel_count = 0
+        for source_frame in ImageSequence.Iterator(image):
+            if len(frames) >= 300:
+                raise ScanUnavailable("too_many_image_frames")
+            pixel_count += source_frame.width * source_frame.height
+            if pixel_count > 80_000_000:
+                raise ScanUnavailable("image_pixel_budget_exceeded")
+            durations.append(
+                int(source_frame.info.get("duration", image.info.get("duration", 100)))
+            )
+            frames.append(_clean_frame(source_frame, image_format))
         if not frames:
             raise ScanUnavailable("invalid_image")
         if len(frames) > 1 and image_format in {"GIF", "WEBP"}:
@@ -95,8 +114,9 @@ def _sanitize_image(source: Path, target: Path, media_type: str) -> None:
                 format=image_format,
                 save_all=True,
                 append_images=frames[1:],
-                duration=image.info.get("duration", 100),
+                duration=durations,
                 loop=image.info.get("loop", 0),
+                disposal=2,
             )
         elif image_format == "JPEG":
             frames[0].save(target, format=image_format, quality=90, optimize=True)
@@ -106,7 +126,11 @@ def _sanitize_image(source: Path, target: Path, media_type: str) -> None:
 
 def _clean_frame(frame: Image.Image, image_format: str) -> Image.Image:
     if image_format == "GIF":
-        return frame.convert("RGB").quantize(colors=256)
+        # Copy pixels into a fresh image so Pillow cannot carry a palette index
+        # or transparency entry from the untrusted source into the encoder.
+        clean = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+        clean.alpha_composite(frame.convert("RGBA"))
+        return clean
     mode = "RGB" if image_format == "JPEG" else "RGBA"
     clean = Image.new(mode, frame.size)
     clean.paste(frame.convert(mode))
@@ -212,36 +236,67 @@ async def _process(
         source = staging_path(settings.attachment_storage_dir, item.storage_key)
         target = available_path(settings.attachment_storage_dir, item.storage_key)
         media_type = item.media_type
-        reserved_size = item.size_bytes
     clean = await asyncio.to_thread(scanner, source, settings.clamav_host, settings.clamav_port)
     if not clean:
         await _reject(attachment_id, settings, "malware_detected")
         return
     await asyncio.to_thread(sanitize_file, source, target, media_type)
-    if target.stat().st_size > min(MAX_FILE_BYTES, reserved_size):
-        await _reject(attachment_id, settings, "sanitized_file_exceeds_reservation")
+    final_size = target.stat().st_size
+    if final_size > MAX_FILE_BYTES:
+        await _reject(attachment_id, settings, "sanitized_file_too_large")
         return
     sanitized_hash = await asyncio.to_thread(sha256_file, target)
-    await _mark_available(attachment_id, settings, sanitized_hash)
+    if not await _mark_available(attachment_id, settings, sanitized_hash, final_size):
+        await _reject(attachment_id, settings, "couple_quota_exceeded_after_sanitization")
+        return
     await asyncio.to_thread(source.unlink, True)
 
 
 async def _mark_available(
-    attachment_id: UUID, settings: Settings, sanitized_hash: str
-) -> None:
+    attachment_id: UUID,
+    settings: Settings,
+    sanitized_hash: str,
+    final_size: int,
+) -> bool:
+    async with SessionFactory() as lookup:
+        couple_id = await lookup.scalar(
+            select(NoteAttachment.couple_id).where(NoteAttachment.id == attachment_id)
+        )
+        if couple_id is None:
+            return False
     async with SessionFactory() as session:
+        # The reservation used the uploaded size. Sanitizers may legitimately
+        # grow a file, so atomically charge only the positive final-size delta.
+        from .couple_access import lock_couple
+
+        await lock_couple(session, couple_id)
         item = await session.get(NoteAttachment, attachment_id, with_for_update=True)
         if item is None or item.status != "scanning":
-            return
+            return False
+        charged = await session.scalar(
+            select(func.coalesce(func.sum(NoteAttachment.size_bytes), 0)).where(
+                NoteAttachment.couple_id == couple_id,
+                NoteAttachment.deleted_at.is_(None),
+                NoteAttachment.status.in_(("uploading", "pending_scan", "scanning", "available")),
+                NoteAttachment.id != attachment_id,
+            )
+        )
+        if int(charged or 0) + final_size > COUPLE_QUOTA_BYTES:
+            return False
         now = SystemClock().now()
-        final_path = available_path(settings.attachment_storage_dir, item.storage_key)
         item.status = "available"
         item.sha256 = sanitized_hash
-        item.size_bytes = final_path.stat().st_size
+        item.size_bytes = final_size
         item.uploaded_bytes = item.size_bytes
         item.scanned_at = now
         item.updated_at = now
+        await record_activity(
+            session, couple_id, item.uploaded_by, "attachment_available",
+            f"attachment:available:{item.id}", target_type="note",
+            target_id=item.note_id,
+        )
         await session.commit()
+        return True
 
 
 async def _set_status(attachment_id: UUID, value: str) -> None:

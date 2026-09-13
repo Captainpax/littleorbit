@@ -88,7 +88,7 @@ public abstract class DisplayModule {
     static LittleOrbitApi api(OkHttpClient client) {
         Moshi moshi = new Moshi.Builder().build();
         return new Retrofit.Builder()
-                .baseUrl("https://lil-orb.pax-kun.com/")
+                .baseUrl(BuildConfig.API_BASE_URL)
                 .client(client)
                 .addConverterFactory(MoshiConverterFactory.create(moshi))
                 .build()

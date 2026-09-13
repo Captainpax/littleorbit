@@ -18,6 +18,7 @@ from little_orbit_ai.schemas import CandidateQuestion, Category, IconKey, Questi
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .activity_models import ActivityEvent
 from .attachment_models import NoteAttachment
 from .attachment_storage import available_path, staging_path
 from .clock import SystemClock
@@ -51,35 +52,15 @@ async def run_maintenance_once() -> None:
     now = SystemClock().now()
     async with SessionFactory() as session:
         attachment_keys = await _expired_note_attachment_keys(session, now)
-        await session.execute(delete(LocationSample).where(LocationSample.expires_at <= now))
-        await session.execute(
-            delete(OneUseToken).where(
-                OneUseToken.expires_at <= now - timedelta(days=7),
+        rejected_keys = list(
+            await session.scalars(
+                select(NoteAttachment.storage_key).where(
+                    NoteAttachment.status == "rejected",
+                    NoteAttachment.updated_at <= now - timedelta(days=7),
+                )
             )
         )
-        await session.execute(delete(Session).where(Session.expires_at <= now - timedelta(days=7)))
-        await session.execute(
-            delete(Note).where(Note.purge_after.is_not(None), Note.purge_after <= now)
-        )
-        await session.execute(
-            update(RelationshipStartProposal)
-            .where(
-                RelationshipStartProposal.status == "pending",
-                RelationshipStartProposal.expires_at <= now,
-            )
-            .values(status="expired", decided_at=now)
-        )
-        await session.execute(
-            delete(TogetherOperation).where(
-                TogetherOperation.created_at <= now - timedelta(days=30)
-            )
-        )
-        await session.execute(
-            delete(RelationshipStartProposal).where(
-                RelationshipStartProposal.status != "pending",
-                RelationshipStartProposal.created_at <= now - timedelta(days=90),
-            )
-        )
+        await _purge_expired_records(session, now)
         jobs = list(
             await session.scalars(
                 select(DeletionJob)
@@ -94,7 +75,44 @@ async def run_maintenance_once() -> None:
         for job in jobs:
             await _complete_deletion_job(session, job, now)
         await session.commit()
-    await _delete_attachment_files(attachment_keys)
+    await _delete_attachment_files([*attachment_keys, *rejected_keys])
+
+
+async def _purge_expired_records(session: AsyncSession, now: datetime) -> None:
+    """Apply bounded privacy retention and proposal expiration policies."""
+
+    await session.execute(delete(LocationSample).where(LocationSample.expires_at <= now))
+    await session.execute(
+        delete(OneUseToken).where(OneUseToken.expires_at <= now - timedelta(days=7))
+    )
+    await session.execute(delete(Session).where(Session.expires_at <= now - timedelta(days=7)))
+    await session.execute(delete(Note).where(Note.purge_after.is_not(None), Note.purge_after <= now))
+    await session.execute(
+        delete(NoteAttachment).where(
+            NoteAttachment.status == "rejected",
+            NoteAttachment.updated_at <= now - timedelta(days=7),
+        )
+    )
+    await session.execute(
+        delete(ActivityEvent).where(ActivityEvent.created_at <= now - timedelta(days=30))
+    )
+    await session.execute(
+        update(RelationshipStartProposal)
+        .where(
+            RelationshipStartProposal.status == "pending",
+            RelationshipStartProposal.expires_at <= now,
+        )
+        .values(status="expired", decided_at=now)
+    )
+    await session.execute(
+        delete(TogetherOperation).where(TogetherOperation.created_at <= now - timedelta(days=30))
+    )
+    await session.execute(
+        delete(RelationshipStartProposal).where(
+            RelationshipStartProposal.status != "pending",
+            RelationshipStartProposal.created_at <= now - timedelta(days=90),
+        )
+    )
 
 
 async def _expired_note_attachment_keys(

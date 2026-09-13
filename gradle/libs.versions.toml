@@ -3,6 +3,7 @@ agp = "9.2.1"
 hilt = "2.60.1"
 androidx-appcompat = "1.7.1"
 androidx-activity = "1.10.1"
+androidx-drawerlayout = "1.2.0"
 androidx-lifecycle = "2.9.1"
 room = "2.7.2"
 work = "2.10.3"
@@ -31,6 +32,7 @@ image-cropper = "4.7.0"
 [libraries]
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
 androidx-activity = { module = "androidx.activity:activity", version.ref = "androidx-activity" }
+androidx-drawerlayout = { module = "androidx.drawerlayout:drawerlayout", version.ref = "androidx-drawerlayout" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-livedata = { module = "androidx.lifecycle:lifecycle-livedata", version.ref = "androidx-lifecycle" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }

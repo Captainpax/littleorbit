@@ -18,6 +18,7 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 - Permit forwarded headers only from `192.168.50.6` and restrict Windows Firewall port 8180 to that source for production.
 - Use bounded container logs, health checks, restart policies, automated database backups, retention, and a tested restore path.
 - Start migration-aware workers only after the API health check proves Alembic reached head; a healthy database alone does not prove the current schema exists.
+- Keep the RC smoke stack in its own Compose project, volumes, network, host ports, and disposable `@example.com` accounts. Its Mailpit override must clear production SMTP credentials and TLS settings rather than inherit them.
 - Keep attachment staging, sanitized bytes, the media worker, and ClamAV private. A one-shot root init may assign fresh-volume ownership; every long-running app container stays unprivileged. Back up the attachment volume beside PostgreSQL and verify its manifest before a restore.
 - Do not enable HSTS until HTTPS, certificate renewal, rollback, and direct recovery access are verified.
 - Never run destructive Compose, volume, database, firewall, DHCP, DNS, or proxy actions without inspecting the target state.
@@ -37,6 +38,7 @@ docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml c
 docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml up --build
 curl --fail http://localhost:8180/api/v1/health/live
 docker compose --env-file .env -f infra/compose.yaml exec postgres pg_isready -U little_orbit
+.\infra\scripts\smoke-stack.ps1 up
 ```
 
 Test WSS upgrade, TLS renewal, forwarding trust, blocked internal ports, host reboot, Ollama timeout/CPU fallback, backup retention, and restore into an empty database.

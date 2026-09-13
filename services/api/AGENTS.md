@@ -24,6 +24,7 @@ Own authenticated HTTP/WSS behavior, application transactions, persistence, sche
 - Attachment routes authorize before lookup, bind retry IDs to exact metadata, lock quota reservations, bound streams before buffering, and never serve bytes before clean scan plus metadata removal. Scanner outages fail closed.
 - Lock the couple row for relationship-content mutations that must not race unpairing. Relationship age derives from the confirmed pairing instant.
 - Enforce the Smooch rolling-hour limit in the same transaction that inserts the event. Private old-pairing history remains authorized to its original participant and is erased by either participant's account deletion.
+- Record couple activity only while the caller holds the couple lock. Dedupe each event, advance a couple-local sequence monotonically, keep seen watermarks monotonic, purge after 30 days, and never copy note bodies, attachment names, quiz answers, coordinates, or other feature content into the feed.
 - Audit security events with identifiers and outcomes, never credentials or relationship content.
 - Trust forwarded client IP only when the direct peer equals the configured NPM address.
 - Never mutate or unpublish a published APK record. A compatibility floor applies before authentication only after its explicit timezone-aware `required_after` instant.

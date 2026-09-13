@@ -113,6 +113,37 @@ def test_gif_sanitizer_keeps_animation_readable(tmp_path: Path) -> None:
         assert getattr(sanitized, "n_frames", 1) == 2
 
 
+def test_transparent_palette_gif_sanitizer_keeps_animation_readable(
+    tmp_path: Path,
+) -> None:
+    """Palette transparency cannot leak invalid encoder metadata into output."""
+
+    source = tmp_path / "transparent.gif"
+    target = tmp_path / "target"
+    frames = []
+    for color in (1, 2):
+        frame = Image.new("P", (12, 12), color)
+        frame.putpalette([0, 0, 0, 255, 0, 0, 0, 0, 255] + [0] * 759)
+        frame.info["transparency"] = 0
+        frames.append(frame)
+    frames[0].save(
+        source,
+        save_all=True,
+        append_images=frames[1:],
+        transparency=0,
+        disposal=2,
+        duration=[30, 40],
+        loop=0,
+    )
+
+    sanitize_file(source, target, "image/gif")
+
+    with Image.open(target) as sanitized:
+        assert getattr(sanitized, "n_frames", 1) == 2
+        sanitized.seek(1)
+        assert sanitized.convert("RGBA").size == (12, 12)
+
+
 @pytest.mark.asyncio
 async def test_chunk_reader_rejects_stream_over_limit_without_full_buffer() -> None:
     """A missing Content-Length cannot bypass the four-MiB body bound."""

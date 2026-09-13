@@ -177,7 +177,7 @@ public final class NoteSocketClient {
         synchronized void open() {
             if (closed) return;
             Request request = versionedRequest()
-                    .url("wss://lil-orb.pax-kun.com/ws/v1/notes/" + noteId)
+                    .url(BuildConfig.WS_BASE_URL + "ws/v1/notes/" + noteId)
                     .header("Authorization", "Bearer " + token)
                     .build();
             socket = client.newWebSocket(request, this);

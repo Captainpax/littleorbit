@@ -29,3 +29,15 @@ Before requesting review, run the commands in the closest `AGENTS.md`. Include t
 Protocol changes must add versioned valid and invalid fixtures. Security or privacy fixes should follow the private reporting process in `SECURITY.md` rather than starting with a public issue.
 
 Attachment work must exercise both the JSON contract and private bytes. Use synthetic fixtures, preserve the authorization-before-lookup order, bound streams before buffering, and verify that scanner failures leave bytes unavailable. Changes to supported types or storage must update the privacy, security, network, backup, deployment, third-party, release, and roadmap documents in the same pull request.
+
+## Isolated Android smoke testing
+
+Use the disposable smoke stack for paired-account Android checks. It keeps test users, mail, attachments, and database rows outside the hosted volumes.
+
+```powershell
+.\infra\scripts\smoke-stack.ps1 up
+.\infra\scripts\android-smoke.ps1 -Serial emulator-5554 -AccountIndex 0 -ResetApp
+.\infra\scripts\smoke-stack.ps1 down
+```
+
+Run the Android script once per supported emulator serial. The harness creates only `@example.com` accounts, verifies them through the isolated Mailpit inbox, pairs exactly two accounts, and writes its ignored credentials under `.inspect/`. Never point the harness at the hosted gateway or reuse a real account.

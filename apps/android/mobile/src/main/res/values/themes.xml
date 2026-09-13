@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.LittleOrbit" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.LittleOrbit.Base" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">@color/lavender</item>
         <item name="colorOnPrimary">@color/navy_deep</item>
         <item name="colorSecondary">@color/coral</item>
@@ -16,8 +16,11 @@
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="materialButtonStyle">@style/Widget.LittleOrbit.Button.Primary</item>
+    </style>
+
+    <style name="Theme.LittleOrbit" parent="Theme.LittleOrbit.Base">
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 </resources>

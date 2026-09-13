@@ -20,7 +20,7 @@ import javax.inject.Inject;
 
 /** Playful nine-emoji Smooch sender with durable weekly history. */
 @AndroidEntryPoint
-public final class SmoochActivity extends InsetAwareActivity {
+public final class SmoochActivity extends OrbitShellActivity {
     private static final List<String> EMOJIS = List.of(
             "😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑");
     @Inject OrbitRepository orbit;
@@ -36,9 +36,10 @@ public final class SmoochActivity extends InsetAwareActivity {
         binding = ActivitySmoochBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         bindEmojiButtons();
-        OrbitTabNavigation.bind(this, binding.homeNav, binding.quizNav,
-                binding.smoochNav, binding.spaceNav, binding.moreNav);
         binding.sendSmoochButton.setOnClickListener(view -> send());
+        setOrbitContextActions(List.of(
+                new ContextAction(getString(R.string.smooch_history), this::loadHistory),
+                new ContextAction(getString(R.string.this_week), this::loadStatus)));
         android.content.SharedPreferences settings = getSharedPreferences(
                 "smooch_settings", MODE_PRIVATE);
         binding.revealSmooches.setChecked(settings.getBoolean("full_lock_screen", false));
@@ -48,6 +49,11 @@ public final class SmoochActivity extends InsetAwareActivity {
         loadTimezone();
         loadStatus();
         loadHistory();
+    }
+
+    @Override
+    protected OrbitDestination orbitDestination() {
+        return OrbitDestination.SMOOCH;
     }
 
     private void bindEmojiButtons() {

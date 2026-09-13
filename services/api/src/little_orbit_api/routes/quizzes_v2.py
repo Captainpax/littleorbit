@@ -9,6 +9,7 @@ from little_orbit_ai.safety import normalized_hash
 from sqlalchemy import delete, exists, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..activity_service import record_activity
 from ..clock import SystemClock
 from ..couple_access import active_member, both_members_consent, lock_couple
 from ..database import session_scope
@@ -133,6 +134,12 @@ async def finish(
     member = await active_member(session, actor.id)
     day = await materialize_day(session, member, quiz_date)
     await finish_day(session, day, actor.id, payload)
+    await record_activity(
+        session, member.couple_id, actor.id,
+        "quiz_revealed" if day.revealed_at is not None else "quiz_submitted",
+        f"quiz:finish:{payload.operation_id}", target_type="quiz",
+        target_id=day.id, target_title=str(day.quiz_date),
+    )
     await session.commit()
     return await day_response(session, day, actor.id)
 

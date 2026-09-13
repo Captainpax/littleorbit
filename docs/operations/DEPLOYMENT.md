@@ -116,7 +116,7 @@ The worker depends on a healthy API as well as PostgreSQL and model initializati
 
 RC10 uses phone version code 10. Its published Wear metadata says version code 10, but the immutable 14,130,626-byte Wear APK with SHA-256 `22f629a96b7a513ca9162a6fcff0b7e7dfdd42558b9c1ddce0cd1c0594934f8e` contains version code 9. The strict phone verifier rejects that mismatch. Do not alter the RC10 record or bytes; deploy RC10.1 as a new correction. The phone APK remains 23,389,918 bytes with SHA-256 `e6039a5397e1675e8d7548a6a65ede07096cc84f7a5fd82a2887a48c59220104`. The compatibility floor remains version code 6 and RC10 has no enforcement time.
 
-After publication, verify `/api/v1/releases/current`, both complete APK downloads, a 1,024-byte range from each, `/download`, `/patch-notes`, and `/patch-notes.xml`. On the phone, verify the automatic-check choice without starting a download, the persistent update banner, the visible location foreground service after mutual consent, immediate stop after opt-out, Smooch notification privacy, and the Wear installer's manual-address fallback. A phone-side installer smoke test does not close the physical-Wear gate.
+After publication, verify `/api/v1/releases/current`, both complete APK downloads, a 1,024-byte range from each, `/download`, `/patch-notes`, and `/patch-notes.xml`. On the phone, verify the automatic-check choice without starting a download, the App updates banner, the visible location foreground service after mutual consent, immediate stop after opt-out, Smooch notification privacy, and the Wear installer's manual-address fallback. A phone-side installer smoke test does not close the physical-Wear gate.
 
 ## RC10.1 Wear correction
 
@@ -144,5 +144,11 @@ RC11.1 corrects the updater action layout with phone version code 13 and Wear ve
 RC11.2 corrects package-session ordering with phone version code 14 and Wear version code 13. Close and sync every `PackageInstaller.Session` output stream before calling `commit`; an open stream causes Android to abandon the session before it can show the system installer.
 
 RC10.1 and RC11.1 execute their old, broken installer code even when downloading a newer APK, so they require one manual update to RC11.2 or later. RC11.3 has phone version code 15 and Wear version code 14 and exists to test an installed RC11.2 client through the repaired update path. Do not describe the boundary as repaired until that in-place update reaches Android confirmation and installs successfully.
+
+## RC12 shell, activity, and attachment release
+
+Take a PostgreSQL backup before migration `0014`. After upgrade, verify the couple-scoped activity event and seen-watermark tables, the 30-day worker purge, and immediate feed removal on unpairing. The owner console must expose neither event rows nor their target titles. Build RC12 with phone version code 16 and Wear version code 15, and keep compatibility-floor enforcement unchanged.
+
+Before publication, run the isolated paired-account stack and transparent PNG/GIF pipeline, then run the Android smoke build on API 29, API 30, API 36 phone, and a wide API 36 tablet. Confirm the wide navigation is static and its content remains tappable, the right panel opens programmatically without stealing the back edge, the Markdown dock sits above the keyboard, and an authorized sanitized image renders after digest verification. Launch the Wear artifact on a round API 34 emulator and confirm the stale fallback. These emulator checks do not close the physical two-phone or physical phone/watch release gates.
 
 Before publication, test an authorized synthetic image and PDF through reservation, chunk resume, clean scan, metadata removal, verified Android preview, keep-offline preview, deletion, and note-expiry cleanup. Reject an unauthorized note ID before attachment lookup, a conflicting idempotency replay, an oversized chunk, a wrong original digest, a quarantined file, and a download attempted before availability. Run both backup scripts after deployment and complete a disposable restore drill before treating attachments as production-ready.

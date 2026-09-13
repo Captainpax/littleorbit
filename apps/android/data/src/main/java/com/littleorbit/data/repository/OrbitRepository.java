@@ -1,6 +1,7 @@
 package com.littleorbit.data.repository;
 
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.ActivityApiModels;
 import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.remote.QuizApiModels;
 import com.littleorbit.data.remote.SmoochApiModels;
@@ -99,6 +100,12 @@ public interface OrbitRepository {
     /** Deletes a countdown idempotently from its expected revision. */
     CompletableFuture<ApiModels.Message> deleteCountdown(
             String countdownId, ApiModels.CountdownDeleteRequest request);
+
+    /** Loads the latest content-free activity panel. */
+    CompletableFuture<ActivityApiModels.Page> activity();
+
+    /** Marks events through one visibly rendered sequence as seen. */
+    CompletableFuture<Void> markActivitySeen(long throughSequence, String operationId);
 
     /** Loads the coordinate-free together-time estimate. */
     CompletableFuture<ApiModels.TogetherSummary> togetherSummary();

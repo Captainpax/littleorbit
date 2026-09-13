@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v1/activity-page.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["items", "next_cursor", "seen_through"],
+  "properties": {
+    "items": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "next_cursor": {
+      "anyOf": [
+        { "type": "integer", "minimum": 1 },
+        { "type": "null" }
+      ]
+    },
+    "seen_through": { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "sequence", "kind", "partner_display_name", "target_type",
+        "target_id", "target_title", "emoji", "created_at", "seen"
+      ],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "note_created", "note_updated", "attachment_available",
+            "countdown_created", "countdown_updated", "quiz_submitted",
+            "quiz_revealed", "smooch_received"
+          ]
+        },
+        "partner_display_name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "target_type": {
+          "anyOf": [
+            { "type": "string", "enum": ["note", "countdown", "quiz", "smooch"] },
+            { "type": "null" }
+          ]
+        },
+        "target_id": {
+          "anyOf": [
+            { "type": "string", "format": "uuid" },
+            { "type": "null" }
+          ]
+        },
+        "target_title": {
+          "anyOf": [
+            { "type": "string", "minLength": 1, "maxLength": 120 },
+            { "type": "null" }
+          ]
+        },
+        "emoji": {
+          "anyOf": [
+            { "type": "string", "enum": ["😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑"] },
+            { "type": "null" }
+          ]
+        },
+        "created_at": { "type": "string", "format": "date-time" },
+        "seen": { "type": "boolean" }
+      }
+    }
+  }
+}

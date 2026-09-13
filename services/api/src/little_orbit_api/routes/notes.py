@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..activity_service import record_activity
 from ..client_compatibility import (
     CLIENT_HEADER,
     VERSION_CODE_HEADER,
@@ -194,6 +195,11 @@ async def _apply(note_id: UUID, account_id: UUID, message: NoteEditMessage) -> d
                 applied_at=SystemClock().now(),
             )
         )
+        await record_activity(
+            db, authorized_couple_id, account_id, "note_updated",
+            f"note:edit:{message.operation_id}", target_type="note",
+            target_id=note.id, target_title=note.title,
+        )
         await db.commit()
         return {
             "type": "note.ack",
@@ -291,6 +297,12 @@ async def create_note(
         updated_at=now,
     )
     session.add(note)
+    await session.flush()
+    await record_activity(
+        session, member.couple_id, actor.id, "note_created",
+        f"note:create:{payload.operation_id}", target_type="note",
+        target_id=note.id, target_title=note.title,
+    )
     await session.commit()
     return _note_response(note)
 

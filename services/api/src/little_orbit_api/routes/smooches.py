@@ -1,12 +1,13 @@
 """Authorized, retry-safe Smooch delivery and durable weekly history."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..activity_service import record_activity
 from ..clock import SystemClock
 from ..couple_access import active_member, lock_couple
 from ..database import session_scope
@@ -68,15 +69,7 @@ async def send_smooch(
         )
     )
     now = SystemClock().now()
-    recent = list(
-        await session.scalars(
-            select(Smooch.sent_at).where(
-                Smooch.couple_id == member.couple_id,
-                Smooch.sender_id == actor.id,
-                Smooch.sent_at > now - timedelta(hours=1),
-            )
-        )
-    )
+    recent = await _recent_sends(session, member.couple_id, actor.id, now)
     if prior is not None:
         return _send_response(prior, partner.display_name, len(recent))
     if payload.emoji not in EMOJIS:
@@ -98,9 +91,36 @@ async def send_smooch(
         sent_at=now,
     )
     session.add(smooch)
+    await session.flush()
+    await record_activity(
+        session,
+        member.couple_id,
+        actor.id,
+        "smooch_received",
+        f"smooch:{payload.operation_id}",
+        target_type="smooch",
+        target_id=smooch.id,
+        emoji=smooch.emoji,
+    )
     await session.commit()
     response.headers["X-RateLimit-Remaining"] = str(HOURLY_LIMIT - len(recent) - 1)
     return _send_response(smooch, partner.display_name, len(recent) + 1)
+
+
+async def _recent_sends(
+    session: AsyncSession, couple_id: UUID, sender_id: UUID, now: datetime
+) -> list[datetime]:
+    """Return this sender's rolling-hour timestamps under the couple lock."""
+
+    return list(
+        await session.scalars(
+            select(Smooch.sent_at).where(
+                Smooch.couple_id == couple_id,
+                Smooch.sender_id == sender_id,
+                Smooch.sent_at > now - timedelta(hours=1),
+            )
+        )
+    )
 
 
 def _send_response(smooch: Smooch, partner_name: str, count: int) -> SmoochResponse:

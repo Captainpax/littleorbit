@@ -6,6 +6,7 @@ import com.littleorbit.data.DisplayCacheSynchronizer;
 import com.littleorbit.data.DisplayCacheSyncWorker;
 import com.littleorbit.data.local.LocationQueueDao;
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.ActivityApiModels;
 import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.remote.LittleOrbitApi;
 import com.littleorbit.data.remote.QuizApiModels;
@@ -241,6 +242,14 @@ public final class NetworkOrbitRepository implements OrbitRepository {
             String countdownId, ApiModels.CountdownDeleteRequest request) {
         return CompletableFuture.supplyAsync(
                 () -> deleteCountdownOrQueue(countdownId, request), executor);
+    }
+
+    @Override public CompletableFuture<ActivityApiModels.Page> activity() { return async(api.activity(null, 30, false)); }
+
+    @Override
+    public CompletableFuture<Void> markActivitySeen(long throughSequence, String operationId) {
+        return CompletableFuture.runAsync(() -> executeVoid(api.markActivitySeen(
+                new ActivityApiModels.SeenRequest(throughSequence, operationId))), executor);
     }
 
     @Override

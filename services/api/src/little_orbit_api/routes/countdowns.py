@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..activity_service import record_activity
 from ..clock import SystemClock
 from ..couple_access import active_member, lock_couple
 from ..database import session_scope
@@ -116,6 +117,11 @@ async def create_countdown(
     session.add(countdown)
     await session.flush()
     _record_operation(session, member.couple_id, payload.operation_id, countdown)
+    await record_activity(
+        session, member.couple_id, actor.id, "countdown_created",
+        f"countdown:create:{payload.operation_id}", target_type="countdown",
+        target_id=countdown.id, target_title=countdown.title,
+    )
     await session.commit()
     return _response(countdown)
 
@@ -158,6 +164,11 @@ async def update_countdown(
     countdown.revision += 1
     countdown.updated_at = SystemClock().now()
     _record_operation(session, member.couple_id, payload.operation_id, countdown)
+    await record_activity(
+        session, member.couple_id, actor.id, "countdown_updated",
+        f"countdown:update:{payload.operation_id}", target_type="countdown",
+        target_id=countdown.id, target_title=countdown.title,
+    )
     await session.commit()
     return _response(countdown)
 
