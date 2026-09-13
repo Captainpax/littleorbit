@@ -358,11 +358,14 @@ public final class AndroidUpdateCoordinator {
                 return;
             }
             preferences.edit().putInt("session_id", sessionId).apply();
-            try (PackageInstaller.Session session = installer.openSession(sessionId);
-                    FileInputStream input = new FileInputStream(apk);
-                    OutputStream output = session.openWrite("little-orbit.apk", 0, apk.length())) {
-                copy(input, output);
-                session.fsync(output);
+            try (PackageInstaller.Session session = installer.openSession(sessionId)) {
+                // PackageInstaller rejects commit while any session stream remains open.
+                try (FileInputStream input = new FileInputStream(apk);
+                        OutputStream output = session.openWrite(
+                                "little-orbit.apk", 0, apk.length())) {
+                    copy(input, output);
+                    session.fsync(output);
+                }
                 if (!ownsOperation(generation)) {
                     session.abandon();
                     return;

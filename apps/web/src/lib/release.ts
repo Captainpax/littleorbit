@@ -37,22 +37,22 @@ export function hostedWearApkPath(version: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.11.1",
-  versionCode: 13,
+  version: "1.0.0-rc.11.2",
+  versionCode: 14,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "41eda9c366af6c8650197d490b56ba1d81a739de6cdc8b0c6dda123508de03d6",
+  sha256: "3faa50028016260de50fe59f8c5e7bfa381660df92d67e879d0634e6a410f44a",
   releaseNotes: [
     "Adds the RC11 Our Space, cursor-stable Markdown, private attachments, and dedicated Smooch tab.",
     "Keeps update actions visible even when a release has longer notes.",
-    "Uses a concise in-app summary; full patch notes remain on the website and GitHub.",
+    "Closes the verified APK stream before Android commits its installation session.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.11.1",
-  apkUrl: hostedApkPath("1.0.0-rc.11.1"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.11.2",
+  apkUrl: hostedApkPath("1.0.0-rc.11.2"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.11.1"),
-    sha256: "04c91cbd20b0870656cd745a5880a53586a51ad8e83112fcb7aeff0b7a40f07a",
-    sizeBytes: 14133466,
-    versionCode: 12,
+    apkUrl: hostedWearApkPath("1.0.0-rc.11.2"),
+    sha256: "3431664f1466f2241b3962c7da7d9b568bdaa04a0fd6213f14fda1c46c90d307",
+    sizeBytes: 14133462,
+    versionCode: 13,
     minimumAndroid: 30,
   },
   published: true,
