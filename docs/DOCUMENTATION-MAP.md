@@ -86,6 +86,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.10.md` — RC10 pair age, continuous proximity, Smooches, notes workspace, update discovery, and Wear recovery.
 - `docs/releases/1.0.0-rc.10.1.md` — RC10.1 Wear artifact and phone-hosted installer correction.
 - `docs/releases/1.0.0-rc.11.md` — RC11 Our Space, cursor-stable Markdown, attachments, and dedicated Smooch tab.
+- `docs/releases/1.0.0-rc.11.1.md` — corrective RC11 updater action visibility and concise in-app notes.
 <!-- documentation-inventory:end -->
 
 ## Review routing

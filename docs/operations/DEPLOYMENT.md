@@ -139,4 +139,6 @@ Take a PostgreSQL backup before migration `0013`. The deployment adds the privat
 
 Build RC11 with phone version code 12 and Wear version code 11 from `infra/scripts/build-signed-android.ps1`. Publish only the generated sizes, hashes, manifest version codes, and existing signing-certificate digest. Keep compatibility-floor enforcement unchanged unless a separate reviewed incident requires it.
 
+RC11.1 corrects the updater action layout with phone version code 13 and Wear version code 12. Its API release notes must stay concise enough for older clients whose release-note body is not scrollable; keep the full immutable explanation in `docs/releases/1.0.0-rc.11.1.md` and the GitHub release.
+
 Before publication, test an authorized synthetic image and PDF through reservation, chunk resume, clean scan, metadata removal, verified Android preview, keep-offline preview, deletion, and note-expiry cleanup. Reject an unauthorized note ID before attachment lookup, a conflicting idempotency replay, an oversized chunk, a wrong original digest, a quarantined file, and a download attempted before availability. Run both backup scripts after deployment and complete a disposable restore drill before treating attachments as production-ready.

@@ -17,6 +17,7 @@ This record covers the RC11 Our Space, Markdown, attachment, Smooch, build, and 
 - Phone: version `1.0.0-rc.11`, code 12, 35,543,921 bytes, SHA-256 `62bde4c1fc49470b15791602313e7fd65c7ee3d1022890cf39a246f4f3e7e2ce`.
 - Wear: version `1.0.0-rc.11`, code 11, 14,133,462 bytes, SHA-256 `1860cd4bb30d31d3f9af5ef20aee639e8f5a8f416f3572e35936a53c45ef4a40`.
 - Both APKs passed Android v3 signature verification, 16 KiB zip alignment, and certificate SHA-256 `43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337`.
+- Corrective RC11.1 phone code 13 is 35,543,945 bytes with SHA-256 `41eda9c366af6c8650197d490b56ba1d81a739de6cdc8b0c6dda123508de03d6`. Wear code 12 is 14,133,466 bytes with SHA-256 `04c91cbd20b0870656cd745a5880a53586a51ad8e83112fcb7aeff0b7a40f07a`; both retain the same signing certificate.
 
 ## Live stack and attachment pipeline
 
@@ -32,10 +33,11 @@ This record covers the RC11 Our Space, Markdown, attachment, Smooch, build, and 
 
 - A fresh API 36 Pixel 8 Pro emulator installed the signed phone APK and reported version code 12.
 - Cold launch completed without a crash. The update-detection consent dialog was fully visible, and the five-tab Home, Quiz, Smooch, Space, and More navigation respected the status and gesture-navigation insets.
+- A fresh RC10.1 emulator enabled automatic checks and discovered the published RC11 metadata. That real flow exposed an unreachable action button because the full Markdown release note exceeded the bottom-sheet height. RC11.1 bounds the summary and uses concise updater metadata; the corrective upgrade was rerun after publication.
 
 ## Open physical gates
 
-- The existing Pixel 8 Pro still ran RC10.1 before publication so it could exercise the real optional-update path after RC11 became available.
+- The existing Pixel 8 Pro still ran RC10.1 before publication, but it was locked during this verification window. The emulator exercised the real self-hosted optional-update path instead.
 - The complete two-real-phone shared editing, cursor/selection, conflict, every attachment preview type, Keep Offline, deletion, partner synchronization, Smooch notification, unpair archive, and reinstall flow remains open.
 - The Wear installer and watch feature did not change in RC11, but the full phone-plus-watch release-gate rerun remains open.
 - Battery, privacy/permission, backup-restore, DHCP reservation, and legal review gates in `ROADMAP.md` remain open. RC11 is a prerelease and is not the 1.0 general release.
