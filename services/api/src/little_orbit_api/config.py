@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     little_orbit_env: str = "development"
     public_base_url: str = "http://localhost:8180"
     release_storage_dir: Path = Path("data/releases")
+    attachment_storage_dir: Path = Path("data/attachments")
+    clamav_host: str = "clamav"
+    clamav_port: int = Field(default=3310, ge=1, le=65_535)
     database_url: str = "postgresql+asyncpg://little_orbit:change-me@localhost/little_orbit"
     session_secret: SecretStr = Field(default=SecretStr("development-only-change-this-secret"))
     token_pepper: SecretStr = Field(default=SecretStr("development-only-token-pepper"))

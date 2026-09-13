@@ -201,6 +201,7 @@ async def _apply(note_id: UUID, account_id: UUID, message: NoteEditMessage) -> d
             "revision": note.revision,
             "body": note.body,
             "transformed": message.base_revision != note.revision - 1,
+            "duplicate": False,
         }
 
 
@@ -210,9 +211,10 @@ def _duplicate_ack(
     return {
         "type": "note.ack",
         "operation_id": str(message.operation_id),
-        "revision": existing.resulting_revision,
+        "revision": note.revision if note else existing.resulting_revision,
         "body": note.body if note else "",
         "transformed": existing.base_revision != existing.resulting_revision - 1,
+        "duplicate": True,
     }
 
 

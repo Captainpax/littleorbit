@@ -29,6 +29,8 @@ import java.time.format.DateTimeFormatter;
 @AndroidEntryPoint
 public final class MainActivity extends InsetAwareActivity
         implements AndroidUpdateCoordinator.Listener {
+    /** Intent flag used by focused tabs to open the More destination. */
+    public static final String EXTRA_SHOW_MORE = "show_more";
     private ActivityMainBinding binding;
     private HomeViewModel model;
     private BottomSheetDialog updateSheet;
@@ -55,6 +57,7 @@ public final class MainActivity extends InsetAwareActivity
         model.state().observe(this, this::renderHome);
         bindFeatureActions();
         bindNavigation();
+        if (getIntent().getBooleanExtra(EXTRA_SHOW_MORE, false)) showMore();
         bindUpdateActions();
         notificationRequestedUpdate = getIntent().getBooleanExtra("show_update", false);
         configureAutomaticUpdates();
@@ -115,8 +118,17 @@ public final class MainActivity extends InsetAwareActivity
         binding.homeNav.setOnClickListener(view -> showHome());
         binding.moreNav.setOnClickListener(view -> showMore());
         binding.quizNav.setOnClickListener(view -> open(QuizActivity.class));
-        binding.notesNav.setOnClickListener(view -> open(NotesActivity.class));
+        binding.smoochNav.setOnClickListener(view -> open(SmoochActivity.class));
+        binding.spaceNav.setOnClickListener(view -> open(NotesActivity.class));
         showHome();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent.getBooleanExtra(EXTRA_SHOW_MORE, false)) showMore();
+        else showHome();
     }
 
     private void bindUpdateActions() {

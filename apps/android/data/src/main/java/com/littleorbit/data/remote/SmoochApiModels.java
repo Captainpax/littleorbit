@@ -88,4 +88,18 @@ public final class SmoochApiModels {
             this.emojiCounts = Map.copyOf(emojiCounts);
         }
     }
+
+    /** Current send capacity and shared weekly recap. */
+    public static final class Status {
+        @Json(name = "partner_display_name") public final String partnerName;
+        @Json(name = "remaining_this_hour") public final int remaining;
+        @Json(name = "current_week") public final Week currentWeek;
+
+        /** Creates decoded dedicated-tab state. */
+        public Status(String partnerName, int remaining, Week currentWeek) {
+            this.partnerName = partnerName;
+            this.remaining = remaining;
+            this.currentWeek = currentWeek;
+        }
+    }
 }

@@ -6,16 +6,17 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.0 release candidate. RC10.1 is published and passes the automated API, protocol, web, signed Android, repository, public-download, and physical Pixel 8 Pro-to-Pixel Watch 3 installer checks. The phone upgraded the watch from RC10's actual Wear version code 9 to RC10.1 code 10, then reconnected without another pairing code and detected the current version. Two-phone, battery, privacy/permission, DHCP-reservation, and legal review remain launch gates, so do not use the public deployment for real relationship data yet.
+> **Project status:** 1.0 release candidate. RC11 adds the concept-led Our Space and Smooch experiences, cursor-stable live Markdown editing, and private scanned attachments. Automated verification is in progress. The complete two-phone, battery, privacy/permission, DHCP-reservation, and legal review gates remain open, so do not use the public deployment for real relationship data yet.
 
 ## What 1.0 includes
 
 - Five daily questions with private-until-both-answer reveal behavior.
 - Single choice, multiple choice, free text, partner guessing, and weighted 1–5 prompts.
-- Shared countdowns and a titled multi-note workspace with live presence, offline drafts, archives, and seven-day undo.
+- Shared countdowns and a titled Markdown workspace with live presence, cursor-stable synchronization, private drafts, search, archives, and seven-day undo.
+- Couple-authorized image, PDF, text, audio, and video attachments with resumable upload, malware scanning, metadata removal, verified private previews, optional offline copies, deletion, a 100 MiB file limit, and a 2 GiB couple quota.
 - Relationship age beginning automatically at the couple's confirmed pairing instant.
 - Estimated nearby time from mutually consented, accuracy-aware location samples.
-- Private Smooches using nine fixed emoji, a five-per-hour sender limit, notifications, weekly totals, and retained history.
+- A dedicated Smooch tab using nine fixed emoji, a five-per-hour sender limit, orbit-pulse confirmation, notifications, weekly totals, and retained history.
 - Android home widget, Wear OS tile, and watch complication with refresh and honest stale states.
 - Private cropped profile photos for the couple planets on the phone and Wear launcher, with initials when a photo is absent.
 - An in-app, phone-hosted wireless-debugging installer for the self-hosted Wear APK; no computer script or app store is required.
@@ -56,7 +57,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.10.1`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.10.1) is the current public signed release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.10.1/apk) is 35,061,635 bytes with SHA-256 `0336d41bb6b6d247b6e12e52fdd9a99c0900602fc0bc5eebac99c3269d74a41b`. The phone-hosted installer uses the 14,130,630-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.10.1/wear-apk) with version code 10 and SHA-256 `89e867ef766cca38c17f7a92927afb4c0c074a1a28fbef672739f15bf3bfced8`. Both artifacts retain the pinned [signing certificate](docs/signing/README.md), and GitHub mirrors the exact files and source history. This remains a test release until the complete real-device launch gate passes.
+[`1.0.0-rc.11`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.11) is the current signed release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.11/apk) is 35,543,921 bytes with SHA-256 `62bde4c1fc49470b15791602313e7fd65c7ee3d1022890cf39a246f4f3e7e2ce`. The phone-hosted installer uses the 14,133,462-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.11/wear-apk) with version code 11 and SHA-256 `1860cd4bb30d31d3f9af5ef20aee639e8f5a8f416f3572e35936a53c45ef4a40`. Both artifacts retain the pinned [signing certificate](docs/signing/README.md), and GitHub mirrors the exact files and source history. This remains a test release until the complete real-device launch gate passes.
 
 ## Privacy promise
 
@@ -75,7 +76,7 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Deployment runbook](docs/operations/DEPLOYMENT.md)
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
 - [Documentation map](docs/DOCUMENTATION-MAP.md)
-- [Latest verification record](docs/operations/VERIFICATION-RC10.1-2026-09-12.md)
+- [Latest verification record](docs/operations/VERIFICATION-RC11-2026-09-12.md)
 
 ## License and support
 

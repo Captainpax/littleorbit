@@ -14,12 +14,18 @@ flowchart TD
     Gateway -->|all other paths| Web[Next.js]
     Gateway -->|/api/* and /ws/*| API[FastAPI]
     API --> DB[(PostgreSQL)]
+    Init[One-shot volume ownership init] --> Files[(Private attachment volume)]
+    API --> Files
     API -. healthy after Alembic reaches head .-> Worker
     Worker[Worker] --> DB
     Worker --> AI[AI adapter]
     AI --> Ollama[Ollama<br/>no published port]
     Ollama -. model install only .-> Registry[Ollama model registry]
     Worker --> SMTP[SMTP adapter]
+    Worker -->|expired-note cleanup| Files
+    MediaWorker[Media worker] --> DB
+    MediaWorker --> Files
+    MediaWorker --> ClamAV[ClamAV<br/>internal network only]
 
     Untrusted[Other LAN peer] -. spoofed X-Forwarded-For .-> Gateway
     Gateway -. ignore forwarded headers .-> Untrusted
@@ -62,14 +68,14 @@ sequenceDiagram
     participant API
     participant DB as PostgreSQL
     participant B as Partner B
-    A->>API: WSS authenticate + subscribe(note_id)
+    A->>API: Open one WSS editor session(note_id)
     API->>DB: Authorize actor before note lookup
     API-->>A: Snapshot(revision N) + unique-account presence
     A->>API: Operation(op_id, base N, insert/delete)
     API->>DB: Lock note; dedupe op_id; transform; append revision N+1
-    API-->>A: Ack(op_id, revision N+1)
+    API-->>A: Ack(op_id, current body, revision N+1)
     API-->>B: Applied operation(revision N+1)
-    Note over A,B: Body input debounces 750 ms;<br/>out-of-order or duplicate operations are idempotent
+    Note over A,B: Body input debounces 750 ms;<br/>ack patches preserve cursor/selection;<br/>duplicate operation IDs return current state
     A--xAPI: Disconnect
     Note over A: Preserve draft and base revision
     A->>API: Reconnect with base revision
@@ -79,6 +85,44 @@ sequenceDiagram
     API->>DB: Lock couple + note; dedupe; increment metadata revision
     Note over DB: Archived notes reject body operations<br/>and remain restorable for 7 days
 ```
+
+## Private note attachments
+
+```mermaid
+sequenceDiagram
+    actor A as Current partner
+    participant API
+    participant DB as PostgreSQL
+    participant Files as Private volume
+    participant Media as Media worker
+    participant AV as ClamAV
+    A->>API: Reserve(note_id, op_id, name, type, bytes, SHA-256)
+    API->>DB: Authorize before note lookup; lock couple; reserve quota
+    API-->>A: Stable attachment ID + exact upload offset
+    loop Bounded 1 MiB client chunks
+        A->>API: PUT bytes with Upload-Offset
+        API->>Files: Append at locked offset
+        API-->>A: Current offset and state
+    end
+    API->>DB: Mark pending_scan only after original SHA-256 matches
+    Media->>Files: Stream staged file
+    Media->>AV: INSTREAM scan on isolated network
+    AV-->>Media: Clean, found, or unavailable
+    alt clean and sanitization succeeds
+        Media->>Files: Write metadata-free type-specific copy
+        Media->>DB: Store sanitized size/hash; mark available
+        A->>API: GET sanitized content
+        API->>DB: Reauthorize current couple and note
+        API-->>A: Private no-store bytes + exact digest
+    else scanner unavailable
+        Media->>DB: Return to pending_scan for bounded retry
+    else unsafe or invalid
+        Media->>DB: Mark rejected with content-free reason
+        Media->>Files: Delete staged and output bytes
+    end
+```
+
+The API accepts only the allow-listed media types, at most 100 MiB per file and 2 GiB per current couple. Request streams are bounded before buffering, operation-ID replays must describe the same bytes, and neither staging nor ClamAV has a published port. Android verifies the sanitized hash before preview or **Keep offline**. Deletion removes server bytes immediately; note expiry removes remaining volume objects after the database transaction.
 
 ## Daily AI generation
 

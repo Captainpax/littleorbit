@@ -37,6 +37,8 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Quiz responses remain hidden until both partners submit.
 - Intimacy questions require both partners' current opt-in; either opt-out takes effect immediately.
 - Note operation IDs are idempotent and server revisions increase monotonically.
+- Note attachments authorize the current couple before lookup, reserve bounded quota, remain unavailable until a clean scan and metadata-removal pass, and are verified by their sanitized digest before preview.
+- Note attachment uploads use exact offsets and stable operation IDs; unscanned bytes are never served, private files remain couple-authorized, and deletion or note purge removes stored bytes.
 - Note presence counts unique authenticated accounts; archived notes reject content operations and are recoverable for seven days.
 - Relationship age begins at the immutable confirmed pairing instant. Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates.
 - A Smooch uses one approved emoji and phrase key, is limited to five sends per account in a rolling hour, survives unpairing in private archives, and is erased when either original participant deletes their account.

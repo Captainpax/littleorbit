@@ -12,11 +12,13 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 
 - Expose only gateway port `8180`. Never publish API, web, PostgreSQL, Ollama, or production Mailpit ports.
 - Keep application callers off Ollama's model-download egress bridge; only Ollama joins it, and only the worker plus one-shot initializer join the internal AI network.
+- Keep ClamAV and the media worker on an internal-only network. Share attachment bytes only through the private volume; pair its encrypted backup with the matching PostgreSQL dump and verify manifests before restore.
 - Pin image versions and the validated Ollama model digest. Never use `latest`.
 - Keep secrets in environment/secret files outside Git and redact diagnostic output.
 - Permit forwarded headers only from `192.168.50.6` and restrict Windows Firewall port 8180 to that source for production.
 - Use bounded container logs, health checks, restart policies, automated database backups, retention, and a tested restore path.
 - Start migration-aware workers only after the API health check proves Alembic reached head; a healthy database alone does not prove the current schema exists.
+- Keep attachment staging, sanitized bytes, the media worker, and ClamAV private. A one-shot root init may assign fresh-volume ownership; every long-running app container stays unprivileged. Back up the attachment volume beside PostgreSQL and verify its manifest before a restore.
 - Do not enable HSTS until HTTPS, certificate renewal, rollback, and direct recovery access are verified.
 - Never run destructive Compose, volume, database, firewall, DHCP, DNS, or proxy actions without inspecting the target state.
 - Copy immutable signed APK bytes into the ignored release directory and publish phone/Wear codes, sizes, hashes, and signer only from the generated `release-manifest.json`. Independently inspect both APK manifests, then verify API range responses. Keep GitHub as a release mirror. Run migrations and health checks before a version floor can be scheduled.

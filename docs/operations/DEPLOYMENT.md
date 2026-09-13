@@ -132,3 +132,11 @@ physical watch from the actual RC10 Wear version code 9 to RC10.1 code 10. Confi
 pairing, remembered reconnect without a new code, package-session completion, launcher
 start, and a second current-version inspection. Never place local addresses, ports,
 pairing codes, fingerprints, or raw transport errors in release evidence.
+
+## RC11 Our Space and Smooch release
+
+Take a PostgreSQL backup before migration `0013`. The deployment adds the private `attachment-data` and `clamav-data` volumes, a one-shot `attachment-init`, `media-worker`, and internal-only `clamav` service. The init container assigns a fresh attachment volume to the unprivileged application user before the API starts. No attachment service publishes a host port. Wait for ClamAV health and current signatures, API migration head, worker/media-worker startup, and gateway health before accepting uploads. Confirm the owner console reports attachment queue counts without filenames or content.
+
+Build RC11 with phone version code 12 and Wear version code 11 from `infra/scripts/build-signed-android.ps1`. Publish only the generated sizes, hashes, manifest version codes, and existing signing-certificate digest. Keep compatibility-floor enforcement unchanged unless a separate reviewed incident requires it.
+
+Before publication, test an authorized synthetic image and PDF through reservation, chunk resume, clean scan, metadata removal, verified Android preview, keep-offline preview, deletion, and note-expiry cleanup. Reject an unauthorized note ID before attachment lookup, a conflicting idempotency replay, an oversized chunk, a wrong original digest, a quarantined file, and a download attempted before availability. Run both backup scripts after deployment and complete a disposable restore drill before treating attachments as production-ready.

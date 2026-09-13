@@ -5,6 +5,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 COPY services/api/pyproject.toml ./services/api/pyproject.toml
 COPY services/api/src ./services/api/src
 COPY services/api/alembic.ini ./services/api/alembic.ini

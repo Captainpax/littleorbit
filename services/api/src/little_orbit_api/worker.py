@@ -18,6 +18,8 @@ from little_orbit_ai.schemas import CandidateQuestion, Category, IconKey, Questi
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .attachment_models import NoteAttachment
+from .attachment_storage import available_path, staging_path
 from .clock import SystemClock
 from .config import get_settings
 from .database import SessionFactory
@@ -48,6 +50,7 @@ async def run_maintenance_once() -> None:
 
     now = SystemClock().now()
     async with SessionFactory() as session:
+        attachment_keys = await _expired_note_attachment_keys(session, now)
         await session.execute(delete(LocationSample).where(LocationSample.expires_at <= now))
         await session.execute(
             delete(OneUseToken).where(
@@ -91,6 +94,35 @@ async def run_maintenance_once() -> None:
         for job in jobs:
             await _complete_deletion_job(session, job, now)
         await session.commit()
+    await _delete_attachment_files(attachment_keys)
+
+
+async def _expired_note_attachment_keys(
+    session: AsyncSession, now: datetime
+) -> list[str]:
+    """Capture private file keys before cascading expired-note metadata."""
+
+    expired_notes = select(Note.id).where(
+        Note.purge_after.is_not(None), Note.purge_after <= now
+    )
+    return list(
+        await session.scalars(
+            select(NoteAttachment.storage_key).where(
+                NoteAttachment.note_id.in_(expired_notes)
+            )
+        )
+    )
+
+
+async def _delete_attachment_files(storage_keys: list[str]) -> None:
+    """Remove both unpublished and sanitized bytes after metadata commits."""
+
+    root = get_settings().attachment_storage_dir
+    for storage_key in storage_keys:
+        await asyncio.gather(
+            asyncio.to_thread(staging_path(root, storage_key).unlink, True),
+            asyncio.to_thread(available_path(root, storage_key).unlink, True),
+        )
 
 
 async def _complete_deletion_job(

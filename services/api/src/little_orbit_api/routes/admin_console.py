@@ -11,6 +11,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
+from ..attachment_models import NoteAttachment
 from ..clock import SystemClock
 from ..database import session_scope
 from ..dependencies import current_admin
@@ -78,6 +79,12 @@ async def overview(
             "scheduler": "covered" if covered >= 7 else "building_coverage",
             "scheduler_days_covered": covered,
             "storage": "operational",
+            "attachment_scan_pending": await _row_count(
+                session, NoteAttachment, NoteAttachment.status.in_(("pending_scan", "scanning"))
+            ),
+            "attachment_rejected": await _row_count(
+                session, NoteAttachment, NoteAttachment.status == "rejected"
+            ),
             "release": "published"
             if await _row_count(session, ApkRelease, ApkRelease.published_at.is_not(None))
             else "not_published",

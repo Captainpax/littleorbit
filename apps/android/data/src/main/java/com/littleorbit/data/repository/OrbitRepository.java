@@ -7,6 +7,7 @@ import com.littleorbit.data.remote.SmoochApiModels;
 import com.littleorbit.data.remote.TogetherTimeModels;
 import java.util.List;
 import java.util.Map;
+import java.io.File;
 import java.util.concurrent.CompletableFuture;
 
 /** Authenticated application boundary used by Android presentation code. */
@@ -111,6 +112,9 @@ public interface OrbitRepository {
     /** Sends one of the fixed Smooch choices. */
     CompletableFuture<SmoochApiModels.Sent> sendSmooch(SmoochApiModels.SendRequest request);
 
+    /** Loads current Smooch capacity and the current non-competitive week recap. */
+    CompletableFuture<SmoochApiModels.Status> smoochStatus();
+
     /** Loads pending partner Smooches for notification. */
     CompletableFuture<List<SmoochApiModels.Delivery>> pendingSmooches();
 
@@ -158,6 +162,20 @@ public interface OrbitRepository {
     /** Restores one archived note idempotently. */
     CompletableFuture<NoteApiModels.Note> restoreNote(
             String noteId, NoteApiModels.ArchiveRequest request);
+
+    /** Lists authorized attachments including upload and scan state. */
+    CompletableFuture<List<NoteApiModels.Attachment>> noteAttachments(String noteId);
+
+    /** Uploads one selected private file through bounded resumable chunks. */
+    CompletableFuture<NoteApiModels.Attachment> uploadNoteAttachment(
+            String noteId, String displayName, String mediaType, File file);
+
+    /** Downloads verified sanitized bytes into the private preview cache. */
+    CompletableFuture<File> downloadNoteAttachment(
+            String noteId, NoteApiModels.Attachment attachment);
+
+    /** Deletes private attachment bytes and metadata visibility for the current couple. */
+    CompletableFuture<Void> deleteNoteAttachment(String noteId, String attachmentId);
 
     /** Loads revocable privacy settings. */
     CompletableFuture<ApiModels.Preferences> preferences();

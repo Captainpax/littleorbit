@@ -61,9 +61,13 @@ services:
       - ../.env
     environment:
       RELEASE_STORAGE_DIR: /var/lib/little-orbit/releases
+      ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
     volumes:
       - ../data/releases:/var/lib/little-orbit/releases:ro
+      - attachment-data:/var/lib/little-orbit/attachments
     depends_on:
+      attachment-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
     networks:
@@ -75,6 +79,21 @@ services:
       retries: 5
     logging: *bounded-logging
 
+  attachment-init:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    user: "0:0"
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - install -d -o 65532 -g 65532 /var/lib/little-orbit/attachments
+    volumes:
+      - attachment-data:/var/lib/little-orbit/attachments
+    network_mode: none
+    logging: *bounded-logging
+
   worker:
     build:
       context: ..
@@ -83,6 +102,10 @@ services:
     command: ["python", "-m", "little_orbit_api.worker"]
     env_file:
       - ../.env
+    environment:
+      ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
+    volumes:
+      - attachment-data:/var/lib/little-orbit/attachments
     depends_on:
       api:
         condition: service_healthy
@@ -93,6 +116,47 @@ services:
     networks:
       - private
       - ai-private
+    logging: *bounded-logging
+
+  media-worker:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    restart: unless-stopped
+    command: ["python", "-m", "little_orbit_api.attachment_media"]
+    env_file:
+      - ../.env
+    environment:
+      ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+    volumes:
+      - attachment-data:/var/lib/little-orbit/attachments
+    depends_on:
+      api:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+    networks:
+      - private
+      - media-private
+    logging: *bounded-logging
+
+  clamav:
+    image: clamav/clamav:1.4.6-debian13-slim
+    restart: unless-stopped
+    expose:
+      - "3310"
+    volumes:
+      - clamav-data:/var/lib/clamav
+    networks:
+      - media-private
+    healthcheck:
+      test: ["CMD-SHELL", "clamdscan --ping 1 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
     logging: *bounded-logging
 
   postgres:
@@ -158,8 +222,12 @@ networks:
   private:
   ai-private:
     internal: true
+  media-private:
+    internal: true
   model-egress:
 
 volumes:
   postgres-data:
   ollama-data:
+  attachment-data:
+  clamav-data:

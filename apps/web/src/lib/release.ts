@@ -37,24 +37,23 @@ export function hostedWearApkPath(version: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.10.1",
-  versionCode: 11,
+  version: "1.0.0-rc.11",
+  versionCode: 12,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "0336d41bb6b6d247b6e12e52fdd9a99c0900602fc0bc5eebac99c3269d74a41b",
+  sha256: "62bde4c1fc49470b15791602313e7fd65c7ee3d1022890cf39a246f4f3e7e2ce",
   releaseNotes: [
-    "Corrects the RC10 Wear version mismatch with a new immutable version-code-10 artifact.",
-    "Repairs Kadb's lazy connection check with an authenticated command.",
-    "Tracks Android 17 wireless-debug service updates and changing ports continuously.",
-    "Uses public Conscrypt APIs without a hidden-API bypass.",
-    "Commits the verified Wear APK through an explicit package-install session.",
+    "Introduces the concept-led Our Space library and focused Markdown editor.",
+    "Keeps the cursor stable while live note acknowledgements and partner edits arrive.",
+    "Adds private resumable attachments with malware scanning, metadata removal, and verified previews.",
+    "Moves Smooches into a centered fifth tab with weekly status and history.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.10.1",
-  apkUrl: hostedApkPath("1.0.0-rc.10.1"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.11",
+  apkUrl: hostedApkPath("1.0.0-rc.11"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.10.1"),
-    sha256: "89e867ef766cca38c17f7a92927afb4c0c074a1a28fbef672739f15bf3bfced8",
-    sizeBytes: 14130630,
-    versionCode: 10,
+    apkUrl: hostedWearApkPath("1.0.0-rc.11"),
+    sha256: "1860cd4bb30d31d3f9af5ef20aee639e8f5a8f416f3572e35936a53c45ef4a40",
+    sizeBytes: 14133462,
+    versionCode: 11,
     minimumAndroid: 30,
   },
   published: true,
@@ -139,7 +138,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-13T02:11:36.100345Z",
+    publishedAt: "2026-09-13T04:42:00Z",
   }];
 }
 

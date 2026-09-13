@@ -17,6 +17,7 @@ from ..interaction_schemas import (
     SmoochDelivery,
     SmoochDeliveryAck,
     SmoochResponse,
+    SmoochStatus,
     SmoochWeekSummary,
 )
 from ..models import Account, Couple, CoupleMember
@@ -110,6 +111,46 @@ def _send_response(smooch: Smooch, partner_name: str, count: int) -> SmoochRespo
         partner_display_name=partner_name,
         sent_at=smooch.sent_at,
         remaining_this_hour=max(0, HOURLY_LIMIT - count),
+    )
+
+
+@router.get("/status", response_model=SmoochStatus)
+async def smooch_status(
+    actor: Account = Depends(current_account),
+    session: AsyncSession = Depends(session_scope),
+) -> SmoochStatus:
+    """Return current rolling capacity and this week without exposing message content."""
+
+    member = await active_member(session, actor.id)
+    partner = await _partner(session, member)
+    couple = await session.get(Couple, member.couple_id)
+    if couple is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
+    now = SystemClock().now()
+    recent = list(
+        await session.scalars(
+            select(Smooch.sent_at).where(
+                Smooch.couple_id == member.couple_id,
+                Smooch.sender_id == actor.id,
+                Smooch.sent_at > now - timedelta(hours=1),
+            )
+        )
+    )
+    start = week_start(now, couple.home_timezone)
+    lower, upper = week_bounds_utc(start, couple.home_timezone)
+    rows = list(
+        await session.scalars(
+            select(Smooch).where(
+                Smooch.couple_id == member.couple_id,
+                Smooch.sent_at >= lower,
+                Smooch.sent_at < upper,
+            )
+        )
+    )
+    return SmoochStatus(
+        partner_display_name=partner.display_name,
+        remaining_this_hour=max(0, HOURLY_LIMIT - len(recent)),
+        current_week=_week_summary(rows, actor.id, start, couple.home_timezone),
     )
 
 

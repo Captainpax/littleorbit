@@ -15,7 +15,8 @@ This document describes the intended 1.0 behavior while the project is under dev
 | Confirmed pairing instant | Derive relationship age without collecting a separate personal date | Current couple only | Retained with the couple and private unpair archive references |
 | Quiz drafts and responses | Private revisioned editing, then one reveal after both people finish all five | Author before reveal; current couple after reveal | Until user deletion/export policy applies |
 | Quiz status polling | Notify about partner completion or shared reveal | Device owner; content-free server response | Latest UTC date and booleans in private app storage |
-| Plain-text notes, titles, presence, and revision history | Shared editing, organization, and recovery | Current couple only; presence contains account identity, never note text | Archived notes remain restorable for seven days, then are purged; unpair archives remain private |
+| Markdown notes, titles, presence, and revision history | Shared editing, organization, and recovery | Current couple only; presence contains account identity, never note text | Archived notes remain restorable for seven days, then are purged; unpair archives remain private |
+| Note attachments and scan state | Share deliberately attached images, PDFs, text, audio, and video | Current couple only; admins see queue counts, never filenames or bytes | Until attachment deletion, note purge, or account/couple erasure; backup copies follow bounded backup expiry |
 | Smooch emoji, phrase key, sender, and send time | Deliver a private small signal and calculate weekly totals/history | Current couple and each person's private old-pairing archive; no admin content viewer | Retained across unpairing; permanently erased if either participant account is deleted |
 | Smooch encrypted outbox and notification preference | Retry deliberate sends and control lock-screen wording | Device owner only | At most five queued sends for 15 minutes; preference remains until app data removal |
 | Countdown details | Shared events and reminders | Current couple only | Until deleted/archive policy applies |
@@ -34,9 +35,17 @@ Unpairing stops new sharing immediately, including access to a former partner's 
 
 The phone crops a chosen image to a square before upload. The server decodes JPEG, PNG, or WebP input, applies orientation, removes source metadata, and creates bounded 512-pixel and 128-pixel WebP variants. Only the owner and current partner can fetch them. The phone keeps encrypted thumbnails and sends authorized names and thumbnails through the private Wearable Data Layer. The Wear launcher stores them in app-private files. Home widgets, tiles, and complications remain text-only.
 
+## Our Space and attachments
+
+Notes use Markdown text, but raw HTML is rendered as text and remote images are converted to deliberate links so opening a note cannot silently contact a third-party image host. The Android editor keeps an app-private draft with its base revision. Acknowledgements patch only the changed range and preserve the selection; unsafe revision divergence shows both versions for an explicit choice.
+
+The picker accepts JPEG, PNG, WebP, GIF, PDF, plain text, Markdown, MP3, M4A, Ogg, MP4, and WebM. A file is limited to 100 MiB and the current couple is limited to 2 GiB. Uploads use stable operation IDs and exact offsets, and unscanned bytes stay in a private staging volume. ClamAV must report the file clean, then a type-specific sanitizer removes image, PDF, audio, or video metadata before the API makes the sanitized bytes available. Scanner outages fail closed and leave the item pending; malformed, infected, oversized, or unsanitizable content is quarantined or rejected. The API and owner console never expose attachment content or filenames to administrators.
+
+Previews download only after current authorization and verify the sanitized SHA-256 digest. Temporary previews use the app cache. **Keep offline** copies a selected sanitized file into app-private storage until the person removes that copy, deletes the attachment, clears app data, or uninstalls Little Orbit. Audio and video previews are handed to a compatible installed viewer with a temporary read-only grant. Deleting an attachment hides it immediately for both partners and removes staging, available, cached, and kept-offline copies as each component next handles it. Note purge also removes its server files.
+
 ## Administrative access
 
-The owner console exposes account state, service health, security events, batch status, reports, and privacy-safe counts. It has no route or viewer for note text, quiz answers, precise locations, or couple exports. Secrets are redacted at the API boundary and again in the web view.
+The owner console exposes account state, service health, security events, batch status, attachment scan/rejection counts, reports, and privacy-safe counts. It has no route or viewer for note text, attachment names or bytes, quiz answers, precise locations, or couple exports. Secrets are redacted at the API boundary and again in the web view.
 
 Daily quiz notifications poll only the UTC date, state revision, and completion/reveal booleans. The polling response contains no prompt or answer content. Android may deliver the notification 15 minutes or more after the change because WorkManager controls timing. If either person disables intimacy questions, unrevealed intimacy prompts are replaced immediately, affected drafts are deleted, and both completion markers are reset so the replacement must be reviewed.
 

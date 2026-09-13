@@ -11,6 +11,7 @@ import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
+import retrofit2.http.Header;
 import retrofit2.http.Streaming;
 
 /** Versioned Little Orbit HTTP contract used by repositories only. */
@@ -187,9 +188,43 @@ public interface LittleOrbitApi {
     Call<NoteApiModels.Note> restoreNote(
             @Path("noteId") String noteId, @Body NoteApiModels.ArchiveRequest request);
 
+    /** Lists private attachment metadata for one current note. */
+    @GET("api/v1/notes/{noteId}/attachments")
+    Call<java.util.List<NoteApiModels.Attachment>> noteAttachments(
+            @Path("noteId") String noteId);
+
+    /** Reserves couple quota and a stable resumable upload target. */
+    @POST("api/v1/notes/{noteId}/attachments")
+    Call<NoteApiModels.AttachmentUpload> createNoteAttachment(
+            @Path("noteId") String noteId, @Body NoteApiModels.AttachmentCreate request);
+
+    /** Appends one bounded attachment chunk at an exact byte offset. */
+    @Headers("Content-Type: application/octet-stream")
+    @PUT("api/v1/notes/{noteId}/attachments/{attachmentId}/content")
+    Call<NoteApiModels.Attachment> uploadNoteAttachmentChunk(
+            @Path("noteId") String noteId,
+            @Path("attachmentId") String attachmentId,
+            @Header("Upload-Offset") long offset,
+            @Body okhttp3.RequestBody bytes);
+
+    /** Downloads only sanitized, scanned attachment bytes. */
+    @Streaming
+    @GET("api/v1/notes/{noteId}/attachments/{attachmentId}/content")
+    Call<okhttp3.ResponseBody> downloadNoteAttachment(
+            @Path("noteId") String noteId, @Path("attachmentId") String attachmentId);
+
+    /** Deletes one attachment after current couple authorization. */
+    @DELETE("api/v1/notes/{noteId}/attachments/{attachmentId}")
+    Call<Void> deleteNoteAttachment(
+            @Path("noteId") String noteId, @Path("attachmentId") String attachmentId);
+
     /** Sends one fixed-emoji Smooch idempotently. */
     @POST("api/v1/smooches")
     Call<SmoochApiModels.Sent> sendSmooch(@Body SmoochApiModels.SendRequest request);
+
+    /** Loads current rate capacity and weekly recap for the dedicated Smooch tab. */
+    @GET("api/v1/smooches/status")
+    Call<SmoochApiModels.Status> smoochStatus();
 
     /** Loads pending Smooch notifications for this recipient. */
     @GET("api/v1/smooches/pending")

@@ -27,3 +27,5 @@ Open an issue for broad feature or privacy changes. Keep pull requests focused, 
 Before requesting review, run the commands in the closest `AGENTS.md`. Include the checks you actually ran and any device, GPU, browser, or production check that remains outstanding.
 
 Protocol changes must add versioned valid and invalid fixtures. Security or privacy fixes should follow the private reporting process in `SECURITY.md` rather than starting with a public issue.
+
+Attachment work must exercise both the JSON contract and private bytes. Use synthetic fixtures, preserve the authorization-before-lookup order, bound streams before buffering, and verify that scanner failures leave bytes unavailable. Changes to supported types or storage must update the privacy, security, network, backup, deployment, third-party, release, and roadmap documents in the same pull request.

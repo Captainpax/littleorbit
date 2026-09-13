@@ -90,6 +90,14 @@ class SmoochWeekSummary(StrictModel):
     emoji_counts: dict[str, int]
 
 
+class SmoochStatus(StrictModel):
+    """Current send capacity and warm shared recap for the dedicated tab."""
+
+    partner_display_name: str
+    remaining_this_hour: int = Field(ge=0, le=5)
+    current_week: SmoochWeekSummary
+
+
 class NoteHistoryEntry(StrictModel):
     """Applied note operation for revision history and reconciliation."""
 

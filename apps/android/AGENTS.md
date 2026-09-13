@@ -20,6 +20,8 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 - Widgets and wear surfaces read a minimal cache containing together-time, next countdown, update instant, and no relationship content.
 - Every cached surface shows when data is stale or unavailable.
 - Offline changes need stable operation IDs. Preserve note drafts when the server revision diverges. Bind asynchronous note results to the note ID that initiated them.
+- Keep one WSS session per open note, preserve UTF-16 cursor/selection while applying code-point server edits, render Markdown without raw HTML or automatic remote images, and verify sanitized attachment hashes before preview or app-private offline retention.
+- Our Space renders CommonMark/GFM without raw HTML or automatic remote images. Preserve cursor and selection when acknowledgements arrive. Attachment previews must verify sanitized hashes, stay app-private, and remove stale offline copies after deletion, unpairing, or account changes.
 - Queue at most five encrypted Smooch sends for at most 15 minutes. Never manufacture delivery after expiration, and keep lock-screen content private by default.
 - Release APKs require all four `ANDROID_SIGNING_*` values, use the same protected key for phone and Wear OS, and must pass `apksigner verify` before publication. Never commit or replace the private release key.
 - Build against Android SDK 37 with Java 17 source. Keep target SDK 36 until the Android 17 local-network permission migration is designed and tested.

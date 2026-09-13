@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 const protocol = path.resolve(process.cwd(), "../../protocol");
 const contracts = [
   ["v1", "location-batch"], ["v1", "note-operation"],
+  ["v1", "note-attachment"],
   ["v1", "pairing"], ["v1", "question-batch"],
   ["v1", "orbit-profile"], ["v1", "release-history"],
   ["v1", "smooch"],

@@ -22,6 +22,14 @@ The companion study defines the updater and settings direction: the same planet 
 
 This generated RC5 design study is the visual target for daily questions. The implementation uses one focused card, five progress segments, question-specific controls, private drafts, an explicit Review and Finish step, and a calm side-by-side reveal. Partner guessing records each person's own choice and guess, then celebrates a match without points or rankings.
 
+![RC11 Our Space concept showing the document library, Markdown editor, attachment tray, preview, and conflict recovery](docs/assets/android-our-space-rc11-concept.png)
+
+RC11 makes shared notes feel like a small couple library. The library leads with search and recent documents; opening one moves into a focused Edit/Preview workspace. Formatting helpers insert ordinary Markdown, attachments sit beside their reference at the cursor, and concurrent changes preserve both versions when automatic reconciliation is unsafe.
+
+![RC11 Smooch concept showing the centered tab, emoji picker, orbit pulse, weekly total, and history](docs/assets/android-smooches-rc11-concept.png)
+
+Smooches now have their own centered destination. The primary screen keeps the selected emoji and partner at the center, shows the remaining rolling-hour allowance before sending, and turns successful delivery into a warm orbit pulse. Weekly memories use shared totals and emoji distribution without rankings.
+
 ### Current Android implementation
 
 ![Implemented signed-out RC8 home on an API 36 emulator](docs/assets/android-home-rc8-emulator.png)
@@ -30,7 +38,7 @@ This generated RC5 design study is the visual target for daily questions. The im
 
 ![Implemented RC3 More screen on an API 36 emulator](docs/assets/android-more-rc3.png)
 
-The RC8 API 36 emulator capture verifies the refreshed signed-out planet hierarchy, action treatment, icon navigation, and status/navigation-bar insets. The earlier RC3 captures preserve the first implemented Inter type system, persistent navigation, More hierarchy, and Wear update boundary. RC4 changed the verified download transport and RC5 brought the daily quiz into the same visual system. RC6 separated relationship age and nearby-time, added guided device setup, and refreshed the widget, tile, and complication cache contract. RC9 gives a revealed quiz a fixed action above navigation, moves widget rendering into lifecycle-safe background work, and adds an inset-safe crop screen. RC10 derives relationship age from pairing, places Smooches at the center spark and in More, turns Notes into a titled workspace with presence and archive recovery, and keeps update availability visible after a one-time optional prompt. RC10.1 physically verifies phone-hosted pairing, remembered reconnect, and session-based installation on a Pixel 8 Pro and Pixel Watch 3. Paired two-phone and live-data captures still remain open.
+The RC8 API 36 emulator capture verifies the refreshed signed-out planet hierarchy, action treatment, icon navigation, and status/navigation-bar insets. The earlier RC3 captures preserve the first implemented Inter type system, persistent navigation, More hierarchy, and Wear update boundary. RC4 changed the verified download transport and RC5 brought the daily quiz into the same visual system. RC6 separated relationship age and nearby-time, added guided device setup, and refreshed the widget, tile, and complication cache contract. RC9 gives a revealed quiz a fixed action above navigation, moves widget rendering into lifecycle-safe background work, and adds an inset-safe crop screen. RC10 derives relationship age from pairing and introduces Smooches and a multi-note workspace. RC10.1 physically verifies phone-hosted pairing, remembered reconnect, and session-based installation on a Pixel 8 Pro and Pixel Watch 3. RC11 completes the five-tab navigation, gives Smooches a dedicated concept-led screen, and rebuilds Notes as Our Space with Markdown and private attachments. Paired two-phone and live-data captures remain open.
 
 ![Signed RC7 Wear OS fallback state on a round Wear OS 5 emulator](docs/assets/wear-rc7-signed-emulator.png)
 
@@ -77,3 +85,4 @@ The console exposes service health, delivery and generation status, moderation q
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.
 - [ ] Two-device flow: pairing through unpair archive on physical phones.
 - [ ] Updater: first-launch opt-in, once-per-process prompt, six-hour discovery, optional deferral, stalled/interrupted recovery, corrupt APK rejection, Android install approval, and scheduled compatibility floor on a physical phone.
+- [ ] Our Space on two phones: cursor stability during acknowledgements, simultaneous emoji edits, reconnect, explicit conflict choices, attachment scan/rejection, offline preview, delete, archive purge, and quota boundaries.

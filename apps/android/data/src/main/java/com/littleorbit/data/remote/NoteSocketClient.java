@@ -2,9 +2,13 @@ package com.littleorbit.data.remote;
 
 import com.littleorbit.data.BuildConfig;
 import com.littleorbit.data.security.SessionStore;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import okhttp3.OkHttpClient;
@@ -15,11 +19,17 @@ import okhttp3.WebSocketListener;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/** Authenticated WSS client for deterministic code-point note operations. */
+/** One persistent authenticated WSS session for deterministic code-point note edits. */
 @Singleton
 public final class NoteSocketClient {
     private final OkHttpClient client;
     private final SessionStore sessions;
+    private final ScheduledExecutorService reconnects =
+            Executors.newSingleThreadScheduledExecutor(runnable -> {
+                Thread thread = new Thread(runnable, "note-wss-reconnect");
+                thread.setDaemon(true);
+                return thread;
+            });
 
     /** Creates a socket boundary that sends tokens only in an authorization header. */
     @Inject
@@ -28,47 +38,18 @@ public final class NoteSocketClient {
         this.sessions = sessions;
     }
 
-    /** Replaces a local draft through one or two operational-transform edits. */
-    public Connection replace(
-            String noteId,
-            int baseRevision,
-            String oldBody,
-            String newBody,
-            Listener listener) {
-        List<Operation> operations = editPlan(oldBody, newBody);
-        if (operations.isEmpty()) {
-            listener.onSynced(oldBody, baseRevision);
-            return () -> {};
-        }
+    /** Opens one editor connection that owns observation, edits, acknowledgements, and retry. */
+    public EditorConnection openEditor(
+            String noteId, String serverBody, int revision, Listener listener) {
         String token = sessions.read().orElse(null);
         if (token == null) {
             listener.onFailure();
-            return () -> {};
+            return EditorConnection.closed();
         }
-        Request request = versionedRequest()
-                .url("wss://lil-orb.pax-kun.com/ws/v1/notes/" + noteId)
-                .header("Authorization", "Bearer " + token)
-                .build();
-        SyncListener socketListener = new SyncListener(
-                operations, baseRevision, listener);
-        WebSocket socket = client.newWebSocket(request, socketListener);
-        socketListener.attach(socket);
-        return () -> socket.close(1000, "screen closed");
-    }
-
-    /** Keeps a note subscribed so the partner's acknowledged edits arrive live. */
-    public Connection observe(String noteId, Listener listener) {
-        String token = sessions.read().orElse(null);
-        if (token == null) {
-            listener.onFailure();
-            return () -> {};
-        }
-        Request request = versionedRequest()
-                .url("wss://lil-orb.pax-kun.com/ws/v1/notes/" + noteId)
-                .header("Authorization", "Bearer " + token)
-                .build();
-        WebSocket socket = client.newWebSocket(request, new ObserveListener(listener));
-        return () -> socket.close(1000, "screen closed");
+        EditorSession session = new EditorSession(
+                noteId, token, serverBody, revision, listener);
+        session.open();
+        return session;
     }
 
     private static Request.Builder versionedRequest() {
@@ -80,27 +61,14 @@ public final class NoteSocketClient {
                         Integer.toString(BuildConfig.CLIENT_VERSION_CODE));
     }
 
-    private static List<Operation> editPlan(String oldBody, String newBody) {
+    static List<Operation> editPlan(String oldBody, String newBody) {
         int[] oldPoints = oldBody.codePoints().toArray();
         int[] newPoints = newBody.codePoints().toArray();
-        int prefix = 0;
-        while (prefix < oldPoints.length
-                && prefix < newPoints.length
-                && oldPoints[prefix] == newPoints[prefix]) {
-            prefix++;
-        }
-        int suffix = 0;
-        while (suffix < oldPoints.length - prefix
-                && suffix < newPoints.length - prefix
-                && oldPoints[oldPoints.length - suffix - 1]
-                        == newPoints[newPoints.length - suffix - 1]) {
-            suffix++;
-        }
+        int prefix = commonPrefix(oldPoints, newPoints);
+        int suffix = commonSuffix(oldPoints, newPoints, prefix);
         List<Operation> result = new ArrayList<>(2);
         int deleteLength = oldPoints.length - prefix - suffix;
-        if (deleteLength > 0) {
-            result.add(Operation.delete(prefix, deleteLength));
-        }
+        if (deleteLength > 0) result.add(Operation.delete(prefix, deleteLength));
         int insertLength = newPoints.length - prefix - suffix;
         if (insertLength > 0) {
             result.add(Operation.insert(
@@ -109,143 +77,255 @@ public final class NoteSocketClient {
         return result;
     }
 
-    /** Callbacks that keep conflicts explicit rather than overwriting either version. */
-    public interface Listener {
-        /** Called after every operation is acknowledged. */
-        void onSynced(String serverBody, int revision);
+    private static int commonPrefix(int[] first, int[] second) {
+        int prefix = 0;
+        while (prefix < first.length
+                && prefix < second.length
+                && first[prefix] == second[prefix]) {
+            prefix++;
+        }
+        return prefix;
+    }
 
-        /** Called with both the retained local draft and current server version available. */
+    private static int commonSuffix(int[] first, int[] second, int prefix) {
+        int suffix = 0;
+        while (suffix < first.length - prefix
+                && suffix < second.length - prefix
+                && first[first.length - suffix - 1] == second[second.length - suffix - 1]) {
+            suffix++;
+        }
+        return suffix;
+    }
+
+    /** UI callbacks that keep remote updates and explicit conflicts distinct. */
+    public interface Listener {
+        /** Reports a partner or reconnect snapshot without discarding a local draft. */
+        void onRemoteVersion(String serverBody, int revision);
+
+        /** Reports that every operation for the latest submitted body was acknowledged. */
+        void onSaved(String serverBody, int revision);
+
+        /** Requires an explicit choice between local and current server content. */
         void onConflict(String serverBody, int revision);
 
-        /** Called for transport, authorization, or malformed-response failure. */
+        /** Reports transport, authorization, or malformed-response failure. */
         void onFailure();
 
         /** Reports transient connected editor count without exposing identity. */
         default void onPresence(int editors) {}
     }
 
-    /** Close handle owned by an activity or view model. */
-    public interface Connection {
-        /** Closes the active socket without deleting a draft. */
+    /** Mutable connection handle owned by one editor screen. */
+    public interface EditorConnection {
+        /** Submits the latest desired body; intermediate keystrokes are coalesced. */
+        void update(String body);
+
+        /** Resumes after conflict using the retained local body. */
+        void keepLocal(String body);
+
+        /** Accepts the latest server body and clears pending operations. */
+        void acceptServer();
+
+        /** Closes the session without deleting the encrypted draft. */
         void close();
+
+        /** Returns an inert handle for signed-out callers. */
+        static EditorConnection closed() {
+            return new EditorConnection() {
+                @Override public void update(String body) {}
+                @Override public void keepLocal(String body) {}
+                @Override public void acceptServer() {}
+                @Override public void close() {}
+            };
+        }
     }
 
-    private record Operation(String kind, int position, String text, int length) {
+    record Operation(String id, String kind, int position, String text, int length) {
         static Operation insert(int position, String text) {
-            return new Operation("insert", position, text, 0);
+            return new Operation(UUID.randomUUID().toString(), "insert", position, text, 0);
         }
 
         static Operation delete(int position, int length) {
-            return new Operation("delete", position, "", length);
+            return new Operation(UUID.randomUUID().toString(), "delete", position, "", length);
         }
     }
 
-    private static final class SyncListener extends WebSocketListener {
-        private final List<Operation> operations;
+    private final class EditorSession extends WebSocketListener implements EditorConnection {
+        private final String noteId;
+        private final String token;
         private final Listener listener;
+        private final ArrayDeque<Operation> pending = new ArrayDeque<>();
         private WebSocket socket;
+        private String serverBody;
+        private String desiredBody;
         private int revision;
-        private int index;
-        private String currentOperationId;
+        private boolean ready;
+        private boolean paused;
+        private boolean closed;
+        private boolean reconnectScheduled;
 
-        SyncListener(List<Operation> operations, int revision, Listener listener) {
-            this.operations = operations;
+        EditorSession(
+                String noteId, String token, String body, int revision, Listener listener) {
+            this.noteId = noteId;
+            this.token = token;
+            this.serverBody = body;
+            this.desiredBody = body;
             this.revision = revision;
             this.listener = listener;
         }
 
-        void attach(WebSocket socket) {
-            this.socket = socket;
+        synchronized void open() {
+            if (closed) return;
+            Request request = versionedRequest()
+                    .url("wss://lil-orb.pax-kun.com/ws/v1/notes/" + noteId)
+                    .header("Authorization", "Bearer " + token)
+                    .build();
+            socket = client.newWebSocket(request, this);
         }
 
         @Override
-        public void onOpen(WebSocket webSocket, Response response) {
+        public synchronized void onOpen(WebSocket webSocket, Response response) {
             socket = webSocket;
-            sendNext();
+            reconnectScheduled = false;
         }
 
         @Override
-        public void onMessage(WebSocket webSocket, String text) {
+        public synchronized void onMessage(WebSocket webSocket, String text) {
             try {
-                JSONObject message = new JSONObject(text);
-                if ("note.conflict".equals(message.optString("type"))) {
-                    listener.onConflict(
-                            message.optString("body"), message.optInt("revision"));
-                    webSocket.close(1000, "explicit reconciliation required");
-                    return;
-                }
-                if (!"note.ack".equals(message.optString("type"))
-                        || !currentOperationId.equals(message.optString("operation_id"))) {
-                    return;
-                }
-                revision = message.getInt("revision");
-                index++;
-                if (index < operations.size()) {
-                    sendNext();
-                } else {
-                    listener.onSynced(message.optString("body"), revision);
-                    webSocket.close(1000, "sync complete");
-                }
+                handle(new JSONObject(text));
             } catch (JSONException exception) {
                 listener.onFailure();
                 webSocket.close(1002, "invalid server message");
             }
         }
 
-        @Override
-        public void onFailure(WebSocket webSocket, Throwable failure, Response response) {
-            listener.onFailure();
+        private void handle(JSONObject message) throws JSONException {
+            String type = message.optString("type");
+            if ("note.snapshot".equals(type)) {
+                handleSnapshot(message);
+            } else if ("note.ack".equals(type)) {
+                handleAck(message);
+            } else if ("note.conflict".equals(type)) {
+                handleConflict(message);
+            } else if ("note.presence".equals(type)) {
+                listener.onPresence(message.optInt("editors"));
+            } else if ("note.error".equals(type)) {
+                listener.onFailure();
+            }
         }
 
-        private void sendNext() {
-            Operation operation = operations.get(index);
-            currentOperationId = UUID.randomUUID().toString();
+        private void handleSnapshot(JSONObject message) throws JSONException {
+            serverBody = message.optString("body");
+            revision = message.getInt("revision");
+            ready = true;
+            if (pending.isEmpty()) {
+                listener.onRemoteVersion(serverBody, revision);
+                drain();
+            } else {
+                sendCurrent();
+            }
+        }
+
+        private void handleAck(JSONObject message) throws JSONException {
+            String operationId = message.optString("operation_id");
+            Operation current = pending.peekFirst();
+            serverBody = message.optString("body");
+            revision = message.getInt("revision");
+            if (current == null || !current.id().equals(operationId)) {
+                if (pending.isEmpty()) listener.onRemoteVersion(serverBody, revision);
+                return;
+            }
+            if (message.optBoolean("duplicate")) pending.clear();
+            else pending.removeFirst();
+            if (pending.isEmpty()) {
+                listener.onSaved(serverBody, revision);
+                drain();
+            } else {
+                sendCurrent();
+            }
+        }
+
+        private void handleConflict(JSONObject message) throws JSONException {
+            pending.clear();
+            serverBody = message.optString("body");
+            revision = message.getInt("revision");
+            paused = true;
+            listener.onConflict(serverBody, revision);
+        }
+
+        @Override
+        public synchronized void update(String body) {
+            desiredBody = body;
+            drain();
+        }
+
+        @Override
+        public synchronized void keepLocal(String body) {
+            desiredBody = body;
+            paused = false;
+            drain();
+        }
+
+        @Override
+        public synchronized void acceptServer() {
+            desiredBody = serverBody;
+            pending.clear();
+            paused = false;
+        }
+
+        private void drain() {
+            if (!ready || paused || !pending.isEmpty() || desiredBody.equals(serverBody)) return;
+            pending.addAll(editPlan(serverBody, desiredBody));
+            sendCurrent();
+        }
+
+        private void sendCurrent() {
+            Operation operation = pending.peekFirst();
+            if (operation == null || socket == null) return;
             try {
                 JSONObject message = new JSONObject()
-                        .put("operation_id", currentOperationId)
+                        .put("operation_id", operation.id())
                         .put("base_revision", revision)
-                        .put("kind", operation.kind)
-                        .put("position", operation.position);
-                if ("insert".equals(operation.kind)) {
-                    message.put("text", operation.text);
-                } else {
-                    message.put("length", operation.length);
-                }
-                socket.send(message.toString());
+                        .put("kind", operation.kind())
+                        .put("position", operation.position());
+                if ("insert".equals(operation.kind())) message.put("text", operation.text());
+                else message.put("length", operation.length());
+                if (!socket.send(message.toString())) scheduleReconnect();
             } catch (JSONException exception) {
                 listener.onFailure();
             }
         }
-    }
-
-    private static final class ObserveListener extends WebSocketListener {
-        private final Listener listener;
-
-        ObserveListener(Listener listener) {
-            this.listener = listener;
-        }
 
         @Override
-        public void onMessage(WebSocket webSocket, String text) {
-            try {
-                JSONObject message = new JSONObject(text);
-                String type = message.optString("type");
-                if ("note.snapshot".equals(type) || "note.ack".equals(type)) {
-                    listener.onSynced(message.optString("body"), message.getInt("revision"));
-                } else if ("note.conflict".equals(type)) {
-                    listener.onConflict(message.optString("body"), message.getInt("revision"));
-                } else if ("note.presence".equals(type)) {
-                    listener.onPresence(message.optInt("editors"));
-                }
-            } catch (JSONException exception) {
-                listener.onFailure();
-                webSocket.close(1002, "invalid server message");
-            }
-        }
-
-        @Override
-        public void onFailure(WebSocket webSocket, Throwable failure, Response response) {
+        public synchronized void onFailure(
+                WebSocket webSocket, Throwable failure, Response response) {
+            if (closed) return;
+            ready = false;
             listener.onFailure();
+            scheduleReconnect();
+        }
+
+        @Override
+        public synchronized void onClosed(WebSocket webSocket, int code, String reason) {
+            if (!closed) scheduleReconnect();
+        }
+
+        private void scheduleReconnect() {
+            if (closed || reconnectScheduled) return;
+            reconnectScheduled = true;
+            reconnects.schedule(() -> {
+                synchronized (EditorSession.this) {
+                    reconnectScheduled = false;
+                    open();
+                }
+            }, 2, TimeUnit.SECONDS);
+        }
+
+        @Override
+        public synchronized void close() {
+            closed = true;
+            ready = false;
+            if (socket != null) socket.close(1000, "editor closed");
         }
     }
 }

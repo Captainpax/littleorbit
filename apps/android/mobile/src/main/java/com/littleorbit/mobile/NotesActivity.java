@@ -1,36 +1,45 @@
 package com.littleorbit.mobile;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
+import android.text.Selection;
 import android.text.TextWatcher;
 import android.view.View;
-import com.google.android.material.button.MaterialButton;
-import com.littleorbit.data.remote.ApiModels;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.remote.NoteSocketClient;
 import com.littleorbit.data.repository.NoteDraftStore;
 import com.littleorbit.data.repository.OrbitRepository;
+import com.littleorbit.domain.TextPatch;
 import com.littleorbit.mobile.databinding.ActivityNotesBinding;
 import dagger.hilt.android.AndroidEntryPoint;
-import java.util.List;
 import java.util.UUID;
 import javax.inject.Inject;
 
-/** Multi-note live workspace with encrypted drafts and explicit conflict choices. */
+/** Library-first Our Space workspace with Markdown, private files, and stable live editing. */
 @AndroidEntryPoint
 public final class NotesActivity extends InsetAwareActivity {
     @Inject OrbitRepository orbit;
     @Inject NoteDraftStore drafts;
     @Inject NoteSocketClient sockets;
     private final Handler debounce = new Handler(Looper.getMainLooper());
+    private final ActivityResultLauncher<String[]> filePicker = registerForActivityResult(
+            new ActivityResultContracts.OpenDocument(), this::attachmentChosen);
     private ActivityNotesBinding binding;
+    private MarkdownRenderer markdown;
+    private NoteAttachmentViews attachmentViews;
+    private NoteAttachmentUploadCoordinator attachmentUploads;
+    private SpaceLibraryViews library;
     private NoteApiModels.Note current;
     private String serverBody = "";
     private boolean rendering;
-    private NoteSocketClient.Connection syncConnection = () -> {};
-    private NoteSocketClient.Connection liveConnection = () -> {};
+    private boolean returnAfterSave;
+    private int attachmentPolls;
+    private NoteSocketClient.EditorConnection editor = NoteSocketClient.EditorConnection.closed();
     private final Runnable bodySave = this::sync;
     private final Runnable titleSave = this::rename;
 
@@ -39,19 +48,44 @@ public final class NotesActivity extends InsetAwareActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityNotesBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-        binding.createButton.setOnClickListener(view -> newNote());
-        binding.syncButton.setOnClickListener(view -> sync());
-        binding.archiveButton.setOnClickListener(view -> archive());
-        binding.useServerButton.setOnClickListener(view -> useServerVersion());
-        binding.keepMyVersionButton.setOnClickListener(view -> keepMyVersion());
-        bindDebouncedEditors();
+        markdown = new MarkdownRenderer(this);
+        attachmentViews = new NoteAttachmentViews(
+                this, orbit, binding.attachmentContainer, binding.statusText,
+                this::reloadAttachments);
+        attachmentUploads = new NoteAttachmentUploadCoordinator(this, orbit, binding.statusText);
+        library = new SpaceLibraryViews(
+                this, binding.noteListContainer, binding.archivedNotesContainer,
+                binding.searchInput, this::select, this::restore);
+        bindActions();
+        bindEditors();
         load();
     }
 
-    private void bindDebouncedEditors() {
+    private void bindActions() {
+        binding.createButton.setOnClickListener(view -> newNote());
+        binding.syncButton.setOnClickListener(view -> sync());
+        binding.archiveButton.setOnClickListener(view -> confirmArchive());
+        binding.backToLibrary.setOnClickListener(view -> returnToLibrary());
+        binding.useServerButton.setOnClickListener(view -> useServerVersion());
+        binding.keepMyVersionButton.setOnClickListener(view -> keepMyVersion());
+        binding.editTab.setOnClickListener(view -> showEdit());
+        binding.previewTab.setOnClickListener(view -> showPreview());
+        binding.boldButton.setOnClickListener(view -> wrapSelection("**", "**"));
+        binding.italicButton.setOnClickListener(view -> wrapSelection("_", "_"));
+        binding.headingButton.setOnClickListener(view -> insertAtCursor("## "));
+        binding.listButton.setOnClickListener(view -> insertAtCursor("- "));
+        binding.checkButton.setOnClickListener(view -> insertAtCursor("- [ ] "));
+        binding.linkButton.setOnClickListener(view -> wrapSelection("[", "](https://)"));
+        binding.attachButton.setOnClickListener(view -> chooseAttachment());
+        OrbitTabNavigation.bind(this, binding.homeNav, binding.quizNav,
+                binding.smoochNav, binding.spaceNav, binding.moreNav);
+    }
+
+    private void bindEditors() {
         binding.bodyInput.addTextChangedListener(watcher(() -> {
             if (current == null) return;
-            drafts.save(current.id, binding.bodyInput.getText().toString(), current.revision);
+            String body = binding.bodyInput.getText().toString();
+            drafts.save(current.id, body, current.revision);
             debounce.removeCallbacks(bodySave);
             debounce.postDelayed(bodySave, 750);
         }));
@@ -75,71 +109,56 @@ public final class NotesActivity extends InsetAwareActivity {
     }
 
     private void load() {
-        AsyncUi.observe(this, orbit.notes(), binding.statusText, this::showNotes);
-        orbit.archivedNotes().thenAccept(notes -> runOnUiThread(() -> showArchived(notes)))
-                .exceptionally(failure -> null);
-    }
-
-    private void showNotes(List<NoteApiModels.Note> notes) {
-        binding.noteListContainer.removeAllViews();
-        for (NoteApiModels.Note note : notes) {
-            binding.noteListContainer.addView(noteButton(note, false));
-        }
-        if (notes.isEmpty()) {
-            newNote();
-            binding.statusText.setText(R.string.no_notes);
-            return;
-        }
-        NoteApiModels.Note selected = current == null ? notes.get(0) : notes.stream()
-                .filter(note -> note.id.equals(current.id)).findFirst().orElse(notes.get(0));
-        select(selected);
-    }
-
-    private void showArchived(List<NoteApiModels.Note> notes) {
-        binding.archivedNotesContainer.removeAllViews();
-        for (NoteApiModels.Note note : notes) {
-            binding.archivedNotesContainer.addView(noteButton(note, true));
-        }
-    }
-
-    private MaterialButton noteButton(NoteApiModels.Note note, boolean archived) {
-        MaterialButton button = new MaterialButton(
-                this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
-        button.setText(archived ? getString(R.string.restore_note_named, note.title) : note.title);
-        button.setOnClickListener(view -> {
-            if (archived) restore(note); else select(note);
+        AsyncUi.observe(this, orbit.notes(), binding.libraryPresenceText, notes -> {
+            library.setNotes(notes);
+            loadArchived();
         });
-        button.setContentDescription(button.getText());
-        return button;
+    }
+
+    private void loadArchived() {
+        orbit.archivedNotes().thenAccept(notes ->
+                runOnUiThread(() -> library.showArchived(notes))).exceptionally(failure -> null);
     }
 
     private void select(NoteApiModels.Note note) {
-        closeSockets();
+        editor.close();
         current = note;
         serverBody = note.body;
         NoteDraftStore.Draft draft = drafts.read(note.id).orElse(null);
-        rendering = true;
-        binding.titleInput.setText(note.title);
-        binding.bodyInput.setText(draft == null ? note.body : draft.body());
-        rendering = false;
+        renderInitial(note.title, draft == null ? note.body : draft.body());
         boolean conflict = draft != null && draft.baseRevision() != note.revision;
         showConflict(conflict ? note.body : null);
         binding.statusText.setText(conflict ? R.string.note_reconcile : R.string.note_ready);
-        binding.archiveButton.setVisibility(View.VISIBLE);
-        liveConnection = sockets.observe(note.id, new LiveResult(note.id));
+        binding.attachButton.setEnabled(true);
+        attachmentPolls = 0;
+        editor = sockets.openEditor(note.id, note.body, note.revision, new EditorResult(note.id));
+        if (draft != null && !conflict) {
+            editor.update(draft.body());
+            binding.statusText.setText(R.string.syncing_note);
+        }
+        showEditor();
+        loadAttachments(note.id);
+    }
+
+    private void renderInitial(String title, String body) {
+        rendering = true;
+        binding.titleInput.setText(title);
+        binding.bodyInput.setText(body);
+        Selection.setSelection(binding.bodyInput.getText(), binding.bodyInput.length());
+        rendering = false;
     }
 
     private void newNote() {
-        closeSockets();
+        editor.close();
+        editor = NoteSocketClient.EditorConnection.closed();
         current = null;
         serverBody = "";
-        rendering = true;
-        binding.titleInput.setText("");
-        binding.bodyInput.setText("");
-        rendering = false;
+        renderInitial("", "");
         showConflict(null);
-        binding.archiveButton.setVisibility(View.GONE);
+        binding.attachmentContainer.removeAllViews();
+        binding.attachButton.setEnabled(false);
         binding.statusText.setText(R.string.note_new_hint);
+        showEditor();
         binding.titleInput.requestFocus();
     }
 
@@ -152,9 +171,9 @@ public final class NotesActivity extends InsetAwareActivity {
         NoteApiModels.CreateRequest request = new NoteApiModels.CreateRequest(
                 UUID.randomUUID().toString(), title, binding.bodyInput.getText().toString());
         AsyncUi.observe(this, orbit.createNote(request), binding.statusText, note -> {
-            current = note;
             drafts.clear(note.id);
-            load();
+            library.upsert(note);
+            select(note);
         });
     }
 
@@ -164,12 +183,14 @@ public final class NotesActivity extends InsetAwareActivity {
             if (!binding.titleInput.getText().toString().trim().isEmpty()) create();
             return;
         }
-        String localBody = binding.bodyInput.getText().toString();
-        if (localBody.equals(serverBody)) return;
-        drafts.save(current.id, localBody, current.revision);
-        syncConnection.close();
-        syncConnection = sockets.replace(current.id, current.revision, serverBody,
-                localBody, new SocketResult(current.id));
+        String body = binding.bodyInput.getText().toString();
+        if (body.equals(serverBody)) {
+            binding.statusText.setText(R.string.note_synced);
+            finishReturn();
+            return;
+        }
+        drafts.save(current.id, body, current.revision);
+        editor.update(body);
         binding.statusText.setText(R.string.syncing_note);
     }
 
@@ -181,7 +202,7 @@ public final class NotesActivity extends InsetAwareActivity {
                 UUID.randomUUID().toString(), current.metadataRevision, title);
         orbit.renameNote(current.id, request).thenAccept(note -> runOnUiThread(() -> {
             current = note;
-            load();
+            library.upsert(note);
         })).exceptionally(failure -> {
             runOnUiThread(() -> binding.statusText.setText(R.string.remote_change_conflict));
             return null;
@@ -194,25 +215,55 @@ public final class NotesActivity extends InsetAwareActivity {
                 UUID.randomUUID().toString(), current.metadataRevision);
         AsyncUi.observe(this, orbit.archiveNote(current.id, request), binding.statusText, note -> {
             drafts.clear(note.id);
-            newNote();
-            load();
+            library.remove(note.id);
+            current = null;
+            editor.close();
+            showLibrary();
+            loadArchived();
         });
+    }
+
+    private void confirmArchive() {
+        if (current == null) return;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.archive_note)
+                .setMessage(R.string.archive_note_explanation)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.archive_action, (dialog, which) -> archive())
+                .show();
     }
 
     private void restore(NoteApiModels.Note note) {
         NoteApiModels.ArchiveRequest request = new NoteApiModels.ArchiveRequest(
                 UUID.randomUUID().toString(), note.metadataRevision);
-        AsyncUi.observe(this, orbit.restoreNote(note.id, request), binding.statusText, restored -> {
-            current = restored;
-            load();
-        });
+        AsyncUi.observe(this, orbit.restoreNote(note.id, request), binding.libraryPresenceText,
+                restored -> {
+                    library.upsert(restored);
+                    loadArchived();
+                });
+    }
+
+    private void returnToLibrary() {
+        if (current == null || binding.bodyInput.getText().toString().equals(serverBody)) {
+            editor.close();
+            showLibrary();
+            return;
+        }
+        returnAfterSave = true;
+        sync();
+    }
+
+    private void finishReturn() {
+        if (!returnAfterSave) return;
+        returnAfterSave = false;
+        editor.close();
+        showLibrary();
     }
 
     private void useServerVersion() {
         if (current == null) return;
-        rendering = true;
-        binding.bodyInput.setText(serverBody);
-        rendering = false;
+        editor.acceptServer();
+        patchEditor(serverBody);
         drafts.clear(current.id);
         showConflict(null);
         binding.statusText.setText(R.string.note_ready);
@@ -221,7 +272,8 @@ public final class NotesActivity extends InsetAwareActivity {
     private void keepMyVersion() {
         if (current == null) return;
         showConflict(null);
-        sync();
+        editor.keepLocal(binding.bodyInput.getText().toString());
+        binding.statusText.setText(R.string.syncing_note);
     }
 
     private void showConflict(String serverVersion) {
@@ -230,9 +282,122 @@ public final class NotesActivity extends InsetAwareActivity {
         if (visible) binding.serverVersionText.setText(serverVersion);
     }
 
+    private void showEdit() {
+        binding.bodyInput.setVisibility(View.VISIBLE);
+        binding.formattingScroll.setVisibility(View.VISIBLE);
+        binding.previewText.setVisibility(View.GONE);
+        binding.remoteImageNotice.setVisibility(View.GONE);
+        binding.editTab.setEnabled(false);
+        binding.previewTab.setEnabled(true);
+    }
+
+    private void showPreview() {
+        String body = binding.bodyInput.getText().toString();
+        markdown.render(binding.previewText, body);
+        binding.bodyInput.setVisibility(View.GONE);
+        binding.formattingScroll.setVisibility(View.GONE);
+        binding.previewText.setVisibility(View.VISIBLE);
+        binding.remoteImageNotice.setVisibility(
+                body.matches("(?s).*?!\\[[^]]*]\\(https?://.*")
+                        ? View.VISIBLE : View.GONE);
+        binding.editTab.setEnabled(true);
+        binding.previewTab.setEnabled(false);
+    }
+
+    private void wrapSelection(String before, String after) {
+        Editable text = binding.bodyInput.getText();
+        int start = Math.max(binding.bodyInput.getSelectionStart(), 0);
+        int end = Math.max(binding.bodyInput.getSelectionEnd(), start);
+        String selected = text.subSequence(start, end).toString();
+        text.replace(start, end, before + selected + after);
+        Selection.setSelection(text, start + before.length(), start + before.length() + selected.length());
+    }
+
+    private void insertAtCursor(String value) {
+        Editable text = binding.bodyInput.getText();
+        int position = Math.max(binding.bodyInput.getSelectionStart(), 0);
+        text.insert(position, value);
+        Selection.setSelection(text, position + value.length());
+    }
+
+    private void chooseAttachment() {
+        if (current == null) {
+            binding.statusText.setText(R.string.save_before_attaching);
+            return;
+        }
+        filePicker.launch(NoteAttachmentUploadCoordinator.TYPES);
+    }
+
+    private void attachmentChosen(Uri uri) {
+        if (uri == null || current == null) return;
+        attachmentUploads.upload(uri, current, this::attachmentUploaded);
+    }
+
+    private void attachmentUploaded(
+            String noteId, NoteApiModels.Attachment attachment) {
+        if (current == null || !noteId.equals(current.id)) return;
+        insertAttachmentLink(attachment);
+        binding.statusText.setText(R.string.attachment_scanning_status);
+        attachmentPolls = 0;
+        loadAttachments(noteId);
+    }
+
+    private void insertAttachmentLink(NoteApiModels.Attachment attachment) {
+        String safeName = attachment.fileName.replace("]", "");
+        String link = attachment.mediaType.startsWith("image/")
+                ? "![" + safeName + "](attachment://" + attachment.id + ")"
+                : "[" + safeName + "](attachment://" + attachment.id + ")";
+        insertAtCursor((binding.bodyInput.length() == 0 ? "" : "\n") + link + "\n");
+    }
+
+    private void loadAttachments(String noteId) {
+        orbit.noteAttachments(noteId).thenAccept(items -> runOnUiThread(() -> {
+            if (current == null || !noteId.equals(current.id)) return;
+            attachmentViews.show(noteId, items);
+            boolean processing = items.stream().anyMatch(item ->
+                    "uploading".equals(item.status)
+                            || "pending_scan".equals(item.status)
+                            || "scanning".equals(item.status));
+            if (processing && attachmentPolls++ < 20) {
+                debounce.postDelayed(() -> loadAttachments(noteId), 3000);
+            }
+        })).exceptionally(failure -> null);
+    }
+
+    private void reloadAttachments(String noteId) {
+        if (current == null || !noteId.equals(current.id)) return;
+        attachmentPolls = 0;
+        loadAttachments(noteId);
+    }
+
+    private void showEditor() {
+        binding.libraryScroll.setVisibility(View.GONE);
+        binding.editorScroll.setVisibility(View.VISIBLE);
+        showEdit();
+    }
+
+    private void showLibrary() {
+        binding.editorScroll.setVisibility(View.GONE);
+        binding.libraryScroll.setVisibility(View.VISIBLE);
+    }
+
+    private void patchEditor(String body) {
+        Editable editable = binding.bodyInput.getText();
+        TextPatch patch = TextPatch.between(editable.toString(), body);
+        if (patch.isEmpty()) return;
+        int startSelection = Math.max(binding.bodyInput.getSelectionStart(), 0);
+        int endSelection = Math.max(binding.bodyInput.getSelectionEnd(), startSelection);
+        rendering = true;
+        editable.replace(patch.start(), patch.end(), patch.replacement());
+        Selection.setSelection(
+                editable, patch.mapOffset(startSelection), patch.mapOffset(endSelection));
+        rendering = false;
+    }
+
     @Override
     protected void onPause() {
-        debounce.removeCallbacksAndMessages(null);
+        debounce.removeCallbacks(bodySave);
+        debounce.removeCallbacks(titleSave);
         if (current != null && !binding.bodyInput.getText().toString().equals(serverBody)) {
             drafts.save(current.id, binding.bodyInput.getText().toString(), current.revision);
         }
@@ -241,15 +406,9 @@ public final class NotesActivity extends InsetAwareActivity {
 
     @Override
     protected void onDestroy() {
-        closeSockets();
+        editor.close();
+        debounce.removeCallbacksAndMessages(null);
         super.onDestroy();
-    }
-
-    private void closeSockets() {
-        syncConnection.close();
-        liveConnection.close();
-        syncConnection = () -> {};
-        liveConnection = () -> {};
     }
 
     private NoteApiModels.Note withBody(String body, int revision) {
@@ -257,69 +416,86 @@ public final class NotesActivity extends InsetAwareActivity {
                 current.metadataRevision, current.updatedAt, current.archivedAt, current.purgeAfter);
     }
 
-    private class SocketResult implements NoteSocketClient.Listener {
+    private final class EditorResult implements NoteSocketClient.Listener {
         private final String noteId;
 
-        SocketResult(String noteId) { this.noteId = noteId; }
-
-        boolean isActive() { return current != null && noteId.equals(current.id); }
-
-        @Override public void onSynced(String body, int revision) {
-            runOnUiThread(() -> {
-                if (!isActive()) return;
-                serverBody = body;
-                current = withBody(body, revision);
-                drafts.clear(current.id);
-                showConflict(null);
-                binding.statusText.setText(R.string.note_synced);
-            });
+        EditorResult(String noteId) {
+            this.noteId = noteId;
         }
+
+        private boolean active() {
+            return current != null && noteId.equals(current.id);
+        }
+
+        @Override public void onRemoteVersion(String body, int revision) {
+            runOnUiThread(() -> applyRemote(body, revision));
+        }
+
+        @Override public void onSaved(String body, int revision) {
+            runOnUiThread(() -> applySaved(body, revision));
+        }
+
         @Override public void onConflict(String body, int revision) {
             runOnUiThread(() -> {
-                if (!isActive()) return;
+                if (!active()) return;
                 serverBody = body;
                 current = withBody(body, revision);
                 showConflict(body);
                 binding.statusText.setText(R.string.note_reconcile);
             });
         }
+
         @Override public void onFailure() {
             runOnUiThread(() -> {
-                if (isActive()) binding.statusText.setText(R.string.note_draft_preserved);
+                if (active()) binding.statusText.setText(R.string.note_draft_preserved);
             });
         }
-    }
 
-    private final class LiveResult extends SocketResult {
-        LiveResult(String noteId) { super(noteId); }
-
-        @Override public void onSynced(String body, int revision) {
-            runOnUiThread(() -> {
-                if (isActive()) applyLiveVersion(body, revision);
-            });
-        }
         @Override public void onPresence(int editors) {
             runOnUiThread(() -> {
-                if (isActive()) binding.presenceText.setText(editors > 1
-                        ? R.string.note_presence_together : R.string.note_presence_solo);
+                if (!active()) return;
+                int label = editors > 1
+                        ? R.string.note_presence_together : R.string.note_presence_solo;
+                binding.presenceText.setText(label);
+                binding.libraryPresenceText.setText(label);
             });
+        }
+
+        private void applyRemote(String body, int revision) {
+            if (!active()) return;
+            String local = binding.bodyInput.getText().toString();
+            String priorServer = serverBody;
+            serverBody = body;
+            current = withBody(body, revision);
+            if (local.equals(priorServer) || local.equals(body)) {
+                patchEditor(body);
+                drafts.clear(current.id);
+                binding.statusText.setText(R.string.note_synced);
+            } else {
+                showConflict(body);
+                binding.statusText.setText(R.string.note_reconcile);
+            }
+        }
+
+        private void applySaved(String body, int revision) {
+            if (!active()) return;
+            serverBody = body;
+            current = withBody(body, revision);
+            String local = binding.bodyInput.getText().toString();
+            if (local.equals(body)) {
+                drafts.clear(current.id);
+                showConflict(null);
+                binding.statusText.setText(R.string.note_synced);
+                library.upsert(current);
+                finishReturn();
+            } else {
+                drafts.save(current.id, local, revision);
+                binding.statusText.setText(R.string.syncing_note);
+            }
         }
     }
 
-    private void applyLiveVersion(String body, int revision) {
-        String localBody = binding.bodyInput.getText().toString();
-        boolean safeToRender = localBody.equals(serverBody) || localBody.equals(body);
-        serverBody = body;
-        current = withBody(body, revision);
-        if (safeToRender) {
-            rendering = true;
-            binding.bodyInput.setText(body);
-            rendering = false;
-            drafts.clear(current.id);
-            binding.statusText.setText(R.string.note_synced);
-        } else {
-            showConflict(body);
-            binding.statusText.setText(R.string.note_reconcile);
-        }
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 }

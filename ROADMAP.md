@@ -25,6 +25,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Diagnose RC10.1 on a Pixel 8 Pro and Pixel Watch 3: correct lazy ADB connection checks, continuous endpoint tracking, Android 17 TLS compatibility, session-based Wear APK installation, and per-module release metadata.
 - [x] Publish RC10.1 and repeat the strict phone-to-watch upgrade against its immutable public metadata and Wear version code 10 artifact.
 - [x] Require every major-system agent guide to inventory all Markdown, update every affected document, and always review this roadmap.
+- [x] Implement RC11 with a five-tab concept-led shell, a dedicated Smooch orbit experience, cursor-stable single-session note synchronization, CommonMark/GFM preview, and private resumable note attachments with malware scanning, metadata removal, offline copies, deletion, and bounded quotas.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.
 
@@ -42,6 +43,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - Profile-photo accessibility, transfer retry, and storage measurements on physical phone/watch pairs.
 - Smooch notification timing, weekly-boundary, offline-outbox, and lock-screen privacy measurements on two physical phones.
 - Nearby-time battery and reliability measurements across OEM background limits without weakening the two-sample confidence rule.
+- Our Space attachment recovery drills, large-library search measurements, inline media polish, and two-phone cursor/convergence testing across process death and poor networks.
 
 ## 2.0 — Explicitly reviewed sensitive features
 

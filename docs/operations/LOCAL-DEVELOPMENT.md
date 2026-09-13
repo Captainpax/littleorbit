@@ -19,6 +19,20 @@ Open `http://localhost:8180` for the website and `http://localhost:8025` for dev
 
 The first model initialization downloads roughly 2.5 GB. Add `-f infra/compose.gpu.yaml` only after NVIDIA container support works in Docker Desktop. CPU fallback is slower but retains curated-question coverage.
 
+## Our Space attachment development
+
+The API writes uploads to the private `attachment-data` volume. `media-worker` streams pending bytes to the internal-only `clamav` service, then rebuilds images and PDFs or remuxes audio/video before marking them available. ClamAV can take about 90 seconds to download definitions and become healthy on its first start. Scanner or sanitizer failure leaves content unavailable.
+
+Use synthetic files. Exercise JPEG/PNG/WebP/GIF, PDF, TXT/Markdown, MP3/M4A/Ogg, and MP4/WebM; unsupported extensions and misleading media types must fail. Cover a missing `Content-Length`, chunks above 4 MiB, gaps, replayed operation IDs with different metadata, an original hash mismatch, malware detection, scanner outage, metadata removal, the 100 MiB file limit, the 2 GiB couple quota, explicit delete, and expired-note cleanup. Android must verify the post-sanitization size and hash, preview from **Keep offline** without a network, and clear private copies after deletion or relationship state changes.
+
+```powershell
+docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml ps
+docker compose --env-file .env -f infra/compose.yaml logs media-worker clamav
+.\.venv313\Scripts\python.exe -m pytest services/api/tests/test_note_attachments.py
+```
+
+Do not paste filenames, attachment bytes, local cache paths, or relationship content into logs or bug reports.
+
 ## Android updater development
 
 The phone requests `https://lil-orb.pax-kun.com/api/v1/releases/current` and accepts only the matching versioned API APK endpoint or a historical canonical GitHub release asset. Create `data/releases/` and copy a signed APK there using `little-orbit-{version}.apk`; Compose mounts that ignored directory read-only into the API. Test pure policy and restart behavior without a device:

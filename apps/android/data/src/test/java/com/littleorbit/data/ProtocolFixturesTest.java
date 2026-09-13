@@ -19,7 +19,8 @@ import org.junit.Test;
 /** Cross-language smoke checks over the canonical protocol fixtures. */
 public final class ProtocolFixturesTest {
     private static final List<String> NAMES = List.of(
-            "location-batch", "note-operation", "pairing", "question-batch", "orbit-profile", "smooch");
+            "location-batch", "note-operation", "note-attachment", "pairing",
+            "question-batch", "orbit-profile", "smooch");
     private final JsonAdapter<Map<String, Object>> adapter;
 
     /** Creates a generic JSON adapter without coupling protocol payloads to Room entities. */
@@ -96,6 +97,7 @@ public final class ProtocolFixturesTest {
         return switch (name) {
             case "location-batch" -> validLocation(value);
             case "note-operation" -> validNote(value);
+            case "note-attachment" -> validAttachment(value);
             case "pairing" -> validPairing(value);
             case "question-batch" -> validQuestionBatch(value);
             case "orbit-profile" -> validOrbitProfile(value);
@@ -109,6 +111,20 @@ public final class ProtocolFixturesTest {
                 && isUuid(value.get("operation_id"))
                 && List.of("😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑")
                         .contains(value.get("emoji"));
+    }
+
+    private static boolean validAttachment(Map<String, Object> value) {
+        return value.size() == 5
+                && isUuid(value.get("operation_id"))
+                && value.get("file_name") instanceof String name
+                && !name.isBlank()
+                && !name.contains("..")
+                && List.of("image/jpeg", "image/png", "image/webp", "image/gif",
+                        "application/pdf", "text/plain", "text/markdown", "audio/mpeg",
+                        "audio/mp4", "audio/ogg", "video/mp4", "video/webm")
+                        .contains(value.get("media_type"))
+                && numberIn(value.get("size_bytes"), 1, 104_857_600)
+                && String.valueOf(value.get("sha256")).matches("^[a-f0-9]{64}$");
     }
 
     private static boolean validTogetherTime(Map<String, Object> value) {

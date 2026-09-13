@@ -52,6 +52,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0017-note-workspace-lifecycle.md` — multiple titled notes, presence, metadata operations, and archive recovery.
 - `docs/adr/0018-opt-in-update-discovery.md` — scheduled metadata discovery while APK transfer remains user-driven.
 - `docs/adr/0019-wear-adb-transport-compatibility.md` — Android 17 discovery, public TLS, lazy ADB connection proof, and package-session installation.
+- `docs/adr/0020-markdown-space-and-private-attachments.md` — safe Markdown rendering and scanned private attachment storage.
 
 ## Operations and verification
 
@@ -68,6 +69,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-RC9-2026-09-12.md` — RC9 widget, quiz exit, crop, physical-Pixel, build, and deployment evidence.
 - `docs/operations/VERIFICATION-RC10-2026-09-12.md` — RC10 pair age, proximity, Smooch, notes, updater, Wear, build, deployment, and device evidence.
 - `docs/operations/VERIFICATION-RC10.1-2026-09-12.md` — RC10.1 physical wireless-pairing, remembered reconnect, package-session, and signed-artifact evidence.
+- `docs/operations/VERIFICATION-RC11-2026-09-12.md` — RC11 Markdown, attachment, UI, build, deployment, and device evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -83,6 +85,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.9.md` — RC9 widget crash, quiz completion, and profile-crop corrections.
 - `docs/releases/1.0.0-rc.10.md` — RC10 pair age, continuous proximity, Smooches, notes workspace, update discovery, and Wear recovery.
 - `docs/releases/1.0.0-rc.10.1.md` — RC10.1 Wear artifact and phone-hosted installer correction.
+- `docs/releases/1.0.0-rc.11.md` — RC11 Our Space, cursor-stable Markdown, attachments, and dedicated Smooch tab.
 <!-- documentation-inventory:end -->
 
 ## Review routing

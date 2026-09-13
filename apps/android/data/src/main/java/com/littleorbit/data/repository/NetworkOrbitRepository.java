@@ -12,6 +12,7 @@ import com.littleorbit.data.remote.QuizApiModels;
 import com.littleorbit.data.remote.SmoochApiModels;
 import com.littleorbit.data.remote.TogetherTimeModels;
 import com.littleorbit.data.security.SessionStore;
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     private final CountdownOfflineStore offlineCountdowns;
     private final ProfileRepository profiles;
     private final SmoochOutbox smoochOutbox;
+    private final NoteAttachmentTransfer attachments;
     private final ExecutorService executor = Executors.newFixedThreadPool(3, runnable -> {
         Thread thread = new Thread(runnable, "orbit-network-" + threadIds.incrementAndGet());
         thread.setDaemon(true);
@@ -62,6 +64,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         this.offlineCountdowns = offlineCountdowns;
         this.profiles = profiles;
         this.smoochOutbox = smoochOutbox;
+        this.attachments = new NoteAttachmentTransfer(api, context);
     }
 
     @Override
@@ -262,6 +265,11 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     @Override
+    public CompletableFuture<SmoochApiModels.Status> smoochStatus() {
+        return async(api.smoochStatus());
+    }
+
+    @Override
     public CompletableFuture<List<SmoochApiModels.Delivery>> pendingSmooches() {
         return async(api.pendingSmooches());
     }
@@ -346,6 +354,31 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     @Override
+    public CompletableFuture<List<NoteApiModels.Attachment>> noteAttachments(String noteId) {
+        return async(api.noteAttachments(noteId));
+    }
+
+    @Override
+    public CompletableFuture<NoteApiModels.Attachment> uploadNoteAttachment(
+            String noteId, String displayName, String mediaType, File file) {
+        return CompletableFuture.supplyAsync(
+                () -> attachments.upload(noteId, displayName, mediaType, file), executor);
+    }
+
+    @Override
+    public CompletableFuture<File> downloadNoteAttachment(
+            String noteId, NoteApiModels.Attachment attachment) {
+        return CompletableFuture.supplyAsync(
+                () -> attachments.download(noteId, attachment), executor);
+    }
+
+    @Override
+    public CompletableFuture<Void> deleteNoteAttachment(String noteId, String attachmentId) {
+        return CompletableFuture.runAsync(
+                () -> executeVoid(api.deleteNoteAttachment(noteId, attachmentId)), executor);
+    }
+
+    @Override
     public CompletableFuture<ApiModels.Preferences> preferences() {
         return async(api.preferences());
     }
@@ -404,6 +437,14 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         displaySynchronizer.clear();
         profiles.clearPartner();
         smoochOutbox.clear();
+        clearKeptSpace();
+    }
+
+    private void clearKeptSpace() {
+        File directory = new File(context.getFilesDir(), "kept-space");
+        File[] files = directory.listFiles(File::isFile);
+        if (files == null) return;
+        for (File file : files) file.delete();
     }
 
     private void configureLocationWork(boolean enabled) {
@@ -506,6 +547,18 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         public OrbitServiceException(IOException cause) {
             super("Little Orbit could not reach the server", cause);
             this.statusCode = -1;
+        }
+
+        /** Creates a sanitized local attachment failure without file content or paths. */
+        public OrbitServiceException(int statusCode, String reason) {
+            super(reason);
+            this.statusCode = statusCode;
+        }
+
+        /** Creates a sanitized local attachment failure with its transport cause. */
+        public OrbitServiceException(int statusCode, String reason, Throwable cause) {
+            super(reason, cause);
+            this.statusCode = statusCode;
         }
 
         /** Returns the HTTP status, or -1 for a transport failure. */

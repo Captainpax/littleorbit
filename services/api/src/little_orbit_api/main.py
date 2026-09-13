@@ -12,6 +12,7 @@ from .routes import (
     account,
     admin,
     admin_console,
+    attachments,
     auth,
     countdowns,
     couples,
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(admin_console.router)
     app.include_router(notes.router)
+    app.include_router(attachments.router)
     app.include_router(smooches.router)
     return app
 

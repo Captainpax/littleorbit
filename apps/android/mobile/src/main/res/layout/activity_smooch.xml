@@ -1,54 +1,244 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@drawable/background_cosmic" android:fillViewport="true">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="24dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/smooches" android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="6dp" android:text="@string/smooch_intro"
-            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
-        <TextView android:id="@+id/selectedSmooch" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="24dp"
-            android:gravity="center" android:textColor="@color/cloud" android:textSize="28sp"
-            android:textStyle="bold" />
-        <GridLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" android:columnCount="3" android:rowCount="3">
-            <Button android:id="@+id/emoji0" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="64dp" android:layout_columnWeight="1" android:textSize="26sp" />
-            <Button android:id="@+id/emoji1" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="64dp" android:layout_columnWeight="1" android:textSize="26sp" />
-            <Button android:id="@+id/emoji2" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="64dp" android:layout_columnWeight="1" android:textSize="26sp" />
-            <Button android:id="@+id/emoji3" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="64dp" android:layout_columnWeight="1" android:textSize="26sp" />
-            <Button android:id="@+id/emoji4" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="64dp" android:layout_columnWeight="1" android:textSize="26sp" />
-            <Button android:id="@+id/emoji5" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="64dp" android:layout_columnWeight="1" android:textSize="26sp" />
-            <Button android:id="@+id/emoji6" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="64dp" android:layout_columnWeight="1" android:textSize="26sp" />
-            <Button android:id="@+id/emoji7" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="64dp" android:layout_columnWeight="1" android:textSize="26sp" />
-            <Button android:id="@+id/emoji8" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="64dp" android:layout_columnWeight="1" android:textSize="26sp" />
-        </GridLayout>
-        <com.google.android.material.button.MaterialButton android:id="@+id/sendSmoochButton"
-            style="@style/Widget.LittleOrbit.Button.Primary" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="18dp"
-            android:text="@string/send_smooch" />
-        <TextView android:id="@+id/smoochStatus" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="10dp"
-            android:gravity="center" android:textColor="@color/coral_soft"
-            android:accessibilityLiveRegion="polite" />
-        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/revealSmooches"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="24dp" android:text="@string/smooch_lock_screen_setting"
-            android:textColor="@color/cloud" />
-        <TextView android:id="@+id/smoochWeekZone" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="18dp"
-            android:textColor="@color/muted" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/usePhoneTimezone"
-            style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="@string/smooch_use_phone_timezone" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="30dp" android:text="@string/smooch_weekly_title"
-            android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
-        <TextView android:id="@+id/weeklyHistory" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="12dp"
-            android:background="@drawable/card_background_feature" android:padding="18dp"
-            android:textColor="@color/cloud" />
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/background_cosmic"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="@string/smooches"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:gravity="center"
+                android:text="@string/smooch_concept_intro"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="74dp"
+                    android:layout_height="74dp"
+                    android:background="@drawable/planet_lavender"
+                    android:gravity="center"
+                    android:text="T"
+                    android:textColor="@color/cloud"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:gravity="center"
+                    android:text="✦"
+                    android:textColor="@color/amber"
+                    android:textSize="32sp" />
+
+                <TextView
+                    android:id="@+id/partnerPlanet"
+                    android:layout_width="74dp"
+                    android:layout_height="74dp"
+                    android:background="@drawable/planet_coral"
+                    android:gravity="center"
+                    android:text="P"
+                    android:textColor="@color/cloud"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/orbitPulse"
+                android:layout_width="132dp"
+                android:layout_height="132dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/smooch_orbit_pulse">
+
+                <TextView
+                    android:id="@+id/selectedSmooch"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="😘"
+                    android:textSize="54sp" />
+            </FrameLayout>
+
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:columnCount="3"
+                android:rowCount="3">
+
+                <Button android:id="@+id/emoji0" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="62dp" android:layout_columnWeight="1" android:textSize="26sp" />
+                <Button android:id="@+id/emoji1" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="62dp" android:layout_columnWeight="1" android:textSize="26sp" />
+                <Button android:id="@+id/emoji2" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="62dp" android:layout_columnWeight="1" android:textSize="26sp" />
+                <Button android:id="@+id/emoji3" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="62dp" android:layout_columnWeight="1" android:textSize="26sp" />
+                <Button android:id="@+id/emoji4" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="62dp" android:layout_columnWeight="1" android:textSize="26sp" />
+                <Button android:id="@+id/emoji5" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="62dp" android:layout_columnWeight="1" android:textSize="26sp" />
+                <Button android:id="@+id/emoji6" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="62dp" android:layout_columnWeight="1" android:textSize="26sp" />
+                <Button android:id="@+id/emoji7" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="62dp" android:layout_columnWeight="1" android:textSize="26sp" />
+                <Button android:id="@+id/emoji8" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="0dp" android:layout_height="62dp" android:layout_columnWeight="1" android:textSize="26sp" />
+            </GridLayout>
+
+            <TextView
+                android:id="@+id/remainingText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:text="@string/smooch_remaining_default"
+                android:textColor="@color/muted" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/sendSmoochButton"
+                style="@style/Widget.LittleOrbit.Button.Primary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/send_smooch" />
+
+            <TextView
+                android:id="@+id/smoochStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:accessibilityLiveRegion="polite"
+                android:gravity="center"
+                android:textColor="@color/coral_soft" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="26dp"
+                app:cardBackgroundColor="@color/navy_surface"
+                app:cardCornerRadius="22dp"
+                app:strokeColor="@color/orbit_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/this_week"
+                        android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:orientation="horizontal">
+
+                        <TextView android:id="@+id/weekSent" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textColor="@color/cloud" />
+                        <TextView android:id="@+id/weekReceived" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textColor="@color/cloud" />
+                        <TextView android:id="@+id/weekTogether" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textColor="@color/cloud" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/weekEmojiDistribution"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:gravity="center"
+                        android:textColor="@color/lavender_soft"
+                        android:textSize="18sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:text="@string/smooch_history"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/smooch_history_intro"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+            <LinearLayout
+                android:id="@+id/weeklyHistory"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="vertical" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/revealSmooches"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:text="@string/smooch_lock_screen_setting"
+                android:textColor="@color/cloud" />
+
+            <TextView
+                android:id="@+id/smoochWeekZone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textColor="@color/muted" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/usePhoneTimezone"
+                style="@style/Widget.LittleOrbit.Button.Text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/smooch_use_phone_timezone" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:gravity="center"
+                android:text="@string/smooch_history_privacy"
+                android:textColor="@color/muted" />
+        </LinearLayout>
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="76dp"
+        android:background="@drawable/bottom_nav_background"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingHorizontal="2dp">
+
+        <com.google.android.material.button.MaterialButton android:id="@+id/homeNav" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/home" app:icon="@drawable/ic_home" app:iconGravity="top" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/quizNav" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/quiz" app:icon="@drawable/ic_quiz" app:iconGravity="top" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/smoochNav" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/smooch" android:textColor="@color/coral_soft" app:icon="@drawable/ic_smooch" app:iconGravity="top" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/spaceNav" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/space" app:icon="@drawable/ic_notes" app:iconGravity="top" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/moreNav" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/more" app:icon="@drawable/ic_more" app:iconGravity="top" />
     </LinearLayout>
-</ScrollView>
+</LinearLayout>

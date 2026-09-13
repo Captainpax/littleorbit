@@ -39,10 +39,9 @@ public final class QuizActivity extends InsetAwareActivity {
 
     private void bindActions() {
         binding.backButton.setOnClickListener(view -> finish());
-        binding.navHome.setOnClickListener(view -> open(MainActivity.class));
+        OrbitTabNavigation.bind(this, binding.navHome, binding.navQuiz,
+                binding.navSmooch, binding.navSpace, binding.navMore);
         binding.navQuiz.setOnClickListener(view -> model.load(null));
-        binding.navNotes.setOnClickListener(view -> open(NotesActivity.class));
-        binding.navMore.setOnClickListener(view -> open(MainActivity.class));
         binding.historyButton.setOnClickListener(view -> open(QuizHistoryActivity.class));
         binding.customButton.setOnClickListener(view -> open(CustomQuestionActivity.class));
         binding.previousButton.setOnClickListener(view -> model.previous());
