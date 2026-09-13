@@ -42,7 +42,7 @@ This record covers the RC11 Our Space, Markdown, attachment, Smooch, build, and 
 
 ## Open physical gates
 
-- The existing Pixel 8 Pro still ran RC10.1 before publication, but it was locked during this verification window. It needs the documented one-time manual update before it can use the repaired path; the emulator exercised the real self-hosted optional-update path instead.
+- The existing Pixel 8 Pro crossed the legacy boundary through an ADB in-place install from RC10.1 code 11 to RC11.3 code 15. Android reported installation success and the package identity changed to RC11.3; the locked screen prevented an honest physical UI-flow claim. Future releases can use the repaired updater on this phone.
 - The complete two-real-phone shared editing, cursor/selection, conflict, every attachment preview type, Keep Offline, deletion, partner synchronization, Smooch notification, unpair archive, and reinstall flow remains open.
 - The Wear installer and watch feature did not change in RC11, but the full phone-plus-watch release-gate rerun remains open.
 - Battery, privacy/permission, backup-restore, DHCP reservation, and legal review gates in `ROADMAP.md` remain open. RC11 is a prerelease and is not the 1.0 general release.
