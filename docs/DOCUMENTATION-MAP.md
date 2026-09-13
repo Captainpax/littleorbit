@@ -88,6 +88,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.11.md` — RC11 Our Space, cursor-stable Markdown, attachments, and dedicated Smooch tab.
 - `docs/releases/1.0.0-rc.11.1.md` — corrective RC11 updater action visibility and concise in-app notes.
 - `docs/releases/1.0.0-rc.11.2.md` — corrective Android package-session stream ordering.
+- `docs/releases/1.0.0-rc.11.3.md` — repaired updater path verification candidate and legacy boundary.
 <!-- documentation-inventory:end -->
 
 ## Review routing

@@ -6,7 +6,7 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.0 release candidate. RC11.2 adds the concept-led Our Space and Smooch experiences, cursor-stable live Markdown editing, private scanned attachments, and a verified package-session ordering fix for self-updates. The complete two-phone, battery, privacy/permission, DHCP-reservation, and legal review gates remain open, so do not use the public deployment for real relationship data yet.
+> **Project status:** 1.0 release candidate. RC11.3 adds the concept-led Our Space and Smooch experiences, cursor-stable live Markdown editing, private scanned attachments, and the repaired self-update path. The complete two-phone, battery, privacy/permission, DHCP-reservation, and legal review gates remain open, so do not use the public deployment for real relationship data yet.
 
 ## What 1.0 includes
 
@@ -57,7 +57,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.11.2`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.11.2) is the current signed release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.11.2/apk) is 35,543,945 bytes with SHA-256 `3faa50028016260de50fe59f8c5e7bfa381660df92d67e879d0634e6a410f44a`. The phone-hosted installer uses the 14,133,462-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.11.2/wear-apk) with version code 13 and SHA-256 `3431664f1466f2241b3962c7da7d9b568bdaa04a0fd6213f14fda1c46c90d307`. Both artifacts retain the pinned [signing certificate](docs/signing/README.md), and GitHub mirrors the exact files and source history. This remains a test release until the complete real-device launch gate passes.
+[`1.0.0-rc.11.3`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.11.3) is the current signed release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.11.3/apk) is 35,543,945 bytes with SHA-256 `d477e6ca3372b5d98d01249ad3ef16a626de51552199765236f1616aefb1e26a`. The phone-hosted installer uses the 14,133,466-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.11.3/wear-apk) with version code 14 and SHA-256 `6d609669fd079ec179d9c39be01a3d9485392681a637c769b43cf5cdeab5641c`. Both artifacts retain the pinned [signing certificate](docs/signing/README.md), and GitHub mirrors the exact files and source history. RC10.1 and RC11.1 require one manual update because their already-installed updater abandons its package session; automatic updates work after crossing that boundary. This remains a test release until the complete real-device launch gate passes.
 
 ## Privacy promise
 
