@@ -39,7 +39,7 @@ dependencies {
     implementation(libs.image.cropper)
     implementation(libs.okhttp)
     implementation(libs.retrofit)
-    implementation("androidx.core:core:1.16.0")
+    implementation("androidx.core:core:1.19.0")
     implementation(libs.material)
     implementation(libs.hilt.android)
     annotationProcessor(libs.hilt.compiler)
