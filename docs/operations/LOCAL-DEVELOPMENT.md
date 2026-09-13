@@ -5,7 +5,7 @@
 - Docker Desktop with Compose 5+
 - Node.js 24+ and npm 11+
 - Python 3.12 or 3.13 (the pinned native dependencies do not yet support 3.14)
-- Java 17, Android SDK 36, and an Android emulator for client work
+- Java 17, Android SDK 37, and an Android emulator for client work
 
 Copy `.env.example` to `.env` and replace every `change-me`, `replace-`, and placeholder repository URL. Development may use localhost URLs and Mailpit. Never reuse these values publicly.
 
@@ -33,7 +33,7 @@ RC10 asks once whether optional metadata discovery should run, schedules checks 
 
 ## Phone-hosted Wear installer development
 
-The More-tab installer uses Wear OS wireless debugging directly from the phone. The phone and watch must be on the same trusted Wi-Fi network. On the watch, enable developer options, wireless debugging, and **Pair new device**, then enter the displayed six-digit code in the phone app. Android 13 and later may request nearby-device permission for DNS-SD discovery; manual host and ports remain available after denial.
+The More-tab installer uses Wear OS wireless debugging directly from the phone. The phone and watch must be on the same trusted Wi-Fi network. On the watch, enable developer options, wireless debugging, and **Pair new device**, then enter the displayed six-digit code in the phone app. Android 13 and later may request nearby-device permission for DNS-SD discovery; manual host and ports remain available after denial. Android 17 local-network permission becomes relevant when the app targets SDK 37; RC10.1 compiles with SDK 37 but still targets SDK 36.
 
 The phone downloads only the exact `wear_apk_url` from current release metadata. Before pairing it verifies size, SHA-256, package, version, required watch feature, and the pinned signer. After pairing it rejects phones, unsupported SDKs, and downgrades. A missing or pre-May-2026 watch patch level must show a user-overridable warning. Test the pure policy with:
 
@@ -41,9 +41,9 @@ The phone downloads only the exact `wear_apk_url` from current release metadata.
 .\gradlew.bat :apps:android:mobile:testDebugUnitTest --tests "com.littleorbit.mobile.WearInstallPolicyTest"
 ```
 
-Kadb 2.1.1 is isolated behind `KadbWatchClient` because its published Android bytecode targets Java 21 while Little Orbit production source stays Java 17 and compileSdk 36. Do not import Kadb types outside that adapter or increase its version without checking bytecode, compileSdk metadata, license, and a physical pairing/install flow. Turn off wireless debugging on the watch after testing and use **Forget watch authorization** before handing a device to someone else.
+Kadb 2.1.4 is isolated behind `KadbWatchClient` because its published Android bytecode targets Java 21 while Little Orbit production source stays Java 17. Android modules compile with SDK 37. The phone bundles Conscrypt 2.6.0 and excludes HiddenApiBypass so pairing uses a public TLS exporter API. Do not import Kadb types outside that adapter or increase either dependency without checking bytecode, compile-SDK metadata, native-library page alignment, license, and a physical pairing/install flow. Turn off wireless debugging on the watch after testing and use **Forget watch authorization** before handing a device to someone else.
 
-When reproducing RC10 pairing failures, keep the watch's wireless-debug page visible and record only the named stage. Test a second discovery while the first resolves, a changed post-pair connection port, remembered authorization, and manual host/port entry. Never record the host, ports, pairing code, or key material in committed logs.
+When reproducing pairing failures, keep the watch's wireless-debug page visible and record only the named stage and safe `WPAIR`, `WCONN`, `WINFO`, or `WINST` code. Test continuous service updates, loss and port rotation, an authenticated first command, fresh pairing, remembered authorization, package-session commit, and manual entry. Kadb establishes connections lazily, so `connectionCheck()` cannot prove a newly created client is authorized. Never record the host, ports, pairing code, fingerprint, raw exception, or key material in committed logs.
 
 ## Smooch and proximity development
 

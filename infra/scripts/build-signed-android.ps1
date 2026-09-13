@@ -103,9 +103,14 @@ try {
     Pop-Location
 }
 
-$metadataPath = Join-Path $projectRoot "apps/android/mobile/build/outputs/apk/release/output-metadata.json"
-$metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
-$versionName = $metadata.elements[0].versionName
+$phoneMetadataPath = Join-Path $projectRoot "apps/android/mobile/build/outputs/apk/release/output-metadata.json"
+$wearMetadataPath = Join-Path $projectRoot "apps/android/wear/build/outputs/apk/release/output-metadata.json"
+$phoneMetadata = Get-Content -LiteralPath $phoneMetadataPath -Raw | ConvertFrom-Json
+$wearMetadata = Get-Content -LiteralPath $wearMetadataPath -Raw | ConvertFrom-Json
+$versionName = $phoneMetadata.elements[0].versionName
+if ($wearMetadata.elements[0].versionName -ne $versionName) {
+    throw "Phone and Wear APKs have different version names."
+}
 $outputPath = Join-Path $projectRoot $OutputDirectory
 New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
 
@@ -119,13 +124,31 @@ if ($phone.CertificateSha256 -ne $wear.CertificateSha256) {
     throw "Phone and Wear APKs were signed by different certificates."
 }
 
-[pscustomobject]@{
+$releaseManifest = [ordered]@{
     Version = $versionName
-    PhoneApk = $phoneDestination
+    PhoneVersionCode = $phoneMetadata.elements[0].versionCode
+    WearVersionCode = $wearMetadata.elements[0].versionCode
+    PhoneApk = [IO.Path]::GetFileName($phoneDestination)
     PhoneSha256 = $phone.ApkSha256
     PhoneSizeBytes = $phone.SizeBytes
-    WearApk = $wearDestination
+    WearApk = [IO.Path]::GetFileName($wearDestination)
     WearSha256 = $wear.ApkSha256
     WearSizeBytes = $wear.SizeBytes
     CertificateSha256 = $phone.CertificateSha256
+}
+$releaseManifest | ConvertTo-Json |
+    Set-Content -LiteralPath (Join-Path $outputPath "release-manifest.json") -Encoding utf8
+
+[pscustomobject]@{
+    Version = $releaseManifest.Version
+    PhoneVersionCode = $releaseManifest.PhoneVersionCode
+    WearVersionCode = $releaseManifest.WearVersionCode
+    PhoneApk = $phoneDestination
+    PhoneSha256 = $releaseManifest.PhoneSha256
+    PhoneSizeBytes = $releaseManifest.PhoneSizeBytes
+    WearApk = $wearDestination
+    WearSha256 = $releaseManifest.WearSha256
+    WearSizeBytes = $releaseManifest.WearSizeBytes
+    CertificateSha256 = $releaseManifest.CertificateSha256
+    Manifest = Join-Path $outputPath "release-manifest.json"
 }

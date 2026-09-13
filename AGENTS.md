@@ -42,6 +42,7 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - A Smooch uses one approved emoji and phrase key, is limited to five sends per account in a rolling hour, survives unpairing in private archives, and is erased when either original participant deletes their account.
 - Only the gateway binds a public host port. Ollama remains internal and accepts calls only from the AI service.
 - Published APK metadata and first-party APK bytes are immutable. Android accepts an update only when its trusted URL, package, increasing version code, exact byte count, APK hash, and pinned signing certificate all match.
+- Android release metadata comes from the signed build's generated manifest, which reads phone and Wear module metadata independently. Never infer one module's version code from the other.
 - Background update checks fetch metadata only. APK download and installation always follow an explicit person action.
 
 ## Owl discipline

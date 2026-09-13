@@ -22,6 +22,8 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Publish RC8 with the concept-led home hierarchy, account profile photos on phone and Wear, a phone-hosted wireless-ADB Wear installer, and public patch notes with RSS.
 - [x] Publish RC9 with lifecycle-safe widget refreshes, a fixed quiz-completion exit, and an inset-safe first-party profile crop flow.
 - [x] Publish RC10 with pairing-instant relationship age, continuous consented proximity collection, Smooches and weekly history, a multi-note workspace, opt-in update discovery, hardened wireless-Wear pairing, and migration-gated worker startup.
+- [x] Diagnose RC10.1 on a Pixel 8 Pro and Pixel Watch 3: correct lazy ADB connection checks, continuous endpoint tracking, Android 17 TLS compatibility, session-based Wear APK installation, and per-module release metadata.
+- [ ] Publish RC10.1 and repeat the strict phone-to-watch upgrade against its immutable public metadata and Wear version code 10 artifact.
 - [x] Require every major-system agent guide to inventory all Markdown, update every affected document, and always review this roadmap.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.
@@ -36,6 +38,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - Device-tested notification timing and richer quiz reveal motion under reduced-motion controls.
 - Physical-device battery measurements and OEM-specific background-location recovery guidance.
 - Guided watch-installer usability improvements based on physical phone/watch testing.
+- Remembered-watch reconnect latency and progress reporting for slow local transfers.
 - Profile-photo accessibility, transfer retry, and storage measurements on physical phone/watch pairs.
 - Smooch notification timing, weekly-boundary, offline-outbox, and lock-screen privacy measurements on two physical phones.
 - Nearby-time battery and reliability measurements across OEM background limits without weakening the two-sample confidence rule.

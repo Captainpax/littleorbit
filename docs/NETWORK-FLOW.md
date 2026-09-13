@@ -292,24 +292,26 @@ sequenceDiagram
     Phone->>API: Fetch current immutable release metadata
     Phone->>API: Download exact versioned Wear APK
     Phone->>Phone: Verify endpoint, bytes, hash, package, version, watch feature, signer
-    Phone->>Phone: Discover pairing and connect endpoints with local DNS-SD
+    Phone->>Phone: Track pairing/connect services and port changes with local DNS-SD
     Person->>Phone: Enter the watch's short-lived pairing code
     Phone->>Watch: Pair with reusable phone identity
+    Phone->>Watch: Prove authorization with a bounded echo command
     Phone->>Watch: Read watch characteristic, SDK, installed version, security patch
     alt patch before 2026-05-01 or unknown
         Phone-->>Person: Warn; cancel or explicitly install anyway
     end
-    Phone->>Watch: Install -r; never downgrade
+    Phone->>Watch: Create package session; write verified APK; commit with -r
     Watch-->>Person: Little Orbit app, tile, and complication available
 ```
 
-The phone checks connected nodes and the `little_orbit_display_v2` capability so More can distinguish no watch, a missing watch app, and a connected Little Orbit watch. The installer starts only after a person opens it, supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
+The phone checks connected nodes and the `little_orbit_display_v2` capability so More can distinguish no watch, a missing watch app, and a connected Little Orbit watch. The installer starts only after a person opens it, supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. API 34+ discovery callbacks replace and remove service information continuously; older releases serialize one-shot resolution. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
 
 ## Patch notes and RSS
 
 ```mermaid
 flowchart LR
-    Publish[Publish immutable APK record] --> DB[(PostgreSQL)]
+    Build[Signed per-module release manifest] --> Publish[Publish immutable APK record]
+    Publish --> DB[(PostgreSQL)]
     DB --> History[GET /api/v1/releases/history]
     History --> Notes[/patch-notes]
     History --> RSS[/patch-notes.xml RSS 2.0]

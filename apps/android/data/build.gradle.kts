@@ -8,7 +8,7 @@ room { schemaDirectory("$projectDir/schemas") }
 
 android {
     namespace = "com.littleorbit.data"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         minSdk = 29
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

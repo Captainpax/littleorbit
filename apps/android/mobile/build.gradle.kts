@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.littleorbit.mobile"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "com.littleorbit.mobile"
         minSdk = 29
@@ -35,7 +35,10 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.hilt.work)
     implementation(libs.play.services.wearable)
-    implementation(libs.kadb)
+    implementation(libs.kadb) {
+        exclude(group = "org.lsposed.hiddenapibypass", module = "hiddenapibypass")
+    }
+    implementation(libs.conscrypt.android)
     implementation(libs.image.cropper)
     implementation(libs.okhttp)
     implementation(libs.retrofit)

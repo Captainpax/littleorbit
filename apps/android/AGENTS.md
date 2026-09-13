@@ -22,6 +22,8 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 - Offline changes need stable operation IDs. Preserve note drafts when the server revision diverges. Bind asynchronous note results to the note ID that initiated them.
 - Queue at most five encrypted Smooch sends for at most 15 minutes. Never manufacture delivery after expiration, and keep lock-screen content private by default.
 - Release APKs require all four `ANDROID_SIGNING_*` values, use the same protected key for phone and Wear OS, and must pass `apksigner verify` before publication. Never commit or replace the private release key.
+- Build against Android SDK 37 with Java 17 source. Keep target SDK 36 until the Android 17 local-network permission migration is designed and tested.
+- Wireless-ADB pairing uses public Conscrypt APIs and authenticated commands. Never add hidden-API access, log pairing material, trust a pre-command Kadb connection flag, or publish values copied from the wrong module's output metadata.
 - Increase `versionCode` for every published update. A reused code or different certificate prevents safe upgrades.
 - Fetch release metadata only from the public API. Accept APK links only from the exact versioned `lil-orb.pax-kun.com` API endpoint or the historical canonical GitHub repository, then verify byte count, SHA-256, package name, increasing version code, and the pinned certificate before opening Android's installer.
 - Keep updater progress restart-safe and detect a running or paused transfer with no progress for five minutes. Background work may fetch metadata but must never download or install an APK without a user action. Required updates begin only after the server's explicit UTC enforcement time.

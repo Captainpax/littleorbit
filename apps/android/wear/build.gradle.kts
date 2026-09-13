@@ -2,7 +2,7 @@ plugins { alias(libs.plugins.android.application) }
 
 android {
     namespace = "com.littleorbit.wear"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "com.littleorbit.mobile"
         minSdk = 30

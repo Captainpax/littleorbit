@@ -19,7 +19,7 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 - Start migration-aware workers only after the API health check proves Alembic reached head; a healthy database alone does not prove the current schema exists.
 - Do not enable HSTS until HTTPS, certificate renewal, rollback, and direct recovery access are verified.
 - Never run destructive Compose, volume, database, firewall, DHCP, DNS, or proxy actions without inspecting the target state.
-- Copy immutable signed APK bytes into the ignored release directory and verify their size, hash, and API range response before publishing metadata. Keep GitHub as a release mirror. Run migrations and health checks before a version floor can be scheduled.
+- Copy immutable signed APK bytes into the ignored release directory and publish phone/Wear codes, sizes, hashes, and signer only from the generated `release-manifest.json`. Independently inspect both APK manifests, then verify API range responses. Keep GitHub as a release mirror. Run migrations and health checks before a version floor can be scheduled.
 - Inventory every repository-owned Markdown file for each infrastructure update. Update or create all affected deployment, backup, security, architecture, release, and contributor documents, and always review and update `ROADMAP.md` for behavior, scope, milestone, or release changes.
 
 ## Start here

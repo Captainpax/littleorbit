@@ -58,34 +58,30 @@ Keep the PKCS12 release store and its four `ANDROID_SIGNING_*` settings outside 
 .\infra\scripts\build-signed-android.ps1
 ```
 
-The script loads signing values from the ignored `.env.android-signing`, which Compose never reads. It fails when any value or the store is missing, builds phone and Wear OS release APKs, verifies each signature with the newest installed Android `apksigner`, requires the same certificate on both, and writes APK plus SHA-256 files under `dist/android/`.
+The script loads signing values from the ignored `.env.android-signing`, which Compose never reads. It fails when any value or the store is missing, builds phone and Wear OS release APKs, verifies each signature with the newest installed Android `apksigner`, requires the same certificate on both, and writes APK, SHA-256 files, and `release-manifest.json` under `dist/android/`. The manifest reads the two version codes from separate Gradle outputs.
 
 Publish in this order:
 
 1. Build, hash, and verify both APKs locally.
 2. Commit the final release code and documentation. Create the immutable GitHub tag and upload the exact APK/checksum files as a recovery mirror.
-3. Copy the phone and Wear APKs to `data/releases/little-orbit-{version}.apk` and `data/releases/little-orbit-wear-{version}.apk`. Never commit this ignored directory.
-4. Update the verified fallback in `apps/web/src/lib/release.ts` with the same version codes, API paths, release URL, byte counts, and SHA-256 values, then deploy the API and rebuilt web image. Compose mounts release storage read-only.
-5. Publish the release record. Publication verifies the local file's size and SHA-256 before committing metadata:
+3. Update the verified fallback in `apps/web/src/lib/release.ts` from the generated manifest, then deploy the API and rebuilt web image. Compose mounts release storage read-only.
+4. Stage the exact artifacts. This rechecks file hashes, both APK manifests, and both signers before copying into the ignored `data/releases` directory:
 
 ```powershell
-docker compose --env-file .env -f infra/compose.yaml exec api python -m little_orbit_api.cli publish-release `
-  --version 1.0.0-rc.6 `
-  --apk-url https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.6/apk `
-  --github-release-url https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.6 `
-  --sha256 71093232e3d3dc5c0523a785ad9314de2fa14a0338ef5c9ae336962caa9033fc `
-  --release-notes "Insets, relationship age, nearby estimates, permissions, widget, and Wear OS." `
-  --version-code 6 --size-bytes 15907162 `
-  --package-name com.littleorbit.mobile `
-  --signer-sha256 43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337 `
-  --wear-apk-url https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.6/wear-apk `
-  --wear-sha256 857197277ac5da7c23db816ae8dd04f95defa137c4870a0cb1ef2abbac086027 `
-  --wear-size-bytes 14124686 --wear-package-name com.littleorbit.mobile `
-  --wear-version-code 6 --wear-minimum-android 30 `
-  --minimum-android 29 --minimum-supported-version-code 6 `
-  --required-after 2026-09-12T17:45:00Z
+.\infra\scripts\publish-signed-android.ps1 `
+  -ManifestPath dist/android/release-manifest.json
 ```
 
+1. Put the public release-note text in a temporary UTF-8 file, then publish from the same manifest. `-Publish` is the explicit immutable step; do not type artifact values by hand:
+
+```powershell
+.\infra\scripts\publish-signed-android.ps1 `
+  -ManifestPath dist/android/release-manifest.json `
+  -ReleaseNotesPath release-notes.txt `
+  -Publish
+```
+
+Add `-RequiredAfter` only for a separately verified compatibility-floor rollout.
 Verify both a complete response and a resumed slice through the public proxy. The range request must return `206`, `Content-Range: bytes 0-1023/15823790`, and exactly 1,024 bytes:
 
 ```powershell
@@ -118,6 +114,21 @@ Take a PostgreSQL backup before migration `0012`. After upgrade, verify the new 
 
 The worker depends on a healthy API as well as PostgreSQL and model initialization. The API health gate runs only after its Alembic entrypoint finishes, preventing scheduled maintenance from querying RC10 columns during the migration window. After a deployment, inspect both API and worker logs and restart the worker if an older Compose revision allowed it to race migration.
 
-RC10 artifacts use phone version code 10 and Wear version code 10. Phone size is 23,389,918 bytes with SHA-256 `e6039a5397e1675e8d7548a6a65ede07096cc84f7a5fd82a2887a48c59220104`; Wear size is 14,130,626 bytes with SHA-256 `22f629a96b7a513ca9162a6fcff0b7e7dfdd42558b9c1ddce0cd1c0594934f8e`. The compatibility floor remains version code 6 and RC10 has no enforcement time.
+RC10 uses phone version code 10. Its published Wear metadata says version code 10, but the immutable 14,130,626-byte Wear APK with SHA-256 `22f629a96b7a513ca9162a6fcff0b7e7dfdd42558b9c1ddce0cd1c0594934f8e` contains version code 9. The strict phone verifier rejects that mismatch. Do not alter the RC10 record or bytes; deploy RC10.1 as a new correction. The phone APK remains 23,389,918 bytes with SHA-256 `e6039a5397e1675e8d7548a6a65ede07096cc84f7a5fd82a2887a48c59220104`. The compatibility floor remains version code 6 and RC10 has no enforcement time.
 
 After publication, verify `/api/v1/releases/current`, both complete APK downloads, a 1,024-byte range from each, `/download`, `/patch-notes`, and `/patch-notes.xml`. On the phone, verify the automatic-check choice without starting a download, the persistent update banner, the visible location foreground service after mutual consent, immediate stop after opt-out, Smooch notification privacy, and the Wear installer's manual-address fallback. A phone-side installer smoke test does not close the physical-Wear gate.
+
+## RC10.1 Wear correction
+
+Build with `infra/scripts/build-signed-android.ps1` and publish every artifact field from
+the generated `release-manifest.json`. Independently inspect the phone and Wear APK
+manifests before copying bytes to release storage. RC10.1 must contain phone version
+code 11 and Wear version code 10, use the existing signing certificate, pass 16 KiB
+zip alignment, and contain no HiddenApiBypass classes. The compatibility floor stays at
+6 and the corrective release has no enforcement time.
+
+After the public record is immutable, use the strict signed phone build to upgrade the
+physical watch from the actual RC10 Wear version code 9 to RC10.1 code 10. Confirm fresh
+pairing, remembered reconnect without a new code, package-session completion, launcher
+start, and a second current-version inspection. Never place local addresses, ports,
+pairing codes, fingerprints, or raw transport errors in release evidence.

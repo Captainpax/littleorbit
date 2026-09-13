@@ -5,6 +5,7 @@ import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.net.SocketTimeoutException;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -12,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.net.ssl.SSLSocket;
 import kotlin.ResultKt;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
@@ -23,6 +25,7 @@ import kotlin.coroutines.intrinsics.IntrinsicsKt;
 @Singleton
 public final class KadbWatchClient {
     private static final AtomicBoolean CONFIGURED = new AtomicBoolean();
+    private static final String CONNECTION_PROBE = "little-orbit-watch-check";
     private final EncryptedKadbPrivateKeyStore keys;
 
     /** Configures Kadb with an encrypted private-key adapter and prepares its identity. */
@@ -38,7 +41,20 @@ public final class KadbWatchClient {
     }
 
     /** Pairs the remembered host identity using the watch's short-lived code. */
-    public void pair(String host, int port, String code) throws Exception {
+    public void pair(String host, int port, String code) throws WatchAdbException {
+        try {
+            verifyPairingRuntime();
+            pairWithKadb(host, port, code);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new WatchAdbException(
+                    WatchAdbException.Operation.PAIR, WatchAdbException.Reason.INTERRUPTED);
+        } catch (Exception | LinkageError failure) {
+            throw WatchAdbException.classify(WatchAdbException.Operation.PAIR, failure);
+        }
+    }
+
+    private void pairWithKadb(String host, int port, String code) throws Exception {
         CountDownLatch finished = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();
         Continuation<Unit> continuation = new Continuation<>() {
@@ -56,31 +72,36 @@ public final class KadbWatchClient {
         Object immediate = unwrap(() -> pair.invoke(
                 companion, host, port, code, "Little Orbit on " + Build.MODEL, continuation));
         if (immediate != IntrinsicsKt.getCOROUTINE_SUSPENDED()) finished.countDown();
-        if (!finished.await(30, TimeUnit.SECONDS)) throw new Exception("Pairing timed out");
+        if (!finished.await(30, TimeUnit.SECONDS)) throw new SocketTimeoutException();
         if (failure.get() != null) throw new Exception("Pairing failed", failure.get());
     }
 
     /** Connects to one endpoint and returns privacy-safe compatibility properties. */
-    public Device connectAndInspect(String host, int port) throws Exception {
-        Object client = create(host, port, 30_000);
+    public Device connectAndInspect(String host, int port) throws WatchAdbException {
+        Object client = connectedClient(host, port, 30_000);
         try {
-            if (!check(client)) throw new Exception("Watch connection failed");
             String model = shell(client, "getprop ro.product.model");
             String sdk = shell(client, "getprop ro.build.version.sdk");
             String patch = shell(client, "getprop ro.build.version.security_patch");
             String traits = shell(client, "getprop ro.build.characteristics");
             String packages = shell(client, "dumpsys package com.littleorbit.mobile");
             return new Device(model, number(sdk), patch, installedVersion(packages), traits);
+        } catch (Exception failure) {
+            throw WatchAdbException.classify(WatchAdbException.Operation.INSPECT, failure);
         } finally { close(client); }
     }
 
     /** Sends the preverified artifact through package manager without downgrade flags. */
-    public void install(String host, int port, File apk) throws Exception {
-        Object client = create(host, port, 60_000);
+    public void install(String host, int port, File apk) throws WatchAdbException {
+        Object client = connectedClient(host, port, 60_000);
         try {
-            if (!check(client)) throw new Exception("Watch connection failed");
-            invoke(client, "install", new Class<?>[] {File.class, String[].class}, apk,
-                    new String[] {"-r"});
+            // Kadb's one-shot install can wait for a terminal stream frame after Android
+            // has committed the APK. Its session API separates write and commit cleanly.
+            invoke(client, "installMultiple",
+                    new Class<?>[] {java.util.List.class, String[].class},
+                    Collections.singletonList(apk), new String[] {"-r"});
+        } catch (Exception failure) {
+            throw WatchAdbException.classify(WatchAdbException.Operation.INSTALL, failure);
         } finally { close(client); }
     }
 
@@ -102,6 +123,9 @@ public final class KadbWatchClient {
                         case "readPrivateKeyPem" -> keys.readPrivateKeyPem();
                         case "writePrivateKeyPemAtomic" -> { keys.writePrivateKeyPemAtomic((byte[]) args[0]); yield null; }
                         case "clear" -> { keys.clear(); yield null; }
+                        case "toString" -> "EncryptedKadbPrivateKeyStore";
+                        case "hashCode" -> System.identityHashCode(proxy);
+                        case "equals" -> proxy == args[0];
                         default -> throw new UnsupportedOperationException(method.getName());
                     };
                 });
@@ -121,8 +145,28 @@ public final class KadbWatchClient {
                 .newInstance(host, port, 10_000, socketTimeout);
     }
 
-    private static boolean check(Object client) throws Exception {
-        return (boolean) invoke(client, "connectionCheck", new Class<?>[0]);
+    private static Object connectedClient(String host, int port, int socketTimeout)
+            throws WatchAdbException {
+        Object client = null;
+        try {
+            client = create(host, port, socketTimeout);
+            // Kadb establishes its transport lazily on the first command. Calling
+            // connectionCheck() on a new instance always reports false, even after pairing.
+            if (!CONNECTION_PROBE.equals(shell(client, "echo " + CONNECTION_PROBE))) {
+                throw new WatchAdbException(WatchAdbException.Operation.CONNECT,
+                        WatchAdbException.Reason.DEVICE_QUERY_FAILED);
+            }
+            return client;
+        } catch (Exception | LinkageError failure) {
+            close(client);
+            throw WatchAdbException.classify(WatchAdbException.Operation.CONNECT, failure);
+        }
+    }
+
+    private static void verifyPairingRuntime() throws Exception {
+        Class.forName("org.conscrypt.OpenSSLProvider").getDeclaredConstructor().newInstance();
+        Class.forName("org.conscrypt.Conscrypt").getMethod(
+                "exportKeyingMaterial", SSLSocket.class, String.class, byte[].class, int.class);
     }
 
     private static String shell(Object client, String command) throws Exception {

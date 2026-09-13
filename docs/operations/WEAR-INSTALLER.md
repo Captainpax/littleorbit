@@ -12,9 +12,9 @@ Little Orbit installs its self-hosted Wear companion from the Android phone app.
 6. If the watch patch is unknown or older than May 1, 2026, read the warning and either cancel or explicitly continue.
 7. Wait for **Little Orbit is installed on your watch**, then disable wireless debugging on the watch.
 
-The phone keeps its ADB identity encrypted so later Little Orbit Wear updates normally reconnect without a new pairing code. **Forget watch authorization** deletes that local identity. The watch may still list the old authorization until it is removed in watch developer settings.
+The phone keeps its ADB identity encrypted so later Little Orbit Wear updates normally reconnect without a new pairing code. **Forget watch authorization** deletes that local identity. The watch may still list the old authorization until it is removed in watch developer settings. A remembered authorization is proven with a harmless authenticated command before device properties are read.
 
-The watch can change its TLS connection port after pairing. Leave the wireless-debug screen open until installation finishes. RC10 resolves pairing and connection services sequentially, ignores callbacks from an older discovery attempt, keeps both endpoints on the same resolved host, and refreshes the active connection port after pairing. If discovery remains incomplete, enter the current pairing and connection ports shown on the watch; do not reuse a port from an earlier wireless-debug session.
+The watch can change its TLS connection port after pairing. Leave the wireless-debug screen open until installation finishes. RC10.1 tracks current DNS-SD service information, removes lost services, keeps pairing and connection endpoints on the same host and network, prefers IPv4, and refreshes the active connection port after pairing. The APK is installed through an explicit package session so write and commit completion are distinct. If discovery remains incomplete, enter the current pairing and connection ports shown on the watch; do not reuse a port from an earlier wireless-debug session.
 
 ## Verification checklist
 
@@ -27,6 +27,7 @@ The watch can change its TLS connection port after pairing. Leave the wireless-d
 - An old or unreadable patch level warns and cancel performs no install.
 - A current patch installs with replace only; no downgrade or uninstall flag is used.
 - A second update reconnects through the encrypted identity; forgetting it requires pairing again.
+- Android reports a committed package before the success screen; a transfer that never receives commit confirmation remains a failure.
 - The installed launcher, tile, complication, and profile synchronization work after wireless debugging is disabled.
 - Stage text distinguishes discovery, pairing, TLS transition, device inspection, verification, and installation so a failure can be reported without addresses or codes.
 

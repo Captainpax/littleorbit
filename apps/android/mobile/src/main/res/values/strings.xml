@@ -15,11 +15,13 @@
     <string name="wear_installer_title">Install Little Orbit on your watch</string>
     <string name="wear_installer_intro">Your phone downloads and verifies the signed watch app, then sends it directly over your private Wi-Fi. No computer or Play Store is needed.</string>
     <string name="wear_step_one">ONE-TIME WATCH SETUP</string>
-    <string name="wear_pair_instructions">On your watch, open Settings → System → About → tap Build number seven times. Then open Developer options → Wireless debugging → Pair new device. Keep that screen open and enter its six-digit code below.</string>
+    <string name="wear_pair_instructions">Keep the phone and watch on the same Wi-Fi. On your watch, open Settings → System → About → tap Build number seven times. Then open Developer options → Wireless debugging → Pair new device. Keep that screen open and enter its six-digit code below.</string>
     <string name="wear_pairing_code">Six-digit pairing code</string>
     <string name="wear_searching">Looking for your watch on this Wi-Fi…</string>
     <string name="wear_found">Watch found. Enter the code and install.</string>
+    <string name="wear_remembered_found">Wireless-debugging devices found. Little Orbit will safely identify your authorized watch.</string>
     <string name="wear_discovery_failed">Automatic discovery is unavailable. Enter the watch address manually.</string>
+    <string name="wear_scan_again">Scan again</string>
     <string name="wear_manual_address">Enter address manually</string>
     <string name="wear_host">Watch IP address</string>
     <string name="wear_pair_port">Pairing port</string>
@@ -29,6 +31,8 @@
     <string name="wear_prepare_failed">The signed Wear app could not be prepared. Check your connection and try again.</string>
     <string name="wear_address_needed">Keep Wireless debugging open, or enter the watch address and ports manually.</string>
     <string name="wear_pairing">Authorizing this phone with your watch…</string>
+    <string name="wear_connecting">Finding your authorized watch…</string>
+    <string name="wear_waiting_for_tls">Paired. Waiting for the watch connection to become ready…</string>
     <string name="wear_installing">Sending the verified app to your watch…</string>
     <string name="wear_install_complete">Little Orbit was installed on your watch.</string>
     <string name="wear_install_failed">The watch install did not finish. Keep Wireless debugging open and retry.</string>
@@ -140,6 +144,12 @@
     <string name="wear_pair_failed">Pairing failed. Keep “Pair new device” open on the watch, confirm the six-digit code and pairing port, then retry.</string>
     <string name="wear_connect_failed">The watch connection endpoint was not reachable. Reopen Wireless debugging and check the connection port.</string>
     <string name="wear_inspect_failed">Connected device is not a compatible Wear OS watch.</string>
+    <string name="wear_pair_failed_diagnostic">Pairing did not finish (%1$s). Keep “Pair new device” open, tap Scan again, enter the new code, and retry.</string>
+    <string name="wear_connect_failed_diagnostic">The authorized watch connection was not reachable (%1$s). Keep Wireless debugging on, tap Scan again, and retry.</string>
+    <string name="wear_inspect_failed_diagnostic">The watch could not be verified (%1$s). Keep Wireless debugging open and retry.</string>
+    <string name="wear_install_failed_diagnostic">The verified watch app was not installed (%1$s). Keep Wireless debugging open and retry.</string>
+    <string name="wear_authorization_failed">The watch no longer accepts this phone (%1$s). On the watch, open Pair new device, tap Scan again, and enter the new code.</string>
+    <string name="wear_tls_runtime_failed">Secure pairing could not start on this phone (%1$s). Restart Little Orbit and try once more.</string>
     <string name="done">Done</string>
     <string name="quiz_complete">Quiz complete</string>
     <string name="together_for">TOGETHER FOR</string>

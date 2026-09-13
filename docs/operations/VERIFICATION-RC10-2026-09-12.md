@@ -51,3 +51,13 @@ Public checks used `https://lil-orb.pax-kun.com` through Nginx Proxy Manager and
 - Complete the full signup through unpair/archive flow, accessibility, DHCP reservation, and legal/privacy reviews.
 
 RC10 remains a prerelease until these checks pass.
+
+## Post-publication Wear finding
+
+A later physical-watch test reproduced the public RC10 Wear artifact from its recorded
+SHA-256 and inspected its Android manifest. The immutable APK contains version code 9,
+while the public RC10 response declares Wear version code 10. This metadata mismatch
+caused the phone's strict artifact verifier to stop before pairing. The behavior is a
+correct safety rejection, but the RC10 Wear installer is unusable. The published record
+and bytes were not edited. RC10.1 corrects the artifact and changes the build process to
+emit phone and Wear values from separate Gradle output metadata.

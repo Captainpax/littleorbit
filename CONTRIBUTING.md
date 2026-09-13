@@ -4,7 +4,7 @@ Thank you for helping build a free couples app. Treat relationship and location 
 
 ## Setup
 
-1. Install Docker Desktop, Node.js 24+, Python 3.12+, Java 17, and Android SDK 36.
+1. Install Docker Desktop, Node.js 24+, Python 3.12+, Java 17, and Android SDK 37.
 2. Copy `.env.example` to `.env` and replace development values.
 3. Start the local stack with `docker compose -f infra/compose.yaml -f infra/compose.dev.yaml up --build`.
 4. Read the root `AGENTS.md`, then the closest nested guide for the code you will change.
@@ -17,6 +17,7 @@ Thank you for helping build a free couples app. Treat relationship and location 
 - Add comments for concurrency, privacy guarantees, algorithms, platform workarounds, and unusual invariants.
 - Use UTC for stored instants and explicit IANA time zones for user-facing dates.
 - Never commit secrets, production data, signed keys, profile images, or private exports.
+- Publish Android metadata only from the signed build's `release-manifest.json`; never copy a phone version code into the Wear field by assumption.
 - Inventory every repository-owned Markdown file for each update. Update or create every affected public, protocol, architecture, privacy, operations, release, and contributor document, and always review `ROADMAP.md`.
 
 ## Changes and pull requests
