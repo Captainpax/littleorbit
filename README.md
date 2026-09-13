@@ -6,7 +6,7 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.0 release candidate. RC10 passes the automated API, protocol, web, signed Android, and repository checks, but its immutable Wear APK contains version code 9 while its metadata says 10, so the strict phone installer correctly rejects it. RC10.1 is locally validated on a Pixel 8 Pro and Pixel Watch 3 and awaits immutable publication plus a strict public-metadata retest. Two-phone, battery, privacy/permission, DHCP-reservation, and legal review remain launch gates, so do not use the public deployment for real relationship data yet.
+> **Project status:** 1.0 release candidate. RC10.1 is published and passes the automated API, protocol, web, signed Android, repository, public-download, and physical Pixel 8 Pro-to-Pixel Watch 3 installer checks. The phone upgraded the watch from RC10's actual Wear version code 9 to RC10.1 code 10, then reconnected without another pairing code and detected the current version. Two-phone, battery, privacy/permission, DHCP-reservation, and legal review remain launch gates, so do not use the public deployment for real relationship data yet.
 
 ## What 1.0 includes
 
@@ -56,7 +56,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.10`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.10) is the current public signed phone release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.10/apk) is 23,389,918 bytes with SHA-256 `e6039a5397e1675e8d7548a6a65ede07096cc84f7a5fd82a2887a48c59220104`. Do not use its Wear install link: the immutable 14,130,626-byte Wear APK with SHA-256 `22f629a96b7a513ca9162a6fcff0b7e7dfdd42558b9c1ddce0cd1c0594934f8e` contains version code 9 while the public metadata says 10. RC10.1 corrects the artifact and installer transport without weakening size, package, version, hash, or [signing-certificate](docs/signing/README.md) checks. GitHub remains the release mirror and source history. This remains a test release until the real-device launch gate is complete.
+[`1.0.0-rc.10.1`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.10.1) is the current public signed release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.10.1/apk) is 35,061,635 bytes with SHA-256 `0336d41bb6b6d247b6e12e52fdd9a99c0900602fc0bc5eebac99c3269d74a41b`. The phone-hosted installer uses the 14,130,630-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.10.1/wear-apk) with version code 10 and SHA-256 `89e867ef766cca38c17f7a92927afb4c0c074a1a28fbef672739f15bf3bfced8`. Both artifacts retain the pinned [signing certificate](docs/signing/README.md), and GitHub mirrors the exact files and source history. This remains a test release until the complete real-device launch gate passes.
 
 ## Privacy promise
 

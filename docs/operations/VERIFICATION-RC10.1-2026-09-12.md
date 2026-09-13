@@ -35,8 +35,12 @@ loss handling, and host-plus-network endpoint association. Kadb uses bundled Con
 | Repository limits | `python infra/scripts/check_quality.py` | Passed for 246 source files |
 | Signed build | `infra/scripts/build-signed-android.ps1` | Passed; separate phone/Wear metadata manifest emitted |
 | Release staging | `infra/scripts/publish-signed-android.ps1` without `-Publish` | Passed; manifest, APK identities, hashes, and signers rechecked |
+| Release publication | `infra/scripts/publish-signed-android.ps1 -Publish` | Passed; immutable first-party record published at `2026-09-13T02:11:36.100345Z` |
 | APK identity | `aapt dump badging` and `apksigner verify --print-certs` | Phone code 11, Wear code 10, one expected signer |
 | Packaging | `zipalign -c -P 16 -v 4` and archive inspection | Both aligned; four Conscrypt native entries; no HiddenApiBypass entry |
+| Public metadata | Current and two-entry history requests through public HTTPS | Passed; RC10.1 is current and first in history, floor remains code 6, no enforcement time |
+| Public artifacts | HEAD, complete GET, SHA-256/size, and bytes 0-1023 for phone and Wear | Passed; both HEAD requests returned 200 and both range requests returned 206 with 1,024 bytes |
+| Public pages | Download, patch notes, RSS 2.0, and readiness through public HTTPS | Passed; all returned 200 and exposed RC10.1 where applicable |
 
 The strict final artifacts are:
 
@@ -62,25 +66,24 @@ cold process reconnected without another code. No fatal phone runtime event was 
 All diagnostic-only metadata and same-version policy changes were removed before the
 strict signed build. The strict phone APK was installed in place on the Pixel 8 Pro and
 reports version code 11 while retaining app data and the phone's watch authorization.
-The watch is intentionally left on the public RC10 artifact's actual version code 9 so
-the strict RC10.1 code 10 upgrade can be verified after publication.
+After publication, that strict build read RC10.1 from the public API, verified the
+immutable Wear artifact, reused the encrypted authorization, and upgraded the Pixel
+Watch 3 from RC10's actual version code 9 to RC10.1 code 10. A cold follow-up reached
+authenticated inspection without another pairing code and reported the watch already
+current. The phone crash buffer remained empty.
 
 Pairing codes, local addresses, ports, device fingerprints, private keys, and raw
 transport exceptions are omitted. Temporary desktop authorization was removed through
 watch settings, and the temporary watch screen-timeout change was restored.
 
-## Documentation inventory and open gate
+## Documentation inventory and remaining gates
 
 Every repository-owned Markdown file returned by `rg --files -g '*.md'` was reviewed.
 Android, infrastructure, signing, privacy, security, network, contributor, showcase,
 roadmap, release, ADR, and Wear operations documents were updated where behavior or
 evidence changed. Unrelated product and historical documents remain accurate.
 
-Before publication is called complete:
-
-- copy the strict artifacts into immutable release storage and publish only the generated
-  manifest values;
-- verify current/history JSON, full and range downloads, download page, patch notes, and
-  RSS through public HTTPS;
-- use the strict signed phone build to upgrade the physical watch from code 9 to code 10;
-- confirm launcher start and a remembered current-version inspection after publication.
+RC10.1 publication and its focused physical Wear-installer gate are complete. The
+broader 1.0 gate still requires the documented two-phone relationship flow, device and
+battery measurements, privacy and permission review, DHCP-reservation verification,
+and legal review.
