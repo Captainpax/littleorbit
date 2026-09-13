@@ -44,6 +44,7 @@ public final class MainActivity extends OrbitShellActivity
     @Inject ProfileRepository profiles;
     @Inject AndroidUpdateCoordinator updates;
     @Inject WearStatusChecker wearStatus;
+    @Inject NotificationDeviceStore notificationDevice;
 
     private final ActivityResultLauncher<Intent> installPermission = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -125,9 +126,12 @@ public final class MainActivity extends OrbitShellActivity
             else open(SignInActivity.class);
         });
         binding.signOutButton.setOnClickListener(
-                view -> orbit.signOut().thenRun(() -> runOnUiThread(() -> {
+                view -> orbit.disableNotificationDevice(notificationDevice.id())
+                        .handle((ignored, failure) -> null)
+                        .thenCompose(ignored -> orbit.signOut())
+                        .thenRun(() -> runOnUiThread(() -> {
                     QuizStatusWorker.cancel(this);
-                    SmoochStatusWorker.schedule(this, false);
+                    PartnerNotificationWorker.schedule(this, false);
                     ForegroundLocationService.stop(this);
                     finish();
                 })));
@@ -249,14 +253,14 @@ public final class MainActivity extends OrbitShellActivity
 
     private void reconcileQuizNotifications() {
         if (orbit.isSignedIn() && PermissionChecks.notificationsGranted(this)) {
-            QuizStatusWorker.schedule(this);
-            SmoochStatusWorker.schedule(this, true);
-            SmoochStatusWorker.enqueue(this);
+            PartnerNotificationWorker.schedule(this, true);
+            PartnerNotificationWorker.enqueue(this);
         } else {
             QuizStatusWorker.cancel(this);
-            SmoochStatusWorker.schedule(this, false);
+            PartnerNotificationWorker.schedule(this, false);
         }
     }
+
 
     private void refreshSetupStatus() {
         binding.notificationStatus.setText(

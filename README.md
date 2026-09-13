@@ -6,19 +6,20 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.0 release candidate. RC12 replaces bottom tabs with a responsive left navigation shell and screen-specific right panels, rebuilds the Markdown toolbar, repairs transparent-image attachments, and adds a private 30-day couple activity timeline. The complete two-physical-phone, battery, privacy/permission, DHCP-reservation, restore, and legal review gates remain open, so do not use the public deployment for real relationship data yet.
+> **Project status:** 1.0 release candidate. RC12.1 makes shared documents preview-first with verified inline private images, adds self-hosted per-device Smooch and document-edit notifications, and applies consistent reduced-motion-aware cosmic transitions. The complete two-physical-phone, battery, privacy/permission, DHCP-reservation, restore, and legal review gates remain open, so do not use the public deployment for real relationship data yet.
 
 ## What 1.0 includes
 
 - Five daily questions with private-until-both-answer reveal behavior.
 - Single choice, multiple choice, free text, partner guessing, and weighted 1–5 prompts.
-- Shared countdowns and a titled Markdown workspace with live presence, cursor-stable synchronization, private drafts, search, archives, and seven-day undo.
+- Shared countdowns and a preview-first Markdown workspace with live presence, cursor-stable synchronization, inline private images and GIFs, drafts, search, archives, and seven-day undo.
 - Couple-authorized image, PDF, text, audio, and video attachments with resumable upload, malware scanning, metadata removal, verified private previews, optional offline copies, deletion, a 100 MiB file limit, and a 2 GiB couple quota.
 - A content-free 30-day activity panel for note, attachment, countdown, quiz, and Smooch events, with a private seen position for each partner.
 - Responsive Android navigation: a left drawer on phones, a persistent rail on wide screens, and a right action panel that follows the current screen.
 - Relationship age beginning automatically at the couple's confirmed pairing instant.
 - Estimated nearby time from mutually consented, accuracy-aware location samples.
-- A dedicated Smooch tab using nine fixed emoji, a five-per-hour sender limit, orbit-pulse confirmation, notifications, weekly totals, and retained history.
+- A dedicated Smooch tab using nine fixed emoji, a five-per-hour sender limit, orbit-pulse confirmation, per-device notifications, weekly totals, and retained history.
+- Optional account-synced partner alerts for Smooches and the first document edit, with generic lock-screen text, channel controls, a content-free foreground hint, and durable background polling.
 - Android home widget, Wear OS tile, and watch complication with refresh and honest stale states.
 - Private cropped profile photos for the couple planets on the phone and Wear launcher, with initials when a photo is absent.
 - An in-app, phone-hosted wireless-debugging installer for the self-hosted Wear APK; no computer script or app store is required.
@@ -59,7 +60,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.12`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.12) is the current signed release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.12/apk) is 35,616,669 bytes with SHA-256 `0169276a6008affe9b3806315ebde269120063ac86348655312622bf8c585966`. The phone-hosted installer uses the 14,133,466-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.12/wear-apk) with version code 15 and SHA-256 `9227bbb70ecf127a36a70d3f33101938df35f4b4cf62d80b71ff4a653a1c1868`. Both artifacts retain the pinned [signing certificate](docs/signing/README.md), and GitHub mirrors the exact files and source history. RC10.1 and RC11.1 require one manual update because their already-installed updater abandons its package session; automatic updates work after crossing that boundary. This remains a test release until the complete real-device launch gate passes.
+[`1.0.0-rc.12.1`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.12.1) is the current signed release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.12.1/apk) is 35,938,870 bytes with SHA-256 `df104a03b9572f186236d686b42bf170365a2806907721cb35949ac108c9060d`. RC12.1 reuses the exact immutable 14,133,466-byte [RC12 Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.12.1/wear-apk), version code 15 and SHA-256 `9227bbb70ecf127a36a70d3f33101938df35f4b4cf62d80b71ff4a653a1c1868`, because no Wear code changed. Both artifacts retain the pinned [signing certificate](docs/signing/README.md), and GitHub mirrors the exact files and source history. RC10.1 and RC11.1 require one manual update because their already-installed updater abandons its package session; automatic updates work after crossing that boundary. This remains a test release until the complete real-device launch gate passes.
 
 ## Privacy promise
 
@@ -78,7 +79,7 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Deployment runbook](docs/operations/DEPLOYMENT.md)
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
 - [Documentation map](docs/DOCUMENTATION-MAP.md)
-- [Latest verification record](docs/operations/VERIFICATION-RC12-2026-09-13.md)
+- [Latest verification record](docs/operations/VERIFICATION-RC12.1-2026-09-13.md)
 
 ## License and support
 

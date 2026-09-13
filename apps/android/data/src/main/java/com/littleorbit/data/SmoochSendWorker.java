@@ -11,7 +11,7 @@ import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 import com.littleorbit.data.remote.SmoochApiModels;
-import com.littleorbit.data.repository.NetworkOrbitRepository;
+import com.littleorbit.data.repository.OrbitServiceException;
 import com.littleorbit.data.repository.OrbitRepository;
 import com.littleorbit.data.repository.SmoochOutbox;
 import dagger.assisted.Assisted;
@@ -72,7 +72,7 @@ public final class SmoochSendWorker extends Worker {
         while (current instanceof ExecutionException && current.getCause() != null) {
             current = current.getCause();
         }
-        if (current instanceof NetworkOrbitRepository.OrbitServiceException service) {
+        if (current instanceof OrbitServiceException service) {
             return service.statusCode();
         }
         return -1;

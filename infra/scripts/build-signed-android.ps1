@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$EnvironmentFile = ".env.android-signing",
-    [string]$OutputDirectory = "dist/android"
+    [string]$OutputDirectory = "dist/android",
+    [string]$ReuseWearApk
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,6 +36,25 @@ function Find-ApkSigner([string]$SdkRoot) {
         }
     }
     throw "Android apksigner was not found under $SdkRoot."
+}
+
+function Find-Aapt([string]$SdkRoot) {
+    $buildTools = Get-ChildItem -LiteralPath (Join-Path $SdkRoot "build-tools") -Directory |
+        Sort-Object { [version]$_.Name } -Descending
+    foreach ($directory in $buildTools) {
+        $candidate = Join-Path $directory.FullName "aapt.exe"
+        if (Test-Path -LiteralPath $candidate) { return $candidate }
+    }
+    throw "Android aapt was not found under $SdkRoot."
+}
+
+function Read-VersionCode([string]$Aapt, [string]$Apk) {
+    $package = & $Aapt dump badging $Apk | Where-Object { $_ -match '^package:' } |
+        Select-Object -First 1
+    if ($package -notmatch "name='com.littleorbit.mobile' versionCode='([0-9]+)'") {
+        throw "Wear APK package identity or version code is invalid."
+    }
+    return [int]$Matches[1]
 }
 
 function Publish-Apk(
@@ -92,10 +112,13 @@ $sdkRoot = if ($env:ANDROID_HOME) {
     Join-Path $env:LOCALAPPDATA "Android/Sdk"
 }
 $apkSigner = Find-ApkSigner $sdkRoot
+$aapt = Find-Aapt $sdkRoot
 
 Push-Location $projectRoot
 try {
-    & .\gradlew.bat :apps:android:mobile:assembleRelease :apps:android:wear:assembleRelease
+    $tasks = @(':apps:android:mobile:assembleRelease')
+    if (-not $ReuseWearApk) { $tasks += ':apps:android:wear:assembleRelease' }
+    & .\gradlew.bat @tasks
     if ($LASTEXITCODE -ne 0) {
         throw "Gradle release build failed."
     }
@@ -104,18 +127,31 @@ try {
 }
 
 $phoneMetadataPath = Join-Path $projectRoot "apps/android/mobile/build/outputs/apk/release/output-metadata.json"
-$wearMetadataPath = Join-Path $projectRoot "apps/android/wear/build/outputs/apk/release/output-metadata.json"
 $phoneMetadata = Get-Content -LiteralPath $phoneMetadataPath -Raw | ConvertFrom-Json
-$wearMetadata = Get-Content -LiteralPath $wearMetadataPath -Raw | ConvertFrom-Json
 $versionName = $phoneMetadata.elements[0].versionName
-if ($wearMetadata.elements[0].versionName -ne $versionName) {
-    throw "Phone and Wear APKs have different version names."
-}
 $outputPath = Join-Path $projectRoot $OutputDirectory
 New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
 
 $phoneSource = Join-Path $projectRoot "apps/android/mobile/build/outputs/apk/release/mobile-release.apk"
-$wearSource = Join-Path $projectRoot "apps/android/wear/build/outputs/apk/release/wear-release.apk"
+$wearSource = if ($ReuseWearApk) {
+    $candidate = if ([IO.Path]::IsPathRooted($ReuseWearApk)) {
+        $ReuseWearApk
+    } else { Join-Path $projectRoot $ReuseWearApk }
+    (Resolve-Path -LiteralPath $candidate).Path
+} else {
+    Join-Path $projectRoot "apps/android/wear/build/outputs/apk/release/wear-release.apk"
+}
+$wearVersionCode = if ($ReuseWearApk) {
+    Read-VersionCode $aapt $wearSource
+} else {
+    $wearMetadataPath = Join-Path $projectRoot `
+        "apps/android/wear/build/outputs/apk/release/output-metadata.json"
+    $wearMetadata = Get-Content -LiteralPath $wearMetadataPath -Raw | ConvertFrom-Json
+    if ($wearMetadata.elements[0].versionName -ne $versionName) {
+        throw "Phone and Wear APKs have different version names."
+    }
+    [int]$wearMetadata.elements[0].versionCode
+}
 $phoneDestination = Join-Path $outputPath "little-orbit-$versionName.apk"
 $wearDestination = Join-Path $outputPath "little-orbit-wear-$versionName.apk"
 $phone = Publish-Apk $phoneSource $phoneDestination $apkSigner
@@ -127,7 +163,7 @@ if ($phone.CertificateSha256 -ne $wear.CertificateSha256) {
 $releaseManifest = [ordered]@{
     Version = $versionName
     PhoneVersionCode = $phoneMetadata.elements[0].versionCode
-    WearVersionCode = $wearMetadata.elements[0].versionCode
+    WearVersionCode = $wearVersionCode
     PhoneApk = [IO.Path]::GetFileName($phoneDestination)
     PhoneSha256 = $phone.ApkSha256
     PhoneSizeBytes = $phone.SizeBytes

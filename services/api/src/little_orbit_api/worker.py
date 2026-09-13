@@ -41,6 +41,7 @@ from .models import (
     QuizDayQuestion,
     Session,
 )
+from .notification_service import purge_notification_state
 from .together_models import RelationshipStartProposal, TogetherOperation
 
 LOGGER = logging.getLogger(__name__)
@@ -96,6 +97,7 @@ async def _purge_expired_records(session: AsyncSession, now: datetime) -> None:
     await session.execute(
         delete(ActivityEvent).where(ActivityEvent.created_at <= now - timedelta(days=30))
     )
+    await purge_notification_state(session, now)
     await session.execute(
         update(RelationshipStartProposal)
         .where(

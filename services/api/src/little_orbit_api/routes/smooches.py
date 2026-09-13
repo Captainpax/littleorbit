@@ -1,12 +1,14 @@
 """Authorized, retry-safe Smooch delivery and durable weekly history."""
 
 from datetime import date, datetime, timedelta
+from typing import cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..activity_schemas import ActivityEmoji
 from ..activity_service import record_activity
 from ..clock import SystemClock
 from ..couple_access import active_member, lock_couple
@@ -22,6 +24,9 @@ from ..interaction_schemas import (
     SmoochWeekSummary,
 )
 from ..models import Account, Couple, CoupleMember
+from ..notification_hub import NotificationConnectionHub
+from ..notification_models import NotificationEvent
+from ..notification_service import enqueue_smooch_event
 from ..smooch_service import (
     EMOJIS,
     HOURLY_LIMIT,
@@ -52,6 +57,7 @@ async def _partner(session: AsyncSession, member: CoupleMember) -> Account:
 @router.post("", response_model=SmoochResponse, status_code=status.HTTP_201_CREATED)
 async def send_smooch(
     payload: SmoochCreateRequest,
+    request: Request,
     response: Response,
     actor: Account = Depends(current_account),
     session: AsyncSession = Depends(session_scope),
@@ -100,9 +106,13 @@ async def send_smooch(
         f"smooch:{payload.operation_id}",
         target_type="smooch",
         target_id=smooch.id,
-        emoji=smooch.emoji,
+        emoji=cast(ActivityEmoji, smooch.emoji),
     )
+    notified_account = await enqueue_smooch_event(session, smooch)
     await session.commit()
+    if notified_account is not None:
+        hub: NotificationConnectionHub = request.app.state.notification_connections
+        await hub.available(notified_account)
     response.headers["X-RateLimit-Remaining"] = str(HOURLY_LIMIT - len(recent) - 1)
     return _send_response(smooch, partner.display_name, len(recent) + 1)
 
@@ -229,6 +239,16 @@ async def acknowledge_deliveries(
             Smooch.delivered_at.is_(None),
         )
         .values(delivered_at=SystemClock().now())
+    )
+    await session.execute(
+        update(NotificationEvent)
+        .where(
+            NotificationEvent.kind == "smooch_received",
+            NotificationEvent.source_id.in_(payload.smooch_ids),
+            NotificationEvent.recipient_id == actor.id,
+            NotificationEvent.legacy_consumed_at.is_(None),
+        )
+        .values(legacy_consumed_at=SystemClock().now())
     )
     await session.commit()
 

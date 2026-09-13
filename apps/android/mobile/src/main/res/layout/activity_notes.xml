@@ -137,6 +137,15 @@
                         android:textSize="21sp"
                         android:textStyle="bold" />
 
+                    <TextView
+                        android:id="@+id/previewTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle"
+                        android:visibility="gone" />
+
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/archiveButton"
                         style="@style/Widget.LittleOrbit.Button.Text"
@@ -158,30 +167,14 @@
                     android:text="@string/note_presence_solo"
                     android:textColor="@color/lavender_soft" />
 
-                <LinearLayout
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/modeButton"
+                    style="@style/Widget.LittleOrbit.Button.Outline"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
-                    android:background="@drawable/card_background_muted"
-                    android:orientation="horizontal"
-                    android:padding="4dp">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/editTab"
-                        style="@style/Widget.LittleOrbit.Button.Primary"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:text="@string/edit_markdown" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/previewTab"
-                        style="@style/Widget.LittleOrbit.Button.Text"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:text="@string/preview_markdown" />
-                </LinearLayout>
+                    android:contentDescription="@string/edit_markdown"
+                    android:text="@string/edit_markdown" />
 
 
 

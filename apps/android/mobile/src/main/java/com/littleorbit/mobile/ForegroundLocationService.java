@@ -69,7 +69,7 @@ public final class ForegroundLocationService extends Service {
             stopSelf();
             return;
         }
-        SmoochStatusWorker.enqueue(this);
+        PartnerNotificationWorker.enqueue(this);
     }
 
     private Notification notification() {

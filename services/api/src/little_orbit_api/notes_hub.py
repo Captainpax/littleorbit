@@ -32,6 +32,14 @@ class NoteConnectionHub:
 
         return len(set(self._connections.get(note_id, {}).values()))
 
+    def has_other_account(self, note_id: UUID, account_id: UUID) -> bool:
+        """Return whether the partner already has this exact document open."""
+
+        return any(
+            connected != account_id
+            for connected in self._connections.get(note_id, {}).values()
+        )
+
     async def broadcast(self, note_id: UUID, payload: dict[str, object]) -> None:
         """Deliver an applied operation while pruning sockets that disappeared."""
 

@@ -195,14 +195,6 @@
                 android:layout_marginTop="10dp"
                 android:orientation="vertical" />
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/revealSmooches"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
-                android:text="@string/smooch_lock_screen_setting"
-                android:textColor="@color/cloud" />
-
             <TextView
                 android:id="@+id/smoochWeekZone"
                 android:layout_width="match_parent"

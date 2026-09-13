@@ -263,16 +263,41 @@ sequenceDiagram
     API->>DB: Authorize and lock current couple
     API->>DB: Enforce 5 sends in rolling hour; insert once
     API-->>PhoneA: Accepted event + remaining allowance
-    PhoneB->>API: Poll pending about every 5 or 15 min
-    API-->>PhoneB: Recipient-only pending events
-    PhoneB-->>B: Private notification or opted-in full emoji phrase
-    PhoneB->>API: Acknowledge delivered event
+    API->>DB: Insert short-lived notification event in same transaction
+    API-->>PhoneB: Content-free WSS hint while app is foreground
+    PhoneB->>API: Fetch pending events for random installation ID
+    API-->>PhoneB: Recipient-only authorized event metadata
+    PhoneB-->>B: Private notification; generic public lock-screen version
+    PhoneB->>API: Acknowledge this installation after Android posts it
     B->>API: GET Monday-Sunday weekly history
     API->>DB: Apply couple home timezone; aggregate both directions
     API-->>B: Current and historical weekly totals
 ```
 
 Smooch rows survive unpairing in each original participant's private archive and never appear to a later partner. Deleting either participant account permanently erases the relationship's Smooch history.
+
+## Self-hosted partner notifications
+
+```mermaid
+sequenceDiagram
+    participant Feature as Smooch / note transaction
+    participant DB as PostgreSQL
+    participant Hub as API foreground hub
+    participant Phone1 as Partner phone 1
+    participant Phone2 as Partner phone 2
+    Feature->>DB: Insert feature row + short-lived event atomically
+    DB->>DB: Create delivery per active enabled installation
+    Feature-->>Hub: Commit succeeded; signal recipient account
+    Hub-->>Phone1: notification.available (no content)
+    Phone1->>DB: Authenticated pending fetch for installation UUID
+    Phone2->>DB: WorkManager fallback pending fetch
+    DB-->>Phone1: Authorized display metadata
+    DB-->>Phone2: Same event for independent delivery
+    Phone1->>DB: Ack only phone 1 after successful post
+    Note over Phone2,DB: Phone 2 stays pending until it posts and acks
+```
+
+Installation IDs are random app-generated UUIDs rather than hardware identifiers. Account preferences gate event creation; Android runtime permission and notification-channel state gate each phone's post. A note edit creates an alert only for the first accepted body change inside a 30-minute document/editor window and skips it when the partner already has that document open. Events are fetchable for 24 hours, retained for at most seven days for bounded recovery, and removed with the account or couple. Installations unseen for 90 days are purged. The foreground hint hub is process-local, so the current self-hosted deployment runs one API process; durable polling remains authoritative if a hint is missed.
 
 ## Email delivery
 

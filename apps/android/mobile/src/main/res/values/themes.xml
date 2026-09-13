@@ -18,6 +18,14 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="materialButtonStyle">@style/Widget.LittleOrbit.Button.Primary</item>
+        <item name="android:windowAnimationStyle">@style/Animation.LittleOrbit.Window</item>
+    </style>
+
+    <style name="Animation.LittleOrbit.Window" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/orbit_fade_in</item>
+        <item name="android:activityOpenExitAnimation">@anim/orbit_fade_out</item>
+        <item name="android:activityCloseEnterAnimation">@anim/orbit_fade_in</item>
+        <item name="android:activityCloseExitAnimation">@anim/orbit_fade_out</item>
     </style>
 
     <style name="Theme.LittleOrbit" parent="Theme.LittleOrbit.Base">

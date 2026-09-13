@@ -54,6 +54,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0019-wear-adb-transport-compatibility.md` — Android 17 discovery, public TLS, lazy ADB connection proof, and package-session installation.
 - `docs/adr/0020-markdown-space-and-private-attachments.md` — safe Markdown rendering and scanned private attachment storage.
 - `docs/adr/0021-responsive-shell-and-private-activity.md` — responsive Android navigation, contextual panels, and the content-free 30-day couple timeline.
+- `docs/adr/0022-self-hosted-per-device-notifications.md` — account choices, random installations, content-free hints, and independent delivery acknowledgement.
 
 ## Operations and verification
 
@@ -72,6 +73,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-RC10.1-2026-09-12.md` — RC10.1 physical wireless-pairing, remembered reconnect, package-session, and signed-artifact evidence.
 - `docs/operations/VERIFICATION-RC11-2026-09-12.md` — RC11 Markdown, attachment, UI, build, deployment, and device evidence.
 - `docs/operations/VERIFICATION-RC12-2026-09-13.md` — RC12 shell, activity, attachment, compatibility-matrix, build, and release evidence.
+- `docs/operations/VERIFICATION-RC12.1-2026-09-13.md` — RC12.1 preview, notification, compatibility, artifact, and deployment evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -92,6 +94,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.11.2.md` — corrective Android package-session stream ordering.
 - `docs/releases/1.0.0-rc.11.3.md` — repaired updater path verification candidate and legacy boundary.
 - `docs/releases/1.0.0-rc.12.md` — responsive shell, private activity, Markdown dock, attachment repair, and isolated smoke workflow.
+- `docs/releases/1.0.0-rc.12.1.md` — preview-first documents, inline private images, per-device notifications, motion, and Android 10 repairs.
 <!-- documentation-inventory:end -->
 
 ## Review routing

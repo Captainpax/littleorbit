@@ -33,6 +33,87 @@
             android:layout_height="wrap_content"
             android:text="@string/enable_notifications" />
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/notification_choices"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/notification_choices_hint"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/notificationMaster"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:minHeight="48dp"
+            android:text="@string/all_partner_notifications" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/notificationSmooches"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/smooch_notifications" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/notificationNotes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/note_edit_notifications" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/notificationQuiz"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/quiz_notifications" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/notificationCountdowns"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/countdown_notifications" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/notificationWeekly"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/weekly_smooch_summary" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/saveNotificationPreferences"
+            style="@style/Widget.LittleOrbit.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/save_notification_choices" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/checkNotifications"
+            style="@style/Widget.LittleOrbit.Button.Outline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/check_notifications_now" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/openNotificationSettings"
+            style="@style/Widget.LittleOrbit.Button.Text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/open_android_notification_settings" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/notification_diagnostics"
+            android:textColor="@color/lavender_soft"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/notificationDiagnostics"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+        <TextView
             android:id="@+id/locationStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -10,6 +10,7 @@ final class NotificationChannels {
     static final String COUNTDOWNS = "countdowns";
     static final String LOCATION = "nearby_time";
     static final String SMOOCHES = "smooches";
+    static final String SHARED_SPACE = "shared_space";
     static final String UPDATES = "app_updates";
 
     private NotificationChannels() {}
@@ -28,6 +29,9 @@ final class NotificationChannels {
                 NotificationManager.IMPORTANCE_LOW));
         manager.createNotificationChannel(new NotificationChannel(
                 SMOOCHES, context.getString(R.string.smooches),
+                NotificationManager.IMPORTANCE_DEFAULT));
+        manager.createNotificationChannel(new NotificationChannel(
+                SHARED_SPACE, context.getString(R.string.shared_space_notifications),
                 NotificationManager.IMPORTANCE_DEFAULT));
         manager.createNotificationChannel(new NotificationChannel(
                 UPDATES, context.getString(R.string.app_updates),

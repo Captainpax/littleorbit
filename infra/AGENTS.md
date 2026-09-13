@@ -23,6 +23,7 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 - Do not enable HSTS until HTTPS, certificate renewal, rollback, and direct recovery access are verified.
 - Never run destructive Compose, volume, database, firewall, DHCP, DNS, or proxy actions without inspecting the target state.
 - Copy immutable signed APK bytes into the ignored release directory and publish phone/Wear codes, sizes, hashes, and signer only from the generated `release-manifest.json`. Independently inspect both APK manifests, then verify API range responses. Keep GitHub as a release mirror. Run migrations and health checks before a version floor can be scheduled.
+- A phone-only release may reuse a previously signed Wear APK only when its bytes, hash, signer, package, and version code are unchanged and release notes say so explicitly.
 - Inventory every repository-owned Markdown file for each infrastructure update. Update or create all affected deployment, backup, security, architecture, release, and contributor documents, and always review and update `ROADMAP.md` for behavior, scope, milestone, or release changes.
 
 ## Start here

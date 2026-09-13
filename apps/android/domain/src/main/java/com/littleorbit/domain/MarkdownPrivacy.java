@@ -28,9 +28,14 @@ public final class MarkdownPrivacy {
 
     private static String sanitizeLine(String line) {
         Matcher images = REMOTE_IMAGE.matcher(line);
-        String blocked = images.replaceAll(match ->
-                "[Remote image blocked: " + safeAlt(match.group(1)) + "](" + match.group(2) + ")");
-        return RAW_HTML.matcher(blocked).replaceAll("&lt;$1&gt;");
+        StringBuffer blocked = new StringBuffer(line.length() + 32);
+        while (images.find()) {
+            String replacement = "[Remote image blocked: " + safeAlt(images.group(1))
+                    + "](" + images.group(2) + ")";
+            images.appendReplacement(blocked, Matcher.quoteReplacement(replacement));
+        }
+        images.appendTail(blocked);
+        return RAW_HTML.matcher(blocked.toString()).replaceAll("&lt;$1&gt;");
     }
 
     private static String safeAlt(String value) {

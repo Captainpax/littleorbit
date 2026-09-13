@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 from uuid import uuid4
 
-from little_orbit_api.routes.notes import NoteEditMessage, _duplicate_ack
+from little_orbit_api.note_edit_service import NoteEditMessage, _duplicate_ack
 
 
 def test_duplicate_ack_returns_current_body_and_revision() -> None:

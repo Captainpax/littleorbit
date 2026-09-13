@@ -36,6 +36,8 @@ Use the disposable smoke stack for paired-account Android checks. It keeps test 
 
 ```powershell
 .\infra\scripts\smoke-stack.ps1 up
+.\.venv313\Scripts\python.exe infra\scripts\create_attachment_smoke.py
+.\.venv313\Scripts\python.exe infra\scripts\notification-smoke.py
 .\infra\scripts\android-smoke.ps1 -Serial emulator-5554 -AccountIndex 0 -ResetApp
 .\infra\scripts\smoke-stack.ps1 down
 ```

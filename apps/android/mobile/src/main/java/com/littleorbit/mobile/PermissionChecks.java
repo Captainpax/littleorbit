@@ -1,6 +1,7 @@
 package com.littleorbit.mobile;
 
 import android.Manifest;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -16,6 +17,13 @@ final class PermissionChecks {
                 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                         == PackageManager.PERMISSION_GRANTED;
         return runtime && NotificationManagerCompat.from(context).areNotificationsEnabled();
+    }
+
+    static boolean channelEnabled(Context context, String channelId) {
+        if (!notificationsGranted(context)) return false;
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        android.app.NotificationChannel channel = manager.getNotificationChannel(channelId);
+        return channel == null || channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
     }
 
     static boolean fineLocationGranted(Context context) {

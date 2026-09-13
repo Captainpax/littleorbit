@@ -31,6 +31,8 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Use RC11.3 to exercise the repaired RC11.2 updater across download, verification, permission, Android confirmation, and in-place replacement; document the one-time manual boundary for RC10.1 and RC11.1.
 - [x] Publish RC12 with responsive left navigation, per-screen right panels, a keyboard-adjacent Markdown dock, repaired transparent PNG/GIF sanitation, post-sanitization quota enforcement, and a privacy-minimized 30-day couple activity timeline.
 - [x] Add an isolated paired-account smoke environment and verify the RC12 phone flow on API 29, API 30, API 36, and a wide API 36 tablet, plus the stale-state Wear launcher on a round API 34 emulator.
+- [x] Publish RC12.1 with preview-first shared documents, verified inline private images and animated GIFs, account-synced notification choices, per-device Smooch and document-edit delivery, generic lock-screen text, and reduced-motion-aware cosmic transitions.
+- [x] Exercise RC12.1 on API 29, API 30, API 36 phone, and API 36 tablet; repair the Android 10 Markdown API crash and mobile WorkManager/Hilt registration found by the compatibility gate.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.
 
@@ -47,6 +49,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - Remembered-watch reconnect latency and progress reporting for slow local transfers.
 - Profile-photo accessibility, transfer retry, and storage measurements on physical phone/watch pairs.
 - Smooch notification timing, weekly-boundary, offline-outbox, and lock-screen privacy measurements on two physical phones.
+- Background partner-alert latency, channel overrides, multi-install delivery, and OEM process-kill behavior on two physical phones.
 - Nearby-time battery and reliability measurements across OEM background limits without weakening the two-sample confidence rule.
 - Our Space attachment recovery drills, large-library search measurements, inline media polish, and two-phone cursor/convergence testing across process death and poor networks.
 - Activity-feed accessibility, pagination, unread-position behavior, and event wording based on two-phone use; preserve the content-free 30-day boundary.

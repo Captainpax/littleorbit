@@ -9,6 +9,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.NotificationApiModels;
 import com.littleorbit.data.repository.OrbitRepository;
 import com.littleorbit.mobile.databinding.ActivityDeviceSetupBinding;
 import dagger.hilt.android.AndroidEntryPoint;
@@ -19,6 +20,7 @@ import javax.inject.Inject;
 public final class DeviceSetupActivity extends InsetAwareActivity {
     @Inject OrbitRepository orbit;
     @Inject WearStatusChecker wearStatus;
+    @Inject NotificationDeviceStore notificationDevice;
     private ActivityDeviceSetupBinding binding;
     private boolean waitingForBackground;
     private final ActivityResultLauncher<String[]> foregroundLocation =
@@ -40,6 +42,17 @@ public final class DeviceSetupActivity extends InsetAwareActivity {
         binding = ActivityDeviceSetupBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         binding.notificationButton.setOnClickListener(view -> requestNotifications());
+        binding.saveNotificationPreferences.setOnClickListener(view -> saveNotificationChoices());
+        binding.checkNotifications.setOnClickListener(view -> {
+            PartnerNotificationWorker.enqueue(this);
+            binding.notificationDiagnostics.setText(R.string.loading);
+            binding.notificationDiagnostics.postDelayed(
+                    () -> binding.notificationDiagnostics.setText(notificationDevice.diagnostics()),
+                    1500);
+        });
+        binding.openNotificationSettings.setOnClickListener(view -> openNotificationSettings());
+        binding.notificationMaster.setOnCheckedChangeListener(
+                (button, checked) -> enableNotificationChoices(checked));
         binding.locationButton.setOnClickListener(view -> requestLocation());
         binding.wearButton.setOnClickListener(view -> openWearGuide());
         binding.doneButton.setOnClickListener(view -> finish());
@@ -65,8 +78,8 @@ public final class DeviceSetupActivity extends InsetAwareActivity {
 
     private void reconcileNotifications() {
         if (PermissionChecks.notificationsGranted(this)) {
-            QuizStatusWorker.schedule(this);
-            SmoochStatusWorker.schedule(this, orbit.isSignedIn());
+            PartnerNotificationWorker.schedule(this, orbit.isSignedIn());
+            PartnerNotificationWorker.enqueue(this);
         }
         refreshStatus();
     }
@@ -138,7 +151,53 @@ public final class DeviceSetupActivity extends InsetAwareActivity {
             orbit.preferences().thenAccept(preferences -> runOnUiThread(() ->
                     renderLocation(preferences))).exceptionally(failure -> null);
         }
+        binding.notificationDiagnostics.setText(notificationDevice.diagnostics());
+        if (orbit.isSignedIn()) loadNotificationChoices();
         wearStatus.check().thenAccept(state -> runOnUiThread(() -> renderWear(state)));
+    }
+
+    private void loadNotificationChoices() {
+        orbit.notificationPreferences().thenAccept(preferences -> runOnUiThread(() -> {
+            if (isFinishing()) return;
+            renderNotificationChoices(preferences);
+        })).exceptionally(failure -> null);
+    }
+
+    private void renderNotificationChoices(NotificationApiModels.Preferences preferences) {
+        binding.notificationMaster.setChecked(preferences.master);
+        binding.notificationSmooches.setChecked(preferences.smooches);
+        binding.notificationNotes.setChecked(preferences.noteEditing);
+        binding.notificationQuiz.setChecked(preferences.dailyQuiz);
+        binding.notificationCountdowns.setChecked(preferences.countdowns);
+        binding.notificationWeekly.setChecked(preferences.weeklySummary);
+        enableNotificationChoices(preferences.master);
+        new NotificationSettingsStore(this).save(preferences);
+    }
+
+    private void saveNotificationChoices() {
+        NotificationApiModels.PreferencesUpdate update = new NotificationApiModels.PreferencesUpdate(
+                binding.notificationMaster.isChecked(),
+                binding.notificationSmooches.isChecked(),
+                binding.notificationNotes.isChecked(),
+                binding.notificationQuiz.isChecked(),
+                binding.notificationCountdowns.isChecked(),
+                binding.notificationWeekly.isChecked());
+        binding.notificationDiagnostics.setText(R.string.loading);
+        AsyncUi.observe(this, orbit.updateNotificationPreferences(update),
+                binding.notificationDiagnostics, preferences -> {
+                    renderNotificationChoices(preferences);
+                    binding.notificationDiagnostics.setText(R.string.notification_choices_saved);
+                    PartnerNotificationWorker.schedule(this, preferences.master);
+                    PartnerNotificationWorker.enqueue(this);
+                });
+    }
+
+    private void enableNotificationChoices(boolean enabled) {
+        binding.notificationSmooches.setEnabled(enabled);
+        binding.notificationNotes.setEnabled(enabled);
+        binding.notificationQuiz.setEnabled(enabled);
+        binding.notificationCountdowns.setEnabled(enabled);
+        binding.notificationWeekly.setEnabled(enabled);
     }
 
     private void renderLocation(ApiModels.Preferences preferences) {

@@ -234,6 +234,7 @@
     <string name="no_search_results">No documents match that search.</string>
     <string name="back_to_space">Back to Our Space</string>
     <string name="edit_markdown">Edit</string>
+    <string name="done_editing">Done</string>
     <string name="preview_markdown">Preview</string>
     <string name="space_markdown_hint">Write with Markdown…</string>
     <string name="remote_images_blocked">Remote images stay blocked for privacy. Their links remain available to open deliberately.</string>
@@ -416,4 +417,24 @@
     <string name="password_required_deletion">Enter your current password first.</string>
     <string name="delete_account">Delete account</string>
     <string name="delete_account_explanation">Access and sharing stop now. Full erasure is scheduled after seven days.</string>
+    <string name="shared_space_notifications">Shared Space activity</string>
+    <string name="space_notification_title">Shared Space</string>
+    <string name="partner_editing_note">%1$s is editing “%2$s”</string>
+    <string name="your_partner">Your partner</string>
+    <string name="shared_note">a shared document</string>
+    <string name="private_notification_title">Little Orbit</string>
+    <string name="private_notification_message">You have a new update from your partner.</string>
+    <string name="notification_choices">Notification choices</string>
+    <string name="notification_choices_hint">These choices follow your account. Android permission and channel controls apply separately on each phone.</string>
+    <string name="all_partner_notifications">All partner notifications</string>
+    <string name="smooch_notifications">Smooches</string>
+    <string name="note_edit_notifications">Partner editing a document</string>
+    <string name="quiz_notifications">Daily quiz updates</string>
+    <string name="countdown_notifications">Countdown reminders</string>
+    <string name="weekly_smooch_summary">Weekly Smooch summary</string>
+    <string name="save_notification_choices">Save notification choices</string>
+    <string name="check_notifications_now">Check notifications now</string>
+    <string name="notification_diagnostics">Delivery diagnostics</string>
+    <string name="notification_choices_saved">Notification choices saved.</string>
+    <string name="open_android_notification_settings">Open Android notification settings</string>
 </resources>

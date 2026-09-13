@@ -19,7 +19,7 @@ import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 import com.littleorbit.data.remote.QuizApiModels;
-import com.littleorbit.data.repository.NetworkOrbitRepository;
+import com.littleorbit.data.repository.OrbitServiceException;
 import com.littleorbit.data.repository.OrbitRepository;
 import dagger.assisted.Assisted;
 import dagger.assisted.AssistedInject;
@@ -45,6 +45,11 @@ public final class QuizStatusWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
+        NotificationSettingsStore choices = new NotificationSettingsStore(getApplicationContext());
+        if (!choices.master() || !choices.dailyQuiz()
+                || !PermissionChecks.channelEnabled(getApplicationContext(), NotificationChannels.QUIZ)) {
+            return Result.success();
+        }
         try {
             QuizApiModels.Status status = orbit.quizStatus().get(30, TimeUnit.SECONDS);
             publishTransitions(status);
@@ -57,7 +62,7 @@ public final class QuizStatusWorker extends Worker {
 
     private static boolean isSignedOut(Exception failure) {
         Throwable cause = failure instanceof ExecutionException ? failure.getCause() : failure;
-        return cause instanceof NetworkOrbitRepository.OrbitServiceException service
+        return cause instanceof OrbitServiceException service
                 && (service.statusCode() == 401 || service.statusCode() == 409);
     }
 

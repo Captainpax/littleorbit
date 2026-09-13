@@ -25,8 +25,10 @@ async def test_presence_counts_accounts_instead_of_sockets() -> None:
     hub.add(note_id, partner, second_account)
 
     assert hub.count(note_id) == 2
+    assert hub.has_other_account(note_id, first_account)
     hub.remove(note_id, partner)
     assert hub.count(note_id) == 1
+    assert not hub.has_other_account(note_id, first_account)
 
 
 @pytest.mark.asyncio

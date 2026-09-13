@@ -38,6 +38,10 @@ RC12 gives the whole app one predictable shell. A phone opens the complete desti
 
 The RC12 editor keeps the most common formatting actions in a compact dock directly above the keyboard. Less frequent Markdown structures live in the overflow menu. The right panel searches or switches documents without leaving the current editor, while attachments remain explicit cards with Insert, Preview, Delete, and Keep offline actions.
 
+![Implemented RC12.1 preview-first document with verified inline PNG and animated GIF](docs/assets/android-space-preview-rc12-1-emulator.png)
+
+RC12.1 opens existing documents in preview and uses one Edit/Done editing action. Authorized private images appear at their Markdown position only after download size and digest verification; the emulator capture shows the PNG and one frame of the sanitized animated GIF. Account-synced notification controls now cover Smooches, document editing, quizzes, countdowns, and weekly summaries, while Android permission and channels remain visible per phone.
+
 ### Current Android implementation
 
 ![Implemented signed-out RC8 home on an API 36 emulator](docs/assets/android-home-rc8-emulator.png)
@@ -95,6 +99,8 @@ The console exposes service health, delivery and generation status, moderation q
 - [x] API 36 emulator: signed RC8 install, cold launch, signed-out home hierarchy, status/navigation-bar insets, and accessibility-tree dump.
 - [x] RC12 isolated emulator matrix: paired-account Home, left navigation, Our Space, Markdown dock, transparent PNG/GIF availability, API 29, API 30, API 36 phone, and API 36 wide tablet.
 - [x] RC12 API 36 phone: dynamic Notes panel opened from the right and an authorized sanitized PNG downloaded, passed digest verification, and rendered in-app.
+- [x] RC12.1 API 36 phone: preview-first document rendered an authorized PNG inline and visibly advanced a sanitized GIF between frames; Edit/Done editing state changed correctly.
+- [x] RC12.1 compatibility matrix: both disposable partners passed Home, drawer/rail, Our Space, preview/editor, Markdown dock, and attachment checks on API 29, API 30, API 36 phone, and API 36 tablet.
 - [ ] Home widget: fresh, stale, signed-out, and server-offline states.
 - [ ] Wear OS: in-app wireless install, remembered authorization, old-patch warning, profile-photo sync, phone capability detection, tile, complication, loading, stale, and disconnected states.
 - [x] Wear OS 5 round emulator: signed RC7 install, cold launch, safe-area fallback layout, and stale-state rendering.

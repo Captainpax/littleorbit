@@ -19,7 +19,8 @@ import org.junit.Test;
 /** Cross-language smoke checks over the canonical protocol fixtures. */
 public final class ProtocolFixturesTest {
     private static final List<String> NAMES = List.of(
-            "activity-page", "location-batch", "note-operation", "note-attachment", "pairing",
+            "activity-page", "location-batch", "note-operation", "note-attachment",
+            "notification-event", "pairing",
             "question-batch", "orbit-profile", "smooch");
     private final JsonAdapter<Map<String, Object>> adapter;
 
@@ -99,6 +100,7 @@ public final class ProtocolFixturesTest {
             case "location-batch" -> validLocation(value);
             case "note-operation" -> validNote(value);
             case "note-attachment" -> validAttachment(value);
+            case "notification-event" -> validNotificationEvent(value);
             case "pairing" -> validPairing(value);
             case "question-batch" -> validQuestionBatch(value);
             case "orbit-profile" -> validOrbitProfile(value);
@@ -151,6 +153,23 @@ public final class ProtocolFixturesTest {
                 && isUuid(value.get("operation_id"))
                 && List.of("😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑")
                         .contains(value.get("emoji"));
+    }
+
+    private static boolean validNotificationEvent(Map<String, Object> value) {
+        if (value.size() != 9 || !isUuid(value.get("id"))
+                || !(value.get("created_at") instanceof String created)
+                || !(value.get("expires_at") instanceof String expires)
+                || !created.matches("^.+T.+(?:Z|[+-].+)$")
+                || !expires.matches("^.+T.+(?:Z|[+-].+)$")) return false;
+        if ("note_editing".equals(value.get("kind"))) {
+            return isUuid(value.get("note_id"))
+                    && value.get("emoji") == null && value.get("phrase_key") == null;
+        }
+        return "smooch_received".equals(value.get("kind"))
+                && List.of("😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑")
+                        .contains(value.get("emoji"))
+                && value.get("phrase_key") instanceof String
+                && value.get("note_id") == null && value.get("note_title") == null;
     }
 
     private static boolean validAttachment(Map<String, Object> value) {

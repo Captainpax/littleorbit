@@ -2,7 +2,7 @@ package com.littleorbit.mobile;
 
 import android.app.Activity;
 import android.widget.TextView;
-import com.littleorbit.data.repository.NetworkOrbitRepository;
+import com.littleorbit.data.repository.OrbitServiceException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.Consumer;
@@ -24,7 +24,7 @@ final class AsyncUi {
                 Throwable cause = failure instanceof CompletionException && failure.getCause() != null
                         ? failure.getCause()
                         : failure;
-                boolean changed = cause instanceof NetworkOrbitRepository.OrbitServiceException error
+                boolean changed = cause instanceof OrbitServiceException error
                         && error.statusCode() == 409;
                 status.setText(changed ? R.string.remote_change_conflict : R.string.request_failed);
                 return;

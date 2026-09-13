@@ -8,13 +8,13 @@ import com.littleorbit.data.local.LocationQueueDao;
 import com.littleorbit.data.remote.ApiModels;
 import com.littleorbit.data.remote.ActivityApiModels;
 import com.littleorbit.data.remote.NoteApiModels;
+import com.littleorbit.data.remote.NotificationApiModels;
 import com.littleorbit.data.remote.LittleOrbitApi;
 import com.littleorbit.data.remote.QuizApiModels;
 import com.littleorbit.data.remote.SmoochApiModels;
 import com.littleorbit.data.remote.TogetherTimeModels;
 import com.littleorbit.data.security.SessionStore;
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -25,7 +25,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import retrofit2.Call;
-import retrofit2.Response;
 
 /** Bounded Retrofit repository with no Android UI behavior. */
 @Singleton
@@ -212,7 +211,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     public CompletableFuture<List<ApiModels.Countdown>> countdowns() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                List<ApiModels.Countdown> remote = execute(api.countdowns());
+                List<ApiModels.Countdown> remote = RetrofitCalls.execute(api.countdowns());
                 offlineCountdowns.replaceRemote(remote);
                 return offlineCountdowns.cached();
             } catch (OrbitServiceException failure) {
@@ -248,7 +247,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     @Override
     public CompletableFuture<Void> markActivitySeen(long throughSequence, String operationId) {
-        return CompletableFuture.runAsync(() -> executeVoid(api.markActivitySeen(
+        return CompletableFuture.runAsync(() -> RetrofitCalls.executeVoid(api.markActivitySeen(
                 new ActivityApiModels.SeenRequest(throughSequence, operationId))), executor);
     }
 
@@ -286,7 +285,8 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     @Override
     public CompletableFuture<Void> acknowledgeSmooches(List<String> ids) {
         return CompletableFuture.runAsync(
-                () -> executeVoid(api.acknowledgeSmooches(new SmoochApiModels.DeliveryAck(ids))),
+                () -> RetrofitCalls.executeVoid(
+                        api.acknowledgeSmooches(new SmoochApiModels.DeliveryAck(ids))),
                 executor);
     }
 
@@ -363,6 +363,43 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     @Override
+    public CompletableFuture<NotificationApiModels.Preferences> notificationPreferences() {
+        return async(api.notificationPreferences());
+    }
+
+    @Override
+    public CompletableFuture<NotificationApiModels.Preferences> updateNotificationPreferences(
+            NotificationApiModels.PreferencesUpdate request) {
+        return async(api.updateNotificationPreferences(request));
+    }
+
+    @Override
+    public CompletableFuture<NotificationApiModels.Device> registerNotificationDevice(
+            String deviceId, NotificationApiModels.DeviceUpsert request) {
+        return async(api.registerNotificationDevice(deviceId, request));
+    }
+
+    @Override
+    public CompletableFuture<Void> disableNotificationDevice(String deviceId) {
+        return CompletableFuture.runAsync(
+                () -> RetrofitCalls.executeVoid(api.disableNotificationDevice(deviceId)), executor);
+    }
+
+    @Override
+    public CompletableFuture<List<NotificationApiModels.Event>> pendingNotifications(
+            String deviceId) {
+        return async(api.pendingNotifications(deviceId));
+    }
+
+    @Override
+    public CompletableFuture<Void> acknowledgeNotifications(
+            String deviceId, List<String> eventIds) {
+        return CompletableFuture.runAsync(
+                () -> RetrofitCalls.executeVoid(api.acknowledgeNotifications(
+                        new NotificationApiModels.DeliveryAck(deviceId, eventIds))), executor);
+    }
+
+    @Override
     public CompletableFuture<List<NoteApiModels.Attachment>> noteAttachments(String noteId) {
         return async(api.noteAttachments(noteId));
     }
@@ -384,7 +421,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     @Override
     public CompletableFuture<Void> deleteNoteAttachment(String noteId, String attachmentId) {
         return CompletableFuture.runAsync(
-                () -> executeVoid(api.deleteNoteAttachment(noteId, attachmentId)), executor);
+                () -> RetrofitCalls.executeVoid(api.deleteNoteAttachment(noteId, attachmentId)), executor);
     }
 
     @Override
@@ -471,7 +508,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     private ApiModels.Countdown createCountdownOrQueue(ApiModels.CountdownMutation mutation) {
         try {
-            ApiModels.Countdown result = execute(api.createCountdown(mutation));
+            ApiModels.Countdown result = RetrofitCalls.execute(api.createCountdown(mutation));
             DisplayCacheSyncWorker.enqueue(context);
             return result;
         } catch (OrbitServiceException failure) {
@@ -488,7 +525,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
             return offlineCountdowns.queueUpdate(countdownId, mutation);
         }
         try {
-            ApiModels.Countdown result = execute(api.updateCountdown(countdownId, mutation));
+            ApiModels.Countdown result = RetrofitCalls.execute(api.updateCountdown(countdownId, mutation));
             DisplayCacheSyncWorker.enqueue(context);
             return result;
         } catch (OrbitServiceException failure) {
@@ -505,7 +542,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
             return offlineCountdowns.queueDelete(countdownId, request);
         }
         try {
-            ApiModels.Message result = execute(api.deleteCountdown(countdownId, request));
+            ApiModels.Message result = RetrofitCalls.execute(api.deleteCountdown(countdownId, request));
             DisplayCacheSyncWorker.enqueue(context);
             return result;
         } catch (OrbitServiceException failure) {
@@ -517,62 +554,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     private <T> CompletableFuture<T> async(Call<T> call) {
-        return CompletableFuture.supplyAsync(() -> execute(call), executor);
+        return CompletableFuture.supplyAsync(() -> RetrofitCalls.execute(call), executor);
     }
 
-    private static <T> T execute(Call<T> call) {
-        try {
-            Response<T> response = call.execute();
-            T body = response.body();
-            if (!response.isSuccessful() || body == null) {
-                throw new OrbitServiceException(response.code());
-            }
-            return body;
-        } catch (IOException exception) {
-            throw new OrbitServiceException(exception);
-        }
-    }
-
-    private static void executeVoid(Call<Void> call) {
-        try {
-            Response<Void> response = call.execute();
-            if (!response.isSuccessful()) throw new OrbitServiceException(response.code());
-        } catch (IOException exception) {
-            throw new OrbitServiceException(exception);
-        }
-    }
-
-    /** Stable error that never includes response bodies or credentials. */
-    public static final class OrbitServiceException extends RuntimeException {
-        private final int statusCode;
-
-        /** Creates an HTTP-status failure. */
-        public OrbitServiceException(int statusCode) {
-            super("Little Orbit request failed with status " + statusCode);
-            this.statusCode = statusCode;
-        }
-
-        /** Creates a transport failure without secret-bearing request data. */
-        public OrbitServiceException(IOException cause) {
-            super("Little Orbit could not reach the server", cause);
-            this.statusCode = -1;
-        }
-
-        /** Creates a sanitized local attachment failure without file content or paths. */
-        public OrbitServiceException(int statusCode, String reason) {
-            super(reason);
-            this.statusCode = statusCode;
-        }
-
-        /** Creates a sanitized local attachment failure with its transport cause. */
-        public OrbitServiceException(int statusCode, String reason, Throwable cause) {
-            super(reason, cause);
-            this.statusCode = statusCode;
-        }
-
-        /** Returns the HTTP status, or -1 for a transport failure. */
-        public int statusCode() {
-            return statusCode;
-        }
-    }
 }

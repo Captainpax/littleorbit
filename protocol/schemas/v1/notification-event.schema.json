@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v1/notification-event.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "created_at", "expires_at", "actor_display_name", "emoji", "phrase_key", "note_id", "note_title"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "kind": { "enum": ["smooch_received", "note_editing"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "actor_display_name": { "type": ["string", "null"], "maxLength": 80 },
+    "emoji": { "type": ["string", "null"], "maxLength": 16 },
+    "phrase_key": { "type": ["string", "null"], "maxLength": 32 },
+    "note_id": { "type": ["string", "null"], "format": "uuid" },
+    "note_title": { "type": ["string", "null"], "maxLength": 120 }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "kind": { "const": "smooch_received" },
+        "emoji": { "type": "string", "enum": ["😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑"] },
+        "phrase_key": { "type": "string", "minLength": 1 },
+        "note_id": { "type": "null" },
+        "note_title": { "type": "null" }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "note_editing" },
+        "emoji": { "type": "null" },
+        "phrase_key": { "type": "null" },
+        "note_id": { "type": "string", "format": "uuid" }
+      }
+    }
+  ]
+}

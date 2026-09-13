@@ -8,7 +8,7 @@ import com.google.android.material.card.MaterialCardView;
 import com.littleorbit.data.SmoochSendWorker;
 import com.littleorbit.data.remote.ApiModels;
 import com.littleorbit.data.remote.SmoochApiModels;
-import com.littleorbit.data.repository.NetworkOrbitRepository;
+import com.littleorbit.data.repository.OrbitServiceException;
 import com.littleorbit.data.repository.OrbitRepository;
 import com.littleorbit.data.repository.SmoochOutbox;
 import com.littleorbit.mobile.databinding.ActivitySmoochBinding;
@@ -40,11 +40,6 @@ public final class SmoochActivity extends OrbitShellActivity {
         setOrbitContextActions(List.of(
                 new ContextAction(getString(R.string.smooch_history), this::loadHistory),
                 new ContextAction(getString(R.string.this_week), this::loadStatus)));
-        android.content.SharedPreferences settings = getSharedPreferences(
-                "smooch_settings", MODE_PRIVATE);
-        binding.revealSmooches.setChecked(settings.getBoolean("full_lock_screen", false));
-        binding.revealSmooches.setOnCheckedChangeListener((button, checked) ->
-                settings.edit().putBoolean("full_lock_screen", checked).apply());
         binding.usePhoneTimezone.setOnClickListener(view -> usePhoneTimezone());
         loadTimezone();
         loadStatus();
@@ -244,10 +239,10 @@ public final class SmoochActivity extends OrbitShellActivity {
     private static int statusCode(Throwable failure) {
         Throwable current = failure;
         while (current.getCause() != null && !(current
-                instanceof NetworkOrbitRepository.OrbitServiceException)) {
+                instanceof OrbitServiceException)) {
             current = current.getCause();
         }
-        return current instanceof NetworkOrbitRepository.OrbitServiceException service
+        return current instanceof OrbitServiceException service
                 ? service.statusCode() : -1;
     }
 }

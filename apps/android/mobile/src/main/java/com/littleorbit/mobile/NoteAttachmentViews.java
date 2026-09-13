@@ -64,6 +64,20 @@ public final class NoteAttachmentViews {
         }
     }
 
+    /** Opens a verified attachment from an inline Markdown image link. */
+    public void previewFull(String noteId, NoteApiModels.Attachment attachment) {
+        status.setText(R.string.loading_preview);
+        orbit.downloadNoteAttachment(noteId, attachment).whenComplete((file, failure) ->
+                activity.runOnUiThread(() -> {
+                    if (failure != null) {
+                        status.setText(R.string.attachment_preview_failed);
+                        return;
+                    }
+                    status.setText(R.string.note_ready);
+                    openExternal(file, attachment.mediaType);
+                }));
+    }
+
     private View card(String noteId, NoteApiModels.Attachment attachment) {
         MaterialCardView card = new MaterialCardView(activity);
         card.setCardBackgroundColor(activity.getColor(R.color.navy_surface_muted));

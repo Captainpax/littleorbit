@@ -35,6 +35,8 @@ function Find-Node([string]$Text, [string]$IdSuffix) {
     $ui = Get-Ui
     if ($null -eq $ui) { return $null }
     foreach ($node in $ui.SelectNodes("//node")) {
+        $visibility = $node.GetAttribute('visible-to-user')
+        if ($visibility -and $visibility -ne 'true') { continue }
         if ($Text -and $node.text -eq $Text) { return $node }
         if ($IdSuffix -and $node.'resource-id'.EndsWith(":id/$IdSuffix")) { return $node }
     }
@@ -78,7 +80,7 @@ function Tap-Optional([string]$Text, [int]$Attempts = 8) {
 if ($ResetApp) { & $adb -s $Serial shell pm clear $package | Out-Null }
 & $adb -s $Serial shell monkey -p $package -c android.intent.category.LAUNCHER 1 | Out-Null
 Start-Sleep -Seconds 1
-Tap-Optional "Not now" | Out-Null
+Tap-Optional "Not now" 20 | Out-Null
 Tap-Node (Wait-Node -Text "Sign in")
 Tap-Node (Wait-Node -IdSuffix "emailInput")
 & $adb -s $Serial shell input text $accounts.accounts[$AccountIndex].email | Out-Null
@@ -86,15 +88,20 @@ Tap-Node (Wait-Node -IdSuffix "passwordInput")
 & $adb -s $Serial shell input text $accounts.password | Out-Null
 Tap-Node (Wait-Node -IdSuffix "signInButton")
 Start-Sleep -Seconds 2
-Tap-Optional "Later" | Out-Null
+Tap-Optional "Later" 20 | Out-Null
 Wait-Node -Text "Your little orbit" | Out-Null
 $drawerButton = Find-Node "" "openLeftDrawer"
-if ($null -ne $drawerButton) { Tap-Node $drawerButton }
+if ($null -ne $drawerButton) {
+    Tap-Node $drawerButton
+    Start-Sleep -Seconds 1
+}
 Tap-Node (Wait-Node -Text "Our Space")
+Start-Sleep -Seconds 1
 Wait-Node -Text "A shared place for plans, lists, and little moments." | Out-Null
 Tap-Node (Wait-Node -Text "Attachment smoke")
 Wait-Node -Text "Attachments" | Out-Null
 Wait-Node -Text "transparent.png" | Out-Null
+Tap-Node (Wait-Node -Text "Edit")
 Wait-Node -IdSuffix "formattingMoreButton" | Out-Null
 $gif = Find-Node "transparent.gif" ""
 $displaySize = (& $adb -s $Serial shell wm size) -join " "

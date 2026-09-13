@@ -63,7 +63,7 @@ final class NoteAttachmentTransfer {
     File download(String noteId, NoteApiModels.Attachment attachment) {
         File directory = new File(context.getCacheDir(), "note-attachments");
         if (!directory.isDirectory() && !directory.mkdirs()) {
-            throw new NetworkOrbitRepository.OrbitServiceException(-1, "attachment_cache_failed");
+            throw new OrbitServiceException(-1, "attachment_cache_failed");
         }
         File target = new File(directory, attachment.id);
         if (target.isFile() && attachment.sha256.equals(sha256(target))) return target;
@@ -77,7 +77,7 @@ final class NoteAttachmentTransfer {
         }
         if (!attachment.sha256.equals(sha256(target))) {
             target.delete();
-            throw new NetworkOrbitRepository.OrbitServiceException(-1, "attachment_hash_failed");
+            throw new OrbitServiceException(-1, "attachment_hash_failed");
         }
         return target;
     }
@@ -131,16 +131,16 @@ final class NoteAttachmentTransfer {
             Response<T> response = call.execute();
             T body = response.body();
             if (!response.isSuccessful() || body == null) {
-                throw new NetworkOrbitRepository.OrbitServiceException(response.code());
+                throw new OrbitServiceException(response.code());
             }
             return body;
         } catch (IOException error) {
-            throw new NetworkOrbitRepository.OrbitServiceException(error);
+            throw new OrbitServiceException(error);
         }
     }
 
-    private static NetworkOrbitRepository.OrbitServiceException failure(
+    private static OrbitServiceException failure(
             String reason, Throwable cause) {
-        return new NetworkOrbitRepository.OrbitServiceException(-1, reason, cause);
+        return new OrbitServiceException(-1, reason, cause);
     }
 }

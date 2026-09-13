@@ -5,7 +5,7 @@ from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +22,7 @@ from ..config import get_settings
 from ..couple_access import active_member, lock_couple
 from ..database import SessionFactory, session_scope
 from ..dependencies import current_account
-from ..domain.notes import Delete, Edit, Insert, InvalidEdit, apply_edit, transform
+from ..domain.notes import InvalidEdit
 from ..interaction_models import NoteMetadataOperation
 from ..interaction_schemas import (
     NoteArchiveRequest,
@@ -38,26 +38,12 @@ from ..models import (
     NoteOperation,
     Session,
 )
+from ..note_edit_service import NoteAccessRevoked, NoteEditMessage, apply_note_edit
 from ..notes_hub import NoteConnectionHub
+from ..notification_hub import NotificationConnectionHub
 from ..security import hash_token
 
 router = APIRouter(tags=["notes"])
-
-
-class NoteAccessRevoked(RuntimeError):
-    """Raised when active membership ended after a socket connected."""
-
-
-class NoteEditMessage(BaseModel):
-    """Validated WebSocket edit envelope."""
-
-    model_config = ConfigDict(extra="forbid")
-    operation_id: UUID
-    base_revision: int = Field(ge=0)
-    kind: str
-    position: int = Field(ge=0)
-    text: str | None = Field(default=None, max_length=4000)
-    length: int | None = Field(default=None, ge=1, le=4000)
 
 
 async def _authenticate(token: str) -> UUID | None:
@@ -93,149 +79,6 @@ async def _authorized_snapshot(account_id: UUID, note_id: UUID) -> dict[str, obj
             "revision": note.revision,
             "body": note.body,
         }
-
-
-def _parse_edit(message: NoteEditMessage) -> Insert | Delete:
-    if message.kind == "insert" and message.text:
-        return Insert(message.position, message.text)
-    if message.kind == "delete" and message.length:
-        return Delete(message.position, message.length)
-    raise InvalidEdit("edit fields do not match kind")
-
-
-def _stored_edit(edit: Edit) -> dict[str, object]:
-    if isinstance(edit, Insert):
-        return {"kind": "insert", "position": edit.position, "text": edit.text}
-    return {"kind": "delete", "position": edit.position, "length": edit.length}
-
-
-def _restore_edit(payload: dict[str, object]) -> Edit:
-    kind = payload.get("kind")
-    position = payload.get("position")
-    if not isinstance(position, int):
-        raise InvalidEdit("stored edit position is invalid")
-    if kind == "insert" and isinstance(payload.get("text"), str):
-        return Insert(position, str(payload["text"]))
-    length = payload.get("length")
-    if kind == "delete" and isinstance(length, int):
-        return Delete(position, length)
-    raise InvalidEdit("stored edit shape is invalid")
-
-
-async def _transform_since(
-    db: AsyncSession, note: Note, message: NoteEditMessage, incoming: Edit
-) -> Edit | None:
-    if message.base_revision == note.revision:
-        return incoming
-    operations = list(
-        await db.scalars(
-            select(NoteOperation)
-            .where(
-                NoteOperation.note_id == note.id,
-                NoteOperation.resulting_revision > message.base_revision,
-            )
-            .order_by(NoteOperation.resulting_revision)
-        )
-    )
-    if len(operations) != note.revision - message.base_revision:
-        return None
-    transformed = incoming
-    for operation in operations:
-        transformed = transform(
-            transformed,
-            _restore_edit(operation.edit),
-            message.operation_id.int < operation.operation_id.int,
-        )
-    return transformed
-
-
-async def _apply(note_id: UUID, account_id: UUID, message: NoteEditMessage) -> dict[str, object]:
-    async with SessionFactory() as db:
-        authorized_couple_id = await db.scalar(
-            select(CoupleMember.couple_id)
-            .join(Note, Note.couple_id == CoupleMember.couple_id)
-            .where(
-                CoupleMember.account_id == account_id,
-                CoupleMember.left_at.is_(None),
-                Note.id == note_id,
-                Note.archived_at.is_(None),
-            )
-        )
-        if authorized_couple_id is None:
-            raise NoteAccessRevoked
-        try:
-            await lock_couple(db, authorized_couple_id)
-        except HTTPException as revoked:
-            raise NoteAccessRevoked from revoked
-        note = await db.scalar(select(Note).where(Note.id == note_id).with_for_update())
-        existing = await db.scalar(
-            select(NoteOperation).where(
-                NoteOperation.note_id == note_id,
-                NoteOperation.operation_id == message.operation_id,
-            )
-        )
-        if existing:
-            return _duplicate_ack(existing, note, message)
-        if note is None or message.base_revision > note.revision:
-            return _conflict(note)
-        edit = await _transform_since(db, note, message, _parse_edit(message))
-        if edit is None:
-            return _conflict(note)
-        note.body = _apply_non_empty_edit(note.body, edit)
-        note.revision += 1
-        note.updated_at = SystemClock().now()
-        db.add(
-            NoteOperation(
-                note_id=note_id,
-                operation_id=message.operation_id,
-                actor_id=account_id,
-                base_revision=message.base_revision,
-                resulting_revision=note.revision,
-                edit=_stored_edit(edit),
-                applied_at=SystemClock().now(),
-            )
-        )
-        await record_activity(
-            db, authorized_couple_id, account_id, "note_updated",
-            f"note:edit:{message.operation_id}", target_type="note",
-            target_id=note.id, target_title=note.title,
-        )
-        await db.commit()
-        return {
-            "type": "note.ack",
-            "operation_id": str(message.operation_id),
-            "revision": note.revision,
-            "body": note.body,
-            "transformed": message.base_revision != note.revision - 1,
-            "duplicate": False,
-        }
-
-
-def _duplicate_ack(
-    existing: NoteOperation, note: Note | None, message: NoteEditMessage
-) -> dict[str, object]:
-    return {
-        "type": "note.ack",
-        "operation_id": str(message.operation_id),
-        "revision": note.revision if note else existing.resulting_revision,
-        "body": note.body if note else "",
-        "transformed": existing.base_revision != existing.resulting_revision - 1,
-        "duplicate": True,
-    }
-
-
-def _conflict(note: Note | None) -> dict[str, object]:
-    return {
-        "type": "note.conflict",
-        "revision": note.revision if note else 0,
-        "body": note.body if note else "",
-    }
-
-
-def _apply_non_empty_edit(body: str, edit: Edit) -> str:
-    if isinstance(edit, Delete) and edit.length == 0:
-        return body
-    return apply_edit(body, edit)
 
 
 def _note_response(note: Note) -> NoteResponse:
@@ -555,13 +398,25 @@ async def _run_note_socket(
         while True:
             try:
                 message = NoteEditMessage.model_validate(await websocket.receive_json())
-                result = await _apply(note_id, account_id, message)
+                result = await apply_note_edit(
+                    note_id,
+                    account_id,
+                    message,
+                    partner_viewing=hub.has_other_account(note_id, account_id),
+                )
             except NoteAccessRevoked:
                 await websocket.close(code=4403)
                 return
             except (ValidationError, InvalidEdit) as exc:
                 result = {"type": "note.error", "message": str(exc)}
+            notify_account = result.pop("_notify_account_id", None)
             await hub.broadcast(note_id, result)
+            if isinstance(notify_account, str):
+                notifications = cast(
+                    NotificationConnectionHub,
+                    websocket.app.state.notification_connections,
+                )
+                await notifications.available(UUID(notify_account))
     except WebSocketDisconnect:
         pass
     finally:

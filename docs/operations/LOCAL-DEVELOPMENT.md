@@ -26,12 +26,18 @@ Use the RC smoke project when Android needs real paired accounts, attachment pro
 ```powershell
 .\infra\scripts\smoke-stack.ps1 up
 .\.venv313\Scripts\python.exe infra\scripts\create_smoke_couple.py
+.\.venv313\Scripts\python.exe infra\scripts\create_attachment_smoke.py
+.\.venv313\Scripts\python.exe infra\scripts\notification-smoke.py
 .\gradlew.bat :apps:android:mobile:assembleSmoke
 .\infra\scripts\android-smoke.ps1 -Serial emulator-5554 -AccountIndex 0 -ResetApp
 .\infra\scripts\smoke-stack.ps1 down
 ```
 
-The account generator creates unique `@example.com` accounts, consumes their Mailpit verification links, confirms a pair, and writes credentials only to ignored `.inspect/smoke-accounts.json`. The Android smoke build targets the loopback gateway through `adb reverse tcp:18180 tcp:18180`. Its script signs in, checks the responsive shell, opens the synthetic Attachment smoke note, verifies both sanitized transparent PNG and GIF cards, confirms the Markdown dock, and stores an ignored screenshot. Run it sequentially on API 29, API 30, API 36 phone, and a wide API 36 tablet. Launch the Wear debug APK separately on the API 34 watch emulator and check the explicit stale fallback. Never point this workflow at the production Compose project.
+The account generator creates unique `@example.com` accounts, consumes their Mailpit verification links, confirms a pair, and writes credentials only to ignored `.inspect/smoke-accounts.json`. The attachment seed uploads a synthetic transparent PNG and animated GIF through the private scan/sanitize pipeline and inserts their `attachment://` links. The notification smoke verifies a content-free foreground hint, independent delivery and acknowledgement for two installations, legacy Smooch suppression, note-edit cooldown, and partner-viewing suppression. The Android smoke build targets the loopback gateway through `adb reverse tcp:18180 tcp:18180`. Its script signs in, checks the responsive shell, opens the synthetic Attachment smoke note, verifies both sanitized attachments, switches from preview to the Markdown dock, and stores an ignored screenshot. Run it sequentially on API 29, API 30, API 36 phone, and a wide API 36 tablet. Launch the Wear debug APK separately on the API 34 watch emulator and check the explicit stale fallback. Never point this workflow at the production Compose project.
+
+## Partner notification development
+
+The server stores account preferences and random app-installation UUIDs. Do not use hardware identifiers. Smooch and note-edit transactions create short-lived events and one pending delivery per active installation. The foreground socket carries only `notification.available`; clients must fetch the authorized event before displaying it. Acknowledge only after Android accepts the post, and test that another installation remains pending. On Android 13 and later, test runtime permission denial and recovery; on every supported API, test disabled channels, sign-out device disabling, process restart, the 15-minute fallback, and generic lock-screen public text. A local pass cannot establish OEM background timing on a physical phone.
 
 ## Our Space attachment development
 

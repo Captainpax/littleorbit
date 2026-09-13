@@ -37,19 +37,19 @@ export function hostedWearApkPath(version: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.12",
-  versionCode: 16,
+  version: "1.0.0-rc.12.1",
+  versionCode: 17,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "0169276a6008affe9b3806315ebde269120063ac86348655312622bf8c585966",
+  sha256: "df104a03b9572f186236d686b42bf170365a2806907721cb35949ac108c9060d",
   releaseNotes: [
-    "Adds responsive left navigation and screen-specific right action panels.",
-    "Refines the Markdown dock and repairs transparent PNG and GIF attachments.",
-    "Adds a private 30-day recent-activity view for the active couple.",
+    "Opens existing shared documents in a calm Markdown preview with inline private images and animated GIFs.",
+    "Adds account-synced Smooch and document-edit notification controls with per-device delivery.",
+    "Adds consistent cosmic motion with reduced-motion support and repairs Android 10 compatibility.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.12",
-  apkUrl: hostedApkPath("1.0.0-rc.12"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.12.1",
+  apkUrl: hostedApkPath("1.0.0-rc.12.1"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.12"),
+    apkUrl: hostedWearApkPath("1.0.0-rc.12.1"),
     sha256: "9227bbb70ecf127a36a70d3f33101938df35f4b4cf62d80b71ff4a653a1c1868",
     sizeBytes: 14133466,
     versionCode: 15,

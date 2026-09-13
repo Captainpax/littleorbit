@@ -24,6 +24,7 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 - Our Space renders CommonMark/GFM without raw HTML or automatic remote images. Preserve cursor and selection when acknowledgements arrive. Attachment previews must verify sanitized hashes, stay app-private, and remove stale offline copies after deletion, unpairing, or account changes.
 - Top-level destinations live in the left navigation drawer. At 840dp and wider it becomes a static, non-modal rail; it must never consume touches aimed at screen content. The right drawer contains actions for the current destination and cannot open from the system-back edge.
 - Queue at most five encrypted Smooch sends for at most 15 minutes. Never manufacture delivery after expiration, and keep lock-screen content private by default.
+- Register only a random per-install UUID for partner alerts. Fetch event metadata after a content-free WSS hint, keep WorkManager as the durable fallback, acknowledge only after Android accepts the notification, and always use a generic public lock-screen version.
 - Release APKs require all four `ANDROID_SIGNING_*` values, use the same protected key for phone and Wear OS, and must pass `apksigner verify` before publication. Never commit or replace the private release key.
 - Build against Android SDK 37 with Java 17 source. Keep target SDK 36 until the Android 17 local-network permission migration is designed and tested.
 - Wireless-ADB pairing uses public Conscrypt APIs and authenticated commands. Never add hidden-API access, log pairing material, trust a pre-command Kadb connection flag, or publish values copied from the wrong module's output metadata.
@@ -47,6 +48,7 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 ./gradlew :apps:android:wear:testDebugUnitTest :apps:android:wear:lintDebug
 ./gradlew :apps:android:mobile:connectedDebugAndroidTest
 .\infra\scripts\build-signed-android.ps1
+.\infra\scripts\build-signed-android.ps1 -ReuseWearApk data\releases\<prior-wear>.apk
 .\infra\scripts\android-smoke.ps1 -Serial <emulator-serial> -AccountIndex 0 -ResetApp
 ```
 

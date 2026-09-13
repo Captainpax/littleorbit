@@ -83,6 +83,7 @@ public abstract class OrbitShellActivity extends InsetAwareActivity {
         super.setContentView(shell.getRoot());
         installingShell = false;
         configureChrome();
+        OrbitMotion.reveal(content);
     }
 
     private void configureChrome() {
@@ -145,7 +146,7 @@ public abstract class OrbitShellActivity extends InsetAwareActivity {
         Intent intent = destinationIntent(MainActivity.class)
                 .putExtra(MainActivity.EXTRA_SHOW_MORE, true);
         if (updates) intent.putExtra("show_updates", true);
-        startActivity(intent);
+        OrbitMotion.start(this, intent);
         closeDrawers();
     }
 
@@ -154,7 +155,7 @@ public abstract class OrbitShellActivity extends InsetAwareActivity {
             closeDrawers();
             return;
         }
-        startActivity(destinationIntent(activity));
+        OrbitMotion.start(this, destinationIntent(activity));
         closeDrawers();
     }
 
@@ -164,7 +165,7 @@ public abstract class OrbitShellActivity extends InsetAwareActivity {
     }
 
     private void openWeb(String path) {
-        startActivity(new Intent(
+        OrbitMotion.start(this, new Intent(
                 Intent.ACTION_VIEW, Uri.parse("https://lil-orb.pax-kun.com" + path)));
         closeDrawers();
     }

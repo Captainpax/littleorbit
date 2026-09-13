@@ -69,8 +69,6 @@ public final class SmoochStatusWorker extends Worker {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent content = PendingIntent.getActivity(context, item.id.hashCode(), open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        boolean reveal = context.getSharedPreferences("smooch_settings", Context.MODE_PRIVATE)
-                .getBoolean("full_lock_screen", false);
         String full = SmoochPhrases.render(
                 context, item.phraseKey, item.partnerName, item.emoji);
         Notification publicVersion = new NotificationCompat.Builder(
@@ -87,9 +85,7 @@ public final class SmoochStatusWorker extends Worker {
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(full))
                 .setContentIntent(content)
                 .setAutoCancel(true)
-                .setVisibility(reveal
-                        ? NotificationCompat.VISIBILITY_PUBLIC
-                        : NotificationCompat.VISIBILITY_PRIVATE)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                 .setPublicVersion(publicVersion)
                 .build();
         try {

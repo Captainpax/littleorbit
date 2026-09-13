@@ -58,7 +58,7 @@ Keep the PKCS12 release store and its four `ANDROID_SIGNING_*` settings outside 
 .\infra\scripts\build-signed-android.ps1
 ```
 
-The script loads signing values from the ignored `.env.android-signing`, which Compose never reads. It fails when any value or the store is missing, builds phone and Wear OS release APKs, verifies each signature with the newest installed Android `apksigner`, requires the same certificate on both, and writes APK, SHA-256 files, and `release-manifest.json` under `dist/android/`. The manifest reads the two version codes from separate Gradle outputs.
+The script loads signing values from the ignored `.env.android-signing`, which Compose never reads. It fails when any value or the store is missing, builds phone and Wear OS release APKs, verifies each signature with the newest installed Android `apksigner`, requires the same certificate on both, and writes APK, SHA-256 files, and `release-manifest.json` under `dist/android/`. The manifest reads the two version codes from separate Gradle outputs. For a phone-only correction, `-ReuseWearApk data/releases/<prior-wear>.apk` builds only the phone and verifies the unchanged Wear package, version code, hash, and signer before placing the same bytes in the new manifest. Release notes must identify that reuse explicitly.
 
 Publish in this order:
 
@@ -150,5 +150,11 @@ RC10.1 and RC11.1 execute their old, broken installer code even when downloading
 Take a PostgreSQL backup before migration `0014`. After upgrade, verify the couple-scoped activity event and seen-watermark tables, the 30-day worker purge, and immediate feed removal on unpairing. The owner console must expose neither event rows nor their target titles. Build RC12 with phone version code 16 and Wear version code 15, and keep compatibility-floor enforcement unchanged.
 
 Before publication, run the isolated paired-account stack and transparent PNG/GIF pipeline, then run the Android smoke build on API 29, API 30, API 36 phone, and a wide API 36 tablet. Confirm the wide navigation is static and its content remains tappable, the right panel opens programmatically without stealing the back edge, the Markdown dock sits above the keyboard, and an authorized sanitized image renders after digest verification. Launch the Wear artifact on a round API 34 emulator and confirm the stale fallback. These emulator checks do not close the physical two-phone or physical phone/watch release gates.
+
+## RC12.1 notification and preview release
+
+Take paired PostgreSQL and attachment backups before migration `0015`. After upgrade, verify preference, random-installation, short-lived event, and per-device delivery tables. Run `infra/scripts/notification-smoke.py` against the isolated stack before production publication. Confirm one acknowledgement does not consume another installation's delivery, a new acknowledgement suppresses the legacy account-wide Smooch queue, note-edit cooldown works, and active partner presence suppresses the alert. The WSS message itself must contain only `notification.available`.
+
+Build RC12.1 with phone version code 17. The Wear code remains 15 and the RC12 Wear APK is reused byte-for-byte because there is no Wear change. Deploy one API process while the foreground hint hub is in memory; durable polling still prevents event loss if a hint is missed. Verify migration head `0015`, worker cleanup, API/gateway health, public release metadata, complete and range downloads, patch notes, RSS, and that no new host port exists. The emulator matrix does not close notification timing, lock-screen, process-kill, or multi-phone physical gates.
 
 Before publication, test an authorized synthetic image and PDF through reservation, chunk resume, clean scan, metadata removal, verified Android preview, keep-offline preview, deletion, and note-expiry cleanup. Reject an unauthorized note ID before attachment lookup, a conflicting idempotency replay, an oversized chunk, a wrong original digest, a quarantined file, and a download attempted before availability. Run both backup scripts after deployment and complete a disposable restore drill before treating attachments as production-ready.

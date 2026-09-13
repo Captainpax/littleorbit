@@ -1,0 +1,11 @@
+{
+  "id": "not-a-uuid",
+  "kind": "smooch_received",
+  "created_at": "yesterday",
+  "expires_at": "soon",
+  "actor_display_name": "Partner",
+  "emoji": "🚨",
+  "phrase_key": null,
+  "note_id": "33b33f19-10aa-4d6a-948c-698738d9f9ef",
+  "note_title": "This field must not be present for a Smooch"
+}

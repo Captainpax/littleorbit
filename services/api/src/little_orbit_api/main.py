@@ -7,6 +7,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from .client_compatibility import AndroidCompatibilityMiddleware
 from .notes_hub import NoteConnectionHub
+from .notification_hub import NotificationConnectionHub
 from .rate_limit import FixedWindowLimiter
 from .routes import (
     account,
@@ -20,6 +21,7 @@ from .routes import (
     health,
     locations,
     notes,
+    notifications,
     pairing,
     profile_photos,
     quizzes,
@@ -41,6 +43,7 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
     )
     app.state.note_connections = NoteConnectionHub()
+    app.state.notification_connections = NotificationConnectionHub()
     app.state.registration_ip_limiter = FixedWindowLimiter(
         limit=8, window=timedelta(hours=1)
     )
@@ -75,6 +78,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(admin_console.router)
     app.include_router(notes.router)
+    app.include_router(notifications.router)
     app.include_router(attachments.router)
     app.include_router(smooches.router)
     return app

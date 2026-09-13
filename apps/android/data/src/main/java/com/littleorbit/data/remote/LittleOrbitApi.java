@@ -245,6 +245,34 @@ public interface LittleOrbitApi {
     @POST("api/v1/smooches/deliveries/ack")
     Call<Void> acknowledgeSmooches(@Body SmoochApiModels.DeliveryAck request);
 
+    /** Loads account-wide self-hosted notification choices. */
+    @GET("api/v1/notification-preferences")
+    Call<NotificationApiModels.Preferences> notificationPreferences();
+
+    /** Replaces all account-wide notification choices atomically. */
+    @PATCH("api/v1/notification-preferences")
+    Call<NotificationApiModels.Preferences> updateNotificationPreferences(
+            @Body NotificationApiModels.PreferencesUpdate request);
+
+    /** Registers or heartbeats one random application-install identifier. */
+    @PUT("api/v1/notification-devices/{deviceId}")
+    Call<NotificationApiModels.Device> registerNotificationDevice(
+            @Path("deviceId") String deviceId,
+            @Body NotificationApiModels.DeviceUpsert request);
+
+    /** Disables notification delivery to one application installation. */
+    @DELETE("api/v1/notification-devices/{deviceId}")
+    Call<Void> disableNotificationDevice(@Path("deviceId") String deviceId);
+
+    /** Loads live events still pending for this application installation. */
+    @GET("api/v1/notifications/pending")
+    Call<java.util.List<NotificationApiModels.Event>> pendingNotifications(
+            @Query("device_id") String deviceId);
+
+    /** Acknowledges only events Android successfully posted for this installation. */
+    @POST("api/v1/notifications/deliveries/ack")
+    Call<Void> acknowledgeNotifications(@Body NotificationApiModels.DeliveryAck request);
+
     /** Loads calendar-week Smooch history. */
     @GET("api/v1/smooches/weeks")
     Call<java.util.List<SmoochApiModels.Week>> smoochWeeks(@Query("weeks") int weeks);

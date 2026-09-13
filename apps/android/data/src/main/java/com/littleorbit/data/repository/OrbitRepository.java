@@ -3,6 +3,7 @@ package com.littleorbit.data.repository;
 import com.littleorbit.data.remote.ApiModels;
 import com.littleorbit.data.remote.ActivityApiModels;
 import com.littleorbit.data.remote.NoteApiModels;
+import com.littleorbit.data.remote.NotificationApiModels;
 import com.littleorbit.data.remote.QuizApiModels;
 import com.littleorbit.data.remote.SmoochApiModels;
 import com.littleorbit.data.remote.TogetherTimeModels;
@@ -127,6 +128,26 @@ public interface OrbitRepository {
 
     /** Acknowledges notifications only after they were rendered. */
     CompletableFuture<Void> acknowledgeSmooches(List<String> ids);
+
+    /** Loads account-wide notification choices. */
+    CompletableFuture<NotificationApiModels.Preferences> notificationPreferences();
+
+    /** Replaces all account-wide notification choices. */
+    CompletableFuture<NotificationApiModels.Preferences> updateNotificationPreferences(
+            NotificationApiModels.PreferencesUpdate request);
+
+    /** Registers or heartbeats one random application-install identifier. */
+    CompletableFuture<NotificationApiModels.Device> registerNotificationDevice(
+            String deviceId, NotificationApiModels.DeviceUpsert request);
+
+    /** Disables notification delivery for one application installation. */
+    CompletableFuture<Void> disableNotificationDevice(String deviceId);
+
+    /** Loads live notification events pending for one application installation. */
+    CompletableFuture<List<NotificationApiModels.Event>> pendingNotifications(String deviceId);
+
+    /** Acknowledges only events successfully posted by Android. */
+    CompletableFuture<Void> acknowledgeNotifications(String deviceId, List<String> eventIds);
 
     /** Loads durable weekly Smooch totals. */
     CompletableFuture<List<SmoochApiModels.Week>> smoochWeeks(int weeks);

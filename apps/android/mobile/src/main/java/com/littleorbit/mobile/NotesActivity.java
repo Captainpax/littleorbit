@@ -1,6 +1,6 @@
 package com.littleorbit.mobile;
 
-import android.net.Uri;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,7 +8,6 @@ import android.text.Editable;
 import android.text.Selection;
 import android.text.TextWatcher;
 import android.view.View;
-import android.widget.PopupMenu;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import com.littleorbit.data.remote.NoteApiModels;
@@ -24,22 +23,28 @@ import javax.inject.Inject;
 /** Library-first Our Space workspace with Markdown, private files, and stable live editing. */
 @AndroidEntryPoint
 public final class NotesActivity extends OrbitShellActivity {
+    /** Opens one authorized document from a private notification. */
+    public static final String EXTRA_NOTE_ID = "open_note_id";
+    private static final String STATE_NOTE_ID = "open-note-id";
+    private static final String STATE_PREVIEW = "open-note-preview";
     @Inject OrbitRepository orbit;
     @Inject NoteDraftStore drafts;
     @Inject NoteSocketClient sockets;
     private final Handler debounce = new Handler(Looper.getMainLooper());
+    private NoteAttachmentController attachmentController;
     private final ActivityResultLauncher<String[]> filePicker = registerForActivityResult(
-            new ActivityResultContracts.OpenDocument(), this::attachmentChosen);
+            new ActivityResultContracts.OpenDocument(), uri -> attachmentController.chosen(uri));
     private ActivityNotesBinding binding;
     private MarkdownRenderer markdown;
-    private NoteAttachmentViews attachmentViews;
-    private NoteAttachmentUploadCoordinator attachmentUploads;
+    private MarkdownEditorTools editorTools;
     private SpaceLibraryViews library;
     private NoteApiModels.Note current;
     private String serverBody = "";
     private boolean rendering;
+    private boolean previewMode;
     private boolean returnAfterSave;
-    private int attachmentPolls;
+    private String restoredNoteId;
+    private boolean restoredPreview;
     private NoteSocketClient.EditorConnection editor = NoteSocketClient.EditorConnection.closed();
     private final Runnable bodySave = this::sync;
     private final Runnable titleSave = this::rename;
@@ -48,17 +53,33 @@ public final class NotesActivity extends OrbitShellActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityNotesBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-        markdown = new MarkdownRenderer(this);
-        attachmentViews = new NoteAttachmentViews(
-                this, orbit, binding.attachmentContainer, binding.statusText,
-                this::reloadAttachments, this::insertAttachmentLink,
-                ignored -> chooseAttachment());
-        attachmentUploads = new NoteAttachmentUploadCoordinator(this, orbit, binding.statusText);
+        markdown = new MarkdownRenderer(this, orbit, attachment ->
+                attachmentController.openPreview(attachment));
+        editorTools = new MarkdownEditorTools(this, binding.bodyInput);
+        attachmentController = new NoteAttachmentController(
+                this, orbit, binding, filePicker, () -> current, () -> previewMode,
+                this::showPreview, markdown, editorTools);
         library = new SpaceLibraryViews(
                 this, binding.noteListContainer, binding.archivedNotesContainer,
                 binding.searchInput, this::select, this::restore);
         bindActions();
         bindEditors();
+        if (savedInstanceState != null) {
+            restoredNoteId = savedInstanceState.getString(STATE_NOTE_ID);
+            restoredPreview = savedInstanceState.getBoolean(STATE_PREVIEW, true);
+        } else {
+            restoredNoteId = getIntent().getStringExtra(EXTRA_NOTE_ID);
+            restoredPreview = true;
+        }
+        showLibrary();
+        load();
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        restoredNoteId = intent.getStringExtra(EXTRA_NOTE_ID);
+        restoredPreview = true;
         showLibrary();
         load();
     }
@@ -70,41 +91,18 @@ public final class NotesActivity extends OrbitShellActivity {
         binding.backToLibrary.setOnClickListener(view -> returnToLibrary());
         binding.useServerButton.setOnClickListener(view -> useServerVersion());
         binding.keepMyVersionButton.setOnClickListener(view -> keepMyVersion());
-        binding.editTab.setOnClickListener(view -> showEdit());
-        binding.previewTab.setOnClickListener(view -> showPreview());
-        binding.boldButton.setOnClickListener(view -> wrapSelection("**", "**"));
-        binding.italicButton.setOnClickListener(view -> wrapSelection("_", "_"));
-        binding.headingButton.setOnClickListener(view -> insertAtCursor("## "));
-        binding.listButton.setOnClickListener(view -> insertAtCursor("- "));
-        binding.checkButton.setOnClickListener(view -> insertAtCursor("- [ ] "));
-        binding.linkButton.setOnClickListener(view -> wrapSelection("[", "](https://)"));
-        binding.attachButton.setOnClickListener(view -> chooseAttachment());
-        binding.formattingMoreButton.setOnClickListener(this::showFormattingMenu);
-    }
-
-    private void showFormattingMenu(View anchor) {
-        PopupMenu menu = new PopupMenu(this, anchor);
-        menu.getMenu().add(0, 1, 0, R.string.format_numbered_list);
-        menu.getMenu().add(0, 2, 1, R.string.format_quote);
-        menu.getMenu().add(0, 3, 2, R.string.format_code);
-        menu.getMenu().add(0, 4, 3, R.string.format_table);
-        menu.getMenu().add(0, 5, 4, R.string.format_strikethrough);
-        menu.getMenu().add(0, 6, 5, R.string.format_divider);
-        menu.setOnMenuItemClickListener(item -> applyExtraFormat(item.getItemId()));
-        menu.show();
-    }
-
-    private boolean applyExtraFormat(int itemId) {
-        switch (itemId) {
-            case 1 -> insertAtCursor("1. ");
-            case 2 -> insertAtCursor("> ");
-            case 3 -> wrapSelection("`", "`");
-            case 4 -> insertAtCursor("| Column | Column |\n| --- | --- |\n|  |  |\n");
-            case 5 -> wrapSelection("~~", "~~");
-            case 6 -> insertAtCursor("\n---\n");
-            default -> { return false; }
-        }
-        return true;
+        binding.modeButton.setOnClickListener(view -> {
+            if (previewMode) showEdit();
+            else showPreview();
+        });
+        binding.boldButton.setOnClickListener(view -> editorTools.wrap("**", "**"));
+        binding.italicButton.setOnClickListener(view -> editorTools.wrap("_", "_"));
+        binding.headingButton.setOnClickListener(view -> editorTools.insert("## "));
+        binding.listButton.setOnClickListener(view -> editorTools.insert("- "));
+        binding.checkButton.setOnClickListener(view -> editorTools.insert("- [ ] "));
+        binding.linkButton.setOnClickListener(view -> editorTools.wrap("[", "](https://)"));
+        binding.attachButton.setOnClickListener(view -> attachmentController.choose());
+        binding.formattingMoreButton.setOnClickListener(editorTools::showMore);
     }
 
     @Override protected OrbitDestination orbitDestination() {
@@ -148,7 +146,16 @@ public final class NotesActivity extends OrbitShellActivity {
             library.setNotes(notes);
             updateNoteDirectory(notes);
             loadArchived();
+            restoreOpenNote(notes);
         }));
+    }
+
+    private void restoreOpenNote(java.util.List<NoteApiModels.Note> notes) {
+        if (restoredNoteId == null) return;
+        String wanted = restoredNoteId;
+        restoredNoteId = null;
+        notes.stream().filter(item -> wanted.equals(item.id)).findFirst()
+                .ifPresent(item -> select(item, restoredPreview));
     }
 
     private void updateNoteDirectory(java.util.List<NoteApiModels.Note> notes) {
@@ -169,6 +176,10 @@ public final class NotesActivity extends OrbitShellActivity {
     }
 
     private void select(NoteApiModels.Note note) {
+        select(note, true);
+    }
+
+    private void select(NoteApiModels.Note note, boolean preview) {
         editor.close();
         current = note;
         serverBody = note.body;
@@ -178,14 +189,13 @@ public final class NotesActivity extends OrbitShellActivity {
         showConflict(conflict ? note.body : null);
         binding.statusText.setText(conflict ? R.string.note_reconcile : R.string.note_ready);
         binding.attachButton.setEnabled(true);
-        attachmentPolls = 0;
         editor = sockets.openEditor(note.id, note.body, note.revision, new EditorResult(note.id));
         if (draft != null && !conflict) {
             editor.update(draft.body());
             binding.statusText.setText(R.string.syncing_note);
         }
-        showEditor();
-        loadAttachments(note.id);
+        showEditor(preview);
+        attachmentController.reset(note);
     }
 
     private void renderInitial(String title, String body) {
@@ -203,10 +213,10 @@ public final class NotesActivity extends OrbitShellActivity {
         serverBody = "";
         renderInitial("", "");
         showConflict(null);
-        binding.attachmentContainer.removeAllViews();
+        attachmentController.clear();
         binding.attachButton.setEnabled(false);
         binding.statusText.setText(R.string.note_new_hint);
-        showEditor();
+        showEditor(false);
         binding.titleInput.requestFocus();
     }
 
@@ -336,96 +346,44 @@ public final class NotesActivity extends OrbitShellActivity {
     }
 
     private void showEdit() {
+        previewMode = false;
+        markdown.clear(binding.previewText);
+        binding.previewTitle.setVisibility(View.GONE);
+        binding.titleInput.setVisibility(View.VISIBLE);
         binding.bodyInput.setVisibility(View.VISIBLE);
         binding.formattingScroll.setVisibility(View.VISIBLE);
         binding.previewText.setVisibility(View.GONE);
         binding.remoteImageNotice.setVisibility(View.GONE);
-        binding.editTab.setEnabled(false);
-        binding.previewTab.setEnabled(true);
+        binding.syncButton.setVisibility(View.VISIBLE);
+        binding.modeButton.setText(R.string.done_editing);
+        binding.modeButton.setContentDescription(getString(R.string.done_editing));
+        OrbitMotion.reveal(binding.bodyInput);
     }
 
     private void showPreview() {
+        previewMode = true;
         String body = binding.bodyInput.getText().toString();
+        binding.previewTitle.setText(binding.titleInput.getText().toString());
         markdown.render(binding.previewText, body);
+        binding.titleInput.setVisibility(View.GONE);
+        binding.previewTitle.setVisibility(View.VISIBLE);
         binding.bodyInput.setVisibility(View.GONE);
         binding.formattingScroll.setVisibility(View.GONE);
         binding.previewText.setVisibility(View.VISIBLE);
         binding.remoteImageNotice.setVisibility(
                 body.matches("(?s).*?!\\[[^]]*]\\(https?://.*")
                         ? View.VISIBLE : View.GONE);
-        binding.editTab.setEnabled(true);
-        binding.previewTab.setEnabled(false);
+        binding.syncButton.setVisibility(View.GONE);
+        binding.modeButton.setText(R.string.edit_markdown);
+        binding.modeButton.setContentDescription(getString(R.string.edit_markdown));
+        OrbitMotion.reveal(binding.previewText);
     }
 
-    private void wrapSelection(String before, String after) {
-        Editable text = binding.bodyInput.getText();
-        int start = Math.max(binding.bodyInput.getSelectionStart(), 0);
-        int end = Math.max(binding.bodyInput.getSelectionEnd(), start);
-        String selected = text.subSequence(start, end).toString();
-        text.replace(start, end, before + selected + after);
-        Selection.setSelection(text, start + before.length(), start + before.length() + selected.length());
-    }
-
-    private void insertAtCursor(String value) {
-        Editable text = binding.bodyInput.getText();
-        int position = Math.max(binding.bodyInput.getSelectionStart(), 0);
-        text.insert(position, value);
-        Selection.setSelection(text, position + value.length());
-    }
-
-    private void chooseAttachment() {
-        if (current == null) {
-            binding.statusText.setText(R.string.save_before_attaching);
-            return;
-        }
-        filePicker.launch(NoteAttachmentUploadCoordinator.TYPES);
-    }
-
-    private void attachmentChosen(Uri uri) {
-        if (uri == null || current == null) return;
-        attachmentUploads.upload(uri, current, this::attachmentUploaded);
-    }
-
-    private void attachmentUploaded(
-            String noteId, NoteApiModels.Attachment attachment) {
-        if (current == null || !noteId.equals(current.id)) return;
-        binding.statusText.setText(R.string.attachment_scanning_status);
-        attachmentPolls = 0;
-        loadAttachments(noteId);
-    }
-
-    private void insertAttachmentLink(NoteApiModels.Attachment attachment) {
-        String safeName = attachment.fileName.replace("]", "");
-        String link = attachment.mediaType.startsWith("image/")
-                ? "![" + safeName + "](attachment://" + attachment.id + ")"
-                : "[" + safeName + "](attachment://" + attachment.id + ")";
-        insertAtCursor((binding.bodyInput.length() == 0 ? "" : "\n") + link + "\n");
-    }
-
-    private void loadAttachments(String noteId) {
-        orbit.noteAttachments(noteId).thenAccept(items -> runOnUiThread(() -> {
-            if (current == null || !noteId.equals(current.id)) return;
-            attachmentViews.show(noteId, items);
-            boolean processing = items.stream().anyMatch(item ->
-                    "uploading".equals(item.status)
-                            || "pending_scan".equals(item.status)
-                            || "scanning".equals(item.status));
-            if (processing && attachmentPolls++ < 20) {
-                debounce.postDelayed(() -> loadAttachments(noteId), 3000);
-            }
-        })).exceptionally(failure -> null);
-    }
-
-    private void reloadAttachments(String noteId) {
-        if (current == null || !noteId.equals(current.id)) return;
-        attachmentPolls = 0;
-        loadAttachments(noteId);
-    }
-
-    private void showEditor() {
+    private void showEditor(boolean preview) {
         binding.libraryScroll.setVisibility(View.GONE);
         binding.editorScroll.setVisibility(View.VISIBLE);
-        showEdit();
+        if (preview) showPreview();
+        else showEdit();
     }
 
     private void showLibrary() {
@@ -458,8 +416,15 @@ public final class NotesActivity extends OrbitShellActivity {
 
     @Override protected void onDestroy() {
         editor.close();
+        markdown.clear(binding.previewText);
         debounce.removeCallbacksAndMessages(null);
         super.onDestroy();
+    }
+
+    @Override protected void onSaveInstanceState(Bundle state) {
+        super.onSaveInstanceState(state);
+        if (current != null) state.putString(STATE_NOTE_ID, current.id);
+        state.putBoolean(STATE_PREVIEW, previewMode);
     }
 
     private NoteApiModels.Note withBody(String body, int revision) {
@@ -544,9 +509,5 @@ public final class NotesActivity extends OrbitShellActivity {
                 binding.statusText.setText(R.string.syncing_note);
             }
         }
-    }
-
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 }

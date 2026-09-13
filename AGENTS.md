@@ -43,6 +43,7 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Couple activity is a 30-day, content-free metadata timeline. It may name a note or countdown but never stores note bodies, attachment names, quiz answers, locations, or custom Smooch text.
 - Relationship age begins at the immutable confirmed pairing instant. Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates.
 - A Smooch uses one approved emoji and phrase key, is limited to five sends per account in a rolling hour, survives unpairing in private archives, and is erased when either original participant deletes their account.
+- Partner notification preferences belong to the account; delivery acknowledgements belong to one random installation ID. Foreground WSS hints contain no event content, lock-screen public versions stay generic, and acknowledging one phone never consumes another phone's delivery.
 - Only the gateway binds a public host port. Ollama remains internal and accepts calls only from the AI service.
 - Published APK metadata and first-party APK bytes are immutable. Android accepts an update only when its trusted URL, package, increasing version code, exact byte count, APK hash, and pinned signing certificate all match.
 - Android release metadata comes from the signed build's generated manifest, which reads phone and Wear module metadata independently. Never infer one module's version code from the other.

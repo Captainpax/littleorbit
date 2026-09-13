@@ -23,6 +23,11 @@ public final class CountdownReminderWorker extends Worker {
     @Override
     public Result doWork() {
         Context context = getApplicationContext();
+        NotificationSettingsStore choices = new NotificationSettingsStore(context);
+        if (!choices.master() || !choices.countdowns()
+                || !PermissionChecks.channelEnabled(context, NotificationChannels.COUNTDOWNS)) {
+            return Result.success();
+        }
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {
             return Result.success();
