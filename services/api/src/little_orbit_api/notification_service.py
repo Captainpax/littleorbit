@@ -31,11 +31,14 @@ NOTE_EDIT_COOLDOWN = timedelta(minutes=30)
 async def partner_id_for(session: AsyncSession, couple_id: UUID, actor_id: UUID) -> UUID | None:
     """Resolve the other active member without exposing any content."""
 
-    return await session.scalar(
-        select(CoupleMember.account_id).where(
-            CoupleMember.couple_id == couple_id,
-            CoupleMember.account_id != actor_id,
-            CoupleMember.left_at.is_(None),
+    return cast(
+        UUID | None,
+        await session.scalar(
+            select(CoupleMember.account_id).where(
+                CoupleMember.couple_id == couple_id,
+                CoupleMember.account_id != actor_id,
+                CoupleMember.left_at.is_(None),
+            )
         )
     )
 

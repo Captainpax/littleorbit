@@ -1,5 +1,6 @@
 """Partner-assigned, relationship-scoped avatar storage and delivery."""
 
+from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
@@ -61,7 +62,7 @@ async def _avatar(
     )
     if lock:
         statement = statement.with_for_update()
-    return await session.scalar(statement)
+    return cast(RelationshipAvatar | None, await session.scalar(statement))
 
 
 @router.get("/account/orbit-profile", response_model=OrbitProfileResponse)
