@@ -158,7 +158,7 @@ flowchart LR
     Dates --> Prompt[Versioned prompt<br/>no couple data]
     Prompt --> Ollama[Qwen3 4B in Ollama]
     Ollama --> Parse[Strict v2 JSON parse<br/>exactly 10 candidates]
-    Parse --> Validate{Schema + safety + answerability}
+    Parse --> Validate{Schema + safety + answerability<br/>canonical visible whitespace}
     Validate -->|reject| Quarantine[Quarantine with reasons]
     Validate -->|accept| Dedupe{Exact hash + trigram + repetition}
     Dedupe -->|duplicate| Quarantine
@@ -169,7 +169,7 @@ flowchart LR
     Publish --> Audit[Model digest, prompt version, parameters, validation, fallback]
 ```
 
-Invalid model output is quarantined rather than repaired. A 180-question curated bank guarantees five general questions plus a consent-gated intimacy alternative for today and seven future dates while the model is unavailable.
+Invalid model output is quarantined rather than repaired. Tabs, line breaks, control characters, non-breaking spaces, repeated horizontal spaces, and leading or trailing whitespace are rejected before publication so hidden layout characters never reach Android. A 180-question curated bank guarantees five general questions plus a consent-gated intimacy alternative for today and seven future dates while the model is unavailable.
 
 ## Daily quiz, custom queue, and reveal
 
@@ -186,17 +186,44 @@ sequenceDiagram
     A->>API: PUT private draft(op_id, answer revision)
     API->>DB: Authorize, dedupe op_id, validate type, increment revision
     A->>API: POST finish(day revision)
-    API->>DB: Mark A finished; keep reveal closed
+    API->>DB: Mark A finished + enqueue partner-finished event
     B->>API: Save all five drafts + finish
-    API->>DB: Lock both member rows; set one revealed_at timestamp
+    API->>DB: Lock both member rows; set one revealed_at + enqueue results-ready events
     API-->>B: Both complete; include both answer sets
-    A->>API: Poll content-free status through WorkManager
-    API-->>A: revealed=true; no answer content in notification response
+    A->>API: Fetch pending events for random installation ID
+    API-->>A: results-ready with UTC date only
     A->>API: GET day
     API-->>A: Side-by-side shared reveal
 ```
 
 A person may reopen and edit a finished set only before the shared reveal. Past incomplete days remain editable for seven days and remain visible for 30. Custom questions take the next available UTC slot, up to all five questions, and surprise content is hidden from the other partner until its day arrives. Non-surprise custom questions appear in both partners' pending queue. Intimacy-tagged custom or global questions require both partners' current consent. If either person opts out, every unrevealed intimacy prompt is replaced atomically, its drafts are cleared, and both people review the safe replacement before finishing again.
+
+## Calendar-aware countdowns and private reminders
+
+```mermaid
+sequenceDiagram
+    actor A as Partner A
+    actor B as Partner B
+    participant PhoneA as Android A
+    participant API
+    participant DB as PostgreSQL
+    participant Calendar as Selected calendar app
+    A->>PhoneA: Pick timed instant or all-day local date
+    PhoneA->>API: Mutation(op_id, revision, timezone, timing kind)
+    API->>DB: Authorize; lock couple; validate; dedupe; save
+    API->>DB: Enqueue countdown-created/rescheduled event for B
+    A->>API: Replace my reminder offsets
+    API->>DB: Store only A's fixed offset choices
+    API-->>PhoneA: Countdown plus A's private reminders
+    PhoneA->>PhoneA: Schedule local alerts; all-day uses 09:00 event time
+    B->>API: GET countdowns
+    API-->>B: Shared details plus only B's reminder choices
+    A->>PhoneA: Add to calendar
+    PhoneA->>Calendar: Prefilled user-approved insert intent
+    Note over PhoneA,Calendar: One-way copy; no calendar token or later sync
+```
+
+Reboot, app replacement, clock change, timezone change, and successful countdown sync all trigger reminder reconciliation. Offline countdown mutations keep their operation IDs and existing reminder selection until the server accepts the change.
 
 ## Pairing-based relationship age
 
@@ -280,7 +307,7 @@ Smooch rows survive unpairing in each original participant's private archive and
 
 ```mermaid
 sequenceDiagram
-    participant Feature as Smooch / note transaction
+    participant Feature as Smooch / note / countdown / quiz transition
     participant DB as PostgreSQL
     participant Hub as API foreground hub
     participant Phone1 as Partner phone 1
@@ -297,7 +324,7 @@ sequenceDiagram
     Note over Phone2,DB: Phone 2 stays pending until it posts and acks
 ```
 
-Installation IDs are random app-generated UUIDs rather than hardware identifiers. Account preferences gate event creation; Android runtime permission and notification-channel state gate each phone's post. A note edit creates an alert only for the first accepted body change inside a 30-minute document/editor window and skips it when the partner already has that document open. Events are fetchable for 24 hours, retained for at most seven days for bounded recovery, and removed with the account or couple. Installations unseen for 90 days are purged. The foreground hint hub is process-local, so the current self-hosted deployment runs one API process; durable polling remains authoritative if a hint is missed.
+Installation IDs are random app-generated UUIDs rather than hardware identifiers. Account preferences gate event creation; Android runtime permission and notification-channel state gate each phone's post. A note edit creates an alert only for the first accepted body change inside a 30-minute document/editor window and skips it when the partner already has that document open. Countdown metadata excludes notes and private reminder choices; quiz metadata is limited to the UTC date. Preparing a missing daily quiz alert uses an isolated transaction so a pool outage cannot block unrelated pending events. Events are fetchable for 24 hours, retained for at most seven days for bounded recovery, and removed with the account or couple. Installations unseen for 90 days are purged. The foreground hint hub is process-local, so the current self-hosted deployment runs one API process; durable polling remains authoritative if a hint is missed.
 
 ## Email delivery
 
@@ -348,32 +375,34 @@ flowchart LR
 
 Tokens stay in Android Keystore-backed storage. Offline queues contain encrypted countdown mutations, note drafts, location samples, and at most five unexpired Smooch sends. Widget, tile, and complication caches contain only the confirmed pairing instant, coordinate-free nearby seconds and process time, next countdown, and cache-sync time. The separate Wear launcher profile cache contains only display names and server-normalized 128-pixel thumbnails received through the Wearable Data Layer. RC6 publishes the v2 display cache plus the legacy v1 path for one release so an older watch fails stale rather than displaying a new value with the wrong meaning. RC9 coalesces home-widget rendering through WorkManager so cache reads finish under a worker-owned lifecycle; receiver callbacks only enqueue bounded work.
 
-## Profile photo processing and synchronization
+## Partner-assigned avatar processing and synchronization
 
 ```mermaid
 sequenceDiagram
-    actor Owner
-    participant Phone
+    actor Assigner as Partner choosing the image
+    participant Phone as Assigner phone
     participant API
     participant DB as PostgreSQL
-    participant Partner as Partner phone
+    participant Subject as Subject phone
     participant Watch as Wear launcher
-    Owner->>Phone: Choose image and approve square crop
-    Phone->>API: PUT authenticated image, max 5 MiB
+    Assigner->>Phone: Choose image for partner and approve square crop
+    Phone->>API: PUT current relationship partner avatar, max 5 MiB
+    API->>DB: Authorize active couple before lookup; reject self-assignment
     API->>API: Decode, orient, strip metadata, crop and bound WebP variants
-    API->>DB: Lock owner; atomically replace image and revision
+    API->>DB: Lock couple; atomically replace subject image and revision
     API-->>Phone: Private revision and content hash
-    Partner->>API: Authorize current pairing before partner image lookup
-    API-->>Partner: 128 px WebP with private ETag
-    Partner->>Partner: Encrypt thumbnail in app-private storage
-    Partner->>Watch: Authorized names and thumbnails over Wearable Data Layer
+    Subject->>API: Authorize current pairing before own assigned image lookup
+    API-->>Subject: 128 px WebP with private ETag
+    Subject->>Subject: Encrypt both authorized thumbnails in app-private storage
+    Subject->>Watch: Authorized names and thumbnails over Wearable Data Layer
     Watch->>Watch: Replace app-private launcher cache
     Note over Phone,Watch: Widget, tile, and complication remain text-only
-    Owner->>API: DELETE photo or account
-    API->>DB: Delete image; current-partner access ends
+    Assigner->>API: DELETE partner avatar
+    API->>DB: Delete relationship image
+    Note over DB: Unpair deletes both avatars; neither transfers or enters archives
 ```
 
-An unpaired caller never reaches the partner photo lookup. Photo replacement and deletion lock the owning account so concurrent first uploads cannot race. Clients compare both revision and content hash, which prevents a deleted then re-added revision from preserving stale bytes.
+An unpaired caller never reaches avatar lookup. Replacement and deletion lock the relationship so concurrent first uploads cannot race. Clients compare both revision and content hash, which prevents a deleted then re-added revision from preserving stale bytes. Migration `0016` clears account-owned RC12 photos because converting a self-selected image into a partner-assigned image would misrepresent consent and ownership.
 
 ## Self-hosted Wear installation
 

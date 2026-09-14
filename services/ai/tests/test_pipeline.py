@@ -30,6 +30,22 @@ def test_identifying_question_is_quarantined() -> None:
     assert "identifying_information" in result.reasons
 
 
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "What  small ritual helps you reconnect?",
+        "What\t small ritual helps you reconnect?",
+        "What\u00a0small ritual helps you reconnect?",
+        " What small ritual helps you reconnect?",
+    ],
+)
+def test_layout_whitespace_is_quarantined_without_repair(prompt: str) -> None:
+    result = validate_candidate(candidate(prompt), [])
+
+    assert not result.accepted
+    assert "layout_whitespace" in result.reasons
+
+
 def test_punctuation_and_case_do_not_defeat_duplicate_gate() -> None:
     assert is_near_duplicate("What made you smile today?", ["what made YOU smile today !"])
 

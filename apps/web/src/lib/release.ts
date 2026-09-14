@@ -37,19 +37,19 @@ export function hostedWearApkPath(version: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.12.1",
-  versionCode: 17,
+  version: "1.0.0-rc.13",
+  versionCode: 18,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "df104a03b9572f186236d686b42bf170365a2806907721cb35949ac108c9060d",
+  sha256: "951b9194f57c0daec8b7ddfd6aeebd487a6a3b4cea1eeed19a4157ab7527d8ef",
   releaseNotes: [
-    "Opens existing shared documents in a calm Markdown preview with inline private images and animated GIFs.",
-    "Adds account-synced Smooch and document-edit notification controls with per-device delivery.",
-    "Adds consistent cosmic motion with reduced-motion support and repairs Android 10 compatibility.",
+    "Adds calendar-style timed and all-day countdowns, private reminders, and one-way calendar export.",
+    "Adds countdown and quiz transition alerts plus stricter generated-question typography.",
+    "Makes relationship avatars a picture each partner chooses for the other.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.12.1",
-  apkUrl: hostedApkPath("1.0.0-rc.12.1"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.13",
+  apkUrl: hostedApkPath("1.0.0-rc.13"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.12.1"),
+    apkUrl: hostedWearApkPath("1.0.0-rc.13"),
     sha256: "9227bbb70ecf127a36a70d3f33101938df35f4b4cf62d80b71ff4a653a1c1868",
     sizeBytes: 14133466,
     versionCode: 15,
@@ -137,7 +137,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-13T15:00:54.652421Z",
+    publishedAt: "2026-09-14T02:30:00Z",
   }];
 }
 

@@ -19,7 +19,7 @@ import org.junit.Test;
 /** Cross-language smoke checks over the canonical protocol fixtures. */
 public final class ProtocolFixturesTest {
     private static final List<String> NAMES = List.of(
-            "activity-page", "location-batch", "note-operation", "note-attachment",
+            "activity-page", "countdown", "location-batch", "note-operation", "note-attachment",
             "notification-event", "pairing",
             "question-batch", "orbit-profile", "smooch");
     private final JsonAdapter<Map<String, Object>> adapter;
@@ -97,6 +97,7 @@ public final class ProtocolFixturesTest {
     private static boolean hasValidShape(String name, Map<String, Object> value) {
         return switch (name) {
             case "activity-page" -> validActivityPage(value);
+            case "countdown" -> validCountdown(value);
             case "location-batch" -> validLocation(value);
             case "note-operation" -> validNote(value);
             case "note-attachment" -> validAttachment(value);
@@ -107,6 +108,24 @@ public final class ProtocolFixturesTest {
             case "smooch" -> validSmooch(value);
             default -> false;
         };
+    }
+
+    private static boolean validCountdown(Map<String, Object> value) {
+        Object occursOn = value.get("occurs_on");
+        boolean allDay = "all_day".equals(value.get("timing_kind"));
+        if (value.size() != 10 || !isUuid(value.get("id"))
+                || !boundedText(value.get("title"), 120)
+                || !boundedText(value.get("timezone"), 64)
+                || !(value.get("occurs_at") instanceof String instant)
+                || !instant.matches("^.+T.+(?:Z|[+-].+)$")
+                || !(value.get("my_reminder_offsets_minutes") instanceof List<?> reminders)
+                || reminders.size() > 4
+                || !reminders.stream().allMatch(List.of(0.0, 60.0, 1440.0, 10080.0)::contains)
+                || !(value.get("notes") instanceof String notes) || notes.length() > 1000
+                || !numberIn(value.get("revision"), 0, Integer.MAX_VALUE)) return false;
+        return allDay
+                ? occursOn instanceof String date && date.matches("^\\d{4}-\\d{2}-\\d{2}$")
+                : occursOn == null;
     }
 
     private static boolean validActivityPage(Map<String, Object> value) {
@@ -156,20 +175,43 @@ public final class ProtocolFixturesTest {
     }
 
     private static boolean validNotificationEvent(Map<String, Object> value) {
-        if (value.size() != 9 || !isUuid(value.get("id"))
+        if (value.size() != 12 || !isUuid(value.get("id"))
                 || !(value.get("created_at") instanceof String created)
                 || !(value.get("expires_at") instanceof String expires)
                 || !created.matches("^.+T.+(?:Z|[+-].+)$")
                 || !expires.matches("^.+T.+(?:Z|[+-].+)$")) return false;
         if ("note_editing".equals(value.get("kind"))) {
             return isUuid(value.get("note_id"))
-                    && value.get("emoji") == null && value.get("phrase_key") == null;
+                    && value.get("emoji") == null && value.get("phrase_key") == null
+                    && noCountdownOrQuiz(value);
         }
-        return "smooch_received".equals(value.get("kind"))
-                && List.of("😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑")
-                        .contains(value.get("emoji"))
-                && value.get("phrase_key") instanceof String
+        if ("smooch_received".equals(value.get("kind"))) {
+            return List.of("😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑")
+                            .contains(value.get("emoji"))
+                    && value.get("phrase_key") instanceof String
+                    && value.get("note_id") == null && value.get("note_title") == null
+                    && noCountdownOrQuiz(value);
+        }
+        if (List.of("countdown_created", "countdown_rescheduled").contains(value.get("kind"))) {
+            return isUuid(value.get("countdown_id"))
+                    && boundedText(value.get("countdown_title"), 120)
+                    && noNoteOrQuiz(value);
+        }
+        return List.of("quiz_available", "quiz_partner_finished", "quiz_results_ready")
+                        .contains(value.get("kind"))
+                && String.valueOf(value.get("quiz_date")).matches("^\\d{4}-\\d{2}-\\d{2}$")
+                && value.get("countdown_id") == null && value.get("countdown_title") == null
                 && value.get("note_id") == null && value.get("note_title") == null;
+    }
+
+    private static boolean noCountdownOrQuiz(Map<String, Object> value) {
+        return value.get("countdown_id") == null && value.get("countdown_title") == null
+                && value.get("quiz_date") == null;
+    }
+
+    private static boolean noNoteOrQuiz(Map<String, Object> value) {
+        return value.get("note_id") == null && value.get("note_title") == null
+                && value.get("quiz_date") == null;
     }
 
     private static boolean validAttachment(Map<String, Object> value) {

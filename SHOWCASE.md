@@ -14,6 +14,10 @@ The two linked orbits communicate two independent people choosing a shared path.
 
 The dashboard leads with the relationship rather than system controls. Daily questions, countdowns, and notes use spacious cards. Widgets and watch surfaces show cached together-time and the next countdown, with a visible stale marker when refresh is overdue.
 
+![RC13 countdown concept showing a next-moment orbit, upcoming moments, and a calendar-style editor](docs/assets/android-countdowns-rc13-concept.png)
+
+RC13 replaces timestamp entry with a calm moment timeline. Timed and all-day events use familiar pickers, each partner chooses private reminders, past moments stay available behind an explicit control, and Android calendar export remains a one-way copy that the person approves.
+
 ![Updater and More screen concept](docs/assets/android-update-more-concept.png)
 
 The companion study defines the updater and settings direction: the same planet motif, a visible verification step, calm progress language, and one More destination for pairing, privacy, archives, and app updates. RC4 moves the actual APK transfer to Little Orbit's resumable first-party endpoint.
@@ -44,6 +48,14 @@ RC12.1 opens existing documents in preview and uses one Edit/Done editing action
 
 ### Current Android implementation
 
+![Implemented RC13 countdown timeline on a wide API 36 emulator](docs/assets/android-countdowns-rc13-tablet.png)
+
+![Implemented RC13 expanded countdown editor with timed/all-day controls and private reminders](docs/assets/android-countdown-editor-rc13-tablet.png)
+
+![Implemented RC13 partner-assigned avatar screen on an API 36 phone emulator](docs/assets/android-profile-rc13-emulator.png)
+
+The RC13 captures verify that countdowns use the shared responsive shell, keep the next moment prominent, and expose calendar-style controls without typed UTC values. The profile screen makes the ownership rule visible: your own avatar is read-only and only your partner's card has choose, crop, and remove actions.
+
 ![Implemented signed-out RC8 home on an API 36 emulator](docs/assets/android-home-rc8-emulator.png)
 
 ![Implemented RC12 paired Home on an API 36 emulator](docs/assets/android-home-rc12-emulator.png)
@@ -61,6 +73,8 @@ The RC12 captures verify the paired Home hierarchy, complete left navigation, ab
 ![Signed RC7 Wear OS fallback state on a round Wear OS 5 emulator](docs/assets/wear-rc7-signed-emulator.png)
 
 ![RC12 Wear fallback state on a round API 34 emulator](docs/assets/wear-rc12-emulator.png)
+
+![RC13 compatibility launch of the unchanged Wear companion on a round API 34 emulator](docs/assets/wear-rc13-emulator.png)
 
 The signed RC7 Wear launcher capture verifies that the logo, relationship date fallback, nearby estimate, and stale status fit the round safe area. Its content remains scrollable for large text and smaller displays.
 
@@ -101,6 +115,7 @@ The console exposes service health, delivery and generation status, moderation q
 - [x] RC12 API 36 phone: dynamic Notes panel opened from the right and an authorized sanitized PNG downloaded, passed digest verification, and rendered in-app.
 - [x] RC12.1 API 36 phone: preview-first document rendered an authorized PNG inline and visibly advanced a sanitized GIF between frames; Edit/Done editing state changed correctly.
 - [x] RC12.1 compatibility matrix: both disposable partners passed Home, drawer/rail, Our Space, preview/editor, Markdown dock, and attachment checks on API 29, API 30, API 36 phone, and API 36 tablet.
+- [x] RC13 compatibility matrix: API 29, API 30, and API 36 phones passed fresh paired-account smoke; the API 29 countdown crash was reproduced with the stale artifact and eliminated after the compatibility fix. The wide API 36 tablet verified the timeline and expanded editor, API 36 verified partner-only avatar controls, and the unchanged Wear code 15 companion launched on the round API 34 emulator.
 - [ ] Home widget: fresh, stale, signed-out, and server-offline states.
 - [ ] Wear OS: in-app wireless install, remembered authorization, old-patch warning, profile-photo sync, phone capability detection, tile, complication, loading, stale, and disconnected states.
 - [x] Wear OS 5 round emulator: signed RC7 install, cold launch, safe-area fallback layout, and stale-state rendering.

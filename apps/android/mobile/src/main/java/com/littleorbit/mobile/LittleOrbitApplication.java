@@ -27,7 +27,6 @@ public final class LittleOrbitApplication extends Application implements Configu
             PartnerNotificationWorker.schedule(this, true);
             PartnerNotificationWorker.enqueue(this);
         } else {
-            QuizStatusWorker.cancel(this);
             PartnerNotificationWorker.schedule(this, false);
         }
     }

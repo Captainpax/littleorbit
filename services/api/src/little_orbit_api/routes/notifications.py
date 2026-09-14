@@ -22,7 +22,7 @@ from ..couple_access import active_member, lock_couple
 from ..database import SessionFactory, session_scope
 from ..dependencies import current_account
 from ..interaction_models import Smooch
-from ..models import Account
+from ..models import Account, CoupleMember
 from ..notification_hub import NotificationConnectionHub
 from ..notification_models import NotificationDelivery, NotificationDevice, NotificationEvent
 from ..notification_schemas import (
@@ -35,10 +35,12 @@ from ..notification_schemas import (
 )
 from ..notification_service import (
     ensure_pending_deliveries,
+    ensure_quiz_available_event,
     event_response,
     preferences_for,
     preferences_response,
 )
+from ..quiz_v2_service import materialize_day, utc_today
 from .notes import _authenticate, _compatible_socket
 
 router = APIRouter(prefix="/v1", tags=["notifications"])
@@ -152,6 +154,8 @@ async def pending_events(
     member = await active_member(session, actor.id)
     await lock_couple(session, member.couple_id)
     device = await _owned_device(session, actor.id, device_id)
+    await _ensure_quiz_alert(session, member, actor.id)
+    await ensure_pending_deliveries(session, device)
     rows = list(
         await session.scalars(
             select(NotificationEvent)
@@ -169,7 +173,22 @@ async def pending_events(
         )
     )
     resolved = [await event_response(session, item) for item in rows]
+    await session.commit()
     return [item for item in resolved if item is not None]
+
+
+async def _ensure_quiz_alert(
+    session: AsyncSession, member: CoupleMember, account_id: UUID
+) -> None:
+    """Add today's quiz alert without blocking unrelated notification delivery."""
+
+    try:
+        async with session.begin_nested():
+            day = await materialize_day(session, member, utc_today())
+            await ensure_quiz_available_event(session, day, account_id)
+    except HTTPException as error:
+        if error.status_code != status.HTTP_503_SERVICE_UNAVAILABLE:
+            raise
 
 
 @router.post("/notifications/deliveries/ack", status_code=status.HTTP_204_NO_CONTENT)

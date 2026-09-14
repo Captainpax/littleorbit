@@ -6,6 +6,7 @@ import com.littleorbit.data.DisplayCacheSynchronizer;
 import com.littleorbit.data.DisplayCacheSyncWorker;
 import com.littleorbit.data.local.LocationQueueDao;
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.CountdownApiModels;
 import com.littleorbit.data.remote.ActivityApiModels;
 import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.remote.NotificationApiModels;
@@ -208,10 +209,10 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     @Override
-    public CompletableFuture<List<ApiModels.Countdown>> countdowns() {
+    public CompletableFuture<List<CountdownApiModels.Countdown>> countdowns() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                List<ApiModels.Countdown> remote = RetrofitCalls.execute(api.countdowns());
+                List<CountdownApiModels.Countdown> remote = RetrofitCalls.execute(api.countdowns());
                 offlineCountdowns.replaceRemote(remote);
                 return offlineCountdowns.cached();
             } catch (OrbitServiceException failure) {
@@ -224,23 +225,30 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     @Override
-    public CompletableFuture<ApiModels.Countdown> createCountdown(
-            ApiModels.CountdownMutation mutation) {
+    public CompletableFuture<CountdownApiModels.Countdown> createCountdown(
+            CountdownApiModels.Mutation mutation) {
         return CompletableFuture.supplyAsync(() -> createCountdownOrQueue(mutation), executor);
     }
 
     @Override
-    public CompletableFuture<ApiModels.Countdown> updateCountdown(
-            String countdownId, ApiModels.CountdownMutation mutation) {
+    public CompletableFuture<CountdownApiModels.Countdown> updateCountdown(
+            String countdownId, CountdownApiModels.Mutation mutation) {
         return CompletableFuture.supplyAsync(
                 () -> updateCountdownOrQueue(countdownId, mutation), executor);
     }
 
     @Override
     public CompletableFuture<ApiModels.Message> deleteCountdown(
-            String countdownId, ApiModels.CountdownDeleteRequest request) {
+            String countdownId, CountdownApiModels.DeleteRequest request) {
         return CompletableFuture.supplyAsync(
                 () -> deleteCountdownOrQueue(countdownId, request), executor);
+    }
+
+    @Override
+    public CompletableFuture<CountdownApiModels.Countdown> replaceCountdownReminders(
+            String countdownId, List<Integer> offsetsMinutes) {
+        return async(api.replaceCountdownReminders(
+                countdownId, new CountdownApiModels.ReminderUpdate(offsetsMinutes)));
     }
 
     @Override public CompletableFuture<ActivityApiModels.Page> activity() { return async(api.activity(null, 30, false)); }
@@ -506,9 +514,10 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         locationQueue.clear();
     }
 
-    private ApiModels.Countdown createCountdownOrQueue(ApiModels.CountdownMutation mutation) {
+    private CountdownApiModels.Countdown createCountdownOrQueue(
+            CountdownApiModels.Mutation mutation) {
         try {
-            ApiModels.Countdown result = RetrofitCalls.execute(api.createCountdown(mutation));
+            CountdownApiModels.Countdown result = RetrofitCalls.execute(api.createCountdown(mutation));
             DisplayCacheSyncWorker.enqueue(context);
             return result;
         } catch (OrbitServiceException failure) {
@@ -519,13 +528,14 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         }
     }
 
-    private ApiModels.Countdown updateCountdownOrQueue(
-            String countdownId, ApiModels.CountdownMutation mutation) {
+    private CountdownApiModels.Countdown updateCountdownOrQueue(
+            String countdownId, CountdownApiModels.Mutation mutation) {
         if (countdownId.startsWith("local:")) {
             return offlineCountdowns.queueUpdate(countdownId, mutation);
         }
         try {
-            ApiModels.Countdown result = RetrofitCalls.execute(api.updateCountdown(countdownId, mutation));
+            CountdownApiModels.Countdown result = RetrofitCalls.execute(
+                    api.updateCountdown(countdownId, mutation));
             DisplayCacheSyncWorker.enqueue(context);
             return result;
         } catch (OrbitServiceException failure) {
@@ -537,7 +547,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     private ApiModels.Message deleteCountdownOrQueue(
-            String countdownId, ApiModels.CountdownDeleteRequest request) {
+            String countdownId, CountdownApiModels.DeleteRequest request) {
         if (countdownId.startsWith("local:")) {
             return offlineCountdowns.queueDelete(countdownId, request);
         }

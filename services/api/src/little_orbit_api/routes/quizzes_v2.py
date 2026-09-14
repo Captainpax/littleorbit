@@ -3,7 +3,7 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from little_orbit_ai.pipeline import load_curated_bank
 from little_orbit_ai.safety import normalized_hash
 from sqlalchemy import delete, exists, select, update
@@ -23,6 +23,8 @@ from ..models import (
     QuizDayQuestion,
     QuizDraft,
 )
+from ..notification_models import NotificationEvent
+from ..notification_service import enqueue_quiz_event, partner_id_for
 from ..quiz_custom_service import create_custom, creator_queue, delete_custom, update_custom
 from ..quiz_v2_mutations import finish_day, reopen_day, save_draft
 from ..quiz_v2_service import day_response, history_items, materialize_day, utc_today
@@ -126,6 +128,7 @@ async def put_draft(
 async def finish(
     quiz_date: date,
     payload: QuizDayMutation,
+    request: Request,
     actor: Account = Depends(current_account),
     session: AsyncSession = Depends(session_scope),
 ) -> QuizDayResponse:
@@ -133,6 +136,12 @@ async def finish(
 
     member = await active_member(session, actor.id)
     day = await materialize_day(session, member, quiz_date)
+    actor_was_finished = await session.scalar(
+        select(QuizDayMember.completed_at).where(
+            QuizDayMember.quiz_day_id == day.id,
+            QuizDayMember.account_id == actor.id,
+        )
+    )
     await finish_day(session, day, actor.id, payload)
     await record_activity(
         session, member.couple_id, actor.id,
@@ -140,7 +149,23 @@ async def finish(
         f"quiz:finish:{payload.operation_id}", target_type="quiz",
         target_id=day.id, target_title=str(day.quiz_date),
     )
+    recipient_id = None
+    if actor_was_finished is None:
+        partner_id = await partner_id_for(session, member.couple_id, actor.id)
+        if partner_id is not None:
+            kind = "quiz_results_ready" if day.revealed_at is not None else "quiz_partner_finished"
+            recipient_id = await enqueue_quiz_event(session, day, partner_id, actor.id, kind)
+        if day.revealed_at is not None:
+            await session.execute(
+                delete(NotificationEvent).where(
+                    NotificationEvent.recipient_id == actor.id,
+                    NotificationEvent.source_id == day.id,
+                    NotificationEvent.kind == "quiz_partner_finished",
+                )
+            )
     await session.commit()
+    if recipient_id is not None:
+        await request.app.state.notification_connections.available(recipient_id)
     return await day_response(session, day, actor.id)
 
 

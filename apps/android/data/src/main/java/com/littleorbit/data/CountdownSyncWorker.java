@@ -8,6 +8,7 @@ import androidx.work.WorkerParameters;
 import com.littleorbit.data.local.CountdownDao;
 import com.littleorbit.data.local.QueuedCountdownEntity;
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.CountdownApiModels;
 import com.littleorbit.data.remote.LittleOrbitApi;
 import com.littleorbit.data.repository.CountdownOfflineStore;
 import dagger.assisted.Assisted;
@@ -78,7 +79,7 @@ public final class CountdownSyncWorker extends Worker {
             return api.updateCountdown(row.countdownId, mutation(row, payload)).execute();
         }
         if ("delete".equals(row.kind) && row.countdownId != null) {
-            ApiModels.CountdownDeleteRequest request = new ApiModels.CountdownDeleteRequest(
+            CountdownApiModels.DeleteRequest request = new CountdownApiModels.DeleteRequest(
                     row.operationId, payload.getInt("expected_revision"));
             return api.deleteCountdown(row.countdownId, request).execute();
         }
@@ -87,8 +88,9 @@ public final class CountdownSyncWorker extends Worker {
 
     private SyncOutcome interpret(QueuedCountdownEntity row, Response<?> response) {
         if (response.isSuccessful()) {
-            ApiModels.Countdown countdown = response.body() instanceof ApiModels.Countdown
-                    ? (ApiModels.Countdown) response.body()
+            CountdownApiModels.Countdown countdown =
+                    response.body() instanceof CountdownApiModels.Countdown
+                    ? (CountdownApiModels.Countdown) response.body()
                     : null;
             offline.acknowledge(row, countdown);
             return SyncOutcome.ACKNOWLEDGED;
@@ -103,16 +105,18 @@ public final class CountdownSyncWorker extends Worker {
         return SyncOutcome.RETRY;
     }
 
-    private static ApiModels.CountdownMutation mutation(
+    private static CountdownApiModels.Mutation mutation(
             QueuedCountdownEntity row, JSONObject payload) throws JSONException {
         Integer expected = payload.isNull("expected_revision")
                 ? null
                 : payload.getInt("expected_revision");
-        return new ApiModels.CountdownMutation(
+        return new CountdownApiModels.Mutation(
                 row.operationId,
                 payload.getString("title"),
                 payload.getString("occurs_at"),
                 payload.getString("timezone"),
+                payload.optString("timing_kind", "timed"),
+                payload.isNull("occurs_on") ? null : payload.optString("occurs_on", null),
                 payload.getString("notes"),
                 expected);
     }

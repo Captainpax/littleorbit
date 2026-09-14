@@ -70,9 +70,37 @@ def validate_candidate(candidate: CandidateQuestion, recent: list[str]) -> Valid
     normalized = normalize_question(candidate.prompt)
     reasons = _content_reasons(candidate, normalized)
     reasons.extend(_interaction_reasons(candidate, normalized))
+    if _has_layout_whitespace(candidate):
+        reasons.append("layout_whitespace")
     if is_near_duplicate(candidate.prompt, recent):
         reasons.append("near_duplicate")
     return ValidationResult(not reasons, tuple(reasons), normalized_hash(candidate.prompt))
+
+
+def _has_layout_whitespace(candidate: CandidateQuestion) -> bool:
+    """Reject invisible or repeated spacing before content reaches any client."""
+
+    values = [
+        candidate.prompt,
+        *candidate.options,
+        candidate.scale_low_label or "",
+        candidate.scale_high_label or "",
+    ]
+    for value in values:
+        if value != value.strip() or "  " in value:
+            return True
+        for character in value:
+            if _invalid_layout_character(character):
+                return True
+    return False
+
+
+def _invalid_layout_character(character: str) -> bool:
+    codepoint = ord(character)
+    hidden_space = character != " " and (
+        character.isspace() or unicodedata.category(character) == "Zs"
+    )
+    return hidden_space or codepoint < 32 or codepoint == 127
 
 
 def _content_reasons(candidate: CandidateQuestion, normalized: str) -> list[str]:

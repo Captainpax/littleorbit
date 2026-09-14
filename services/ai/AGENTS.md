@@ -13,6 +13,7 @@ The AI service may receive calendar dates, recent public question text/categorie
 - Use `qwen3:4b-instruct-2507-q4_K_M` through internal Ollama with one parallel request, 4096 context, bounded output, and `keep_alive: 0`.
 - Require versioned structured JSON. Quarantine malformed or rejected output; never silently rewrite it into a publishable question.
 - Reject identifying-data requests, coercion, manipulation, diagnosis, regulated advice, self-harm, minors, graphic sexual content, and unsafe location disclosure.
+- Reject leading or trailing whitespace, repeated horizontal spaces, tabs, line breaks, non-breaking spaces, and control characters in every visible generated field. Quarantine the candidate rather than repairing its typography silently.
 - Normalize and hash exact duplicates; use database trigram similarity for near duplicates in production.
 - Maintain seven future local dates. Every date must have five publishable general questions even when Ollama is absent or times out.
 - Persist model digest, prompt version, parameters, validation results, selections, quarantine reasons, and fallback reason.

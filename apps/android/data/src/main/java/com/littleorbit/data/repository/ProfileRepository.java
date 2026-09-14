@@ -2,7 +2,7 @@ package com.littleorbit.data.repository;
 
 import java.util.concurrent.CompletableFuture;
 
-/** Authenticated profile-photo boundary with encrypted offline thumbnails. */
+/** Partner-assigned relationship-avatar boundary with encrypted offline thumbnails. */
 public interface ProfileRepository {
     /** Immutable names and private thumbnails safe for the signed-in phone UI. */
     record State(String myName, byte[] myPhoto, String partnerName, byte[] partnerPhoto) {
@@ -27,13 +27,13 @@ public interface ProfileRepository {
     /** Refreshes authorized names and changed thumbnails, falling back to the cache offline. */
     CompletableFuture<State> refresh();
 
-    /** Uploads a cropped WebP image and refreshes all profile state. */
-    CompletableFuture<State> upload(byte[] webp);
+    /** Assigns a cropped WebP image to the current partner. */
+    CompletableFuture<State> uploadPartnerPhoto(byte[] webp);
 
-    /** Deletes the caller's image and refreshes the fallback identity. */
-    CompletableFuture<State> deleteOwnPhoto();
+    /** Deletes the avatar that the caller assigned to the current partner. */
+    CompletableFuture<State> deletePartnerPhoto();
 
-    /** Clears partner identity as soon as sharing ends. */
+    /** Clears both relationship-scoped avatars as soon as sharing ends. */
     void clearPartner();
 
     /** Clears all cached profile identity when the local session ends. */

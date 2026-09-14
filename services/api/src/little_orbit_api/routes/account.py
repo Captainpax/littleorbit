@@ -9,12 +9,12 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..clock import SystemClock
+from ..countdown_models import Countdown, CountdownReminder
 from ..database import session_scope
 from ..dependencies import current_account
 from ..interaction_models import Smooch
 from ..models import (
     Account,
-    Countdown,
     Couple,
     CoupleMember,
     DeletionJob,
@@ -25,7 +25,7 @@ from ..models import (
     Session,
     TogetherBucket,
 )
-from ..profile_models import AccountProfilePhoto
+from ..profile_models import RelationshipAvatar
 from ..schemas import AccountDeletionRequest, AccountDeletionResponse, AccountExportResponse
 from ..security import verify_password
 
@@ -56,6 +56,27 @@ async def _relationship_export(
             TogetherBucket.couple_id == membership.couple_id
         )
     )
+    avatars = list(
+        await session.scalars(
+            select(RelationshipAvatar).where(
+                RelationshipAvatar.couple_id == membership.couple_id
+            )
+        )
+    )
+    return _relationship_payload(
+        membership, notes, countdowns, answers, smooches, avatars, int(total or 0)
+    )
+
+
+def _relationship_payload(
+    membership: CoupleMember,
+    notes: list[Note],
+    countdowns: list[Countdown],
+    answers: list[QuizAnswer],
+    smooches: list[Smooch],
+    avatars: list[RelationshipAvatar],
+    together_seconds: int,
+) -> dict[str, object]:
     return {
         "couple_id": str(membership.couple_id),
         "joined_at": membership.joined_at,
@@ -70,6 +91,8 @@ async def _relationship_export(
                 "title": item.title,
                 "occurs_at": item.occurs_at,
                 "timezone": item.timezone,
+                "timing_kind": item.timing_kind,
+                "occurs_on": item.occurs_on,
                 "notes": item.notes,
                 "deleted_at": item.deleted_at,
             }
@@ -84,8 +107,19 @@ async def _relationship_export(
             }
             for item in answers
         ],
-        "estimated_together_seconds": int(total or 0),
+        "estimated_together_seconds": together_seconds,
         "smooches": [_smooch_export(item) for item in smooches],
+        "relationship_avatars": [
+            {
+                "subject_account_id": str(item.subject_account_id),
+                "assigned_by_account_id": str(item.assigned_by_account_id),
+                "media_type": "image/webp",
+                "sha256": item.sha256,
+                "revision": item.revision,
+                "base64": b64encode(item.image_webp).decode("ascii"),
+            }
+            for item in avatars
+        ],
     }
 
 
@@ -124,7 +158,6 @@ async def export_account(
             select(LocationSample).where(LocationSample.account_id == actor.id)
         )
     )
-    own_photo = await session.get(AccountProfilePhoto, actor.id)
     return AccountExportResponse(
         generated_at=SystemClock().now(),
         data={
@@ -134,16 +167,7 @@ async def export_account(
                 "display_name": actor.display_name,
                 "verified_at": actor.verified_at,
                 "created_at": actor.created_at,
-                "profile_photo": (
-                    {
-                        "media_type": "image/webp",
-                        "sha256": own_photo.sha256,
-                        "revision": own_photo.revision,
-                        "base64": b64encode(own_photo.image_webp).decode("ascii"),
-                    }
-                    if own_photo
-                    else None
-                ),
+                "profile_photo": None,
             },
             "relationships": relationships,
             "unexpired_location_samples": [
@@ -189,6 +213,18 @@ async def _end_active_pairing(session: AsyncSession, actor_id: UUID) -> UUID | N
         member.location_enabled = False
     await session.execute(
         delete(LocationSample).where(LocationSample.couple_id == membership.couple_id)
+    )
+    await session.execute(
+        delete(RelationshipAvatar).where(
+            RelationshipAvatar.couple_id == membership.couple_id
+        )
+    )
+    await session.execute(
+        delete(CountdownReminder).where(
+            CountdownReminder.countdown_id.in_(
+                select(Countdown.id).where(Countdown.couple_id == membership.couple_id)
+            )
+        )
     )
     return membership.couple_id
 

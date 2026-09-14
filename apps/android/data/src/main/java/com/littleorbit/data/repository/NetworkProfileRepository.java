@@ -48,17 +48,17 @@ public final class NetworkProfileRepository implements ProfileRepository {
     }
 
     @Override
-    public CompletableFuture<State> upload(byte[] webp) {
+    public CompletableFuture<State> uploadPartnerPhoto(byte[] webp) {
         return CompletableFuture.supplyAsync(() -> {
-            execute(api.putProfilePhoto(RequestBody.create(webp.clone(), WEBP)));
+            execute(api.putPartnerAvatar(RequestBody.create(webp.clone(), WEBP)));
             return refreshNow();
         }, executor);
     }
 
     @Override
-    public CompletableFuture<State> deleteOwnPhoto() {
+    public CompletableFuture<State> deletePartnerPhoto() {
         return CompletableFuture.supplyAsync(() -> {
-            executeNoBody(api.deleteProfilePhoto());
+            executeNoBody(api.deletePartnerAvatar());
             return refreshNow();
         }, executor);
     }

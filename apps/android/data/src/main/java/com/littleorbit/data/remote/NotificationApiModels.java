@@ -92,7 +92,7 @@ public final class NotificationApiModels {
         }
     }
 
-    /** One authorized Smooch or note-edit alert. */
+    /** One authorized partner, countdown, or quiz alert. */
     public static final class Event {
         public final String id;
         public final String kind;
@@ -103,12 +103,16 @@ public final class NotificationApiModels {
         @Json(name = "phrase_key") public final String phraseKey;
         @Json(name = "note_id") public final String noteId;
         @Json(name = "note_title") public final String noteTitle;
+        @Json(name = "countdown_id") public final String countdownId;
+        @Json(name = "countdown_title") public final String countdownTitle;
+        @Json(name = "quiz_date") public final String quizDate;
 
         /** Creates decoded privacy-limited event metadata. */
         public Event(
                 String id, String kind, String createdAt, String expiresAt,
                 String actorName, String emoji, String phraseKey,
-                String noteId, String noteTitle) {
+                String noteId, String noteTitle,
+                String countdownId, String countdownTitle, String quizDate) {
             this.id = id;
             this.kind = kind;
             this.createdAt = createdAt;
@@ -118,6 +122,9 @@ public final class NotificationApiModels {
             this.phraseKey = phraseKey;
             this.noteId = noteId;
             this.noteTitle = noteTitle;
+            this.countdownId = countdownId;
+            this.countdownTitle = countdownTitle;
+            this.quizDate = quizDate;
         }
     }
 

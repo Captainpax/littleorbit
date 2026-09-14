@@ -22,6 +22,7 @@ Keep public promises, architecture diagrams, operations, screenshots, and decisi
 - Release notes must record version code, signer identity, artifact hash, compatibility floor, and whether enforcement is inactive or scheduled.
 - When a release reuses an unchanged companion artifact, record its original version code and exact byte identity rather than implying a new companion build.
 - Verification records distinguish server receipt from inferred real-world proximity and never print precise coordinates.
+- Document destructive or meaning-changing migrations before deployment. If data is deliberately cleared because its ownership semantics cannot be converted honestly, state that boundary in the ADR, privacy guide, release notes, deployment guide, and verification record.
 - Inventory every repository-owned Markdown file for every update. Update or create all affected public, operations, architecture, privacy, security, release, and contributor documents. Always review and update `ROADMAP.md` when behavior, scope, milestones, or release state changes; record an explicit no-change reason only when the roadmap remains exactly accurate.
 
 ## Start here

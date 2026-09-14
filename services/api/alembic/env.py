@@ -8,6 +8,7 @@ from alembic import context
 from little_orbit_api import (
     activity_models,  # noqa: F401
     attachment_models,  # noqa: F401
+    countdown_models,  # noqa: F401
     interaction_models,  # noqa: F401
     models,  # noqa: F401
     notification_models,  # noqa: F401

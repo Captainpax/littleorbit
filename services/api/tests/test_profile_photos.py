@@ -10,9 +10,10 @@ import pytest
 from fastapi import HTTPException
 from PIL import Image
 
+from little_orbit_api.main import create_app
 from little_orbit_api.models import Account
 from little_orbit_api.profile_images import InvalidProfileImage, normalize_profile_image
-from little_orbit_api.profile_models import AccountProfilePhoto
+from little_orbit_api.profile_models import RelationshipAvatar
 from little_orbit_api.routes.profile_photos import (
     _photo_response,
     get_partner_profile_photo,
@@ -54,12 +55,23 @@ def test_photo_response_honors_private_etag_revalidation() -> None:
     )
 
     response = _photo_response(
-        cast(AccountProfilePhoto, photo), f'"{digest}"', thumbnail=False
+        cast(RelationshipAvatar, photo), f'"{digest}"', thumbnail=False
     )
 
     assert response.status_code == 304
     assert response.headers["cache-control"] == "private, max-age=300"
     assert response.headers["vary"] == "Authorization"
+
+
+def test_partner_assignment_routes_replace_legacy_self_assignment() -> None:
+    """The partner route writes avatars while the old self route remains an explicit tombstone."""
+
+    routes = {(getattr(route, "path", ""), tuple(getattr(route, "methods", ())))
+              for route in create_app().routes}
+    assert any(path == "/v1/couple/current/partner-avatar" and "PUT" in methods
+               for path, methods in routes)
+    assert any(path == "/v1/account/profile-photo" and "PUT" in methods
+               for path, methods in routes)
 
 
 @pytest.mark.asyncio
@@ -71,5 +83,5 @@ async def test_partner_authorization_precedes_photo_lookup() -> None:
     with pytest.raises(HTTPException) as failure:
         await get_partner_profile_photo(None, cast(Account, actor), session)
 
-    assert failure.value.status_code == 404
-    session.get.assert_not_awaited()
+    assert failure.value.status_code == 409
+    assert session.scalar.await_count == 1

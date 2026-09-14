@@ -138,10 +138,7 @@ public final class QuizAnswerRenderer {
             }
             ratingGroups.put(option.id, group);
             container.addView(group);
-            TextView anchors = label(anchorText());
-            anchors.setTextSize(12);
-            anchors.setTextColor(context.getColor(R.color.muted));
-            container.addView(anchors);
+            container.addView(anchorRow());
         }
     }
 
@@ -273,10 +270,29 @@ public final class QuizAnswerRenderer {
         return view;
     }
 
-    private String anchorText() {
+    private LinearLayout anchorRow() {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
         String low = question.scaleLowLabel == null ? "Low" : question.scaleLowLabel;
         String high = question.scaleHighLabel == null ? "High" : question.scaleHighLabel;
-        return low + "                                      " + high;
+        row.addView(anchor(low, android.view.Gravity.START));
+        row.addView(anchor(high, android.view.Gravity.END));
+        return row;
+    }
+
+    private TextView anchor(String text, int gravity) {
+        TextView view = label(text);
+        view.setTextSize(12);
+        view.setTextColor(context.getColor(R.color.muted));
+        view.setGravity(gravity);
+        view.setPadding(dp(4), dp(4), dp(4), dp(12));
+        rowParams(view);
+        return view;
+    }
+
+    private void rowParams(TextView view) {
+        view.setLayoutParams(new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
     }
 
     private LinearLayout.LayoutParams matchParams() {

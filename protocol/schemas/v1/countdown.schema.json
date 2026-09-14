@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v1/countdown.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "occurs_at", "timezone", "timing_kind", "occurs_on", "my_reminder_offsets_minutes", "notes", "revision", "updated_at"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "occurs_at": { "type": "string", "format": "date-time" },
+    "timezone": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "timing_kind": { "enum": ["timed", "all_day"] },
+    "occurs_on": { "type": ["string", "null"], "format": "date" },
+    "my_reminder_offsets_minutes": { "type": "array", "uniqueItems": true, "maxItems": 4, "items": { "enum": [0, 60, 1440, 10080] } },
+    "notes": { "type": "string", "maxLength": 1000 },
+    "revision": { "type": "integer", "minimum": 0 },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "timing_kind": { "const": "all_day" } } },
+      "then": { "properties": { "occurs_on": { "type": "string", "format": "date" } } },
+      "else": { "properties": { "occurs_on": { "type": "null" } } }
+    }
+  ]
+}

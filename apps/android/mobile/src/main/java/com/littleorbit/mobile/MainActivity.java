@@ -130,7 +130,6 @@ public final class MainActivity extends OrbitShellActivity
                         .handle((ignored, failure) -> null)
                         .thenCompose(ignored -> orbit.signOut())
                         .thenRun(() -> runOnUiThread(() -> {
-                    QuizStatusWorker.cancel(this);
                     PartnerNotificationWorker.schedule(this, false);
                     ForegroundLocationService.stop(this);
                     finish();
@@ -256,7 +255,6 @@ public final class MainActivity extends OrbitShellActivity
             PartnerNotificationWorker.schedule(this, true);
             PartnerNotificationWorker.enqueue(this);
         } else {
-            QuizStatusWorker.cancel(this);
             PartnerNotificationWorker.schedule(this, false);
         }
     }

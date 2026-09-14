@@ -33,6 +33,8 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Add an isolated paired-account smoke environment and verify the RC12 phone flow on API 29, API 30, API 36, and a wide API 36 tablet, plus the stale-state Wear launcher on a round API 34 emulator.
 - [x] Publish RC12.1 with preview-first shared documents, verified inline private images and animated GIFs, account-synced notification choices, per-device Smooch and document-edit delivery, generic lock-screen text, and reduced-motion-aware cosmic transitions.
 - [x] Exercise RC12.1 on API 29, API 30, API 36 phone, and API 36 tablet; repair the Android 10 Markdown API crash and mobile WorkManager/Hilt registration found by the compatibility gate.
+- [x] Implement RC13 with calendar-style timed/all-day countdowns, private per-partner reminders, one-way calendar export, countdown and quiz transition alerts, whitespace-safe generated questions, and partner-assigned relationship avatars.
+- [x] Exercise RC13 countdown and shared-document paths on API 29, API 30, API 36 phone, and API 36 tablet; launch the independently versioned Wear companion on the round API 34 emulator and repair the Android 10 countdown API crash found by the minimum-SDK gate.
 - [ ] Complete two-phone and Wear OS end-to-end release gate.
 - [x] Sign release APKs, publish GitHub release mirrors, and configure the reviewed production proxy/firewall route.
 
@@ -44,6 +46,8 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - Operational dashboards, backup drills, and incident playbooks.
 - Improved offline reconciliation and battery measurements.
 - Device-tested notification timing and richer quiz reveal motion under reduced-motion controls.
+- Calendar-provider compatibility, reminder timing, daylight-saving transitions, and one-way export clarity on physical devices.
+- Partner-avatar crop, replacement, removal, Wear transfer, unpair cleanup, and accessibility checks on two physical phones.
 - Physical-device battery measurements and OEM-specific background-location recovery guidance.
 - Guided watch-installer usability improvements based on physical phone/watch testing.
 - Remembered-watch reconnect latency and progress reporting for slow local transfers.

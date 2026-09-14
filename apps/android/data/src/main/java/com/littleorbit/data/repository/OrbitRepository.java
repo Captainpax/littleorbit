@@ -1,6 +1,7 @@
 package com.littleorbit.data.repository;
 
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.CountdownApiModels;
 import com.littleorbit.data.remote.ActivityApiModels;
 import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.remote.NotificationApiModels;
@@ -89,18 +90,23 @@ public interface OrbitRepository {
             String questionId, QuizApiModels.ReportMutation mutation);
 
     /** Loads countdowns. */
-    CompletableFuture<List<ApiModels.Countdown>> countdowns();
+    CompletableFuture<List<CountdownApiModels.Countdown>> countdowns();
 
     /** Creates a countdown. */
-    CompletableFuture<ApiModels.Countdown> createCountdown(ApiModels.CountdownMutation mutation);
+    CompletableFuture<CountdownApiModels.Countdown> createCountdown(
+            CountdownApiModels.Mutation mutation);
 
     /** Updates a countdown from its expected revision. */
-    CompletableFuture<ApiModels.Countdown> updateCountdown(
-            String countdownId, ApiModels.CountdownMutation mutation);
+    CompletableFuture<CountdownApiModels.Countdown> updateCountdown(
+            String countdownId, CountdownApiModels.Mutation mutation);
+
+    /** Replaces the caller's private reminder offsets for one shared event. */
+    CompletableFuture<CountdownApiModels.Countdown> replaceCountdownReminders(
+            String countdownId, List<Integer> offsetsMinutes);
 
     /** Deletes a countdown idempotently from its expected revision. */
     CompletableFuture<ApiModels.Message> deleteCountdown(
-            String countdownId, ApiModels.CountdownDeleteRequest request);
+            String countdownId, CountdownApiModels.DeleteRequest request);
 
     /** Loads the latest content-free activity panel. */
     CompletableFuture<ActivityApiModels.Page> activity();

@@ -9,19 +9,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..activity_models import ActivityEvent, ActivitySeen
 from ..clock import SystemClock
+from ..countdown_models import Countdown, CountdownReminder
 from ..couple_access import active_member, both_members_consent
 from ..database import session_scope
 from ..dependencies import current_account
 from ..interaction_models import Smooch
 from ..models import (
     Account,
-    Countdown,
     Couple,
     CoupleMember,
     LocationSample,
     Note,
     QuizAnswer,
 )
+from ..profile_models import RelationshipAvatar
 from ..quiz_v2_service import revoke_unrevealed_intimacy
 from ..schemas import (
     ArchiveDetail,
@@ -135,6 +136,16 @@ async def unpair(
     await session.execute(
         delete(LocationSample).where(LocationSample.couple_id == couple.id)
     )
+    await session.execute(
+        delete(RelationshipAvatar).where(RelationshipAvatar.couple_id == couple.id)
+    )
+    await session.execute(
+        delete(CountdownReminder).where(
+            CountdownReminder.countdown_id.in_(
+                select(Countdown.id).where(Countdown.couple_id == couple.id)
+            )
+        )
+    )
     await session.execute(delete(ActivitySeen).where(ActivitySeen.couple_id == couple.id))
     await session.execute(delete(ActivityEvent).where(ActivityEvent.couple_id == couple.id))
     await session.commit()
@@ -230,6 +241,8 @@ async def archive_detail(
                 "title": item.title,
                 "occurs_at": item.occurs_at,
                 "timezone": item.timezone,
+                "timing_kind": item.timing_kind,
+                "occurs_on": item.occurs_on,
                 "notes": item.notes,
             }
             for item in countdowns

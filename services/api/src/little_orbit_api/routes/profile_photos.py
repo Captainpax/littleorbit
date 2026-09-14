@@ -1,6 +1,5 @@
-"""Authenticated profile identity and partner-authorized photo delivery."""
+"""Partner-assigned, relationship-scoped avatar storage and delivery."""
 
-from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
@@ -8,16 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..clock import SystemClock
+from ..couple_access import active_member, lock_couple
 from ..database import session_scope
 from ..dependencies import current_account
 from ..models import Account, CoupleMember
 from ..profile_images import MAX_UPLOAD_BYTES, InvalidProfileImage, normalize_profile_image
-from ..profile_models import AccountProfilePhoto
-from ..profile_schemas import (
-    OrbitProfilePerson,
-    OrbitProfileResponse,
-    ProfilePhotoMetadata,
-)
+from ..profile_models import RelationshipAvatar
+from ..profile_schemas import OrbitProfilePerson, OrbitProfileResponse, ProfilePhotoMetadata
 
 router = APIRouter(prefix="/v1", tags=["profile"])
 
@@ -28,12 +24,12 @@ async def _read_bounded_upload(request: Request) -> bytes:
     async for chunk in request.stream():
         total += len(chunk)
         if total > MAX_UPLOAD_BYTES:
-            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Profile photo is too large")
+            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Avatar is too large")
         chunks.append(chunk)
     return b"".join(chunks)
 
 
-def _metadata(photo: AccountProfilePhoto | None) -> ProfilePhotoMetadata | None:
+def _metadata(photo: RelationshipAvatar | None) -> ProfilePhotoMetadata | None:
     if photo is None:
         return None
     return ProfilePhotoMetadata(
@@ -43,38 +39,29 @@ def _metadata(photo: AccountProfilePhoto | None) -> ProfilePhotoMetadata | None:
     )
 
 
-async def _active_partner(
-    session: AsyncSession, actor_id: UUID
-) -> Account | None:
-    membership = await session.scalar(
-        select(CoupleMember).where(
-            CoupleMember.account_id == actor_id,
+async def _partner_id(session: AsyncSession, couple_id: UUID, actor_id: UUID) -> UUID:
+    partner_id = await session.scalar(
+        select(CoupleMember.account_id).where(
+            CoupleMember.couple_id == couple_id,
+            CoupleMember.account_id != actor_id,
             CoupleMember.left_at.is_(None),
         )
     )
-    if membership is None:
-        return None
-    return cast(
-        Account | None,
-        await session.scalar(
-            select(Account)
-            .join(CoupleMember, CoupleMember.account_id == Account.id)
-            .where(
-                CoupleMember.couple_id == membership.couple_id,
-                CoupleMember.left_at.is_(None),
-                Account.id != actor_id,
-                Account.deleted_at.is_(None),
-            )
-        )
+    if partner_id is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Avatar is unavailable")
+    return partner_id
+
+
+async def _avatar(
+    session: AsyncSession, couple_id: UUID, subject_id: UUID, *, lock: bool = False
+) -> RelationshipAvatar | None:
+    statement = select(RelationshipAvatar).where(
+        RelationshipAvatar.couple_id == couple_id,
+        RelationshipAvatar.subject_account_id == subject_id,
     )
-
-
-async def _lock_photo_owner(session: AsyncSession, actor_id: UUID) -> None:
-    """Serialize photo replacement and deletion even when no photo row exists yet."""
-
-    await session.execute(
-        select(Account.id).where(Account.id == actor_id).with_for_update()
-    )
+    if lock:
+        statement = statement.with_for_update()
+    return await session.scalar(statement)
 
 
 @router.get("/account/orbit-profile", response_model=OrbitProfileResponse)
@@ -82,53 +69,61 @@ async def orbit_profile(
     actor: Account = Depends(current_account),
     session: AsyncSession = Depends(session_scope),
 ) -> OrbitProfileResponse:
-    """Return only display identities authorized by the current pairing."""
+    """Return identities and the two avatars authorized by the active pairing."""
 
-    own_photo = await session.get(AccountProfilePhoto, actor.id)
-    partner = await _active_partner(session, actor.id)
-    partner_photo = await session.get(AccountProfilePhoto, partner.id) if partner else None
+    member = await active_member(session, actor.id)
+    partner_id = await _partner_id(session, member.couple_id, actor.id)
+    partner = await session.get(Account, partner_id)
+    own_avatar = await _avatar(session, member.couple_id, actor.id)
+    partner_avatar = await _avatar(session, member.couple_id, partner_id)
     return OrbitProfileResponse(
-        me=OrbitProfilePerson(display_name=actor.display_name, photo=_metadata(own_photo)),
+        me=OrbitProfilePerson(display_name=actor.display_name, photo=_metadata(own_avatar)),
         partner=(
-            OrbitProfilePerson(display_name=partner.display_name, photo=_metadata(partner_photo))
-            if partner
+            OrbitProfilePerson(display_name=partner.display_name, photo=_metadata(partner_avatar))
+            if partner is not None
             else None
         ),
     )
 
 
-@router.put("/account/profile-photo", response_model=ProfilePhotoMetadata)
-async def put_profile_photo(
+@router.put("/couple/current/partner-avatar", response_model=ProfilePhotoMetadata)
+async def put_partner_avatar(
     request: Request,
     content_type: str | None = Header(default=None),
     actor: Account = Depends(current_account),
     session: AsyncSession = Depends(session_scope),
 ) -> ProfilePhotoMetadata:
-    """Normalize and replace the authenticated account's private profile photo."""
+    """Assign a sanitized image to the caller's current partner."""
 
+    member = await active_member(session, actor.id)
+    await lock_couple(session, member.couple_id)
+    partner_id = await _partner_id(session, member.couple_id, actor.id)
     media_type = (content_type or "").split(";", 1)[0].strip().lower()
     try:
-        normalized = normalize_profile_image(await _read_bounded_upload(request), media_type)
+        image = normalize_profile_image(await _read_bounded_upload(request), media_type)
     except InvalidProfileImage as error:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error)) from error
-    now = SystemClock().now()
-    await _lock_photo_owner(session, actor.id)
-    existing = await session.get(AccountProfilePhoto, actor.id, with_for_update=True)
-    if existing is not None and existing.sha256 == normalized.sha256:
+    existing = await _avatar(session, member.couple_id, partner_id, lock=True)
+    if existing is not None and existing.sha256 == image.sha256:
         metadata = _metadata(existing)
         assert metadata is not None
         return metadata
-    revision = 1 if existing is None else existing.revision + 1
+    now = SystemClock().now()
     values = {
-        "image_webp": normalized.image_webp,
-        "thumbnail_webp": normalized.thumbnail_webp,
-        "sha256": normalized.sha256,
-        "thumbnail_sha256": normalized.thumbnail_sha256,
-        "revision": revision,
+        "image_webp": image.image_webp,
+        "thumbnail_webp": image.thumbnail_webp,
+        "sha256": image.sha256,
+        "thumbnail_sha256": image.thumbnail_sha256,
+        "revision": 1 if existing is None else existing.revision + 1,
         "updated_at": now,
     }
     if existing is None:
-        existing = AccountProfilePhoto(account_id=actor.id, **values)
+        existing = RelationshipAvatar(
+            couple_id=member.couple_id,
+            subject_account_id=partner_id,
+            assigned_by_account_id=actor.id,
+            **values,
+        )
         session.add(existing)
     else:
         for key, value in values.items():
@@ -139,19 +134,41 @@ async def put_profile_photo(
     return metadata
 
 
-@router.delete("/account/profile-photo", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_profile_photo(
+@router.delete("/couple/current/partner-avatar", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_partner_avatar(
     actor: Account = Depends(current_account),
     session: AsyncSession = Depends(session_scope),
 ) -> Response:
-    """Idempotently remove the authenticated account's profile photo."""
+    """Remove only the avatar that the caller assigned to their partner."""
 
-    await _lock_photo_owner(session, actor.id)
-    existing = await session.get(AccountProfilePhoto, actor.id, with_for_update=True)
+    member = await active_member(session, actor.id)
+    await lock_couple(session, member.couple_id)
+    partner_id = await _partner_id(session, member.couple_id, actor.id)
+    existing = await _avatar(session, member.couple_id, partner_id, lock=True)
     if existing is not None:
         await session.delete(existing)
         await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/account/profile-photo", status_code=status.HTTP_410_GONE)
+async def reject_legacy_self_upload(
+    actor: Account = Depends(current_account),
+) -> None:
+    """Reject legacy self-assignment after the partner-avatar privacy migration."""
+
+    del actor
+    raise HTTPException(status.HTTP_410_GONE, "Your partner chooses your avatar")
+
+
+@router.delete("/account/profile-photo", status_code=status.HTTP_410_GONE)
+async def reject_legacy_self_delete(
+    actor: Account = Depends(current_account),
+) -> None:
+    """Reject removal of an avatar controlled by the current partner."""
+
+    del actor
+    raise HTTPException(status.HTTP_410_GONE, "Your partner controls your avatar")
 
 
 @router.get("/account/profile-photo")
@@ -161,9 +178,10 @@ async def get_profile_photo(
     session: AsyncSession = Depends(session_scope),
     thumbnail: bool = Query(default=False),
 ) -> Response:
-    """Return the authenticated account's normalized photo with private caching."""
+    """Return the avatar assigned to the caller by their current partner."""
 
-    photo = await session.get(AccountProfilePhoto, actor.id)
+    member = await active_member(session, actor.id)
+    photo = await _avatar(session, member.couple_id, actor.id)
     return _photo_response(photo, if_none_match, thumbnail=thumbnail)
 
 
@@ -174,20 +192,19 @@ async def get_partner_profile_photo(
     session: AsyncSession = Depends(session_scope),
     thumbnail: bool = Query(default=False),
 ) -> Response:
-    """Authorize the active pairing before looking up the partner's thumbnail."""
+    """Return the avatar that the caller assigned to their current partner."""
 
-    partner = await _active_partner(session, actor.id)
-    if partner is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Profile photo is unavailable")
-    photo = await session.get(AccountProfilePhoto, partner.id)
+    member = await active_member(session, actor.id)
+    partner_id = await _partner_id(session, member.couple_id, actor.id)
+    photo = await _avatar(session, member.couple_id, partner_id)
     return _photo_response(photo, if_none_match, thumbnail=thumbnail)
 
 
 def _photo_response(
-    photo: AccountProfilePhoto | None, if_none_match: str | None, *, thumbnail: bool
+    photo: RelationshipAvatar | None, if_none_match: str | None, *, thumbnail: bool
 ) -> Response:
     if photo is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Profile photo is unavailable")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Avatar is unavailable")
     digest = photo.thumbnail_sha256 if thumbnail else photo.sha256
     etag = f'"{digest}"'
     headers = {"Cache-Control": "private, max-age=300", "ETag": etag, "Vary": "Authorization"}

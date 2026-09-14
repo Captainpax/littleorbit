@@ -38,14 +38,14 @@ public interface LittleOrbitApi {
     @GET("api/v1/couple/current/partner-profile-photo")
     Call<okhttp3.ResponseBody> partnerProfilePhoto(@Query("thumbnail") boolean thumbnail);
 
-    /** Replaces the caller's profile image with normalized WebP bytes. */
+    /** Assigns a normalized avatar to the caller's current partner. */
     @Headers("Content-Type: image/webp")
-    @PUT("api/v1/account/profile-photo")
-    Call<ProfileApiModels.PhotoMetadata> putProfilePhoto(@Body okhttp3.RequestBody image);
+    @PUT("api/v1/couple/current/partner-avatar")
+    Call<ProfileApiModels.PhotoMetadata> putPartnerAvatar(@Body okhttp3.RequestBody image);
 
-    /** Idempotently removes the caller's profile image. */
-    @DELETE("api/v1/account/profile-photo")
-    Call<Void> deleteProfilePhoto();
+    /** Idempotently removes the avatar assigned to the current partner. */
+    @DELETE("api/v1/couple/current/partner-avatar")
+    Call<Void> deletePartnerAvatar();
 
     /** Authenticates a verified account. */
     @POST("api/v1/auth/login")
@@ -144,22 +144,28 @@ public interface LittleOrbitApi {
 
     /** Loads active shared countdowns. */
     @GET("api/v1/countdowns")
-    Call<java.util.List<ApiModels.Countdown>> countdowns();
+    Call<java.util.List<CountdownApiModels.Countdown>> countdowns();
 
     /** Creates a shared countdown idempotently. */
     @POST("api/v1/countdowns")
-    Call<ApiModels.Countdown> createCountdown(@Body ApiModels.CountdownMutation request);
+    Call<CountdownApiModels.Countdown> createCountdown(@Body CountdownApiModels.Mutation request);
 
     /** Updates a shared countdown from an expected revision. */
     @PUT("api/v1/countdowns/{countdownId}")
-    Call<ApiModels.Countdown> updateCountdown(
-            @Path("countdownId") String countdownId, @Body ApiModels.CountdownMutation request);
+    Call<CountdownApiModels.Countdown> updateCountdown(
+            @Path("countdownId") String countdownId, @Body CountdownApiModels.Mutation request);
+
+    /** Replaces only the caller's private reminder choices. */
+    @PUT("api/v1/countdowns/{countdownId}/reminders")
+    Call<CountdownApiModels.Countdown> replaceCountdownReminders(
+            @Path("countdownId") String countdownId,
+            @Body CountdownApiModels.ReminderUpdate request);
 
     /** Deletes a shared countdown from an expected revision. */
     @HTTP(method = "DELETE", path = "api/v1/countdowns/{countdownId}", hasBody = true)
     Call<ApiModels.Message> deleteCountdown(
             @Path("countdownId") String countdownId,
-            @Body ApiModels.CountdownDeleteRequest request);
+            @Body CountdownApiModels.DeleteRequest request);
 
     /** Loads the newest privacy-minimized in-app activity events. */
     @GET("api/v1/activity")

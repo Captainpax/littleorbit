@@ -61,6 +61,13 @@ function Tap-Node($Node) {
     & $adb -s $Serial shell input tap $x $y | Out-Null
 }
 
+function Clear-TextField($Node) {
+    Tap-Node $Node
+    & $adb -s $Serial shell input keyevent KEYCODE_MOVE_END | Out-Null
+    $deletes = 1..160 | ForEach-Object { "KEYCODE_DEL" }
+    & $adb -s $Serial shell input keyevent $deletes | Out-Null
+}
+
 function Tap-Optional([string]$Text, [int]$Attempts = 8) {
     for ($index = 0; $index -lt $Attempts; $index++) {
         $node = Find-Node $Text ""
@@ -82,9 +89,9 @@ if ($ResetApp) { & $adb -s $Serial shell pm clear $package | Out-Null }
 Start-Sleep -Seconds 1
 Tap-Optional "Not now" 20 | Out-Null
 Tap-Node (Wait-Node -Text "Sign in")
-Tap-Node (Wait-Node -IdSuffix "emailInput")
+Clear-TextField (Wait-Node -IdSuffix "emailInput")
 & $adb -s $Serial shell input text $accounts.accounts[$AccountIndex].email | Out-Null
-Tap-Node (Wait-Node -IdSuffix "passwordInput")
+Clear-TextField (Wait-Node -IdSuffix "passwordInput")
 & $adb -s $Serial shell input text $accounts.password | Out-Null
 Tap-Node (Wait-Node -IdSuffix "signInButton")
 Start-Sleep -Seconds 2

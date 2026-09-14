@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import javax.inject.Inject;
 
-/** Private profile-photo picker with explicit square crop and server replacement. */
+/** Relationship-avatar picker where each person chooses only their partner's image. */
 @AndroidEntryPoint
 public final class ProfilePhotoActivity extends OrbitShellActivity {
     private static final int MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -87,9 +87,9 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
 
     private void upload(byte[] webp) {
         setBusy(true);
-        profiles.upload(webp).thenAccept(state -> runOnUiThread(() -> {
+        profiles.uploadPartnerPhoto(webp).thenAccept(state -> runOnUiThread(() -> {
             render(state);
-            binding.profileStatus.setText(R.string.profile_photo_saved);
+            binding.profileStatus.setText(R.string.partner_avatar_saved);
             setBusy(false);
         })).exceptionally(failure -> {
             runOnUiThread(this::fail);
@@ -99,9 +99,9 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
 
     private void removePhoto() {
         setBusy(true);
-        profiles.deleteOwnPhoto().thenAccept(state -> runOnUiThread(() -> {
+        profiles.deletePartnerPhoto().thenAccept(state -> runOnUiThread(() -> {
             render(state);
-            binding.profileStatus.setText(R.string.profile_photo_removed);
+            binding.profileStatus.setText(R.string.partner_avatar_removed);
             setBusy(false);
         })).exceptionally(failure -> {
             runOnUiThread(this::fail);
@@ -110,25 +110,41 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
     }
 
     private void render(ProfileRepository.State state) {
-        binding.profileName.setText(state.myName());
-        binding.profileInitial.setText(initial(state.myName()));
-        byte[] bytes = state.myPhoto();
+        renderOwn(state);
+        String partnerName = state.paired() ? state.partnerName() : getString(R.string.not_paired);
+        binding.profileName.setText(partnerName);
+        binding.profileInitial.setText(initial(partnerName));
+        byte[] bytes = state.partnerPhoto();
         if (bytes == null) {
             binding.profilePreview.setVisibility(View.GONE);
             binding.profileInitial.setVisibility(View.VISIBLE);
             binding.removePhoto.setEnabled(false);
+            binding.choosePhoto.setEnabled(state.paired());
             return;
         }
         binding.profilePreview.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
         binding.profilePreview.setVisibility(View.VISIBLE);
         binding.profileInitial.setVisibility(View.GONE);
         binding.removePhoto.setEnabled(true);
+        binding.choosePhoto.setEnabled(true);
+    }
+
+    private void renderOwn(ProfileRepository.State state) {
+        binding.myName.setText(state.myName());
+        binding.myInitial.setText(initial(state.myName()));
+        byte[] bytes = state.myPhoto();
+        binding.myPreview.setVisibility(bytes == null ? View.GONE : View.VISIBLE);
+        binding.myInitial.setVisibility(bytes == null ? View.VISIBLE : View.GONE);
+        if (bytes != null) {
+            binding.myPreview.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
+        }
     }
 
     private void setBusy(boolean busy) {
         binding.profileProgress.setVisibility(busy ? View.VISIBLE : View.GONE);
-        binding.choosePhoto.setEnabled(!busy);
-        binding.removePhoto.setEnabled(!busy && profiles.cached().myPhoto() != null);
+        ProfileRepository.State state = profiles.cached();
+        binding.choosePhoto.setEnabled(!busy && state.paired());
+        binding.removePhoto.setEnabled(!busy && state.paired() && state.partnerPhoto() != null);
     }
 
     private void fail() {

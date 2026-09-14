@@ -5,6 +5,7 @@ import android.content.Intent;
 import com.littleorbit.data.local.DisplayCacheDao;
 import com.littleorbit.data.local.DisplayCacheEntity;
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.CountdownApiModels;
 import com.littleorbit.data.remote.LittleOrbitApi;
 import com.littleorbit.data.remote.TogetherTimeModels;
 import dagger.hilt.android.qualifiers.ApplicationContext;
@@ -40,14 +41,14 @@ public final class DisplayCacheSynchronizer {
     /** Loads current authorized state and publishes one internally consistent cache row. */
     public void refresh() throws SyncException {
         TogetherTimeModels.PairSummary summary;
-        List<ApiModels.Countdown> countdowns;
+        List<CountdownApiModels.Countdown> countdowns;
         try {
             summary = body(api.togetherSummaryV3().execute());
             countdowns = body(api.countdowns().execute());
         } catch (IOException failure) {
             throw new SyncException(failure);
         }
-        ApiModels.Countdown next = countdowns.stream()
+        CountdownApiModels.Countdown next = countdowns.stream()
                 .filter(item -> Instant.parse(item.occursAt).isAfter(Instant.now()))
                 .min((left, right) -> left.occursAt.compareTo(right.occursAt))
                 .orElse(null);

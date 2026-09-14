@@ -25,6 +25,9 @@ Own authenticated HTTP/WSS behavior, application transactions, persistence, sche
 - Lock the couple row for relationship-content mutations that must not race unpairing. Relationship age derives from the confirmed pairing instant.
 - Enforce the Smooch rolling-hour limit in the same transaction that inserts the event. Private old-pairing history remains authorized to its original participant and is erased by either participant's account deletion.
 - Create partner alerts in the accepted feature transaction, deliver independently per active installation, and acknowledge only the authenticated account's installation. Note-edit alerts use a 30-minute document/editor cooldown and are skipped while the partner already views the note.
+- Isolate lazy quiz-availability creation in a nested transaction. A missing question pool may suppress only that quiz event and must not roll back, hide, or delay unrelated pending notifications.
+- Authorize and lock the active couple before relationship-avatar lookup or mutation. The caller may mutate only the partner's avatar; enforce subject and assigner inequality in the database and delete both avatars on unpair.
+- Validate countdown timing kind, timezone, and timed/all-day field combinations before storage. Reminder offsets belong to the caller and must never appear in the partner's response or event metadata.
 - Record couple activity only while the caller holds the couple lock. Dedupe each event, advance a couple-local sequence monotonically, keep seen watermarks monotonic, purge after 30 days, and never copy note bodies, attachment names, quiz answers, coordinates, or other feature content into the feed.
 - Audit security events with identifiers and outcomes, never credentials or relationship content.
 - Trust forwarded client IP only when the direct peer equals the configured NPM address.

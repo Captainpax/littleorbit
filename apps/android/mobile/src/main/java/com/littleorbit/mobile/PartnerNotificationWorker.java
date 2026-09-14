@@ -68,7 +68,7 @@ public final class PartnerNotificationWorker extends Worker {
             NotificationApiModels.Preferences preferences = orbit.notificationPreferences()
                     .get(30, TimeUnit.SECONDS);
             settings.save(preferences);
-            reconcileLocalSchedules(preferences, allowed);
+            reconcileCountdowns(preferences, allowed);
             if (!allowed || !preferences.master) {
                 device.failed(allowed ? "Notifications paused in Little Orbit" : "Android permission is off");
                 return Result.success();
@@ -111,28 +111,25 @@ public final class PartnerNotificationWorker extends Worker {
         return switch (event.kind) {
             case "smooch_received" -> preferences.smooches;
             case "note_editing" -> preferences.noteEditing;
+            case "countdown_created", "countdown_rescheduled" -> preferences.countdowns;
+            case "quiz_available", "quiz_partner_finished", "quiz_results_ready" ->
+                    preferences.dailyQuiz;
             default -> false;
         };
     }
 
     private boolean post(NotificationApiModels.Event event) {
-        String channel = "note_editing".equals(event.kind)
-                ? NotificationChannels.SHARED_SPACE : NotificationChannels.SMOOCHES;
+        String channel = channel(event.kind);
         if (!PermissionChecks.channelEnabled(context, channel)) return false;
-        Intent target = "note_editing".equals(event.kind)
-                ? new Intent(context, NotesActivity.class).putExtra(NotesActivity.EXTRA_NOTE_ID, event.noteId)
-                : new Intent(context, SmoochActivity.class);
+        Intent target = target(event);
         PendingIntent content = PendingIntent.getActivity(context, event.id.hashCode(),
                 target.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         String body = message(event);
         Notification publicVersion = publicVersion(channel);
         Notification notification = new NotificationCompat.Builder(context, channel)
-                .setSmallIcon("note_editing".equals(event.kind)
-                        ? R.drawable.ic_notes : R.drawable.ic_smooch)
-                .setContentTitle("note_editing".equals(event.kind)
-                        ? context.getString(R.string.space_notification_title)
-                        : context.getString(R.string.smooches))
+                .setSmallIcon(icon(event.kind))
+                .setContentTitle(title(event.kind))
                 .setContentText(body)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
                 .setContentIntent(content)
@@ -156,7 +153,55 @@ public final class PartnerNotificationWorker extends Worker {
                     ? context.getString(R.string.shared_note) : event.noteTitle;
             return context.getString(R.string.partner_editing_note, partner, title);
         }
+        if ("countdown_created".equals(event.kind)) {
+            return context.getString(R.string.countdown_created_notification, partner,
+                    event.countdownTitle == null ? context.getString(R.string.countdowns) : event.countdownTitle);
+        }
+        if ("countdown_rescheduled".equals(event.kind)) {
+            return context.getString(R.string.countdown_rescheduled_notification, partner,
+                    event.countdownTitle == null ? context.getString(R.string.countdowns) : event.countdownTitle);
+        }
+        if ("quiz_available".equals(event.kind)) {
+            return context.getString(R.string.quiz_available_notification);
+        }
+        if ("quiz_partner_finished".equals(event.kind)) {
+            return context.getString(R.string.quiz_partner_finished_notification, partner);
+        }
+        if ("quiz_results_ready".equals(event.kind)) {
+            return context.getString(R.string.quiz_results_notification);
+        }
         return SmoochPhrases.render(context, event.phraseKey, partner, event.emoji);
+    }
+
+    private static String channel(String kind) {
+        if ("note_editing".equals(kind)) return NotificationChannels.SHARED_SPACE;
+        if (kind.startsWith("countdown_")) return NotificationChannels.COUNTDOWNS;
+        if (kind.startsWith("quiz_")) return NotificationChannels.QUIZ;
+        return NotificationChannels.SMOOCHES;
+    }
+
+    private Intent target(NotificationApiModels.Event event) {
+        if ("note_editing".equals(event.kind)) {
+            return new Intent(context, NotesActivity.class)
+                    .putExtra(NotesActivity.EXTRA_NOTE_ID, event.noteId);
+        }
+        if (event.kind.startsWith("countdown_")) return new Intent(context, CountdownActivity.class);
+        if (event.kind.startsWith("quiz_")) return new Intent(context, QuizActivity.class);
+        return new Intent(context, SmoochActivity.class);
+    }
+
+    private int icon(String kind) {
+        if ("note_editing".equals(kind)) return R.drawable.ic_notes;
+        if (kind.startsWith("countdown_")) return R.drawable.ic_countdown;
+        if (kind.startsWith("quiz_")) return R.drawable.ic_quiz;
+        return R.drawable.ic_smooch;
+    }
+
+    private String title(String kind) {
+        if ("note_editing".equals(kind)) return context.getString(R.string.space_notification_title);
+        if (kind.startsWith("countdown_")) return context.getString(R.string.countdowns);
+        if (kind.startsWith("quiz_")) return context.getString(R.string.quiz);
+        return context.getString(R.string.smooches);
     }
 
     private Notification publicVersion(String channel) {
@@ -167,10 +212,14 @@ public final class PartnerNotificationWorker extends Worker {
                 .build();
     }
 
-    private void reconcileLocalSchedules(
-            NotificationApiModels.Preferences preferences, boolean allowed) {
-        if (allowed && preferences.master && preferences.dailyQuiz) QuizStatusWorker.schedule(context);
-        else QuizStatusWorker.cancel(context);
+    private void reconcileCountdowns(
+            NotificationApiModels.Preferences preferences, boolean allowed) throws Exception {
+        if (!allowed || !preferences.master || !preferences.countdowns) {
+            CountdownReminderScheduler.reconcile(context, List.of());
+            return;
+        }
+        CountdownReminderScheduler.reconcile(
+                context, orbit.countdowns().get(30, TimeUnit.SECONDS));
     }
 
     private void maybeNotifyWeeklyRecap(NotificationApiModels.Preferences prefs) throws Exception {

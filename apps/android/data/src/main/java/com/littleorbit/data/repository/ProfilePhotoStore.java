@@ -52,7 +52,9 @@ final class ProfilePhotoStore {
     }
 
     synchronized void clearPartner() {
-        values.edit().remove("partner_name").remove("partner_revision").remove("partner_hash")
+        values.edit()
+                .remove("my_revision").remove("my_hash").remove("my_photo")
+                .remove("partner_name").remove("partner_revision").remove("partner_hash")
                 .remove("partner_photo").apply();
     }
 

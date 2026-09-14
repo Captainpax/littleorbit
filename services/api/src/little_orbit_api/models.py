@@ -425,43 +425,6 @@ class TogetherBucket(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
-class Countdown(Timestamped, Base):
-    """Shared countdown with an optimistic revision."""
-
-    __tablename__ = "countdowns"
-    __table_args__ = (CheckConstraint("revision >= 0"),)
-
-    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
-    couple_id: Mapped[UUID] = mapped_column(
-        ForeignKey("couples.id", ondelete="CASCADE"), index=True
-    )
-    created_by: Mapped[UUID | None] = mapped_column(
-        ForeignKey("accounts.id", ondelete="SET NULL")
-    )
-    title: Mapped[str] = mapped_column(String(120), nullable=False)
-    occurs_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    timezone: Mapped[str] = mapped_column(String(64), nullable=False)
-    notes: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
-    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-class CountdownOperation(Base):
-    """Idempotency record for an offline countdown mutation."""
-
-    __tablename__ = "countdown_operations"
-    __table_args__ = (UniqueConstraint("couple_id", "operation_id"),)
-
-    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
-    couple_id: Mapped[UUID] = mapped_column(ForeignKey("couples.id", ondelete="CASCADE"))
-    operation_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
-    countdown_id: Mapped[UUID] = mapped_column(
-        ForeignKey("countdowns.id", ondelete="CASCADE")
-    )
-    resulting_revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    applied_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
-
 class QuestionReport(Base):
     """Couple-scoped immediate hide and owner review record."""
 

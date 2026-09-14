@@ -1,12 +1,22 @@
 """Versioned self-hosted notification request and response contracts."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import Field
 
 from .schema_base import StrictModel
+
+NotificationKind = Literal[
+    "smooch_received",
+    "note_editing",
+    "countdown_created",
+    "countdown_rescheduled",
+    "quiz_available",
+    "quiz_partner_finished",
+    "quiz_results_ready",
+]
 
 
 class NotificationPreferencesResponse(StrictModel):
@@ -52,7 +62,7 @@ class NotificationEventResponse(StrictModel):
     """One authorized alert payload with no note body or attachment metadata."""
 
     id: UUID
-    kind: Literal["smooch_received", "note_editing"]
+    kind: NotificationKind
     created_at: datetime
     expires_at: datetime
     actor_display_name: str | None = Field(default=None, max_length=80)
@@ -60,6 +70,9 @@ class NotificationEventResponse(StrictModel):
     phrase_key: str | None = Field(default=None, max_length=32)
     note_id: UUID | None = None
     note_title: str | None = Field(default=None, max_length=120)
+    countdown_id: UUID | None = None
+    countdown_title: str | None = Field(default=None, max_length=120)
+    quiz_date: date | None = None
 
 
 class NotificationDeliveryAck(StrictModel):

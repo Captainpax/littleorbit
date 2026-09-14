@@ -42,8 +42,10 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Note presence counts unique authenticated accounts; archived notes reject content operations and are recoverable for seven days.
 - Couple activity is a 30-day, content-free metadata timeline. It may name a note or countdown but never stores note bodies, attachment names, quiz answers, locations, or custom Smooch text.
 - Relationship age begins at the immutable confirmed pairing instant. Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates.
+- Relationship avatars belong to the active couple. Only the other current member may assign or remove a person's avatar; self-assignment is invalid, and unpairing deletes both images.
+- A countdown is either a timed instant with an IANA timezone or an all-day local date. Reminder offsets belong privately to one member, while partner alerts exclude notes and reminder choices.
 - A Smooch uses one approved emoji and phrase key, is limited to five sends per account in a rolling hour, survives unpairing in private archives, and is erased when either original participant deletes their account.
-- Partner notification preferences belong to the account; delivery acknowledgements belong to one random installation ID. Foreground WSS hints contain no event content, lock-screen public versions stay generic, and acknowledging one phone never consumes another phone's delivery.
+- Partner notification preferences belong to the account; delivery acknowledgements belong to one random installation ID. Foreground WSS hints contain no event content, lock-screen public versions stay generic, acknowledging one phone never consumes another phone's delivery, and a failed quiz-availability check never blocks unrelated pending alerts.
 - Only the gateway binds a public host port. Ollama remains internal and accepts calls only from the AI service.
 - Published APK metadata and first-party APK bytes are immutable. Android accepts an update only when its trusted URL, package, increasing version code, exact byte count, APK hash, and pinned signing certificate all match.
 - Android release metadata comes from the signed build's generated manifest, which reads phone and Wear module metadata independently. Never infer one module's version code from the other.

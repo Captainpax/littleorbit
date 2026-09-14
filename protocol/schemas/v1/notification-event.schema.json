@@ -3,17 +3,20 @@
   "$id": "https://lil-orb.pax-kun.com/protocol/v1/notification-event.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "kind", "created_at", "expires_at", "actor_display_name", "emoji", "phrase_key", "note_id", "note_title"],
+  "required": ["id", "kind", "created_at", "expires_at", "actor_display_name", "emoji", "phrase_key", "note_id", "note_title", "countdown_id", "countdown_title", "quiz_date"],
   "properties": {
     "id": { "type": "string", "format": "uuid" },
-    "kind": { "enum": ["smooch_received", "note_editing"] },
+    "kind": { "enum": ["smooch_received", "note_editing", "countdown_created", "countdown_rescheduled", "quiz_available", "quiz_partner_finished", "quiz_results_ready"] },
     "created_at": { "type": "string", "format": "date-time" },
     "expires_at": { "type": "string", "format": "date-time" },
     "actor_display_name": { "type": ["string", "null"], "maxLength": 80 },
     "emoji": { "type": ["string", "null"], "maxLength": 16 },
     "phrase_key": { "type": ["string", "null"], "maxLength": 32 },
     "note_id": { "type": ["string", "null"], "format": "uuid" },
-    "note_title": { "type": ["string", "null"], "maxLength": 120 }
+    "note_title": { "type": ["string", "null"], "maxLength": 120 },
+    "countdown_id": { "type": ["string", "null"], "format": "uuid" },
+    "countdown_title": { "type": ["string", "null"], "maxLength": 120 },
+    "quiz_date": { "type": ["string", "null"], "format": "date" }
   },
   "oneOf": [
     {
@@ -22,7 +25,10 @@
         "emoji": { "type": "string", "enum": ["😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑"] },
         "phrase_key": { "type": "string", "minLength": 1 },
         "note_id": { "type": "null" },
-        "note_title": { "type": "null" }
+        "note_title": { "type": "null" },
+        "countdown_id": { "type": "null" },
+        "countdown_title": { "type": "null" },
+        "quiz_date": { "type": "null" }
       }
     },
     {
@@ -30,7 +36,34 @@
         "kind": { "const": "note_editing" },
         "emoji": { "type": "null" },
         "phrase_key": { "type": "null" },
-        "note_id": { "type": "string", "format": "uuid" }
+        "note_id": { "type": "string", "format": "uuid" },
+        "countdown_id": { "type": "null" },
+        "countdown_title": { "type": "null" },
+        "quiz_date": { "type": "null" }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "enum": ["countdown_created", "countdown_rescheduled"] },
+        "emoji": { "type": "null" },
+        "phrase_key": { "type": "null" },
+        "note_id": { "type": "null" },
+        "note_title": { "type": "null" },
+        "countdown_id": { "type": "string", "format": "uuid" },
+        "countdown_title": { "type": "string", "minLength": 1 },
+        "quiz_date": { "type": "null" }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "enum": ["quiz_available", "quiz_partner_finished", "quiz_results_ready"] },
+        "emoji": { "type": "null" },
+        "phrase_key": { "type": "null" },
+        "note_id": { "type": "null" },
+        "note_title": { "type": "null" },
+        "countdown_id": { "type": "null" },
+        "countdown_title": { "type": "null" },
+        "quiz_date": { "type": "string", "format": "date" }
       }
     }
   ]

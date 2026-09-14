@@ -8,7 +8,7 @@ android {
         minSdk = 30
         targetSdk = 36
         versionCode = rootProject.extra["littleOrbitWearVersionCode"] as Int
-        versionName = rootProject.extra["littleOrbitVersionName"] as String
+        versionName = rootProject.extra["littleOrbitWearVersionName"] as String
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

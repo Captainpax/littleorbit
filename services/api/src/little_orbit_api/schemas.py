@@ -269,6 +269,8 @@ class CountdownMutation(StrictModel):
     title: Annotated[StrictText, Field(min_length=1, max_length=120)]
     occurs_at: datetime
     timezone: Annotated[StrictText, Field(min_length=1, max_length=64)]
+    timing_kind: Literal["timed", "all_day"] = "timed"
+    occurs_on: date | None = None
     notes: Annotated[StrictText, Field(max_length=1000)] = ""
     expected_revision: int | None = Field(default=None, ge=0)
 
@@ -280,6 +282,9 @@ class CountdownResponse(StrictModel):
     title: str
     occurs_at: datetime
     timezone: str
+    timing_kind: Literal["timed", "all_day"]
+    occurs_on: date | None
+    my_reminder_offsets_minutes: list[int]
     notes: str
     revision: int
     updated_at: datetime
@@ -290,6 +295,12 @@ class CountdownDeleteRequest(StrictModel):
 
     operation_id: UUID
     expected_revision: int = Field(ge=0)
+
+
+class CountdownReminderUpdate(StrictModel):
+    """Complete replacement for the caller's private reminder offsets."""
+
+    offsets_minutes: Annotated[list[Literal[0, 60, 1440, 10080]], Field(max_length=4)]
 
 
 class LocationSampleRequest(StrictModel):

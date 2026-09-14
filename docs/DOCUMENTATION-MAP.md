@@ -55,6 +55,8 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0020-markdown-space-and-private-attachments.md` — safe Markdown rendering and scanned private attachment storage.
 - `docs/adr/0021-responsive-shell-and-private-activity.md` — responsive Android navigation, contextual panels, and the content-free 30-day couple timeline.
 - `docs/adr/0022-self-hosted-per-device-notifications.md` — account choices, random installations, content-free hints, and independent delivery acknowledgement.
+- `docs/adr/0023-partner-assigned-relationship-avatars.md` — relationship-scoped images selected only by the other partner.
+- `docs/adr/0024-calendar-countdowns-and-transition-alerts.md` — timed/all-day moments, private reminders, one-way calendar export, and countdown/quiz alerts.
 
 ## Operations and verification
 
@@ -74,6 +76,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-RC11-2026-09-12.md` — RC11 Markdown, attachment, UI, build, deployment, and device evidence.
 - `docs/operations/VERIFICATION-RC12-2026-09-13.md` — RC12 shell, activity, attachment, compatibility-matrix, build, and release evidence.
 - `docs/operations/VERIFICATION-RC12.1-2026-09-13.md` — RC12.1 preview, notification, compatibility, artifact, and deployment evidence.
+- `docs/operations/VERIFICATION-RC13-2026-09-13.md` — RC13 countdown, quiz, AI whitespace, avatar, compatibility, artifact, and deployment evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -95,6 +98,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.11.3.md` — repaired updater path verification candidate and legacy boundary.
 - `docs/releases/1.0.0-rc.12.md` — responsive shell, private activity, Markdown dock, attachment repair, and isolated smoke workflow.
 - `docs/releases/1.0.0-rc.12.1.md` — preview-first documents, inline private images, per-device notifications, motion, and Android 10 repairs.
+- `docs/releases/1.0.0-rc.13.md` — calendar-style countdowns, quiz transitions, generated-text validation, and partner-assigned avatars.
 <!-- documentation-inventory:end -->
 
 ## Review routing

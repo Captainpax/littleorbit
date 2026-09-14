@@ -11,6 +11,7 @@ import com.littleorbit.data.local.CountdownCacheEntity;
 import com.littleorbit.data.local.CountdownDao;
 import com.littleorbit.data.local.QueuedCountdownEntity;
 import com.littleorbit.data.remote.ApiModels;
+import com.littleorbit.data.remote.CountdownApiModels;
 import com.littleorbit.data.security.SessionStore;
 import dagger.hilt.android.qualifiers.ApplicationContext;
 import java.time.Instant;
@@ -19,6 +20,7 @@ import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.json.JSONException;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /** Owns encrypted countdown snapshots and disconnected mutation queuing. */
@@ -38,17 +40,17 @@ public final class CountdownOfflineStore {
     }
 
     /** Replaces confirmed snapshots while preserving local edits and conflicts. */
-    public void replaceRemote(List<ApiModels.Countdown> countdowns) {
+    public void replaceRemote(List<CountdownApiModels.Countdown> countdowns) {
         List<CountdownCacheEntity> rows = new ArrayList<>(countdowns.size());
-        for (ApiModels.Countdown item : countdowns) {
+        for (CountdownApiModels.Countdown item : countdowns) {
             rows.add(cacheRow(item, false, false));
         }
         dao.replaceRemote(rows);
     }
 
     /** Returns every decryptable local snapshot. */
-    public List<ApiModels.Countdown> cached() {
-        List<ApiModels.Countdown> result = new ArrayList<>();
+    public List<CountdownApiModels.Countdown> cached() {
+        List<CountdownApiModels.Countdown> result = new ArrayList<>();
         for (CountdownCacheEntity row : dao.cached()) {
             decode(row).ifPresent(result::add);
         }
@@ -56,20 +58,21 @@ public final class CountdownOfflineStore {
     }
 
     /** Queues a disconnected create and returns its visible optimistic state. */
-    public ApiModels.Countdown queueCreate(ApiModels.CountdownMutation mutation) {
+    public CountdownApiModels.Countdown queueCreate(CountdownApiModels.Mutation mutation) {
         String localId = "local:" + mutation.operationId;
-        ApiModels.Countdown optimistic = optimistic(localId, mutation);
+        CountdownApiModels.Countdown optimistic = optimistic(localId, mutation);
         cacheAndQueue(optimistic, "create", null, mutation.operationId, mutationJson(mutation));
         return optimistic;
     }
 
     /** Queues a disconnected update from the exact optimistic revision. */
-    public ApiModels.Countdown queueUpdate(
-            String countdownId, ApiModels.CountdownMutation mutation) {
+    public CountdownApiModels.Countdown queueUpdate(
+            String countdownId, CountdownApiModels.Mutation mutation) {
         if (countdownId.startsWith("local:")) {
             return updateLocalCreate(countdownId, mutation);
         }
-        ApiModels.Countdown optimistic = optimistic(countdownId, mutation);
+        CountdownApiModels.Countdown optimistic = optimistic(
+                countdownId, mutation, reminderOffsets(countdownId));
         cacheAndQueue(
                 optimistic, "update", countdownId, mutation.operationId, mutationJson(mutation));
         return optimistic;
@@ -77,7 +80,7 @@ public final class CountdownOfflineStore {
 
     /** Queues a disconnected delete and removes its local display snapshot. */
     public ApiModels.Message queueDelete(
-            String countdownId, ApiModels.CountdownDeleteRequest request) {
+            String countdownId, CountdownApiModels.DeleteRequest request) {
         if (countdownId.startsWith("local:")) {
             dao.deleteQueued(countdownId.substring("local:".length()));
             dao.deleteCache(countdownId);
@@ -89,17 +92,19 @@ public final class CountdownOfflineStore {
         return new ApiModels.Message("Countdown deletion queued for sync.");
     }
 
-    private ApiModels.Countdown updateLocalCreate(
-            String countdownId, ApiModels.CountdownMutation mutation) {
+    private CountdownApiModels.Countdown updateLocalCreate(
+            String countdownId, CountdownApiModels.Mutation mutation) {
         String originalOperationId = countdownId.substring("local:".length());
-        ApiModels.CountdownMutation folded = new ApiModels.CountdownMutation(
+        CountdownApiModels.Mutation folded = new CountdownApiModels.Mutation(
                 originalOperationId,
                 mutation.title,
                 mutation.occursAt,
                 mutation.timezone,
+                mutation.timingKind,
+                mutation.occursOn,
                 mutation.notes,
                 null);
-        ApiModels.Countdown optimistic = optimistic(countdownId, folded);
+        CountdownApiModels.Countdown optimistic = optimistic(countdownId, folded);
         dao.upsertCache(cacheRow(optimistic, true, false));
         dao.updateQueuedCreate(
                 originalOperationId, cipher.seal(mutationJson(folded).toString()));
@@ -109,6 +114,7 @@ public final class CountdownOfflineStore {
     /** Clears all relationship content and pending work after sign-out or deletion. */
     public void clear() {
         workManager.cancelUniqueWork("little-orbit-countdown-sync");
+        workManager.cancelAllWorkByTag("little-orbit-countdown-reminder");
         dao.clearQueue();
         dao.clearCache();
     }
@@ -125,7 +131,7 @@ public final class CountdownOfflineStore {
     }
 
     /** Applies one server acknowledgement to the queue and encrypted cache. */
-    public void acknowledge(QueuedCountdownEntity row, ApiModels.Countdown response) {
+    public void acknowledge(QueuedCountdownEntity row, CountdownApiModels.Countdown response) {
         dao.deleteQueued(row.operationId);
         if ("create".equals(row.kind)) {
             dao.deleteCache("local:" + row.operationId);
@@ -143,7 +149,7 @@ public final class CountdownOfflineStore {
     }
 
     private void cacheAndQueue(
-            ApiModels.Countdown item,
+            CountdownApiModels.Countdown item,
             String kind,
             String countdownId,
             String operationId,
@@ -171,7 +177,7 @@ public final class CountdownOfflineStore {
     }
 
     private CountdownCacheEntity cacheRow(
-            ApiModels.Countdown item, boolean pending, boolean conflict) {
+            CountdownApiModels.Countdown item, boolean pending, boolean conflict) {
         return new CountdownCacheEntity(
                 item.id,
                 cipher.seal(countdownJson(item).toString()),
@@ -180,15 +186,18 @@ public final class CountdownOfflineStore {
                 conflict);
     }
 
-    private java.util.Optional<ApiModels.Countdown> decode(CountdownCacheEntity row) {
+    private java.util.Optional<CountdownApiModels.Countdown> decode(CountdownCacheEntity row) {
         try {
             String plaintext = cipher.open(row.encryptedPayload).orElseThrow();
             JSONObject item = new JSONObject(plaintext);
-            return java.util.Optional.of(new ApiModels.Countdown(
+            return java.util.Optional.of(new CountdownApiModels.Countdown(
                     row.countdownId,
                     item.getString("title"),
                     item.getString("occurs_at"),
                     item.getString("timezone"),
+                    item.optString("timing_kind", "timed"),
+                    item.isNull("occurs_on") ? null : item.optString("occurs_on", null),
+                    integerList(item.optJSONArray("reminder_offsets")),
                     item.getString("notes"),
                     item.getInt("revision"),
                     item.getString("updated_at"),
@@ -200,14 +209,22 @@ public final class CountdownOfflineStore {
         }
     }
 
-    private static ApiModels.Countdown optimistic(
-            String countdownId, ApiModels.CountdownMutation mutation) {
+    private static CountdownApiModels.Countdown optimistic(
+            String countdownId, CountdownApiModels.Mutation mutation) {
+        return optimistic(countdownId, mutation, List.of());
+    }
+
+    private static CountdownApiModels.Countdown optimistic(
+            String countdownId, CountdownApiModels.Mutation mutation, List<Integer> reminders) {
         int revision = mutation.expectedRevision == null ? 0 : mutation.expectedRevision + 1;
-        return new ApiModels.Countdown(
+        return new CountdownApiModels.Countdown(
                 countdownId,
                 mutation.title,
                 mutation.occursAt,
                 mutation.timezone,
+                mutation.timingKind,
+                mutation.occursOn,
+                reminders,
                 mutation.notes,
                 revision,
                 Instant.now().toString(),
@@ -215,27 +232,49 @@ public final class CountdownOfflineStore {
                 false);
     }
 
-    private static JSONObject mutationJson(ApiModels.CountdownMutation mutation) {
+    private List<Integer> reminderOffsets(String countdownId) {
+        return cached().stream()
+                .filter(item -> countdownId.equals(item.id))
+                .findFirst()
+                .map(item -> item.reminderOffsets)
+                .orElse(List.of());
+    }
+
+    private static JSONObject mutationJson(CountdownApiModels.Mutation mutation) {
         JSONObject result = countdownFields(
-                mutation.title, mutation.occursAt, mutation.timezone, mutation.notes);
+                mutation.title, mutation.occursAt, mutation.timezone,
+                mutation.timingKind, mutation.occursOn, List.of(), mutation.notes);
         put(result, "expected_revision", mutation.expectedRevision);
         return result;
     }
 
-    private static JSONObject countdownJson(ApiModels.Countdown item) {
-        JSONObject result = countdownFields(item.title, item.occursAt, item.timezone, item.notes);
+    private static JSONObject countdownJson(CountdownApiModels.Countdown item) {
+        JSONObject result = countdownFields(
+                item.title, item.occursAt, item.timezone, item.timingKind,
+                item.occursOn, item.reminderOffsets, item.notes);
         put(result, "revision", item.revision);
         put(result, "updated_at", item.updatedAt);
         return result;
     }
 
     private static JSONObject countdownFields(
-            String title, String occursAt, String timezone, String notes) {
+            String title, String occursAt, String timezone, String timingKind,
+            String occursOn, List<Integer> reminders, String notes) {
         return jsonObject(
                 "title", title,
                 "occurs_at", occursAt,
                 "timezone", timezone,
+                "timing_kind", timingKind,
+                "occurs_on", occursOn,
+                "reminder_offsets", new JSONArray(reminders),
                 "notes", notes);
+    }
+
+    private static List<Integer> integerList(JSONArray values) throws JSONException {
+        if (values == null) return List.of();
+        List<Integer> result = new ArrayList<>();
+        for (int index = 0; index < values.length(); index++) result.add(values.getInt(index));
+        return result;
     }
 
     private static JSONObject jsonObject(Object... pairs) {
