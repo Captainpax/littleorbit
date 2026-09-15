@@ -37,6 +37,14 @@ The root cause was split local cleanup. Display refresh already removed the rela
 
 Both artifacts verify with certificate SHA-256 `43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337`. Wear behavior did not change; its bytes are identical to the RC14 and RC15 companion.
 
+## Publication evidence
+
+- Git tag and GitHub prerelease `v1.0.0-rc.16` point to tested commit `9901735` and expose the two APKs, two checksum sidecars, and generated manifest. GitHub reports the exact APK byte counts and digests above.
+- The self-hosted API published the immutable RC16 record at `2026-09-15T05:34:32.418302Z` with phone code 21, Wear code 16, compatibility floor 6, and no enforcement instant.
+- Complete public downloads produced 36,220,661 phone bytes and 14,188,854 Wear bytes with the exact signed SHA-256 values. A phone request for bytes 0–1023 returned `206`, the exact `Content-Range` total, and 1,024 bytes.
+- Public `/download`, `/patch-notes`, and `/patch-notes.xml` returned `200`, named RC16, and served the RSS endpoint as `application/rss+xml`.
+- Local and public readiness returned `200`; all eight long-running Compose services were running, every service with a configured health check was healthy, and recent API/web/gateway logs contained no fatal, panic, uncaught, or traceback match.
+
 ## Open release gates
 
 The affected partner must install RC16 and sign in again because a client cannot recover the raw value of a revoked server token. A two-physical-phone follow-up must confirm that the existing couple, shared-note directory, notifications, and avatars return after that sign-in. The remaining 1.0 gates in the roadmap are unchanged.

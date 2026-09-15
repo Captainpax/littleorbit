@@ -129,6 +129,7 @@ The console exposes service health, delivery and generation status, moderation q
 - [x] RC14 Wear API 34 round emulator: synthetic fresh, six-hour stale, unavailable, and 24-hour expiry states; expiry removed names, thumbnails, and interrupted thumbnail files, and 150% text remained reachable by scrolling.
 - [x] RC14 paired-note regression: partner B listed partner A's document and sanitized attachments, bidirectional live edits converged through a disconnect, and a document created while partner B remained in the library appeared automatically inside the foreground refresh window.
 - [x] RC16 API 36 regression: a paired account opened the shared-note directory and verified inline attachments; after its server session was revoked, cold launch removed the encrypted token and profile thumbnails and rendered signed out without a crash.
+- [x] RC16 physical Pixel check: an in-place code-21 upgrade preserved the valid session, hid the completed Home setup card, and showed the connected-only unpair action without executing it against the real couple.
 - [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
 - [ ] Website remaining: patch notes/RSS in a feed reader, recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.

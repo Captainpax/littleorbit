@@ -52,7 +52,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Publish the signed RC15 phone correction with version code 20 and mirror the byte-identical RC14 Wear companion under the RC15 release.
 - [x] Diagnose the apparent one-sided pairing report as an expired partner session rather than a damaged couple row; make RC16 purge stale account state on authenticated 401 responses and prove shared-note discovery plus signed-out recovery on an isolated paired emulator.
 - [x] Finish RC16 Home setup by hiding the checklist after all four core steps are ready, restoring it when readiness is revoked, and exposing archive-preserving unpairing from the connected relationship screen.
-- [ ] Publish the signed RC16 phone correction with version code 21 and mirror the byte-identical RC14 Wear companion under the RC16 release.
+- [x] Publish the signed RC16 phone correction with version code 21 and mirror the byte-identical RC14 Wear companion under the RC16 release.
 - [x] Rebuild and independently analyze the final signed RC14 candidates, stage their immutable bytes, and verify an RC13-to-RC14 signed replacement and cold launch on API 36 before authorized publication.
 - [x] Sign and self-host the RC13 phone and Wear artifacts, retain byte-range downloads, and configure the reviewed production proxy/firewall route.
 - [ ] Rotate the Gmail SMTP app password and re-enroll the owner administrator TOTP before 1.0 promotion.
