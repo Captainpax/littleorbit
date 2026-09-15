@@ -231,6 +231,9 @@
     <string name="you_label">You</string>
     <string name="partner_label">Partner</string>
     <string name="pairing">Pair with your partner</string>
+    <string name="pairing_and_relationship">Pairing &amp; relationship</string>
+    <string name="pairing_connected_heading">Your orbit is connected</string>
+    <string name="pairing_connected_detail">Sharing is active with your partner. You can end the pairing here at any time.</string>
     <string name="countdowns">Countdowns</string>
     <string name="new_countdown">+ New</string>
     <string name="new_countdown_heading">New countdown</string>
@@ -453,6 +456,8 @@
     <string name="invalid_threshold">Use a threshold from 25 to 1000 metres.</string>
     <string name="export_data">Export my data</string>
     <string name="unpair">Unpair</string>
+    <string name="unpair_from_partner">Unpair from partner</string>
+    <string name="unpairing">Stopping sharing…</string>
     <string name="unpair_explanation">Sharing stops immediately. Each person keeps a private read-only archive.</string>
     <string name="unpaired">Sharing stopped. Your archive is private.</string>
     <string name="password_for_deletion">Password required for deletion</string>

@@ -11,9 +11,9 @@ plugins {
 
 group = "com.littleorbit"
 version = "0.1.0"
-extra["littleOrbitVersionCode"] = 20
+extra["littleOrbitVersionCode"] = 21
 extra["littleOrbitWearVersionCode"] = 16
-extra["littleOrbitVersionName"] = "1.0.0-rc.15"
+extra["littleOrbitVersionName"] = "1.0.0-rc.16"
 extra["littleOrbitWearVersionName"] = "1.0.0-rc.14"
 
 val signingEnvironment = listOf(

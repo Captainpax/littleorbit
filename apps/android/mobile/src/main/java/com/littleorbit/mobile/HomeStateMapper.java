@@ -19,6 +19,14 @@ final class HomeStateMapper {
                 : HomeScreenState.signedOut();
     }
 
+    /** Keeps a valid offline cache but never resurrects an invalid local session. */
+    static HomeScreenState afterRefreshFailure(HomeScreenState current, boolean signedIn) {
+        if (!signedIn) return HomeScreenState.signedOut();
+        return current == null || !current.signedIn()
+                ? HomeScreenState.signedInWithoutCache()
+                : current;
+    }
+
     /** Maps the privacy-limited cache using an injected time for deterministic tests. */
     static HomeScreenState fromCache(
             DisplayCacheEntity cache, boolean signedIn, Instant now) {

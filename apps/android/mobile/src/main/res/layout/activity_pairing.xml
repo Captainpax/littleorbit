@@ -46,6 +46,48 @@
             android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/activePairingCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="@color/navy_surface_high"
+            app:cardCornerRadius="22dp"
+            app:strokeColor="@color/mint"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:text="@string/pairing_connected_heading"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/pairing_connected_detail"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/unpairButton"
+                    style="@style/Widget.LittleOrbit.Button.Text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:text="@string/unpair_from_partner" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/createPairingCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
@@ -130,6 +172,7 @@
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/joinPairingCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"

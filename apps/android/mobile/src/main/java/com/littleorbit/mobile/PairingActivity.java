@@ -48,7 +48,7 @@ public final class PairingActivity extends InsetAwareActivity {
         restore(savedInstanceState);
         bindActions();
         renderRestoredState();
-        checkPending(false);
+        refreshRelationshipState();
     }
 
     private void bindActions() {
@@ -59,12 +59,77 @@ public final class PairingActivity extends InsetAwareActivity {
         binding.redeemButton.setOnClickListener(view -> redeem());
         binding.checkPendingButton.setOnClickListener(view -> checkPending(true));
         binding.confirmButton.setOnClickListener(view -> askToConfirm());
+        binding.unpairButton.setOnClickListener(view -> askToUnpair());
         binding.returnHomeButton.setOnClickListener(view -> returnHome());
         binding.codeInput.setOnEditorActionListener((view, actionId, event) -> {
             if (actionId != EditorInfo.IME_ACTION_DONE) return false;
             redeem();
             return true;
         });
+    }
+
+    private void refreshRelationshipState() {
+        binding.createPairingCard.setVisibility(View.GONE);
+        binding.joinPairingCard.setVisibility(View.GONE);
+        binding.activePairingCard.setVisibility(View.GONE);
+        binding.pairingProgress.setVisibility(View.VISIBLE);
+        orbit.preferences().whenComplete((preferences, failure) -> runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            binding.pairingProgress.setVisibility(View.GONE);
+            if (failure == null) {
+                showConnectedState();
+            } else if (!orbit.isSignedIn()) {
+                returnHome();
+            } else if (SafeRequestFailure.relationshipInactive(failure)) {
+                showPairingState();
+            } else {
+                showFailure(failure);
+                binding.returnHomeButton.setVisibility(View.VISIBLE);
+            }
+        }));
+    }
+
+    private void showConnectedState() {
+        stopTimers();
+        binding.createPairingCard.setVisibility(View.GONE);
+        binding.joinPairingCard.setVisibility(View.GONE);
+        binding.confirmationCard.setVisibility(View.GONE);
+        binding.activePairingCard.setVisibility(View.VISIBLE);
+        binding.statusText.setText("");
+    }
+
+    private void showPairingState() {
+        binding.activePairingCard.setVisibility(View.GONE);
+        binding.createPairingCard.setVisibility(View.VISIBLE);
+        binding.joinPairingCard.setVisibility(View.VISIBLE);
+        checkPending(false);
+    }
+
+    private void askToUnpair() {
+        if (mutationBusy) return;
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.unpair_from_partner)
+                .setMessage(R.string.unpair_explanation)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.unpair, (dialog, which) -> unpair())
+                .show();
+    }
+
+    private void unpair() {
+        setMutationBusy(true);
+        binding.unpairButton.setEnabled(false);
+        binding.statusText.setText(R.string.unpairing);
+        orbit.unpair().whenComplete((result, failure) -> runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            setMutationBusy(false);
+            binding.unpairButton.setEnabled(true);
+            if (failure != null) {
+                showFailure(failure);
+                return;
+            }
+            binding.statusText.setText(R.string.unpaired);
+            returnHome();
+        }));
     }
 
     private void createCode() {

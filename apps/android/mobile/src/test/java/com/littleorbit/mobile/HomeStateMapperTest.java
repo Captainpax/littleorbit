@@ -26,6 +26,27 @@ public final class HomeStateMapperTest {
     }
 
     @Test
+    public void failedRefreshCannotResurrectAnInvalidSession() {
+        HomeScreenState staleSignedIn = HomeScreenState.signedInWithoutCache();
+
+        HomeScreenState state = HomeStateMapper.afterRefreshFailure(staleSignedIn, false);
+
+        assertFalse(state.signedIn());
+        assertEquals("Sign in to sync", state.freshness());
+    }
+
+    @Test
+    public void failedRefreshPreservesAuthorizedOfflineCache() {
+        Instant now = Instant.parse("2026-09-11T12:00:00Z");
+        DisplayCacheEntity cache = new DisplayCacheEntity(
+                "primary", 20_000, 3_600, now.toEpochMilli(),
+                "Dinner", 0, now.toEpochMilli());
+        HomeScreenState cached = HomeStateMapper.fromCache(cache, true, now);
+
+        assertEquals(cached, HomeStateMapper.afterRefreshFailure(cached, true));
+    }
+
+    @Test
     public void cacheBecomesStaleOnlyAfterFreshnessWindow() {
         Instant updatedAt = Instant.parse("2026-09-11T12:00:00Z");
         DisplayCacheEntity cache = new DisplayCacheEntity(

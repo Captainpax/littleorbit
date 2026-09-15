@@ -76,7 +76,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     @Override
     public CompletableFuture<ApiModels.SessionResponse> signIn(String email, String password) {
-        return async(api.login(new ApiModels.LoginRequest(email, password)))
+        return rawAsync(api.login(new ApiModels.LoginRequest(email, password)))
                 .thenApply(session -> {
                     clearRelationshipState();
                     profiles.clearAll();
@@ -92,7 +92,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         if (!isSignedIn()) {
             return CompletableFuture.runAsync(this::clearLocalSession, executor);
         }
-        return async(api.logout()).handle((ignored, failure) -> {
+        return rawAsync(api.logout()).handle((ignored, failure) -> {
             clearLocalSession();
             return null;
         });
@@ -105,6 +105,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
                 displaySynchronizer.refresh();
                 DisplayCacheSyncWorker.schedule(context);
             } catch (DisplayCacheSynchronizer.SyncException failure) {
+                if (failure.statusCode() == 401) clearLocalSession();
                 throw new OrbitServiceException(failure.statusCode());
             }
             return null;
@@ -484,7 +485,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     @Override
     public CompletableFuture<ApiModels.DeletionResult> deleteAccount(String password) {
-        return async(api.deleteAccount(new ApiModels.DeletionRequest(password)))
+        return rawAsync(api.deleteAccount(new ApiModels.DeletionRequest(password)))
                 .thenApply(result -> {
                     clearLocalSession();
                     return result;
@@ -525,7 +526,13 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     private <T> CompletableFuture<T> async(Call<T> call) {
-        return purge(CompletableFuture.supplyAsync(() -> RetrofitCalls.execute(call), executor));
+        CompletableFuture<T> request = rawAsync(call);
+        return RelationshipCachePurger.purgeAccountWhenSessionInvalid(
+                purge(request), this::clearLocalSession);
+    }
+
+    private <T> CompletableFuture<T> rawAsync(Call<T> call) {
+        return CompletableFuture.supplyAsync(() -> RetrofitCalls.execute(call), executor);
     }
 
     private <T> CompletableFuture<T> purge(CompletableFuture<T> request) {

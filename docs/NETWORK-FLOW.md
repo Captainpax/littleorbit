@@ -65,6 +65,28 @@ Public registration, resend, and recovery responses are identical for known and 
 
 Password reset locks the account and all outstanding reset tokens, consumes every link, changes the password, and revokes all sessions in one transaction. Login, rotation, administrator issuance, revocation, unpairing, and deletion share the account row as their outer serialization boundary so a stale credential cannot create a surviving session after reset.
 
+```mermaid
+sequenceDiagram
+    participant Phone as Android phone
+    participant API
+    participant Local as Encrypted local state
+    Phone->>API: Authenticated Home/profile/background refresh
+    alt Session is valid and relationship is active
+        API-->>Phone: Authorized current state
+        Phone->>Local: Replace bounded cache
+    else Session is expired, revoked, suspended, or deleted
+        API-->>Phone: 401
+        Phone->>Local: Clear token, account/pair caches, drafts, media, alerts, and work
+        Phone-->>Phone: Render signed-out Home
+    else Account is valid but relationship is inactive
+        API-->>Phone: 409 relationship_inactive
+        Phone->>Local: Preserve account token; purge relationship state and passive surfaces
+        Phone-->>Phone: Render pairing setup
+    end
+```
+
+Public sign-in and password proof failures do not use the authenticated-session purge path. Home derives its recovery state after the failing request completes so a delayed callback cannot replace the signed-out screen with stale cached identity.
+
 ## Administrator MFA replacement
 
 ```mermaid

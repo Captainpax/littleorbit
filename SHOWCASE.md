@@ -60,6 +60,8 @@ The RC13 captures verify that countdowns use the shared responsive shell, keep t
 
 ![Implemented RC12 paired Home on an API 36 emulator](docs/assets/android-home-rc12-emulator.png)
 
+![RC16 expired-session recovery on an API 36 emulator](docs/assets/android-session-expired-rc16-emulator.png)
+
 ![Implemented RC12 complete left navigation on an API 36 emulator](docs/assets/android-navigation-rc12-emulator.png)
 
 ![Implemented RC12 Markdown dock above the Android keyboard](docs/assets/android-space-rc12-emulator.png)
@@ -68,7 +70,7 @@ The RC13 captures verify that countdowns use the shared responsive shell, keep t
 
 ![Implemented RC3 More screen on an API 36 emulator](docs/assets/android-more-rc3.png)
 
-The RC12 captures verify the paired Home hierarchy, complete left navigation, absence of bottom tabs, and keyboard-adjacent Markdown dock. The same isolated couple passed the Our Space and attachment smoke flow on API 29, API 30, API 36 phone, and a wide API 36 tablet. The tablet uses a static rail so visible navigation never blocks content touches. RC12 also adds the screen-specific right panel and a 30-day privacy-minimized activity view. Paired physical-phone and live-data captures remain open.
+The RC12 captures verify the paired Home hierarchy, complete left navigation, absence of bottom tabs, and keyboard-adjacent Markdown dock. The same isolated couple passed the Our Space and attachment smoke flow on API 29, API 30, API 36 phone, and a wide API 36 tablet. The tablet uses a static rail so visible navigation never blocks content touches. RC12 also adds the screen-specific right panel and a 30-day privacy-minimized activity view. RC16 removes the Home checklist once pairing, notifications, nearby time, and the widget are ready; Settings retains every setup entry, and Pairing & relationship shows the archive-preserving unpair action only for an active couple. The RC16 capture verifies that a revoked disposable session clears cached partner identity and returns to an honest sign-in action rather than presenting a false half-paired state. Paired physical-phone and live-data captures remain open.
 
 ![Signed RC7 Wear OS fallback state on a round Wear OS 5 emulator](docs/assets/wear-rc7-signed-emulator.png)
 
@@ -126,6 +128,7 @@ The console exposes service health, delivery and generation status, moderation q
 - [x] Wear API 34 round emulator: RC12 package launch, pairing-date fallback, nearby estimate, and explicit stale/open-phone state with no fatal runtime event.
 - [x] RC14 Wear API 34 round emulator: synthetic fresh, six-hour stale, unavailable, and 24-hour expiry states; expiry removed names, thumbnails, and interrupted thumbnail files, and 150% text remained reachable by scrolling.
 - [x] RC14 paired-note regression: partner B listed partner A's document and sanitized attachments, bidirectional live edits converged through a disconnect, and a document created while partner B remained in the library appeared automatically inside the foreground refresh window.
+- [x] RC16 API 36 regression: a paired account opened the shared-note directory and verified inline attachments; after its server session was revoked, cold launch removed the encrypted token and profile thumbnails and rendered signed out without a crash.
 - [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
 - [ ] Website remaining: patch notes/RSS in a feed reader, recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.

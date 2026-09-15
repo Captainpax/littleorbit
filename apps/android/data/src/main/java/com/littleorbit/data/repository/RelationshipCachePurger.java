@@ -41,10 +41,21 @@ final class RelationshipCachePurger {
         return false;
     }
 
+    static boolean sessionInvalid(Throwable failure) {
+        return statusCode(failure) == 401;
+    }
+
     static <T> CompletableFuture<T> purgeWhenInactive(
             CompletableFuture<T> request, Runnable purge) {
         return request.whenComplete((result, failure) -> {
             if (relationshipInactive(failure)) purge.run();
+        });
+    }
+
+    static <T> CompletableFuture<T> purgeAccountWhenSessionInvalid(
+            CompletableFuture<T> request, Runnable purgeAccount) {
+        return request.whenComplete((result, failure) -> {
+            if (sessionInvalid(failure)) purgeAccount.run();
         });
     }
 

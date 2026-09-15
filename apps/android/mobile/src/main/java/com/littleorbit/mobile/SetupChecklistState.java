@@ -20,4 +20,9 @@ public record SetupChecklistState(
     public boolean allReady() {
         return readyCount() == 4;
     }
+
+    /** Keeps completed setup out of Home while allowing revoked requirements to return. */
+    public boolean visibleOnHome() {
+        return !allReady();
+    }
 }

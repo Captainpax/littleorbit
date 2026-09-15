@@ -24,6 +24,16 @@ public final class RelationshipCachePurgerTest {
     }
 
     @Test
+    public void recognizesOnlyAuthenticationFailureAsInvalidSession() {
+        Throwable signedOut = new CompletionException(new OrbitServiceException(401));
+        Throwable inactive = new CompletionException(
+                new OrbitServiceException(409, "relationship_inactive"));
+
+        assertTrue(RelationshipCachePurger.sessionInvalid(signedOut));
+        assertFalse(RelationshipCachePurger.sessionInvalid(inactive));
+    }
+
+    @Test
     public void distinguishesRelationshipInvalidationFromOrdinaryConflict() {
         Throwable inactive = new CompletionException(
                 new OrbitServiceException(409, "relationship_inactive"));
@@ -48,6 +58,24 @@ public final class RelationshipCachePurgerTest {
         CompletableFuture<Object> staleEdit = new CompletableFuture<>();
         RelationshipCachePurger.purgeWhenInactive(staleEdit, () -> purged.set(true));
         staleEdit.completeExceptionally(new OrbitServiceException(409));
+        assertFalse(purged.get());
+    }
+
+    @Test
+    public void purgesAccountOnlyForInvalidSession() {
+        AtomicBoolean purged = new AtomicBoolean();
+        CompletableFuture<Object> signedOut = new CompletableFuture<>();
+        RelationshipCachePurger.purgeAccountWhenSessionInvalid(
+                signedOut, () -> purged.set(true));
+        signedOut.completeExceptionally(new OrbitServiceException(401));
+        assertTrue(purged.get());
+
+        purged.set(false);
+        CompletableFuture<Object> inactive = new CompletableFuture<>();
+        RelationshipCachePurger.purgeAccountWhenSessionInvalid(
+                inactive, () -> purged.set(true));
+        inactive.completeExceptionally(
+                new OrbitServiceException(409, "relationship_inactive"));
         assertFalse(purged.get());
     }
 

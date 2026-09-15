@@ -34,6 +34,7 @@ public final class MainActivity extends OrbitShellActivity {
     private boolean setupNearbyReady;
     private boolean setupWidgetReady;
     private boolean setupWatchReady;
+    private boolean setupCoupleReadinessResolved;
     private int setupGeneration;
     private HomeActivityPanel activityPanel;
     @Inject OrbitRepository orbit;
@@ -133,7 +134,7 @@ public final class MainActivity extends OrbitShellActivity {
     private void refreshProfile() {
         renderProfile(profiles.cached());
         profiles.refresh().thenAccept(value -> runOnUiThread(() -> {
-            if (!isFinishing()) renderProfile(value);
+            if (!isFinishing() && orbit.isSignedIn()) renderProfile(value);
         })).exceptionally(failure -> null);
     }
 
@@ -193,7 +194,9 @@ public final class MainActivity extends OrbitShellActivity {
         setupNearbyReady = false;
         setupWidgetReady = hasHomeWidget();
         setupWatchReady = false;
-        renderSetupChecklist();
+        setupCoupleReadinessResolved = !home.connected();
+        if (setupCoupleReadinessResolved) renderSetupChecklist();
+        else binding.setupChecklist.setVisibility(View.GONE);
         refreshWatchSetup(generation);
         if (home.connected()) refreshCoupleSetup(generation);
     }
@@ -205,8 +208,16 @@ public final class MainActivity extends OrbitShellActivity {
             setupNearbyReady = PermissionChecks.fineLocationGranted(this)
                     && PermissionChecks.backgroundLocationGranted(this)
                     && preferences.locationByBoth;
+            setupCoupleReadinessResolved = true;
             renderSetupChecklist();
-        })).exceptionally(failure -> null);
+        })).exceptionally(failure -> {
+            runOnUiThread(() -> {
+                if (!isCurrentSetup(generation)) return;
+                setupCoupleReadinessResolved = true;
+                renderSetupChecklist();
+            });
+            return null;
+        });
     }
 
     private void refreshWatchSetup(int generation) {
@@ -222,7 +233,10 @@ public final class MainActivity extends OrbitShellActivity {
     }
 
     private void renderSetupChecklist() {
-        binding.setupChecklist.setVisibility(View.VISIBLE);
+        if (!setupCoupleReadinessResolved) {
+            binding.setupChecklist.setVisibility(View.GONE);
+            return;
+        }
         SetupChecklistState state = setupChecklist.state(
                 setupCoupleId,
                 setupPairingReady,
@@ -230,6 +244,9 @@ public final class MainActivity extends OrbitShellActivity {
                 setupNearbyReady,
                 setupWidgetReady,
                 setupWatchReady);
+        binding.setupChecklist.setVisibility(
+                state.visibleOnHome() ? View.VISIBLE : View.GONE);
+        if (!state.visibleOnHome()) return;
         binding.setupChecklist.bind(state, new SetupChecklistView.Listener() {
             @Override public void onPairing() { open(PairingActivity.class); }
             @Override public void onNotifications() { open(DeviceSetupActivity.class); }

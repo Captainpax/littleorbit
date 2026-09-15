@@ -89,6 +89,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-RC13-2026-09-13.md` — RC13 countdown, quiz, AI whitespace, avatar, compatibility, artifact, and deployment evidence.
 - `docs/operations/VERIFICATION-RC14-2026-09-14.md` — RC14 API security plus Android passive-cache, Wear expiry, installer, emulator, and build evidence.
 - `docs/operations/VERIFICATION-RC15-2026-09-15.md` — provider-free notification removal, migration, signed-upgrade, deployment, and publication evidence.
+- `docs/operations/VERIFICATION-RC16-2026-09-15.md` — stale-session diagnosis, complete Android account purge, paired-note smoke, completed-setup hiding, connected unpair access, and signed-artifact evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -113,6 +114,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.13.md` — calendar-style countdowns, quiz transitions, generated-text validation, and partner-assigned avatars.
 - `docs/releases/1.0.0-rc.14.md` — published adaptive shell, security, privacy retention, notification, attachment, backup, and emulator candidate.
 - `docs/releases/1.0.0-rc.15.md` — fully self-hosted notification correction with the RC14 Wear artifact retained byte-for-byte.
+- `docs/releases/1.0.0-rc.16.md` — expired-session and false half-paired Android recovery, completed Home setup hiding, connected unpair access, and the RC14 Wear artifact retained byte-for-byte.
 <!-- documentation-inventory:end -->
 
 ## Review routing

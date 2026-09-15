@@ -36,6 +36,7 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Pair codes are eight characters, single-use, expire after ten minutes, and are redeemed atomically only after creator confirmation.
 - Verification and reset tokens are stored as hashes, expire, and are consumed once.
 - A successful password reset consumes every outstanding reset token for that account and revokes every session in the same account-locked transaction. Session issuance and rotation use the same outer account lock.
+- An authenticated Android request that loses its server session clears the local token, account and relationship caches, drafts, media, alerts, and background work, then renders a signed-out recovery state. The exact `relationship_inactive` response clears relationship state while preserving the valid account session.
 - Public authentication, recovery, pair redemption, and administrator proof attempts use capped PostgreSQL counters keyed by domain-separated subject hashes. IP limits run before attacker-controlled subject limits, and expired counters are purged.
 - Replacing enabled administrator MFA requires the current password plus one current TOTP or recovery proof. The new encrypted factor remains pending until confirmation, then every earlier session is revoked.
 - Quiz responses remain hidden until both partners submit.

@@ -46,9 +46,7 @@ public final class HomeViewModel extends ViewModel {
         }
         orbit.refreshHome().exceptionally(failure -> {
             HomeScreenState latest = state.getValue();
-            if (latest == null || !latest.signedIn()) {
-                state.postValue(HomeScreenState.signedInWithoutCache());
-            }
+            state.postValue(HomeStateMapper.afterRefreshFailure(latest, orbit.isSignedIn()));
             return null;
         });
         refreshQuizPrompt();

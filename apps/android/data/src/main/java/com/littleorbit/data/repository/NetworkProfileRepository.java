@@ -4,6 +4,7 @@ import com.littleorbit.data.DisplayCacheSynchronizer;
 import com.littleorbit.data.WearProfilePublisher;
 import com.littleorbit.data.remote.LittleOrbitApi;
 import com.littleorbit.data.remote.ProfileApiModels;
+import com.littleorbit.data.security.SessionStore;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -23,6 +24,7 @@ public final class NetworkProfileRepository implements ProfileRepository {
     private final ProfilePhotoStore store;
     private final WearProfilePublisher wear;
     private final DisplayCacheSynchronizer displays;
+    private final SessionStore sessions;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "orbit-profile-sync");
         thread.setDaemon(true);
@@ -35,11 +37,13 @@ public final class NetworkProfileRepository implements ProfileRepository {
             LittleOrbitApi api,
             ProfilePhotoStore store,
             WearProfilePublisher wear,
-            DisplayCacheSynchronizer displays) {
+            DisplayCacheSynchronizer displays,
+            SessionStore sessions) {
         this.api = api;
         this.store = store;
         this.wear = wear;
         this.displays = displays;
+        this.sessions = sessions;
     }
 
     @Override public State cached() { return store.read(); }
@@ -49,6 +53,12 @@ public final class NetworkProfileRepository implements ProfileRepository {
         return CompletableFuture.supplyAsync(() -> {
             try { return refreshNow(); }
             catch (RuntimeException failure) {
+                if (RelationshipCachePurger.sessionInvalid(failure)) {
+                    clearAll();
+                    displays.clear();
+                    sessions.clear();
+                    throw failure;
+                }
                 if (RelationshipCachePurger.relationshipInactive(failure)) {
                     clearAll();
                     displays.clear();

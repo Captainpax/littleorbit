@@ -70,21 +70,22 @@ export function formatReleaseDate(publishedAt: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.15",
-  versionCode: 20,
+  version: "1.0.0-rc.16",
+  versionCode: 21,
   minimumSupportedVersionCode: 6,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "7d6157802710ef7515c40f823fe92cce0fad48c136ba92ec3b83a703c5971aa3",
+  sha256: "695982dd44ea99a9174af0d84ff24fcb696b841552216599f281d228135b3872",
   releaseNotes: [
-    "Removes Firebase Messaging and every hosted notification transport from the phone, API, worker, and deployment configuration.",
-    "Keeps partner alerts on authenticated Little Orbit WebSockets while visible and self-hosted HTTPS polling in the background.",
-    "Deletes retired provider-address fields and old Android transport preferences during the upgrade.",
-    "Preserves RC14's responsive shell, repaired partner document discovery, and exact Wear companion artifact.",
+    "Fixes an expired or revoked session appearing as a half-paired relationship with cached partner photos.",
+    "Clears private account and relationship state before returning Home to an honest sign-in action.",
+    "Keeps a valid account signed in when only the relationship becomes inactive.",
+    "Hides the Home setup card when all four core steps are ready and adds direct unpairing to relationship management.",
+    "Preserves RC15's fully self-hosted notifications and the exact RC14 Wear companion artifact.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.15",
-  apkUrl: hostedApkPath("1.0.0-rc.15"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.16",
+  apkUrl: hostedApkPath("1.0.0-rc.16"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.15"),
+    apkUrl: hostedWearApkPath("1.0.0-rc.16"),
     sha256: "6ce385654e323dfdcad9d5b6dec000a4f2549568d30b604ce6ea1400d642f0b6",
     sizeBytes: 14188854,
     versionCode: 16,

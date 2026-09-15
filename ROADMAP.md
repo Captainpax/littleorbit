@@ -50,13 +50,16 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Rotate machine-controlled database, session, token-pepper, TOTP-encryption, and outbox-encryption secrets; revoke existing sessions, one-use tokens, and administrator MFA.
 - [x] Remove Firebase and every other hosted notification path for RC15; retain only authenticated first-party WSS hints, self-hosted HTTPS polling, per-installation acknowledgements, and upgrade cleanup for retired local state.
 - [x] Publish the signed RC15 phone correction with version code 20 and mirror the byte-identical RC14 Wear companion under the RC15 release.
+- [x] Diagnose the apparent one-sided pairing report as an expired partner session rather than a damaged couple row; make RC16 purge stale account state on authenticated 401 responses and prove shared-note discovery plus signed-out recovery on an isolated paired emulator.
+- [x] Finish RC16 Home setup by hiding the checklist after all four core steps are ready, restoring it when readiness is revoked, and exposing archive-preserving unpairing from the connected relationship screen.
+- [ ] Publish the signed RC16 phone correction with version code 21 and mirror the byte-identical RC14 Wear companion under the RC16 release.
 - [x] Rebuild and independently analyze the final signed RC14 candidates, stage their immutable bytes, and verify an RC13-to-RC14 signed replacement and cold launch on API 36 before authorized publication.
 - [x] Sign and self-host the RC13 phone and Wear artifacts, retain byte-range downloads, and configure the reviewed production proxy/firewall route.
 - [ ] Rotate the Gmail SMTP app password and re-enroll the owner administrator TOTP before 1.0 promotion.
 - [x] Publish the staged RC14 phone and Wear candidates and verify current metadata, complete and ranged self-hosted downloads, hashes, RSS notes, and local/public production health.
 - [ ] Complete the published updater, TLS renewal/recovery, SMTP, WSS revocation, and final production-security gates before 1.0 promotion.
-- [ ] Complete the two-phone, tablet, and Wear OS end-to-end RC15 release gate, including self-hosted notification latency, relationship purge, accessibility, large text, navigation modes, offline recovery, and smoke-account deletion.
-- [ ] Promote the tested RC15 commit to 1.0 with version-only changes and repeat the critical artifact, device, and production checks.
+- [ ] Complete the two-phone, tablet, and Wear OS end-to-end RC16 release gate, including self-hosted notification latency, session and relationship purge, accessibility, large text, navigation modes, offline recovery, and smoke-account deletion.
+- [ ] Promote the tested RC16 commit to 1.0 with version-only changes and repeat the critical artifact, device, and production checks.
 
 ## 1.x — Reliability and reach
 

@@ -15,6 +15,7 @@ public final class SetupChecklistStateTest {
 
         assertEquals(3, state.readyCount());
         assertFalse(state.allReady());
+        assertTrue(state.visibleOnHome());
     }
 
     @Test
@@ -25,6 +26,7 @@ public final class SetupChecklistStateTest {
         assertEquals(4, state.readyCount());
         assertTrue(state.allReady());
         assertTrue(state.collapsed());
+        assertFalse(state.visibleOnHome());
     }
 
     @Test
@@ -33,5 +35,6 @@ public final class SetupChecklistStateTest {
                 true, true, true, true, false, false);
 
         assertTrue(state.allReady());
+        assertFalse(state.visibleOnHome());
     }
 }

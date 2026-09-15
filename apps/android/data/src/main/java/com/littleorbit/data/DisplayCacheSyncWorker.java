@@ -12,6 +12,7 @@ import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 import com.littleorbit.data.security.SessionStore;
+import com.littleorbit.data.repository.ProfileRepository;
 import dagger.assisted.Assisted;
 import dagger.assisted.AssistedInject;
 import java.util.concurrent.TimeUnit;
@@ -22,6 +23,7 @@ public final class DisplayCacheSyncWorker extends Worker {
     private static final String PERIODIC_NAME = "little-orbit-display-cache";
     private final DisplayCacheSynchronizer synchronizer;
     private final SessionStore sessions;
+    private final ProfileRepository profiles;
 
     /** Creates an injected display refresh worker. */
     @AssistedInject
@@ -29,10 +31,12 @@ public final class DisplayCacheSyncWorker extends Worker {
             @Assisted @NonNull Context context,
             @Assisted @NonNull WorkerParameters parameters,
             DisplayCacheSynchronizer synchronizer,
-            SessionStore sessions) {
+            SessionStore sessions,
+            ProfileRepository profiles) {
         super(context, parameters);
         this.synchronizer = synchronizer;
         this.sessions = sessions;
+        this.profiles = profiles;
     }
 
     @NonNull
@@ -47,6 +51,12 @@ public final class DisplayCacheSyncWorker extends Worker {
             return Result.success();
         } catch (DisplayCacheSynchronizer.SyncException failure) {
             int code = failure.statusCode();
+            if (code == 401) {
+                profiles.clearAll();
+                sessions.clear();
+                synchronizer.clear();
+                return Result.success();
+            }
             return code == -1 || code >= 500 ? Result.retry() : Result.failure();
         }
     }
