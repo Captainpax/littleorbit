@@ -25,7 +25,7 @@ The note directory held five active documents. Four rows formed one exact-conten
 - A fresh disposable PostgreSQL 17.6 database migrated through Alembic head `0024`; the partner-note integration passed and proved two distinct immediate create IDs yield one stored note and one partner-visible snapshot. The disposable container and database were removed.
 - Android mobile and widget unit suites pass. Mobile and widget debug lint pass.
 - Wear unit tests and debug lint pass after changing the launcher, tile, and complications to nearby-time-first text.
-- The signed release build and release lint pass. Phone code 22 is 36,221,117 bytes with SHA-256 `eeda27b77b74a2a201e93f27358c9125284c8c7eb1cdc98ac15d82360e16b966`; Wear code 17 is 14,189,898 bytes with SHA-256 `314548ba62ee4d239b06279808410aa35c659f082c70339b44edcfa780f2722d`. Both verify with certificate SHA-256 `43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337`.
+- The signed release build and release lint pass. Phone code 22 is 36,221,117 bytes with SHA-256 `2f74ffaf7c3ea3b5bf98095bec1f34034cbda33bd8e6fdab0b537a3d7cd6a819`; Wear code 17 is 14,189,898 bytes with SHA-256 `d594533bebab85921a075d009378c6183015754479acf059c78c646075e33b0a`. Both verify with certificate SHA-256 `43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337`.
 
 ## Publication evidence
 

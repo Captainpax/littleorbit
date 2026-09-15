@@ -74,7 +74,7 @@ export const currentRelease: ReleaseMetadata = {
   versionCode: 22,
   minimumSupportedVersionCode: 6,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "eeda27b77b74a2a201e93f27358c9125284c8c7eb1cdc98ac15d82360e16b966",
+  sha256: "2f74ffaf7c3ea3b5bf98095bec1f34034cbda33bd8e6fdab0b537a3d7cd6a819",
   releaseNotes: [
     "Stops repeated Save and autosave actions from creating duplicate Our Space documents.",
     "Restarts consented nearby-time collection after sign-in, app restart, and Android process recovery.",
@@ -86,7 +86,7 @@ export const currentRelease: ReleaseMetadata = {
   apkUrl: hostedApkPath("1.0.0-rc.17"),
   wear: {
     apkUrl: hostedWearApkPath("1.0.0-rc.17"),
-    sha256: "314548ba62ee4d239b06279808410aa35c659f082c70339b44edcfa780f2722d",
+    sha256: "d594533bebab85921a075d009378c6183015754479acf059c78c646075e33b0a",
     sizeBytes: 14189898,
     versionCode: 17,
     minimumAndroid: 30,
