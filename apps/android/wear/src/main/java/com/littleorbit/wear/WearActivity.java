@@ -30,8 +30,8 @@ public final class WearActivity extends Activity {
         TextView together = findViewById(R.id.wearTogether);
         TextView nearby = findViewById(R.id.wearNearby);
         TextView status = findViewById(R.id.wearStatus);
-        together.setText(display.relationship(cache));
-        nearby.setText(display.nearby(cache));
+        together.setText(display.nearby(cache));
+        nearby.setText(R.string.nearby_estimate_label);
         status.setText(display.status(cache));
         nearby.setVisibility(cache.available() ? View.VISIBLE : View.GONE);
         findViewById(R.id.wearEyebrow).setVisibility(cache.available() ? View.VISIBLE : View.GONE);

@@ -20,7 +20,7 @@ pytestmark = [
 from little_orbit_api.config import get_settings  # noqa: E402
 from little_orbit_api.database import Base, SessionFactory, engine  # noqa: E402
 from little_orbit_api.main import create_app  # noqa: E402
-from little_orbit_api.models import Account, Couple, CoupleMember, Session  # noqa: E402
+from little_orbit_api.models import Account, Couple, CoupleMember, Note, Session  # noqa: E402
 from little_orbit_api.note_edit_service import (  # noqa: E402
     NoteEditMessage,
     apply_note_edit,
@@ -61,6 +61,15 @@ async def test_created_note_and_live_edits_converge_for_both_partners() -> None:
         )
         assert created.status_code == 201
         note_id = UUID(created.json()["id"])
+        recovered = await client.post(
+            "/v1/notes",
+            headers=_headers(first_token),
+            json={"operation_id": str(uuid4()), "title": "Shared", "body": "hello"},
+        )
+        assert recovered.status_code == 201
+        assert recovered.json()["id"] == str(note_id)
+        async with SessionFactory() as session:
+            assert await session.scalar(select(func.count()).select_from(Note)) == 1
         second_list = await client.get("/v1/notes", headers=_headers(second_token))
         assert [(item["id"], item["body"]) for item in second_list.json()] == [
             (str(note_id), "hello")

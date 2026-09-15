@@ -4,6 +4,8 @@
     <string name="widget_pair_to_start">Pair to start your orbit</string>
     <string name="widget_together_unavailable">Together-time unavailable</string>
     <string name="widget_nearby_unavailable">Nearby estimate unavailable</string>
+    <string name="widget_nearby_estimate_label">Nearby estimate</string>
+    <string name="widget_nearby_duration">%1$d h %2$d m together</string>
     <string name="widget_open_to_refresh">Open Little Orbit to refresh</string>
     <string name="widget_stale">ESTIMATE · STALE</string>
     <string name="widget_stale_compact">STALE</string>
@@ -15,12 +17,4 @@
     <string name="widget_accessibility_stale">, stale</string>
     <string name="widget_accessibility_compact_action">%1$s Tap the widget to refresh.</string>
     <string name="widget_accessibility_open">%1$s. Open Little Orbit.</string>
-    <plurals name="widget_days_together">
-        <item quantity="one">%d day together</item>
-        <item quantity="other">%d days together</item>
-    </plurals>
-    <plurals name="widget_nearby_hours">
-        <item quantity="one">%d hour nearby · estimate</item>
-        <item quantity="other">%d hours nearby · estimate</item>
-    </plurals>
 </resources>

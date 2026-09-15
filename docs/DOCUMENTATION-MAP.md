@@ -61,6 +61,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0026-relationship-scoped-passive-caches.md` — generation-scoped widget and Wear authorization, urgent purge ordering, and bounded offline expiry.
 - `docs/adr/0027-content-free-fcm-wakeups.md` — historical RC14 decision, superseded by ADR 0034.
 - `docs/adr/0034-fully-self-hosted-notifications.md` — provider-free foreground WSS plus Android polling and its background-latency tradeoff.
+- `docs/adr/0035-retry-safe-note-creation-and-mutual-location-freshness.md` — bounded lost-create recovery, collection re-arming, two-stream freshness, and nearby-only presentation.
 - `docs/adr/0028-isolated-attachment-media-worker.md` — least-privilege scanning, sanitization, atomic publication, and private archive access.
 - `docs/adr/0029-relationship-invalidation-purge-protocol.md` — structured invalidation and generation-ordered phone, widget, and Wear cleanup.
 - `docs/adr/0030-together-time-retention-and-corrections.md` — short raw-coordinate retention, 30-day minute detail, durable totals, and audited corrections.
@@ -90,6 +91,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-RC14-2026-09-14.md` — RC14 API security plus Android passive-cache, Wear expiry, installer, emulator, and build evidence.
 - `docs/operations/VERIFICATION-RC15-2026-09-15.md` — provider-free notification removal, migration, signed-upgrade, deployment, and publication evidence.
 - `docs/operations/VERIFICATION-RC16-2026-09-15.md` — stale-session diagnosis, complete Android account purge, paired-note smoke, completed-setup hiding, connected unpair access, and signed-artifact evidence.
+- `docs/operations/VERIFICATION-RC17-2026-09-15.md` — duplicate-create and one-sided-location diagnosis, recovery invariants, isolated database proof, signed artifacts, and publication evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -115,6 +117,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.14.md` — published adaptive shell, security, privacy retention, notification, attachment, backup, and emulator candidate.
 - `docs/releases/1.0.0-rc.15.md` — fully self-hosted notification correction with the RC14 Wear artifact retained byte-for-byte.
 - `docs/releases/1.0.0-rc.16.md` — expired-session and false half-paired Android recovery, completed Home setup hiding, connected unpair access, and the RC14 Wear artifact retained byte-for-byte.
+- `docs/releases/1.0.0-rc.17.md` — single-flight shared-document creation, resilient nearby collection, mutual freshness, and nearby-first phone/widget/Wear surfaces.
 <!-- documentation-inventory:end -->
 
 ## Review routing

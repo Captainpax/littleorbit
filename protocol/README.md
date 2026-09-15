@@ -4,7 +4,9 @@
 
 RC8 adds the authenticated, content-limited orbit profile contract and the public immutable release-history contract used by the patch-notes page and RSS feed. Binary profile images remain outside JSON schemas and are always authorized separately.
 
-RC10 keeps the older relationship-date endpoints for protocol compatibility, but clients render `paired_at` and `paired_days` from the v3 summary. A future removal of the unused proposal fields requires its own versioned contract and migration decision.
+RC10 keeps the older relationship-date endpoints for protocol compatibility. RC17 clients retain `paired_at` and `paired_days` as relationship metadata but present `nearby_estimated_seconds` as time spent together. A future removal of the unused proposal fields requires its own versioned contract and migration decision.
+
+RC17 keeps the v3 JSON shape stable while tightening `nearby_last_processed_at`: it is now the earlier newest retained sample from the two active members and becomes `null` when either current stream is absent. Note creation retains exact operation-ID idempotency and adds a five-minute, current-couple exact-match recovery for a client that loses its local create identity around a completed save.
 
 RC14 adds optional `current_totp_code` and `current_recovery_code` fields to the browser-only administrator MFA start request. Existing first-enrollment requests remain valid. Once MFA is enabled, the server requires exactly one current factor in addition to the password before it stages a replacement. This owner-console contract carries no relationship data and is covered by API and web validation rather than the Android-consumed public fixtures.
 

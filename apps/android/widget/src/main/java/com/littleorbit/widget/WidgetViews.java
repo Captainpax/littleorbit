@@ -6,8 +6,6 @@ import android.widget.RemoteViews;
 import com.littleorbit.data.local.DisplayCacheEntity;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 
 /** Builds privacy-minimal widget views from one immutable cache snapshot. */
 final class WidgetViews {
@@ -56,15 +54,15 @@ final class WidgetViews {
             DisplayCacheEntity cache,
             Instant now,
             boolean compact) {
-        String relationship = localizedRelationship(
-                context, cache, LocalDate.now(ZoneOffset.UTC));
         long nearbyHours = Duration.ofSeconds(cache.nearbySeconds).toHours();
-        String nearby = context.getResources().getQuantityString(
-                R.plurals.widget_nearby_hours, quantity(nearbyHours), nearbyHours);
+        long nearbyMinutes = Duration.ofSeconds(cache.nearbySeconds).toMinutes() % 60;
+        String together = context.getString(
+                R.string.widget_nearby_duration, nearbyHours, nearbyMinutes);
+        String nearby = context.getString(R.string.widget_nearby_estimate_label);
         String countdown = cache.nextCountdownTitle == null || cache.nextCountdownTitle.isBlank()
                 ? context.getString(R.string.widget_open_to_refresh) : cache.nextCountdownTitle;
         boolean stale = isStale(cache, now);
-        views.setTextViewText(R.id.widget_together, relationship);
+        views.setTextViewText(R.id.widget_together, together);
         views.setTextViewText(R.id.widget_nearby, nearby);
         views.setTextViewText(R.id.widget_countdown, countdown);
         views.setTextViewText(
@@ -74,7 +72,7 @@ final class WidgetViews {
         views.setViewVisibility(R.id.widget_stale, stale ? View.VISIBLE : View.GONE);
         String summary = context.getString(
                 R.string.widget_accessibility_summary,
-                relationship,
+                together,
                 nearby,
                 countdown,
                 stale ? context.getString(R.string.widget_accessibility_stale) : "");
@@ -102,26 +100,6 @@ final class WidgetViews {
         return cache.cacheSyncedAtEpochMillis <= 0
                 || !Instant.ofEpochMilli(cache.cacheSyncedAtEpochMillis)
                         .plus(EXPIRE_AFTER).isAfter(now);
-    }
-
-    static String relationshipText(DisplayCacheEntity cache, LocalDate today) {
-        if (cache.relationshipStartEpochDay < 0) return "Pair to start your orbit";
-        long days = Math.max(0, today.toEpochDay() - cache.relationshipStartEpochDay);
-        return days + " days together";
-    }
-
-    private static String localizedRelationship(
-            Context context, DisplayCacheEntity cache, LocalDate today) {
-        if (cache.relationshipStartEpochDay < 0) {
-            return context.getString(R.string.widget_pair_to_start);
-        }
-        long days = Math.max(0, today.toEpochDay() - cache.relationshipStartEpochDay);
-        return context.getResources().getQuantityString(
-                R.plurals.widget_days_together, quantity(days), days);
-    }
-
-    private static int quantity(long value) {
-        return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
     }
 
     private static void renderUnavailable(

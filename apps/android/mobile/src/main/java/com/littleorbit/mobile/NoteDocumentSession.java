@@ -27,13 +27,10 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
     private NoteApiModels.Note current;
     private NoteDraftStore.Workspace pendingRestore;
     private String serverBody = "";
-    private String createOperationId;
+    private final NoteCreationCoordinator creation = new NoteCreationCoordinator();
     private int localBaseRevision;
     private int localMetadataRevision;
-    private boolean restoringExisting;
-    private boolean returnAfterSave;
-    private boolean foreground;
-    private boolean resumeRequiresReload;
+    private boolean restoringExisting, returnAfterSave, foreground, resumeRequiresReload;
     private long editorGeneration;
     private NoteSocketClient.EditorConnection editor = NoteSocketClient.EditorConnection.closed();
     private final Runnable bodySave = this::sync;
@@ -91,7 +88,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         workspace.begin();
         restoringExisting = false;
         pendingRestore = null;
-        createOperationId = null;
+        creation.clear();
         current = note;
         serverBody = note.body;
         localMetadataRevision = note.metadataRevision;
@@ -116,7 +113,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
 
     void restoreWorkspace(NoteDraftStore.Workspace saved) {
         workspace.consumeRestore();
-        createOperationId = saved.createOperationId();
+        creation.restore(saved.createOperationId());
         localBaseRevision = saved.baseRevision();
         localMetadataRevision = saved.metadataRevision();
         serverBody = saved.serverBody();
@@ -213,7 +210,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         attachments.clear();
         workspace.finish();
         library.setNotes(List.of());
-        current = null; pendingRestore = null; createOperationId = null;
+        current = null; pendingRestore = null; creation.clear();
         restoringExisting = false; returnAfterSave = false;
         serverBody = ""; localBaseRevision = 0; localMetadataRevision = 0;
         screen.showInactiveRelationship(
@@ -221,6 +218,10 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
     }
 
     void newNote() {
+        if (screen.isEditorVisible() && current == null) {
+            binding.titleInput.requestFocus();
+            return;
+        }
         closeEditor();
         workspace.begin();
         current = null;
@@ -229,7 +230,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         serverBody = "";
         localBaseRevision = 0;
         localMetadataRevision = 0;
-        createOperationId = UUID.randomUUID().toString();
+        creation.begin();
         screen.renderInitial("", "", 0, 0);
         screen.showConflict(null);
         screen.hideRecovery();
@@ -262,10 +263,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
             binding.statusText.setText(R.string.complete_required_fields);
             return;
         }
-        if (createOperationId == null) createOperationId = UUID.randomUUID().toString();
-        NoteApiModels.CreateRequest request =
-                new NoteApiModels.CreateRequest(createOperationId, title(), body());
-        AsyncUi.observe(activity, orbit.createNote(request), binding.statusText, note -> {
+        creation.submit(activity, orbit, binding, title(), body(), note -> {
             drafts.clear(note.id);
             library.upsert(note);
             boolean returning = returnAfterSave;
@@ -367,6 +365,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         current = null;
         pendingRestore = null;
         restoringExisting = false;
+        creation.clear();
         serverBody = "";
     }
 
@@ -382,6 +381,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         current = null;
         pendingRestore = null;
         restoringExisting = false;
+        creation.clear();
     }
 
     void useServerVersion() {
@@ -431,7 +431,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         int end = Math.max(binding.bodyInput.getSelectionEnd(), start);
         return NoteWorkspaceSnapshots.capture(
                 current, binding.titleInput.getText().toString(), body(), serverBody,
-                localBaseRevision, localMetadataRevision, createOperationId,
+                localBaseRevision, localMetadataRevision, creation.operationId(),
                 start, end, screen.isPreviewing());
     }
 

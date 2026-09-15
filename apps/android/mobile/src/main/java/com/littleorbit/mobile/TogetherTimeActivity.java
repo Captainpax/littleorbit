@@ -52,12 +52,8 @@ public final class TogetherTimeActivity extends OrbitShellActivity {
         long nearbyMinutes = (summary.nearbyEstimatedSeconds % 3_600) / 60;
         String processed = summary.nearbyLastProcessedAt == null
                 ? getString(R.string.never) : displayInstant(summary.nearbyLastProcessedAt);
-        int dayQuantity = (int) Math.min(Integer.MAX_VALUE, summary.pairedDays);
-        binding.summaryText.setText(getResources().getQuantityString(
-                R.plurals.visual_together_summary,
-                dayQuantity,
-                summary.pairedDays,
-                displayInstant(summary.pairedAt),
+        binding.summaryText.setText(getString(
+                R.string.visual_nearby_summary,
                 nearbyHours,
                 nearbyMinutes,
                 processed,

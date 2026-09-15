@@ -120,7 +120,8 @@ sequenceDiagram
     API->>DB: Authorize current couple before listing notes
     API-->>B: Ordered directory snapshot
     A->>API: POST document(operation_id, title, body)
-    API->>DB: Insert once + enqueue bounded note alert atomically
+    API->>DB: Lock current couple; resolve exact operation ID
+    API->>DB: Recover exact document saved in bounded window or insert once
     API-->>B: notification.available (content-free)
     loop Every 5 s while B's library remains visible
         B->>API: Refresh authorized directory
@@ -150,7 +151,7 @@ sequenceDiagram
     end
 ```
 
-Session expiry, revocation, suspension, deletion, unpairing, or note archival closes the socket. The server retains only the keyed session digest needed for revalidation; the raw bearer token is not kept in connection state. Android does not rebuild the library for an identical snapshot, and leaving the library stops its directory refresh.
+Session expiry, revocation, suspension, deletion, unpairing, or note archival closes the socket. The server retains only the keyed session digest needed for revalidation; the raw bearer token is not kept in connection state. A new Android workspace keeps one stable create ID and one request in flight. The bounded exact-match fallback runs only after current-couple authorization and protects clients that lose that identity immediately after a save. Android does not rebuild the library for an identical snapshot, and leaving the library stops its directory refresh.
 
 ## Private note attachments
 
@@ -305,29 +306,30 @@ sequenceDiagram
     API->>DB: Atomically create couple(created_at = UTC now)
     A->>API: GET together-time v3
     API->>DB: Authorize current member before couple lookup
-    API-->>A: paired_at + derived paired_days + nearby estimate
+    API-->>A: paired_at metadata + nearby estimate
     B->>API: GET together-time v3
-    API-->>B: Same immutable paired_at and clock-derived age
+    API-->>B: Same immutable paired_at metadata + nearby estimate
 ```
 
-The confirmed pair transaction supplies the only 1.0 relationship-age origin. Android, widget, tile, and complication derive age from that instant and no longer ask either partner to choose a date. Older date-proposal endpoints remain temporarily available for protocol compatibility but RC10 clients do not render or mutate them.
+The confirmed pair transaction retains the immutable relationship origin without asking either partner to choose a date. RC17 phone, widget, tile, and complication surfaces do not present that age as time spent together; they lead with the accuracy-aware nearby estimate. Older date-proposal endpoints remain temporarily available for protocol compatibility but current clients do not render or mutate them.
 
 ## Together-time processing
 
 ```mermaid
 flowchart TD
     Consent[Both users enable sharing] --> FGS[Visible foreground service<br/>high accuracy about every 5 min]
-    Consent --> Fallback[WorkManager recovery<br/>about every 15 min]
+    SignIn[Sign-in or signed-in process start] --> Fallback[Re-arm WorkManager recovery<br/>about every 15 min]
+    Consent --> Fallback
     FGS --> Samples[Queue bounded encrypted samples<br/>ID, UTC time, accuracy, coordinate]
     Fallback --> Samples
     Samples --> Upload[Authenticated idempotent batch]
     Upload --> Checks{Authorized, consent current,<br/>within time/accuracy bounds, unique}
     Checks -->|reject| Audit[Privacy-safe rejection event]
-    Checks -->|accept| Match[Deterministic one-to-one match<br/>within 10 minutes]
+    Checks -->|accept| Match[Deterministic one-to-one match<br/>within 16 minutes]
     Match --> Threshold{Two consecutive confident pairs<br/>within 100 m and at most 20 min apart?}
     Threshold -->|yes| Bucket[Replace rolling uncorrected<br/>UTC-minute estimates]
     Threshold -->|no| Skip[Do not count the interval]
-    Bucket --> Estimate[Update aggregate estimate + last-updated]
+    Bucket --> Estimate[Update aggregate estimate + freshness<br/>from both member streams]
     Skip --> Estimate
     Estimate --> Cache[Minimal widget/watch cache]
     Samples --> Expiry[Schedule expiry at 23 h 55 min<br/>Defensive hard delete at 24 h]
@@ -338,7 +340,7 @@ flowchart TD
     CorrectionAudit --> Estimate
 ```
 
-Collection may continue into the encrypted local queue while the network is offline. Upload and server processing resume later, except that a sample already inside the five-minute cleanup margin is rejected instead of being reintroduced near its hard retention ceiling. Two consecutive confident nearby pairs are still required; continuous collection improves the chance of collecting evidence without converting sparse or distant samples into false together-time.
+Collection may continue into the encrypted local queue while the network is offline. Upload and server processing resume later, except that a sample already inside the five-minute cleanup margin is rejected instead of being reintroduced near its hard retention ceiling. Sign-in and signed-in process startup re-arm recovery work after local account cleanup, while a paired foreground screen reconciles current permission and both consent states. Freshness uses the older newest retained sample from the two streams, so one phone cannot make a stalled pair estimate appear current. Two consecutive confident nearby pairs are still required; continuous collection improves the chance of collecting evidence without converting sparse or distant samples into false together-time.
 
 ## Smooch delivery and weekly history
 

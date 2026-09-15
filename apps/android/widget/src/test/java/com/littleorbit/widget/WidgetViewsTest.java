@@ -1,33 +1,16 @@
 package com.littleorbit.widget;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.littleorbit.data.local.DisplayCacheEntity;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
 import org.junit.Test;
 
 /** Regression tests for deterministic widget labels and stale boundaries. */
 public final class WidgetViewsTest {
     private static final Instant NOW = Instant.parse("2026-09-12T20:00:00Z");
-
-    @Test
-    public void relationshipAgeNeverBecomesNegative() {
-        DisplayCacheEntity cache = cache(
-                NOW, NOW, LocalDate.parse("2026-09-13").toEpochDay());
-        assertEquals("0 days together", WidgetViews.relationshipText(
-                cache, LocalDate.parse("2026-09-12")));
-    }
-
-    @Test
-    public void missingRelationshipDateKeepsSetupPrompt() {
-        DisplayCacheEntity cache = cache(NOW, NOW, -1);
-        assertEquals("Pair to start your orbit", WidgetViews.relationshipText(
-                cache, LocalDate.parse("2026-09-12")));
-    }
 
     @Test
     public void cacheBecomesStaleOnlyAfterSixHours() {

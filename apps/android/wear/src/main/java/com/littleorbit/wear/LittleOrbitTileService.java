@@ -21,7 +21,6 @@ public final class LittleOrbitTileService extends TileService {
         WearDisplayText display = new WearDisplayText(this);
         LayoutElementBuilders.Column column = new LayoutElementBuilders.Column.Builder()
                 .addContent(text(getString(R.string.tile_eyebrow)))
-                .addContent(text(display.relationship(cache)))
                 .addContent(text(display.nearby(cache)))
                 .addContent(text(display.status(cache)))
                 .build();

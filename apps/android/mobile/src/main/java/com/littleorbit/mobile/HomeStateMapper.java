@@ -3,8 +3,6 @@ package com.littleorbit.mobile;
 import com.littleorbit.data.local.DisplayCacheEntity;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 
 /** Pure mapping from authentication and cache facts to immutable home state. */
 final class HomeStateMapper {
@@ -30,17 +28,10 @@ final class HomeStateMapper {
     /** Maps the privacy-limited cache using an injected time for deterministic tests. */
     static HomeScreenState fromCache(
             DisplayCacheEntity cache, boolean signedIn, Instant now) {
-        String relationship = cache.relationshipStartEpochDay < 0
-                ? "Pair to start your orbit"
-                : Math.max(
-                        0,
-                        now.atZone(ZoneOffset.UTC).toLocalDate().toEpochDay()
-                                - cache.relationshipStartEpochDay)
-                        + " days together";
         String nearby = formatNearby(cache.nearbySeconds);
         return new HomeScreenState(
                 "Your little orbit",
-                relationship,
+                "Nearby estimate",
                 nearby,
                 cache.nextCountdownTitle,
                 "Open today’s five questions",
@@ -54,9 +45,9 @@ final class HomeStateMapper {
         long hours = (seconds % 86_400) / 3_600;
         long minutes = (seconds % 3_600) / 60;
         if (days > 0) {
-            return days + "d " + hours + "h nearby · estimate";
+            return days + "d " + hours + "h together · estimate";
         }
-        return hours + "h " + minutes + "m nearby · estimate";
+        return hours + "h " + minutes + "m together · estimate";
     }
 
     private static String freshness(DisplayCacheEntity cache, Instant now) {

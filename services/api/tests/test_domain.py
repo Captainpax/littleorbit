@@ -16,7 +16,7 @@ from little_orbit_api.domain.location import (
 )
 from little_orbit_api.domain.notes import Delete, Insert, InvalidEdit, apply_edit, transform
 from little_orbit_api.schemas import CouplePreferencesRequest, RegistrationRequest
-from little_orbit_api.together_time_service import relationship_days
+from little_orbit_api.together_time_service import _mutual_sample_freshness, relationship_days
 
 
 def test_note_offsets_count_emoji_as_one_code_point() -> None:
@@ -86,6 +86,13 @@ def test_nearby_estimate_breaks_on_uncertainty_and_long_gap() -> None:
 
     assert estimate_nearby_minutes(good, good) == []
     assert estimate_nearby_minutes(good, poor) == []
+
+
+def test_location_freshness_requires_current_samples_from_both_members() -> None:
+    first = datetime(2026, 9, 12, 10, tzinfo=UTC)
+    second = first + timedelta(minutes=5)
+    assert _mutual_sample_freshness([[_sample("a", first)], [_sample("b", second)]]) == first
+    assert _mutual_sample_freshness([[_sample("a", first)], []]) is None
 
 
 def test_relationship_age_uses_complete_utc_calendar_days() -> None:

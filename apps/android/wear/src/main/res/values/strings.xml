@@ -10,10 +10,13 @@
     <string name="pair_date_unavailable">Pair date unavailable</string>
     <string name="unavailable_short" translatable="false">—</string>
     <string name="relationship_days_short">%1$dd</string>
-    <string name="nearby_duration">%1$dh %2$dm nearby</string>
+    <string name="nearby_duration">%1$dh %2$dm together</string>
+    <string name="nearby_estimate_label">Nearby estimate</string>
+    <string name="nearby_hours_short">%1$dh</string>
+    <string name="nearby_minutes_short">%1$dm</string>
     <string name="stale_open_phone">Stale · open phone</string>
     <string name="no_countdown">No countdown yet</string>
-    <string name="relationship_summary">%1$s together, %2$s, %3$s</string>
+    <string name="relationship_summary">%1$s, %2$s</string>
     <string name="complication_long">%1$s together · %2$s</string>
     <string name="complication_long_stale">%1$s together · %2$s · stale</string>
     <string name="complication_stale_a11y">Little Orbit data is stale. Open the phone to sync.</string>
@@ -24,6 +27,6 @@
     <string name="unknown_initial">?</string>
     <string name="orbit_spark">✦</string>
     <string name="tile_name">Together time</string>
-    <string name="tile_description">Relationship age, nearby estimate, and next countdown</string>
+    <string name="tile_description">Nearby-time estimate and next countdown</string>
     <string name="tile_eyebrow">LITTLE ORBIT</string>
 </resources>

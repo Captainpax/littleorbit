@@ -53,13 +53,17 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Diagnose the apparent one-sided pairing report as an expired partner session rather than a damaged couple row; make RC16 purge stale account state on authenticated 401 responses and prove shared-note discovery plus signed-out recovery on an isolated paired emulator.
 - [x] Finish RC16 Home setup by hiding the checklist after all four core steps are ready, restoring it when readiness is revoked, and exposing archive-preserving unpairing from the connected relationship screen.
 - [x] Publish the signed RC16 phone correction with version code 21 and mirror the byte-identical RC14 Wear companion under the RC16 release.
+- [x] Diagnose RC17 with content-free production aggregates: distinguish real note-create mutations from duplicate rendering, and distinguish one-sided location collection from a proximity-calculation upload failure.
+- [x] Make new-note creation single-flight with a stable workspace identity, add bounded current-couple recovery for a just-saved exact document, and prove the retry with disposable PostgreSQL.
+- [x] Re-arm consented nearby collection after sign-in and process restart, recover the visible sampler after Android reclaims it, require freshness from both phone streams, and show nearby duration instead of pairing age across phone, widget, and Wear surfaces.
+- [x] Build, sign, self-host, and publish RC17 phone code 22 and Wear code 17 with independent artifact metadata.
 - [x] Rebuild and independently analyze the final signed RC14 candidates, stage their immutable bytes, and verify an RC13-to-RC14 signed replacement and cold launch on API 36 before authorized publication.
 - [x] Sign and self-host the RC13 phone and Wear artifacts, retain byte-range downloads, and configure the reviewed production proxy/firewall route.
 - [ ] Rotate the Gmail SMTP app password and re-enroll the owner administrator TOTP before 1.0 promotion.
 - [x] Publish the staged RC14 phone and Wear candidates and verify current metadata, complete and ranged self-hosted downloads, hashes, RSS notes, and local/public production health.
 - [ ] Complete the published updater, TLS renewal/recovery, SMTP, WSS revocation, and final production-security gates before 1.0 promotion.
-- [ ] Complete the two-phone, tablet, and Wear OS end-to-end RC16 release gate, including self-hosted notification latency, session and relationship purge, accessibility, large text, navigation modes, offline recovery, and smoke-account deletion.
-- [ ] Promote the tested RC16 commit to 1.0 with version-only changes and repeat the critical artifact, device, and production checks.
+- [ ] Complete the two-phone, tablet, and Wear OS end-to-end RC17 release gate, including a measured nearby interval, self-hosted notification latency, session and relationship purge, accessibility, large text, navigation modes, offline recovery, and smoke-account deletion.
+- [ ] Promote the tested RC17 commit to 1.0 with version-only changes and repeat the critical artifact, device, and production checks.
 
 ## 1.x — Reliability and reach
 

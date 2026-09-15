@@ -205,6 +205,7 @@ public final class DeviceSetupActivity extends InsetAwareActivity {
 
     private void renderLocation(ApiModels.Preferences preferences) {
         if (isFinishing()) return;
+        NearbyTrackingReconciler.apply(this, preferences);
         binding.locationStatus.setText(
                 preferences.locationByBoth
                         ? R.string.location_ready_both

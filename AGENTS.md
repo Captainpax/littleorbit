@@ -41,13 +41,13 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Replacing enabled administrator MFA requires the current password plus one current TOTP or recovery proof. The new encrypted factor remains pending until confirmation, then every earlier session is revoked.
 - Quiz responses remain hidden until both partners submit.
 - Intimacy questions require both partners' current opt-in; either opt-out takes effect immediately.
-- Note operation IDs are idempotent and server revisions increase monotonically.
+- Note operation IDs are idempotent and server revisions increase monotonically. A new-document workspace keeps one stable create identity and at most one create request in flight; bounded exact-match recovery happens only after current-couple authorization.
 - Long-running note and notification sockets revalidate the account and exact session after registration, for every client operation, and at least every 30 seconds while idle. Revocation closes the socket.
 - Note attachments authorize the current couple before lookup, reserve bounded quota, remain unavailable until a clean scan and metadata-removal pass, and are verified by their sanitized digest before preview.
 - Note attachment uploads use exact offsets and stable operation IDs; unscanned bytes are never served, private files remain couple-authorized, and deletion or note purge removes stored bytes.
 - Note presence counts unique authenticated accounts; archived notes reject content operations and are recoverable for seven days.
 - Couple activity is a 30-day, content-free metadata timeline. It may name a note or countdown but never stores note bodies, attachment names, quiz answers, locations, or custom Smooch text.
-- Relationship age begins at the immutable confirmed pairing instant. Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates.
+- Relationship age begins at the immutable confirmed pairing instant. Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates. Freshness requires retained samples from both members, and passive surfaces present nearby duration rather than pairing age as time together.
 - Relationship avatars belong to the active couple. Only the other current member may assign or remove a person's avatar; self-assignment is invalid, and unpairing deletes both images.
 - Passive widget and Wear records carry only an opaque relationship identity and monotonic local generation. Sign-out, unpairing, or `relationship_inactive` advances a durable purge barrier; disconnected Wear relationship data is deleted after 24 hours and cannot be revived by an older payload.
 - A countdown is either a timed instant with an IANA timezone or an all-day local date. Reminder offsets belong privately to one member, while partner alerts exclude notes and reminder choices.

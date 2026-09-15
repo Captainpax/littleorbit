@@ -208,6 +208,7 @@ public final class MainActivity extends OrbitShellActivity {
             setupNearbyReady = PermissionChecks.fineLocationGranted(this)
                     && PermissionChecks.backgroundLocationGranted(this)
                     && preferences.locationByBoth;
+            NearbyTrackingReconciler.apply(this, preferences);
             setupCoupleReadinessResolved = true;
             renderSetupChecklist();
         })).exceptionally(failure -> {

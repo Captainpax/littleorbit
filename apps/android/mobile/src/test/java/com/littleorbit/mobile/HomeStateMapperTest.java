@@ -65,7 +65,7 @@ public final class HomeStateMapperTest {
 
         assertEquals("Updated recently", fresh.freshness());
         assertEquals("Cached data may be stale", stale.freshness());
-        assertEquals("2 days together", fresh.togetherTime());
-        assertEquals("2d 0h nearby · estimate", fresh.nearbyTime());
+        assertEquals("Nearby estimate", fresh.togetherTime());
+        assertEquals("2d 0h together · estimate", fresh.nearbyTime());
     }
 }

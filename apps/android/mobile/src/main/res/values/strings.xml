@@ -338,6 +338,7 @@
     <string name="together_details">Together-time details</string>
     <string name="together_summary_v2">%1$s\nNearby estimate: %2$dh %3$dm\nLast location processed: %4$s</string>
     <string name="nearby_collection_active">Both partners enabled location. Two matched samples begin an estimate; this phone samples every five minutes while tracking runs, with a 15-minute fallback.</string>
+    <string name="visual_nearby_summary">%1$d h %2$d m together\nNearby estimate · last matched sample %3$s\nWithin %4$.0f m</string>
     <string name="nearby_history_title">Nearby-time history</string>
     <string name="correct_estimate_title">Correct an estimated minute</string>
     <string name="start_date_unset">Relationship start date not set</string>

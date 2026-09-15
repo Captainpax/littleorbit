@@ -2,8 +2,6 @@ package com.littleorbit.wear;
 
 import android.content.Context;
 import android.content.res.Resources;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 
 /** Localized presentation shared by the Wear launcher, tile, and complication. */
 final class WearDisplayText {
@@ -14,21 +12,17 @@ final class WearDisplayText {
     }
 
     String relationship(WearDisplayCache.State state) {
-        return relationship(state, LocalDate.now(ZoneOffset.UTC));
-    }
-
-    String relationship(WearDisplayCache.State state, LocalDate today) {
-        if (!state.available()) return resources.getString(R.string.open_phone_to_sync);
-        long days = state.relationshipDays(today);
-        if (days < 0) return resources.getString(R.string.pair_date_unavailable);
-        return resources.getQuantityString(R.plurals.relationship_days, quantity(days), days);
+        return nearby(state);
     }
 
     String relationshipShort(WearDisplayCache.State state) {
-        long days = state.relationshipDays(LocalDate.now(ZoneOffset.UTC));
-        return days < 0
-                ? resources.getString(R.string.unavailable_short)
-                : resources.getString(R.string.relationship_days_short, days);
+        if (!state.available()) {
+            return resources.getString(R.string.unavailable_short);
+        }
+        return state.nearbyHours() > 0
+                ? resources.getString(R.string.nearby_hours_short, state.nearbyHours())
+                : resources.getString(R.string.nearby_minutes_short,
+                        state.nearbyMinutesRemainder());
     }
 
     String nearby(WearDisplayCache.State state) {
@@ -48,8 +42,7 @@ final class WearDisplayText {
     String accessibility(WearDisplayCache.State state) {
         if (!state.available()) return resources.getString(R.string.relationship_unavailable_a11y);
         return resources.getString(
-                R.string.relationship_summary,
-                relationship(state), nearby(state), status(state));
+                R.string.relationship_summary, nearby(state), status(state));
     }
 
     String longComplication(WearDisplayCache.State state) {
@@ -57,10 +50,6 @@ final class WearDisplayText {
         int format = state.stale()
                 ? R.string.complication_long_stale
                 : R.string.complication_long;
-        return resources.getString(format, relationship(state), nearby(state));
-    }
-
-    private static int quantity(long value) {
-        return (int) Math.min(Integer.MAX_VALUE, Math.max(0, value));
+        return resources.getString(format, nearby(state), status(state));
     }
 }

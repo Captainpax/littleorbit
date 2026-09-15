@@ -52,6 +52,7 @@ from ..notification_service import enqueue_note_edit_event
 from ..socket_auth import SocketIdentity, authenticate_socket, socket_session_active
 
 router = APIRouter(tags=["notes"])
+CREATE_RECOVERY_WINDOW = timedelta(minutes=5)
 
 
 async def _authorized_snapshot(account_id: UUID, note_id: UUID) -> dict[str, object] | None:
@@ -85,6 +86,26 @@ def _note_response(note: Note) -> NoteResponse:
         updated_at=note.updated_at,
         archived_at=note.archived_at,
         purge_after=note.purge_after,
+    )
+
+
+async def _recent_equivalent(
+    session: AsyncSession, couple_id: UUID, payload: NoteCreateRequest
+) -> Note | None:
+    """Recover a just-saved document when a client lost its local create identity."""
+
+    cutoff = SystemClock().now() - CREATE_RECOVERY_WINDOW
+    return await session.scalar(
+        select(Note)
+        .where(
+            Note.couple_id == couple_id,
+            Note.archived_at.is_(None),
+            Note.title == payload.title,
+            Note.body == payload.body,
+            Note.updated_at >= cutoff,
+        )
+        .order_by(Note.updated_at.desc(), Note.id)
+        .limit(1)
     )
 
 
@@ -125,6 +146,9 @@ async def create_note(
             raise HTTPException(status.HTTP_409_CONFLICT, "Operation ID was already used")
         return _note_response(prior)
     now = SystemClock().now()
+    equivalent = await _recent_equivalent(session, member.couple_id, payload)
+    if equivalent is not None:
+        return _note_response(equivalent)
     note = Note(
         creation_operation_id=payload.operation_id,
         couple_id=member.couple_id,

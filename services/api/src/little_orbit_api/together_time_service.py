@@ -157,13 +157,19 @@ async def recompute_recent_proximity(
             )
             .on_conflict_do_nothing(index_elements=["couple_id", "bucket_start"])
         )
-    couple.proximity_processed_through = max(
-        (item.recorded_at for item in samples), default=couple.proximity_processed_through
-    )
+    couple.proximity_processed_through = _mutual_sample_freshness(streams)
     couple.proximity_algorithm_version = ALGORITHM_VERSION
     couple.updated_at = now
     await _sync_daily_totals(session, couple.id, cutoff, now)
     return sum(item.duration_seconds for item in estimates)
+
+
+def _mutual_sample_freshness(streams: list[list[TimedPoint]]) -> datetime | None:
+    """Return the newest instant supported by a recent sample from both members."""
+
+    if len(streams) != 2 or any(not stream for stream in streams):
+        return None
+    return min(stream[-1].recorded_at for stream in streams)
 
 
 async def _sync_daily_totals(

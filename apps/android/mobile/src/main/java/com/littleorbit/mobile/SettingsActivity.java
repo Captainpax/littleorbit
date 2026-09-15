@@ -94,9 +94,7 @@ public final class SettingsActivity extends OrbitShellActivity {
                                 : R.string.location_server_off);
         binding.pauseNearbyButton.setVisibility(
                 preferences.locationByMe ? View.VISIBLE : View.GONE);
-        com.littleorbit.data.LocationCollectionWorker.schedule(this, preferences.locationByMe);
-        if (preferences.locationByBoth) ForegroundLocationService.start(this);
-        else ForegroundLocationService.stop(this);
+        NearbyTrackingReconciler.apply(this, preferences);
     }
 
     private void pauseNearbyTracking() {

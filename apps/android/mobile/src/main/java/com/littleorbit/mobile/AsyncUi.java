@@ -16,10 +16,20 @@ final class AsyncUi {
             CompletableFuture<T> future,
             TextView status,
             Consumer<T> success) {
+        observe(activity, future, status, () -> {}, success);
+    }
+
+    static <T> void observe(
+            Activity activity,
+            CompletableFuture<T> future,
+            TextView status,
+            Runnable finished,
+            Consumer<T> success) {
         future.whenComplete((value, failure) -> activity.runOnUiThread(() -> {
             if (activity.isDestroyed()) {
                 return;
             }
+            finished.run();
             if (failure != null) {
                 Throwable cause = failure instanceof CompletionException && failure.getCause() != null
                         ? failure.getCause()
