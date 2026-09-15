@@ -41,4 +41,7 @@ Both artifacts verify with certificate SHA-256 `43e83a420c7496ce9121339ab5bd6b01
 - Fresh isolated smoke accounts paired successfully. Partner document creation, listing, bidirectional live edits, disconnect/reconnect catch-up, and final revision convergence passed. Smooch delivery, the content-free first-party WebSocket hint, two-installation acknowledgement isolation, and the 30-minute document-edit cooldown passed. The isolated stack, volumes, accounts, and credential file were removed afterward.
 - The authorized physical Pixel upgraded in place from the exact signed RC14 code 19 APK to signed RC15 code 20 without clearing app data. It remained running after a cold launch and produced no Little Orbit fatal Android log entry.
 
-GitHub mirroring, immutable API publication, complete and ranged public APK checks, patch notes, and RSS are recorded after publication.
+- The API published the immutable RC15 record at `2026-09-15T04:45:08.326115Z` with phone code 20, Wear code 16, compatibility floor 6, and the analyzed sizes, hashes, package, and certificate.
+- Public `HEAD` requests returned the exact phone and Wear byte counts with byte-range support. Independent complete streams produced 36,218,181 phone bytes and 14,188,854 Wear bytes with the exact signed SHA-256 values. A 1,024-byte request for each artifact returned `206` and the exact total in `Content-Range`.
+- Public `/download`, `/patch-notes`, and `/patch-notes.xml` returned `200`, named RC15, and the RSS response used `application/rss+xml`. The GitHub prerelease mirrors all five expected assets with exact APK byte counts.
+- Local and public API readiness remained `200`, all long-running production services remained up, and no new host port was exposed.
