@@ -77,19 +77,11 @@ public final class NotificationApiModels {
         public final String platform = "android";
         @Json(name = "app_version_code") public final int appVersionCode;
         @Json(name = "notifications_enabled") public final boolean notificationsEnabled;
-        @Json(name = "push_token") public final String pushToken;
 
         /** Creates one non-hardware device heartbeat. */
         public DeviceUpsert(int appVersionCode, boolean notificationsEnabled) {
-            this(appVersionCode, notificationsEnabled, null);
-        }
-
-        /** Creates a heartbeat with an optional opaque FCM installation address. */
-        public DeviceUpsert(
-                int appVersionCode, boolean notificationsEnabled, String pushToken) {
             this.appVersionCode = appVersionCode;
             this.notificationsEnabled = notificationsEnabled;
-            this.pushToken = pushToken;
         }
     }
 
@@ -98,16 +90,13 @@ public final class NotificationApiModels {
         @Json(name = "device_id") public final String deviceId;
         @Json(name = "last_seen_at") public final String lastSeenAt;
         @Json(name = "notifications_enabled") public final boolean notificationsEnabled;
-        @Json(name = "push_enabled") public final boolean pushEnabled;
 
         /** Creates decoded registration state. */
         public Device(
-                String deviceId, String lastSeenAt,
-                boolean notificationsEnabled, boolean pushEnabled) {
+                String deviceId, String lastSeenAt, boolean notificationsEnabled) {
             this.deviceId = deviceId;
             this.lastSeenAt = lastSeenAt;
             this.notificationsEnabled = notificationsEnabled;
-            this.pushEnabled = pushEnabled;
         }
     }
 

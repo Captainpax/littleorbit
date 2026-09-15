@@ -3,21 +3,6 @@ plugins {
     alias(libs.plugins.hilt.android)
 }
 
-fun javaString(value: String): String = "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
-
-val firebaseApplicationId = providers.gradleProperty("littleOrbitFirebaseApplicationId")
-    .orElse(providers.environmentVariable("LITTLE_ORBIT_FIREBASE_APPLICATION_ID"))
-    .getOrElse("")
-val firebaseApiKey = providers.gradleProperty("littleOrbitFirebaseApiKey")
-    .orElse(providers.environmentVariable("LITTLE_ORBIT_FIREBASE_API_KEY"))
-    .getOrElse("")
-val firebaseProjectId = providers.gradleProperty("littleOrbitFirebaseProjectId")
-    .orElse(providers.environmentVariable("LITTLE_ORBIT_FIREBASE_PROJECT_ID"))
-    .getOrElse("")
-val firebaseSenderId = providers.gradleProperty("littleOrbitFirebaseSenderId")
-    .orElse(providers.environmentVariable("LITTLE_ORBIT_FIREBASE_SENDER_ID"))
-    .getOrElse("")
-
 android {
     namespace = "com.littleorbit.mobile"
     compileSdk = 37
@@ -28,10 +13,6 @@ android {
         versionCode = rootProject.extra["littleOrbitVersionCode"] as Int
         versionName = rootProject.extra["littleOrbitVersionName"] as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "FIREBASE_APPLICATION_ID", javaString(firebaseApplicationId))
-        buildConfigField("String", "FIREBASE_API_KEY", javaString(firebaseApiKey))
-        buildConfigField("String", "FIREBASE_PROJECT_ID", javaString(firebaseProjectId))
-        buildConfigField("String", "FIREBASE_SENDER_ID", javaString(firebaseSenderId))
     }
     buildTypes {
         create("smoke") {
@@ -69,7 +50,6 @@ dependencies {
     }
     implementation(libs.conscrypt.android)
     implementation(libs.image.cropper)
-    implementation(libs.firebase.messaging)
     implementation("io.noties.markwon:core:4.6.2")
     implementation("io.noties.markwon:ext-strikethrough:4.6.2")
     implementation("io.noties.markwon:ext-tables:4.6.2")

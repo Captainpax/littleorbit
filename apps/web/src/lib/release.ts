@@ -70,21 +70,21 @@ export function formatReleaseDate(publishedAt: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.14",
-  versionCode: 19,
+  version: "1.0.0-rc.15",
+  versionCode: 20,
   minimumSupportedVersionCode: 6,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "4d0f2a636b04523c91bdb0ccf134302ebdf95328b312f7c112e98664654be8bb",
+  sha256: "7d6157802710ef7515c40f823fe92cce0fad48c136ba92ec3b83a703c5971aa3",
   releaseNotes: [
-    "Repairs partner document discovery with a bounded foreground refresh and content-free wake event.",
-    "Adds the responsive drawer and tablet rail, clearer setup and pairing, and consistent cosmic components.",
-    "Hardens shared Markdown, private attachments, relationship cleanup, and location retention.",
-    "Adds installation-scoped alerts with first-party polling while optional Firebase wakeups remain unconfigured.",
+    "Removes Firebase Messaging and every hosted notification transport from the phone, API, worker, and deployment configuration.",
+    "Keeps partner alerts on authenticated Little Orbit WebSockets while visible and self-hosted HTTPS polling in the background.",
+    "Deletes retired provider-address fields and old Android transport preferences during the upgrade.",
+    "Preserves RC14's responsive shell, repaired partner document discovery, and exact Wear companion artifact.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.14",
-  apkUrl: hostedApkPath("1.0.0-rc.14"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.15",
+  apkUrl: hostedApkPath("1.0.0-rc.15"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.14"),
+    apkUrl: hostedWearApkPath("1.0.0-rc.15"),
     sha256: "6ce385654e323dfdcad9d5b6dec000a4f2549568d30b604ce6ea1400d642f0b6",
     sizeBytes: 14188854,
     versionCode: 16,
@@ -174,7 +174,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-15T03:58:07.671219Z",
+    publishedAt: "2026-09-15T05:00:00Z",
   }];
 }
 

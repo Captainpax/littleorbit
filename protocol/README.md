@@ -8,6 +8,8 @@ RC10 keeps the older relationship-date endpoints for protocol compatibility, but
 
 RC14 adds optional `current_totp_code` and `current_recovery_code` fields to the browser-only administrator MFA start request. Existing first-enrollment requests remain valid. Once MFA is enabled, the server requires exactly one current factor in addition to the password before it stages a replacement. This owner-console contract carries no relationship data and is covered by API and web validation rather than the Android-consumed public fixtures.
 
+RC15 removes hosted notification addresses from the installation heartbeat. During the RC14 compatibility window, `push_token` may be omitted or sent only as `null`; any non-null value is rejected. Device responses report `push_enabled: false` and `delivery_transport: self_hosted_wss_polling`. Notification-event fixtures remain unchanged because authorized event metadata and per-installation acknowledgement semantics did not change.
+
 Rules:
 
 - Schemas use JSON Schema draft 2020-12 and reject unknown fields.

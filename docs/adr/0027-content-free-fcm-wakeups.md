@@ -1,6 +1,6 @@
 # ADR 0027: Content-free FCM wake-ups
 
-- **Status:** Accepted for RC14
+- **Status:** Superseded by ADR 0034
 - **Date:** 2026-09-14
 
 ## Context

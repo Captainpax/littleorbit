@@ -51,7 +51,11 @@ class NotificationDeviceUpsert(StrictModel):
     platform: Literal["android"]
     app_version_code: int = Field(ge=1, le=2_147_483_647)
     notifications_enabled: bool
-    push_token: str | None = Field(default=None, min_length=20, max_length=4096, pattern=r"^\S+$")
+    push_token: None = Field(
+        default=None,
+        deprecated=True,
+        description="RC14 compatibility field; hosted transport addresses are rejected.",
+    )
 
 
 class NotificationDeviceResponse(StrictModel):
@@ -60,7 +64,8 @@ class NotificationDeviceResponse(StrictModel):
     device_id: UUID
     last_seen_at: datetime
     notifications_enabled: bool
-    push_enabled: bool
+    push_enabled: Literal[False] = False
+    delivery_transport: Literal["self_hosted_wss_polling"] = "self_hosted_wss_polling"
 
 
 class NotificationEventResponse(StrictModel):

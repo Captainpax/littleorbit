@@ -19,7 +19,7 @@ HTTP = f"{ORIGIN}/api/v1"
 WS = f"{ORIGIN.replace('http://', 'ws://').replace('https://', 'wss://')}/ws/v1"
 CLIENT_HEADERS = {
     "X-Little-Orbit-Client": "android",
-    "X-Little-Orbit-Version-Code": "19",
+    "X-Little-Orbit-Version-Code": "20",
 }
 
 
@@ -51,7 +51,7 @@ def register_device(token: str, device_id: str) -> None:
         "PUT",
         f"/notification-devices/{device_id}",
         token,
-        {"platform": "android", "app_version_code": 19, "notifications_enabled": True},
+        {"platform": "android", "app_version_code": 20, "notifications_enabled": True},
     )
 
 

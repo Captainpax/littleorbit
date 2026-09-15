@@ -21,7 +21,6 @@ public final class LittleOrbitApplication extends Application implements Configu
     @Override
     public void onCreate() {
         super.onCreate();
-        FirebasePushBootstrap.initialize(this);
         NotificationChannels.create(this);
         installCrashCapture();
         UpdateDiscoveryWorker.schedule(this);

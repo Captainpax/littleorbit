@@ -12,6 +12,7 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 
 - Expose only gateway port `8180`. Never publish API, web, PostgreSQL, Ollama, or production Mailpit ports.
 - Keep application callers off Ollama's model-download egress bridge; only Ollama joins it, and only the worker plus one-shot initializer join the internal AI network.
+- Keep notifications first-party: no Firebase credentials, hosted push overlay, provider SDK, or notification-worker egress is permitted.
 - Keep ClamAV and the media worker on an internal-only network. Share attachment bytes only through the private volume; pair its encrypted backup with the matching PostgreSQL dump and verify manifests before restore.
 - Pin image versions and the validated Ollama model digest. Never use `latest`.
 - Keep secrets in environment/secret files outside Git and redact diagnostic output.

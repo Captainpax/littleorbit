@@ -8,8 +8,6 @@ from uuid import UUID, uuid4
 import httpx
 import pytest
 import pytest_asyncio
-from cryptography.fernet import Fernet
-from pydantic import SecretStr
 from sqlalchemy import func, inspect, select, text
 
 pytestmark = [
@@ -20,7 +18,7 @@ pytestmark = [
     pytest.mark.asyncio(loop_scope="session"),
 ]
 
-from little_orbit_api.config import Settings, get_settings  # noqa: E402
+from little_orbit_api.config import get_settings  # noqa: E402
 from little_orbit_api.database import Base, SessionFactory, engine  # noqa: E402
 from little_orbit_api.interaction_models import Smooch  # noqa: E402
 from little_orbit_api.main import create_app  # noqa: E402
@@ -37,7 +35,6 @@ from little_orbit_api.notification_service import (  # noqa: E402
     ensure_pending_deliveries,
     preferences_for,
 )
-from little_orbit_api.push_tokens import assign_push_token  # noqa: E402
 from little_orbit_api.relationship_service import end_active_relationship  # noqa: E402
 from little_orbit_api.security import hash_token  # noqa: E402
 
@@ -71,7 +68,7 @@ def _account(email: str) -> Account:
     )
 
 
-def _device(account_id: UUID, *, token: str | None = None) -> NotificationDevice:
+def _device(account_id: UUID) -> NotificationDevice:
     now = datetime.now(UTC)
     return NotificationDevice(
         id=uuid4(),
@@ -81,8 +78,6 @@ def _device(account_id: UUID, *, token: str | None = None) -> NotificationDevice
         app_version_code=140,
         notifications_enabled=True,
         last_seen_at=now,
-        push_token_encrypted=token,
-        push_failure_count=0,
     )
 
 
@@ -167,15 +162,6 @@ async def _smooch_event(
         )
         await session.commit()
     return smooch, event
-
-
-def _push_settings() -> Settings:
-    return Settings.model_validate(
-        {
-            "token_pepper": SecretStr("notification-push-test-pepper"),
-            "push_token_encryption_key": SecretStr(Fernet.generate_key().decode()),
-        }
-    )
 
 
 async def test_legacy_ack_cannot_consume_modern_installation_delivery() -> None:
@@ -383,24 +369,12 @@ async def test_note_edit_cooldown_and_active_view_suppression() -> None:
     assert count == 1
 
 
-async def test_unpair_purges_events_deliveries_and_push_addressing() -> None:
+async def test_unpair_purges_events_deliveries_and_disables_installation() -> None:
     """Ending a relationship immediately removes every relationship alert path."""
 
     sender, recipient, couple = await _seed_pair()
     device = _device(recipient.id)
     await _smooch_event(sender, recipient, couple, device)
-    settings = _push_settings()
-    async with SessionFactory() as session:
-        current = await session.get(NotificationDevice, device.id, with_for_update=True)
-        assert current is not None
-        assert await assign_push_token(
-            session,
-            current,
-            "unpair-device-address-with-enough-entropy",
-            datetime.now(UTC),
-            settings,
-        )
-        await session.commit()
     ended_at = datetime.now(UTC)
     async with SessionFactory() as session:
         assert await end_active_relationship(session, sender.id, ended_at) == couple.id
@@ -410,8 +384,7 @@ async def test_unpair_purges_events_deliveries_and_push_addressing() -> None:
         current = await session.get(NotificationDevice, device.id)
         assert current is not None
         assert current.disabled_at == ended_at
-        assert current.push_token_encrypted is None
-        assert current.push_token_hash is None
+        assert not current.notifications_enabled
         assert await session.scalar(select(func.count()).select_from(NotificationEvent)) == 0
         assert await session.scalar(select(func.count()).select_from(NotificationDelivery)) == 0
 

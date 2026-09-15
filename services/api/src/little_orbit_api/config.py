@@ -23,9 +23,6 @@ class Settings(BaseSettings):
     token_pepper: SecretStr = Field(default=SecretStr("development-only-token-pepper"))
     totp_encryption_key: SecretStr | None = None
     outbox_encryption_key: SecretStr | None = None
-    push_token_encryption_key: SecretStr | None = None
-    fcm_project_id: str | None = None
-    google_application_credentials: Path | None = None
     smtp_host: str = "localhost"
     smtp_port: int = 1025
     smtp_from: str = "hello@lil-orb.pax-kun.com"

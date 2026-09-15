@@ -1,7 +1,6 @@
 [CmdletBinding()]
 param(
     [string]$EnvironmentFile = ".env.android-signing",
-    [string]$ApplicationEnvironmentFile = ".env",
     [string]$OutputDirectory = "dist/android",
     [string]$ReuseWearApk
 )
@@ -12,12 +11,6 @@ $SigningNames = @(
     "ANDROID_SIGNING_STORE_PASSWORD",
     "ANDROID_SIGNING_KEY_ALIAS",
     "ANDROID_SIGNING_KEY_PASSWORD"
-)
-$FirebaseNames = @(
-    "LITTLE_ORBIT_FIREBASE_APPLICATION_ID",
-    "LITTLE_ORBIT_FIREBASE_API_KEY",
-    "LITTLE_ORBIT_FIREBASE_PROJECT_ID",
-    "LITTLE_ORBIT_FIREBASE_SENDER_ID"
 )
 
 function Import-AllowlistedEnvironment([string]$Path, [string[]]$Names) {
@@ -97,31 +90,12 @@ $environmentPath = if ([IO.Path]::IsPathRooted($EnvironmentFile)) {
     Join-Path $projectRoot $EnvironmentFile
 }
 Import-AllowlistedEnvironment $environmentPath $SigningNames
-$applicationEnvironmentPath = if ([IO.Path]::IsPathRooted($ApplicationEnvironmentFile)) {
-    $ApplicationEnvironmentFile
-} else {
-    Join-Path $projectRoot $ApplicationEnvironmentFile
-}
-if (Test-Path -LiteralPath $applicationEnvironmentPath) {
-    Import-AllowlistedEnvironment $applicationEnvironmentPath $FirebaseNames
-}
-
 $missing = $SigningNames | Where-Object {
     [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_))
 }
 if ($missing) {
     throw "Missing Android signing settings: $($missing -join ', ')."
 }
-$configuredFirebase = @($FirebaseNames | Where-Object {
-    -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_))
-})
-if ($configuredFirebase.Count -notin @(0, $FirebaseNames.Count)) {
-    $missingFirebase = $FirebaseNames | Where-Object {
-        [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_))
-    }
-    throw "Firebase public build settings are incomplete: $($missingFirebase -join ', ')."
-}
-
 $storePath = [Environment]::GetEnvironmentVariable("ANDROID_SIGNING_STORE_FILE")
 if (-not [IO.Path]::IsPathRooted($storePath)) {
     $storePath = Join-Path $projectRoot $storePath
@@ -195,7 +169,7 @@ $releaseManifest = [ordered]@{
     WearSha256 = $wear.ApkSha256
     WearSizeBytes = $wear.SizeBytes
     CertificateSha256 = $phone.CertificateSha256
-    ContentFreePushConfigured = $configuredFirebase.Count -eq $FirebaseNames.Count
+    NotificationTransport = "self-hosted-wss-polling"
 }
 $releaseManifest | ConvertTo-Json |
     Set-Content -LiteralPath (Join-Path $outputPath "release-manifest.json") -Encoding utf8

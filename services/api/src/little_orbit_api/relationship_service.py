@@ -128,13 +128,6 @@ async def _delete_ephemeral_relationship_state(
         .values(
             notifications_enabled=False,
             disabled_at=ended_at,
-            push_token_encrypted=None,
-            push_token_hash=None,
-            push_token_refreshed_at=None,
-            push_token_invalidated_at=ended_at,
-            push_last_attempt_at=None,
-            push_last_success_at=None,
-            push_failure_count=0,
         )
     )
     await session.execute(delete(LocationSample).where(LocationSample.couple_id == couple_id))

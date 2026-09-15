@@ -126,7 +126,6 @@ async def _seed_pair() -> tuple[Account, Account, str, str]:
                 app_version_code=19,
                 notifications_enabled=True,
                 last_seen_at=now,
-                push_failure_count=0,
             )
         )
         await session.commit()

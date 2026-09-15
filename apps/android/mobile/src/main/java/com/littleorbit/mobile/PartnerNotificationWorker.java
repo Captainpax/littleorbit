@@ -17,7 +17,6 @@ import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
-import androidx.work.OutOfQuotaPolicy;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
@@ -40,7 +39,6 @@ import java.util.concurrent.TimeUnit;
 public final class PartnerNotificationWorker extends Worker {
     private static final String PERIODIC = "little-orbit-partner-notifications";
     private static final String NOW = "little-orbit-partner-notifications-now";
-    private static final String URGENT = "little-orbit-partner-notifications-urgent";
     private final Context context;
     private final OrbitRepository orbit;
     private final NotificationDeviceStore device;
@@ -90,18 +88,9 @@ public final class PartnerNotificationWorker extends Worker {
     }
 
     private void register(boolean allowed) throws Exception {
-        String pushToken = device.pushToken();
-        if (allowed && pushToken == null) FirebasePushBootstrap.requestToken(context);
-        NotificationApiModels.Device registered = orbit.registerNotificationDevice(device.id(),
-                new NotificationApiModels.DeviceUpsert(
-                        BuildConfig.VERSION_CODE, allowed, pushToken))
+        orbit.registerNotificationDevice(device.id(),
+                new NotificationApiModels.DeviceUpsert(BuildConfig.VERSION_CODE, allowed))
                 .get(30, TimeUnit.SECONDS);
-        if (!allowed || pushToken == null) return;
-        if (registered.pushEnabled) {
-            device.pushTokenAccepted();
-        } else if (device.rejectPushToken(pushToken)) {
-            FirebasePushBootstrap.rotateRejectedToken(context);
-        }
     }
 
     private int deliver(NotificationApiModels.Preferences preferences) throws Exception {
@@ -286,7 +275,6 @@ public final class PartnerNotificationWorker extends Worker {
         if (!enabled) {
             manager.cancelUniqueWork(PERIODIC);
             manager.cancelUniqueWork(NOW);
-            manager.cancelUniqueWork(URGENT);
             return;
         }
         PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
@@ -307,17 +295,6 @@ public final class PartnerNotificationWorker extends Worker {
                 .setConstraints(network()).setBackoffCriteria(
                         BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build();
         WorkManager.getInstance(context).enqueueUniqueWork(NOW, ExistingWorkPolicy.KEEP, request);
-    }
-
-    /** Runs a server fetch promptly after an authenticated high-priority FCM wake. */
-    public static void enqueueExpedited(Context context) {
-        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(PartnerNotificationWorker.class)
-                .setConstraints(network())
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-                .build();
-        WorkManager.getInstance(context).enqueueUniqueWork(
-                URGENT, ExistingWorkPolicy.KEEP, request);
     }
 
     private static Constraints network() {

@@ -30,7 +30,6 @@ from .models import (
     QuizAnswer,
     QuizDayQuestion,
 )
-from .push_delivery import deliver_push_wakes_once
 from .quiz_notification_scheduler import ensure_daily_quiz_notifications
 
 LOGGER = logging.getLogger(__name__)
@@ -407,17 +406,6 @@ async def _poll_mail_forever(interval_seconds: int) -> None:
         await asyncio.sleep(max(interval_seconds, 5))
 
 
-async def _poll_push_forever(interval_seconds: int) -> None:
-    """Dispatch content-free device wakes without coupling them to feature writes."""
-
-    while True:
-        try:
-            await deliver_push_wakes_once()
-        except Exception:
-            LOGGER.exception("content-free push cycle failed")
-        await asyncio.sleep(max(interval_seconds, 5))
-
-
 async def _run_scheduled_jobs_forever(interval_seconds: int) -> None:
     while True:
         try:
@@ -444,7 +432,6 @@ async def _run_privacy_maintenance_forever(interval_seconds: int) -> None:
 
 async def run_forever(
     mail_interval_seconds: int = 30,
-    push_interval_seconds: int = 5,
     privacy_interval_seconds: int = 300,
     scheduled_interval_seconds: int = 3600,
 ) -> None:
@@ -452,7 +439,6 @@ async def run_forever(
 
     await asyncio.gather(
         _poll_mail_forever(mail_interval_seconds),
-        _poll_push_forever(push_interval_seconds),
         _run_privacy_maintenance_forever(privacy_interval_seconds),
         _run_scheduled_jobs_forever(scheduled_interval_seconds),
     )

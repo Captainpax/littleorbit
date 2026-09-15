@@ -29,7 +29,6 @@ androidx-test-uiautomator = "2.4.0"
 kadb = "2.1.4"
 conscrypt = "2.6.0"
 image-cropper = "4.7.0"
-firebase-messaging = "25.1.1"
 
 [libraries]
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
@@ -70,7 +69,6 @@ androidx-test-uiautomator = { module = "androidx.test.uiautomator:uiautomator", 
 kadb = { module = "com.flyfishxu:kadb", version.ref = "kadb" }
 conscrypt-android = { module = "org.conscrypt:conscrypt-android", version.ref = "conscrypt" }
 image-cropper = { module = "com.vanniktech:android-image-cropper", version.ref = "image-cropper" }
-firebase-messaging = { module = "com.google.firebase:firebase-messaging", version.ref = "firebase-messaging" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -28,6 +28,7 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 8. Keep modules below 500 logical lines, functions/methods below 60 lines, and cyclomatic complexity at most 10. A ratcheted baseline may document existing exceptions and may only decrease.
 9. Preserve unrelated work. Never guess a secret, DNS state, proxy state, or production state.
 10. For every update, inventory all repository-owned Markdown files and check whether each remains accurate. Update or create every affected document, and always review and update `ROADMAP.md` when behavior, scope, milestones, or release state changes.
+11. Notifications use only Little Orbit's authenticated HTTPS/WSS endpoints and Android's local scheduler. Never add Firebase, a hosted push broker, or provider-issued device addresses.
 
 ## System invariants
 

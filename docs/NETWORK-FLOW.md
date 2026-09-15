@@ -354,29 +354,26 @@ sequenceDiagram
     participant Feature as Smooch / note / countdown / quiz transition
     participant DB as PostgreSQL
     participant Hub as API foreground hub
-    participant Push as Optional FCM worker
     participant Phone1 as Partner phone 1
     participant Phone2 as Partner phone 2
     Feature->>DB: Insert feature row + short-lived event atomically
     DB->>DB: Create delivery per active enabled installation
     Feature-->>Hub: Commit succeeded; signal recipient account
     Hub-->>Phone1: notification.available (no content)
-    DB->>Push: Claim pending installation + exact token generation
-    Push-->>Phone2: notification.available (no content)
-    Push->>DB: Record result only if token generation still matches
     loop Every client message or 30 s idle heartbeat
         Phone1->>Hub: Keep foreground subscription open
         Hub->>DB: Recheck exact session, active account, and installation
     end
-    Phone1->>DB: Authenticated pending fetch for installation UUID
-    Phone2->>DB: WorkManager fallback pending fetch
+    Phone1->>Hub: Authenticated pending fetch for installation UUID
+    Phone2->>Phone2: WorkManager schedules a background check
+    Phone2->>Hub: Authenticated fallback pending fetch
     DB-->>Phone1: Authorized display metadata
     DB-->>Phone2: Same event for independent delivery
     Phone1->>DB: Ack only phone 1 after successful post
     Note over Phone2,DB: Phone 2 stays pending until it posts and acks
 ```
 
-Installation IDs are random app-generated UUIDs rather than hardware identifiers. Account preferences gate event creation; disabling a category removes its waiting events, while Android runtime permission and notification-channel state gate each phone's post. Delivery backfill uses conflict-safe inserts and ignores the retired account-wide Smooch-consumed marker, so an old client cannot suppress a current installation. Optional FCM addresses are keyed-hashed and encrypted; send results are bound to the exact digest and claim time, and terminally invalid digests cannot be re-registered. Android retains only a rejection digest, attempts one bounded Firebase token rotation, and continues first-party polling. The foreground socket closes after session expiry or revocation, account suspension or deletion, or installation disablement. Document creation and the first accepted body change inside a 30-minute document/editor window may create a note alert; it is skipped when the partner already has that document open. Countdown metadata excludes notes and private reminder choices; quiz metadata is limited to the UTC date. Preparing a missing daily quiz alert uses an isolated transaction so a pool outage cannot block unrelated pending events. Events are fetchable for 24 hours, retained for at most seven days for bounded recovery, and deleted immediately on unpair; installations unseen for 90 days are purged. The foreground hint hub is process-local, so the current self-hosted deployment runs one API process; durable polling remains authoritative if a hint is missed.
+Installation IDs are random app-generated UUIDs rather than hardware identifiers. Account preferences gate event creation; disabling a category removes its waiting events, while Android runtime permission and notification-channel state gate each phone's post. Delivery backfill uses conflict-safe inserts and ignores the retired account-wide Smooch-consumed marker, so an old client cannot suppress a current installation. Little Orbit uses no Firebase or hosted notification broker and stores no provider-issued address. The foreground socket closes after session expiry or revocation, account suspension or deletion, or installation disablement. Document creation and the first accepted body change inside a 30-minute document/editor window may create a note alert; it is skipped when the partner already has that document open. Countdown metadata excludes notes and private reminder choices; quiz metadata is limited to the UTC date. Preparing a missing daily quiz alert uses an isolated transaction so a pool outage cannot block unrelated pending events. Events are fetchable for 24 hours, retained for at most seven days for bounded recovery, and deleted immediately on unpair; installations unseen for 90 days are purged. The foreground hint hub is process-local, so the current self-hosted deployment runs one API process. Background WorkManager checks are authoritative when the app is not visible, but Android Doze and manufacturer battery policies can delay them beyond the nominal 15-minute interval.
 
 ## Email delivery
 

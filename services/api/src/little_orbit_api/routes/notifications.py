@@ -20,7 +20,6 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..clock import SystemClock
-from ..config import get_settings
 from ..couple_access import active_member, lock_couple
 from ..database import SessionFactory, session_scope
 from ..dependencies import current_account
@@ -44,7 +43,6 @@ from ..notification_service import (
     preferences_for,
     preferences_response,
 )
-from ..push_tokens import assign_push_token, clear_push_token
 from ..quiz_v2_service import materialize_day, utc_today
 from ..socket_auth import SocketIdentity, authenticate_socket, socket_session_active
 from .notes import _compatible_socket
@@ -119,10 +117,6 @@ async def register_device(
     device = await session.get(NotificationDevice, record_id)
     if device is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Device registration failed")
-    if not payload.notifications_enabled:
-        clear_push_token(device, now)
-    elif payload.push_token is not None:
-        await assign_push_token(session, device, payload.push_token, now, get_settings())
     if payload.notifications_enabled:
         await ensure_pending_deliveries(session, device)
     await session.commit()
@@ -130,7 +124,7 @@ async def register_device(
         device_id=device.device_id,
         last_seen_at=device.last_seen_at,
         notifications_enabled=device.notifications_enabled,
-        push_enabled=device.push_token_encrypted is not None,
+        push_enabled=False,
     )
 
 
@@ -152,7 +146,6 @@ async def disable_device(
         now = SystemClock().now()
         device.disabled_at = now
         device.notifications_enabled = False
-        clear_push_token(device, now)
         await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

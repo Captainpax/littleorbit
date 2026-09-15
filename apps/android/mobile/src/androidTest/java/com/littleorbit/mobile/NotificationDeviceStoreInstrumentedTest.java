@@ -3,8 +3,6 @@ package com.littleorbit.mobile;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -13,9 +11,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-/** Verifies that the private FCM address is never retained as preference plaintext. */
+/** Verifies random installation identity and cleanup of retired hosted transport state. */
 public final class NotificationDeviceStoreInstrumentedTest {
-    private static final String TOKEN = "private-fcm-installation-address";
     private Context context;
     private SharedPreferences preferences;
 
@@ -32,40 +29,30 @@ public final class NotificationDeviceStoreInstrumentedTest {
     }
 
     @Test
-    public void saveEncryptsAndClearRemovesToken() {
+    public void identifierIsStableUntilAccountStateIsCleared() {
         NotificationDeviceStore store = new NotificationDeviceStore(context);
+        String first = store.id();
 
-        assertTrue(store.savePushToken(TOKEN));
+        assertEquals(first, store.id());
+        store.clearForAccountChange();
 
-        String sealed = preferences.getString("push_token_sealed_v1", null);
-        assertNotEquals(TOKEN, sealed);
-        assertEquals(TOKEN, store.pushToken());
-        store.clearPushToken();
-        assertNull(store.pushToken());
+        assertNotEquals(first, store.id());
     }
 
     @Test
-    public void rejectedTokenIsQuarantinedAndRecoveryIsBounded() {
-        NotificationDeviceStore store = new NotificationDeviceStore(context);
-        assertTrue(store.savePushToken(TOKEN));
+    public void constructorDeletesEveryRetiredHostedTransportValue() {
+        preferences.edit()
+                .putString("push_token", "retired-address")
+                .putString("push_token_sealed_v1", "retired-ciphertext")
+                .putString("rejected_push_digest_v1", "retired-digest")
+                .putBoolean("push_recovery_attempted_v1", true)
+                .commit();
 
-        assertTrue(store.rejectPushToken(TOKEN));
-        assertNull(store.pushToken());
-        assertFalse(store.savePushToken(TOKEN));
-        assertFalse(store.rejectPushToken(TOKEN));
-        assertTrue(store.savePushToken(TOKEN + "-rotated"));
-
-        store.pushTokenAccepted();
-        assertEquals(TOKEN + "-rotated", store.pushToken());
-    }
-
-    @Test
-    public void constructorMigratesAndDeletesLegacyPlaintext() {
-        preferences.edit().putString("push_token", TOKEN).commit();
-
-        NotificationDeviceStore store = new NotificationDeviceStore(context);
+        new NotificationDeviceStore(context);
 
         assertNull(preferences.getString("push_token", null));
-        assertEquals(TOKEN, store.pushToken());
+        assertNull(preferences.getString("push_token_sealed_v1", null));
+        assertNull(preferences.getString("rejected_push_digest_v1", null));
+        assertNull(preferences.getString("push_recovery_attempted_v1", null));
     }
 }

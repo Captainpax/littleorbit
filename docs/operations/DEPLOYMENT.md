@@ -180,3 +180,11 @@ Before serving RC14 traffic, verify configured limits with synthetic accounts an
 Open note and notification sockets with disposable sessions, then revoke each session while the socket is active and while it is idle. Both paths must close within the 30-second revalidation bound, and a queued note operation after revocation must not commit. These checks establish server behavior only; the two-physical-phone notification and full phone/watch release gates remain open.
 
 Raw-location ingestion schedules expiry five minutes before `recorded_at + 24 hours`. After deploying the API and worker, run one maintenance cycle and use privacy-safe aggregate queries to prove that no `location_samples` row is past either `expires_at` or `recorded_at + 24 hours`. Repeat after at least one normal five-minute worker interval. Backups must continue excluding all `location_samples` rows.
+
+## RC15 self-hosted notification correction
+
+Take an encrypted PostgreSQL backup before migration `0024`. Rehearse `0023 -> 0024 -> 0023 -> 0024` on the isolated stack and confirm that the seven retired provider-address and delivery-attempt columns plus their partial index are absent at head. The migration preserves random installations, short-lived events, per-installation delivery rows, preferences, and acknowledgements.
+
+Build phone version code 20 as `1.0.0-rc.15`. Reuse the exact RC14 Wear version code 16 APK because Wear behavior is unchanged; record that byte identity in the release notes. Before publication, inspect the phone dependency tree, merged manifest, APK contents, server dependencies, Compose configuration, and container environment for hosted notification SDKs, credentials, addresses, or egress paths. An RC14 heartbeat may include only the compatibility value `push_token: null`; reject every non-null value and always return `push_enabled: false`.
+
+Verify an authenticated foreground WSS hint, two independent installation fetches and acknowledgements, offline recovery, permission denial and recovery, process restart, and eventual WorkManager polling. Do not describe background delivery as instant: Android Doze and manufacturer battery controls can delay a nominal 15-minute check. Confirm that upgrading an RC14 phone deletes every retired local hosted-transport key before publishing RC15.

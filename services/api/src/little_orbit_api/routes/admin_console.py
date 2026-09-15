@@ -156,10 +156,6 @@ async def update_account(
         for device in devices:
             device.notifications_enabled = False
             device.disabled_at = now
-            device.push_token_encrypted = None
-            device.push_token_hash = None
-            device.push_token_refreshed_at = None
-            device.push_token_invalidated_at = now
     session.add(
         SecurityEvent(
             actor_id=admin.id,

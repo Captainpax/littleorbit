@@ -59,7 +59,8 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0024-calendar-countdowns-and-transition-alerts.md` — timed/all-day moments, private reminders, one-way calendar export, and countdown/quiz alerts.
 - `docs/adr/0025-persistent-authentication-boundaries.md` — persistent hashed throttles, staged administrator MFA replacement, account-first transitions, session revalidation, and legacy reveal enforcement.
 - `docs/adr/0026-relationship-scoped-passive-caches.md` — generation-scoped widget and Wear authorization, urgent purge ordering, and bounded offline expiry.
-- `docs/adr/0027-content-free-fcm-wakeups.md` — optional opaque FCM wakes while the first-party per-installation queue remains authoritative.
+- `docs/adr/0027-content-free-fcm-wakeups.md` — historical RC14 decision, superseded by ADR 0034.
+- `docs/adr/0034-fully-self-hosted-notifications.md` — provider-free foreground WSS plus Android polling and its background-latency tradeoff.
 - `docs/adr/0028-isolated-attachment-media-worker.md` — least-privilege scanning, sanitization, atomic publication, and private archive access.
 - `docs/adr/0029-relationship-invalidation-purge-protocol.md` — structured invalidation and generation-ordered phone, widget, and Wear cleanup.
 - `docs/adr/0030-together-time-retention-and-corrections.md` — short raw-coordinate retention, 30-day minute detail, durable totals, and audited corrections.
@@ -87,6 +88,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-RC12.1-2026-09-13.md` — RC12.1 preview, notification, compatibility, artifact, and deployment evidence.
 - `docs/operations/VERIFICATION-RC13-2026-09-13.md` — RC13 countdown, quiz, AI whitespace, avatar, compatibility, artifact, and deployment evidence.
 - `docs/operations/VERIFICATION-RC14-2026-09-14.md` — RC14 API security plus Android passive-cache, Wear expiry, installer, emulator, and build evidence.
+- `docs/operations/VERIFICATION-RC15-2026-09-15.md` — provider-free notification removal, migration, signed-upgrade, deployment, and publication evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -110,6 +112,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.12.1.md` — preview-first documents, inline private images, per-device notifications, motion, and Android 10 repairs.
 - `docs/releases/1.0.0-rc.13.md` — calendar-style countdowns, quiz transitions, generated-text validation, and partner-assigned avatars.
 - `docs/releases/1.0.0-rc.14.md` — published adaptive shell, security, privacy retention, notification, attachment, backup, and emulator candidate.
+- `docs/releases/1.0.0-rc.15.md` — fully self-hosted notification correction with the RC14 Wear artifact retained byte-for-byte.
 <!-- documentation-inventory:end -->
 
 ## Review routing

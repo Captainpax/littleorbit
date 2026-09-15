@@ -43,6 +43,24 @@ def test_notification_requests_are_bounded_and_strict() -> None:
             platform="ios", app_version_code=17, notifications_enabled=True  # type: ignore[arg-type]
         )
     with pytest.raises(ValidationError):
+        NotificationDeviceUpsert.model_validate(
+            {
+                "platform": "android",
+                "app_version_code": 20,
+                "notifications_enabled": True,
+                "push_token": "hosted-transport-address-is-not-accepted",
+            }
+        )
+    legacy_null = NotificationDeviceUpsert.model_validate(
+        {
+            "platform": "android",
+            "app_version_code": 19,
+            "notifications_enabled": True,
+            "push_token": None,
+        }
+    )
+    assert legacy_null.model_dump()["push_token"] is None
+    with pytest.raises(ValidationError):
         NotificationDeliveryAck(device_id=uuid4(), event_ids=[uuid4()] * 51)
     with pytest.raises(ValidationError):
         NotificationPreferencesUpdate.model_validate(

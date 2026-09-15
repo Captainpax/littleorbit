@@ -45,8 +45,7 @@ public final class ForegroundNotificationSocket {
         orbit.registerNotificationDevice(device.id(),
                 new NotificationApiModels.DeviceUpsert(
                         com.littleorbit.mobile.BuildConfig.VERSION_CODE,
-                        enabled,
-                        device.pushToken()))
+                        enabled))
                 .thenRun(() -> connect(requested))
                 .exceptionally(failure -> {
                     device.failed("Foreground connection will use scheduled checks");
