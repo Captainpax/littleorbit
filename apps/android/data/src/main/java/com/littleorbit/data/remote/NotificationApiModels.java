@@ -14,19 +14,22 @@ public final class NotificationApiModels {
         @Json(name = "note_editing_enabled") public final boolean noteEditing;
         @Json(name = "daily_quiz_enabled") public final boolean dailyQuiz;
         @Json(name = "countdowns_enabled") public final boolean countdowns;
+        @Json(name = "together_time_enabled") public final boolean togetherTime;
         @Json(name = "weekly_summary_enabled") public final boolean weeklySummary;
         @Json(name = "updated_at") public final String updatedAt;
 
         /** Creates decoded or complete replacement preference state. */
         public Preferences(
                 boolean master, boolean smooches, boolean noteEditing,
-                boolean dailyQuiz, boolean countdowns, boolean weeklySummary,
+                boolean dailyQuiz, boolean countdowns, boolean togetherTime,
+                boolean weeklySummary,
                 String updatedAt) {
             this.master = master;
             this.smooches = smooches;
             this.noteEditing = noteEditing;
             this.dailyQuiz = dailyQuiz;
             this.countdowns = countdowns;
+            this.togetherTime = togetherTime;
             this.weeklySummary = weeklySummary;
             this.updatedAt = updatedAt;
         }
@@ -40,6 +43,7 @@ public final class NotificationApiModels {
         @Json(name = "note_editing_enabled") public final boolean noteEditing;
         @Json(name = "daily_quiz_enabled") public final boolean dailyQuiz;
         @Json(name = "countdowns_enabled") public final boolean countdowns;
+        @Json(name = "together_time_enabled") public final boolean togetherTime;
         @Json(name = "weekly_summary_enabled") public final boolean weeklySummary;
 
         /** Copies editable state from a decoded preference response. */
@@ -49,18 +53,21 @@ public final class NotificationApiModels {
             noteEditing = value.noteEditing;
             dailyQuiz = value.dailyQuiz;
             countdowns = value.countdowns;
+            togetherTime = value.togetherTime;
             weeklySummary = value.weeklySummary;
         }
 
         /** Creates a complete preference replacement. */
         public PreferencesUpdate(
                 boolean master, boolean smooches, boolean noteEditing,
-                boolean dailyQuiz, boolean countdowns, boolean weeklySummary) {
+                boolean dailyQuiz, boolean countdowns, boolean togetherTime,
+                boolean weeklySummary) {
             this.master = master;
             this.smooches = smooches;
             this.noteEditing = noteEditing;
             this.dailyQuiz = dailyQuiz;
             this.countdowns = countdowns;
+            this.togetherTime = togetherTime;
             this.weeklySummary = weeklySummary;
         }
     }
@@ -70,11 +77,19 @@ public final class NotificationApiModels {
         public final String platform = "android";
         @Json(name = "app_version_code") public final int appVersionCode;
         @Json(name = "notifications_enabled") public final boolean notificationsEnabled;
+        @Json(name = "push_token") public final String pushToken;
 
         /** Creates one non-hardware device heartbeat. */
         public DeviceUpsert(int appVersionCode, boolean notificationsEnabled) {
+            this(appVersionCode, notificationsEnabled, null);
+        }
+
+        /** Creates a heartbeat with an optional opaque FCM installation address. */
+        public DeviceUpsert(
+                int appVersionCode, boolean notificationsEnabled, String pushToken) {
             this.appVersionCode = appVersionCode;
             this.notificationsEnabled = notificationsEnabled;
+            this.pushToken = pushToken;
         }
     }
 
@@ -83,12 +98,16 @@ public final class NotificationApiModels {
         @Json(name = "device_id") public final String deviceId;
         @Json(name = "last_seen_at") public final String lastSeenAt;
         @Json(name = "notifications_enabled") public final boolean notificationsEnabled;
+        @Json(name = "push_enabled") public final boolean pushEnabled;
 
         /** Creates decoded registration state. */
-        public Device(String deviceId, String lastSeenAt, boolean notificationsEnabled) {
+        public Device(
+                String deviceId, String lastSeenAt,
+                boolean notificationsEnabled, boolean pushEnabled) {
             this.deviceId = deviceId;
             this.lastSeenAt = lastSeenAt;
             this.notificationsEnabled = notificationsEnabled;
+            this.pushEnabled = pushEnabled;
         }
     }
 
@@ -106,13 +125,15 @@ public final class NotificationApiModels {
         @Json(name = "countdown_id") public final String countdownId;
         @Json(name = "countdown_title") public final String countdownTitle;
         @Json(name = "quiz_date") public final String quizDate;
+        @Json(name = "together_day") public final String togetherDay;
 
         /** Creates decoded privacy-limited event metadata. */
         public Event(
                 String id, String kind, String createdAt, String expiresAt,
                 String actorName, String emoji, String phraseKey,
                 String noteId, String noteTitle,
-                String countdownId, String countdownTitle, String quizDate) {
+                String countdownId, String countdownTitle, String quizDate,
+                String togetherDay) {
             this.id = id;
             this.kind = kind;
             this.createdAt = createdAt;
@@ -125,6 +146,7 @@ public final class NotificationApiModels {
             this.countdownId = countdownId;
             this.countdownTitle = countdownTitle;
             this.quizDate = quizDate;
+            this.togetherDay = togetherDay;
         }
     }
 

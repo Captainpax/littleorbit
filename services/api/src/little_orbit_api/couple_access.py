@@ -9,8 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .models import Couple, CoupleMember
 
 
+def relationship_inactive_error() -> HTTPException:
+    """Return the stable client purge signal for an inactive relationship."""
+
+    return HTTPException(
+        status.HTTP_409_CONFLICT,
+        {"code": "relationship_inactive", "message": "Pair with a partner first"},
+    )
+
+
 async def active_member(
-    session: AsyncSession, account_id: UUID, *, lock: bool = False
+    session: AsyncSession, account_id: UUID
 ) -> CoupleMember:
     """Return active membership after authentication or fail without leaking metadata."""
 
@@ -18,11 +27,26 @@ async def active_member(
         CoupleMember.account_id == account_id,
         CoupleMember.left_at.is_(None),
     )
-    if lock:
-        statement = statement.with_for_update()
     member = await session.scalar(statement)
     if member is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Pair with a partner first")
+        raise relationship_inactive_error()
+    return member
+
+
+async def archived_member(
+    session: AsyncSession, account_id: UUID, couple_id: UUID
+) -> CoupleMember:
+    """Authorize one former member without revealing another archive's existence."""
+
+    member = await session.scalar(
+        select(CoupleMember).where(
+            CoupleMember.account_id == account_id,
+            CoupleMember.couple_id == couple_id,
+            CoupleMember.left_at.is_not(None),
+        )
+    )
+    if member is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Archive is unavailable")
     return member
 
 
@@ -53,7 +77,12 @@ async def both_members_consent(
 async def lock_couple(session: AsyncSession, couple_id: UUID) -> Couple:
     """Serialize retry-sensitive shared mutations on one relationship row."""
 
-    couple = await session.get(Couple, couple_id, with_for_update=True)
+    couple = await session.get(
+        Couple,
+        couple_id,
+        with_for_update=True,
+        populate_existing=True,
+    )
     if couple is None or couple.ended_at is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
+        raise relationship_inactive_error()
     return couple

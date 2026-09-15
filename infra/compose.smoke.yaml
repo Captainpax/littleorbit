@@ -6,9 +6,24 @@ services:
   gateway:
     ports: !override
       - "127.0.0.1:18180:8180"
+    networks:
+      gateway-api:
+        ipv4_address: 172.30.15.2
   web:
     environment:
       NEXT_PUBLIC_BASE_URL: http://127.0.0.1:18180
+  api:
+    environment:
+      TRUSTED_PROXY_IP: 172.30.15.2
+    networks:
+      gateway-api:
+        ipv4_address: 172.30.15.3
   mailpit:
     ports: !override
       - "127.0.0.1:18025:8025"
+
+networks:
+  gateway-api:
+    ipam:
+      config: !override
+        - subnet: 172.30.15.0/28

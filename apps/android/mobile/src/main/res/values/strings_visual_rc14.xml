@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="visual_orbit_spark" translatable="false">✦</string>
+    <string name="visual_nearby_placeholder">0h 0m nearby · estimate</string>
+    <string name="visual_format_bold_glyph" translatable="false">B</string>
+    <string name="visual_format_italic_glyph" translatable="false">I</string>
+    <string name="visual_format_heading_glyph" translatable="false">H</string>
+    <string name="visual_format_list_glyph" translatable="false">–</string>
+    <string name="visual_format_checklist_glyph" translatable="false">[ ]</string>
+    <string name="visual_add_glyph" translatable="false">+</string>
+    <string name="visual_more_glyph" translatable="false">…</string>
+    <string name="visual_archive_picker_label">Choose a private archive</string>
+    <string name="visual_archive_picker_row">%1$s · ended %2$s</string>
+    <string name="visual_quiz_history_row">%1$s\n%2$s · %3$s · %4$s</string>
+    <string name="visual_open_quiz_history">Open quiz from %1$s. %2$s.</string>
+    <string name="visual_quiz_ready">Ready together</string>
+    <string name="visual_quiz_waiting">Waiting for partner</string>
+    <string name="visual_quiz_finished">Finished</string>
+    <string name="visual_quiz_in_progress">In progress</string>
+    <string name="visual_nearby_history_row">%1$s · %2$dh %3$dm%4$s</string>
+</resources>

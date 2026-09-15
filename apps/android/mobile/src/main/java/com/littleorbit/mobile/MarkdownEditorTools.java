@@ -25,6 +25,7 @@ final class MarkdownEditorTools {
         menu.getMenu().add(0, 4, 3, R.string.format_table);
         menu.getMenu().add(0, 5, 4, R.string.format_strikethrough);
         menu.getMenu().add(0, 6, 5, R.string.format_divider);
+        menu.getMenu().add(0, 7, 6, R.string.format_code_block);
         menu.setOnMenuItemClickListener(item -> applyExtra(item.getItemId()));
         menu.show();
     }
@@ -37,6 +38,7 @@ final class MarkdownEditorTools {
             case 4 -> insert("| Column | Column |\n| --- | --- |\n|  |  |\n");
             case 5 -> wrap("~~", "~~");
             case 6 -> insert("\n---\n");
+            case 7 -> wrap("```\n", "\n```");
             default -> { return false; }
         }
         return true;

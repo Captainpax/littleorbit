@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="refresh_shared_documents">Refresh shared documents</string>
+    <string name="pair_with_your_partner">Pair with your partner</string>
+    <string name="space_library_unavailable">Your shared documents could not be refreshed. Check your connection and try again.</string>
+    <string name="space_restoring_document">Restoring your encrypted draft and checking the shared version…</string>
+    <string name="space_document_unavailable">This document is no longer available here. Your encrypted local draft has not been discarded.</string>
+    <string name="space_retry_document">Check shared version</string>
+    <string name="space_return_to_library">Return to Our Space</string>
+    <string name="space_attachments_unavailable">Attachments could not be refreshed. Existing document text is still safe.</string>
+    <string name="raw_html_neutralized">Raw HTML is shown as text for safety. Markdown formatting still works.</string>
+    <string name="format_code_block">Fenced code block</string>
+    <string name="space_preview">Preview</string>
+    <string name="space_untitled_draft">This draft needs a title</string>
+    <string name="space_untitled_draft_message">Add a title to save this shared document, or discard this local draft.</string>
+    <string name="keep_editing">Keep editing</string>
+    <string name="discard_draft">Discard draft</string>
+    <string name="space_relationship_inactive">This shared space is no longer active on this account. Pair again to start a new space.</string>
+</resources>

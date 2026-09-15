@@ -1,5 +1,6 @@
 """Authorized in-app activity feed without private feature content."""
 
+from typing import cast
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Query
@@ -8,7 +9,14 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..activity_models import ActivityEvent, ActivitySeen
-from ..activity_schemas import ActivityPage, ActivityResponse, ActivitySeenRequest
+from ..activity_schemas import (
+    ActivityEmoji,
+    ActivityKind,
+    ActivityPage,
+    ActivityResponse,
+    ActivitySeenRequest,
+    ActivityTargetType,
+)
 from ..clock import SystemClock
 from ..couple_access import active_member, lock_couple
 from ..database import session_scope
@@ -102,12 +110,12 @@ def _response(
     return ActivityResponse(
         id=event.id,
         sequence=event.sequence,
-        kind=event.kind,
+        kind=cast(ActivityKind, event.kind),
         partner_display_name="You" if event.actor_id == viewer_id else actor_name or "Partner",
-        target_type=event.target_type,
+        target_type=cast(ActivityTargetType | None, event.target_type),
         target_id=event.target_id,
         target_title=event.target_title,
-        emoji=event.emoji,
+        emoji=cast(ActivityEmoji | None, event.emoji),
         created_at=event.created_at,
         seen=event.sequence <= seen,
     )

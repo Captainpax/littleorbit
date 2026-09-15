@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/background_cosmic">
+    android:background="@drawable/background_cosmic"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -10,59 +13,246 @@
         android:orientation="vertical"
         android:padding="24dp">
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pairingBackButton"
+                style="@style/Widget.LittleOrbit.Button.Text"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/back"
+                android:text="@string/rc14_back_symbol"
+                android:textSize="28sp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:accessibilityHeading="true"
+                android:text="@string/pairing"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
+        </LinearLayout>
+
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/rc14_pair_intro"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            app:cardBackgroundColor="@color/navy_surface"
+            app:cardCornerRadius="22dp"
+            app:strokeColor="@color/orbit_border"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:text="@string/rc14_pair_create_heading"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+                <TextView
+                    android:id="@+id/pairCodeValue"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:gravity="center"
+                    android:letterSpacing="0.16"
+                    android:text="@string/rc14_pair_code_placeholder"
+                    android:textColor="@color/cloud"
+                    android:textIsSelectable="true"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/pairCodeExpiry"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:textColor="@color/muted" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/createCodeButton"
+                    style="@style/Widget.LittleOrbit.Button.Primary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="@string/create_pair_code" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/copyCodeButton"
+                    style="@style/Widget.LittleOrbit.Button.Outline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:enabled="false"
+                    android:text="@string/rc14_copy_code" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/shareCodeButton"
+                    style="@style/Widget.LittleOrbit.Button.Outline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:enabled="false"
+                    android:text="@string/rc14_share_code" />
+
+                <TextView
+                    android:id="@+id/pendingStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/rc14_pair_pending_none"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/checkPendingButton"
+                    style="@style/Widget.LittleOrbit.Button.Text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rc14_refresh_pending" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/navy_surface"
+            app:cardCornerRadius="22dp"
+            app:strokeColor="@color/orbit_border"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:text="@string/rc14_pair_join_heading"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/codeLayout"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:hint="@string/pair_code_hint">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/codeInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:autofillHints="smsOTPCode"
+                        android:imeOptions="actionDone"
+                        android:inputType="textCapCharacters"
+                        android:maxLength="11"
+                        android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/redeemButton"
+                    style="@style/Widget.LittleOrbit.Button.Primary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/redeem_pair_code" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/confirmationCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="@color/navy_surface_high"
+            app:cardCornerRadius="22dp"
+            app:strokeColor="@color/lavender"
+            app:strokeWidth="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:text="@string/rc14_pair_confirm_heading"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+                <TextView
+                    android:id="@+id/partnerName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:textColor="@color/cloud"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/rc14_pair_confirm_detail"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/confirmButton"
+                    style="@style/Widget.LittleOrbit.Button.Primary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:enabled="false"
+                    android:text="@string/confirm_pairing" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <ProgressBar
+            android:id="@+id/pairingProgress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/pairing"
-            android:textColor="@color/cloud"
-            android:textSize="30sp"
-            android:textStyle="bold" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/createCodeButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/create_pair_code" />
-
-        <EditText
-            style="@style/Widget.LittleOrbit.Input"
-            android:id="@+id/codeInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/pair_code_hint"
-            android:inputType="textCapCharacters"
-            android:maxLength="8"
-            android:textColor="@color/cloud"
-            android:textColorHint="@color/muted" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/redeemButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/redeem_pair_code" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/checkPendingButton"
-            style="@style/Widget.LittleOrbit.Button.Outline"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/check_pending" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/confirmButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:enabled="false"
-            android:text="@string/confirm_pairing" />
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/statusText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:accessibilityLiveRegion="polite"
-            android:textColor="@color/lavender" />
+            android:layout_marginTop="14dp"
+            android:accessibilityLiveRegion="assertive"
+            android:textColor="@color/coral_soft" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/returnHomeButton"
+            style="@style/Widget.LittleOrbit.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="@string/rc14_return_home"
+            android:visibility="gone" />
     </LinearLayout>
 </ScrollView>

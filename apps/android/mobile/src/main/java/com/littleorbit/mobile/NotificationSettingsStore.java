@@ -19,6 +19,7 @@ final class NotificationSettingsStore {
                 .putBoolean("note_editing", prefs.noteEditing)
                 .putBoolean("daily_quiz", prefs.dailyQuiz)
                 .putBoolean("countdowns", prefs.countdowns)
+                .putBoolean("together_time", prefs.togetherTime)
                 .putBoolean("weekly_summary", prefs.weeklySummary)
                 .apply();
     }
@@ -28,5 +29,8 @@ final class NotificationSettingsStore {
     boolean noteEditing() { return values.getBoolean("note_editing", true); }
     boolean dailyQuiz() { return values.getBoolean("daily_quiz", true); }
     boolean countdowns() { return values.getBoolean("countdowns", true); }
+    boolean togetherTime() { return values.getBoolean("together_time", true); }
     boolean weeklySummary() { return values.getBoolean("weekly_summary", true); }
+
+    void clear() { values.edit().clear().commit(); }
 }

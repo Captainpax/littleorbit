@@ -82,6 +82,24 @@ class Session(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class RateLimitBucket(Base):
+    """Bounded fixed-window counter keyed only by a hashed subject."""
+
+    __tablename__ = "rate_limit_buckets"
+    __table_args__ = (
+        CheckConstraint("count >= 1", name="ck_rate_limit_bucket_positive"),
+        Index("ix_rate_limit_buckets_expiry", "scope", "window_started_at"),
+    )
+
+    scope: Mapped[str] = mapped_column(String(48), primary_key=True)
+    subject_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    window_started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class AdminMfa(Base):
     """Encrypted administrator TOTP enrollment and hashed recovery state."""
 
@@ -91,6 +109,8 @@ class AdminMfa(Base):
         ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True
     )
     encrypted_secret: Mapped[str] = mapped_column(Text, nullable=False)
+    pending_encrypted_secret: Mapped[str | None] = mapped_column(Text)
+    pending_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     recovery_hashes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_accepted_counter: Mapped[int | None] = mapped_column(Integer)

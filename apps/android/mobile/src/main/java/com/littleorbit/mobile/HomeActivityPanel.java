@@ -48,10 +48,6 @@ public final class HomeActivityPanel {
             visibleSequence = Math.max(visibleSequence, event.sequence);
             actions.add(new OrbitShellActivity.ContextAction(label(event), () -> open(event)));
         }
-        if (actions.isEmpty()) {
-            actions.add(new OrbitShellActivity.ContextAction(
-                    activity.getString(R.string.no_recent_activity), () -> {}));
-        }
         renderer.accept(actions);
     }
 

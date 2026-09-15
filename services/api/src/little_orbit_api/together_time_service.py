@@ -5,7 +5,7 @@ from typing import Literal, cast
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +18,7 @@ from .models import (
     TogetherBucket,
 )
 from .schemas import RelationshipStartProposalResponse
-from .together_models import RelationshipStartProposal, TogetherOperation
+from .together_models import RelationshipStartProposal, TogetherDay, TogetherOperation
 
 ALGORITHM_VERSION = 2
 
@@ -162,7 +162,45 @@ async def recompute_recent_proximity(
     )
     couple.proximity_algorithm_version = ALGORITHM_VERSION
     couple.updated_at = now
+    await _sync_daily_totals(session, couple.id, cutoff, now)
     return sum(item.duration_seconds for item in estimates)
+
+
+async def _sync_daily_totals(
+    session: AsyncSession, couple_id: UUID, cutoff: datetime, now: datetime
+) -> None:
+    """Refresh coordinate-free daily totals while preserving explicit corrections."""
+
+    current_day = cutoff.date()
+    final_day = now.astimezone(UTC).date()
+    while current_day <= final_day:
+        start = datetime.combine(current_day, datetime.min.time(), UTC)
+        end = start + timedelta(days=1)
+        seconds = int(
+            await session.scalar(
+                select(func.coalesce(func.sum(TogetherBucket.duration_seconds), 0)).where(
+                    TogetherBucket.couple_id == couple_id,
+                    TogetherBucket.bucket_start >= start,
+                    TogetherBucket.bucket_start < end,
+                )
+            )
+            or 0
+        )
+        await session.execute(
+            insert(TogetherDay)
+            .values(
+                couple_id=couple_id,
+                day=current_day,
+                estimated_seconds=min(seconds, 86_400),
+                revision=0,
+                updated_at=now,
+            )
+            .on_conflict_do_update(
+                index_elements=["couple_id", "day"],
+                set_={"estimated_seconds": min(seconds, 86_400), "updated_at": now},
+            )
+        )
+        current_day += timedelta(days=1)
 
 
 def _timed_points(samples: list[LocationSample], account_id: UUID) -> list[TimedPoint]:

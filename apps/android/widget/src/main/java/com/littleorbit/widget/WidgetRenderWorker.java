@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters;
 import com.littleorbit.data.local.DatabaseMigrations;
 import com.littleorbit.data.local.DisplayCacheEntity;
 import com.littleorbit.data.local.LittleOrbitDatabase;
+import com.littleorbit.data.RelationshipDisplayIdentity;
 
 /** Coalesces widget cache reads outside the broadcast receiver lifecycle. */
 public final class WidgetRenderWorker extends Worker {
@@ -45,7 +46,11 @@ public final class WidgetRenderWorker extends Worker {
         DisplayCacheEntity cache = readCache(context);
         try {
             for (int widgetId : widgetIds) {
-                manager.updateAppWidget(widgetId, WidgetViews.render(context, cache));
+                int minHeight = manager.getAppWidgetOptions(widgetId).getInt(
+                        AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+                manager.updateAppWidget(
+                        widgetId, WidgetViews.render(
+                                context, cache, WidgetViews.isCompact(minHeight)));
             }
             return Result.success();
         } catch (RuntimeException failure) {
@@ -57,12 +62,17 @@ public final class WidgetRenderWorker extends Worker {
     private static DisplayCacheEntity readCache(Context context) {
         LittleOrbitDatabase database = null;
         try {
+            RelationshipDisplayIdentity identity = new RelationshipDisplayIdentity(context);
+            RelationshipDisplayIdentity.Snapshot before = identity.read();
+            if (!before.active()) return null;
             database = Room.databaseBuilder(context, LittleOrbitDatabase.class, "little-orbit.db")
                 .addMigrations(DatabaseMigrations.MIGRATION_1_2)
                 .addMigrations(DatabaseMigrations.MIGRATION_2_3)
                 .addMigrations(DatabaseMigrations.MIGRATION_3_4)
                 .build();
-            return database.displayCache().read();
+            DisplayCacheEntity cache = database.displayCache().read();
+            RelationshipDisplayIdentity.Snapshot after = identity.read();
+            return before.equals(after) && after.active() ? cache : null;
         } catch (RuntimeException failure) {
             Log.e(TAG, "Widget cache read failed; showing unavailable state", failure);
             return null;

@@ -77,6 +77,16 @@ public final class NoteSocketClient {
         return result;
     }
 
+    static boolean terminalCloseCode(int code) {
+        return code == 4401 || code == 4403 || code == 4426;
+    }
+
+    private static boolean terminalHandshake(Response response) {
+        if (response == null) return false;
+        int code = response.code();
+        return code == 401 || code == 403 || code == 426;
+    }
+
     private static int commonPrefix(int[] first, int[] second) {
         int prefix = 0;
         while (prefix < first.length
@@ -110,6 +120,9 @@ public final class NoteSocketClient {
 
         /** Reports transport, authorization, or malformed-response failure. */
         void onFailure();
+
+        /** Reports a close that requires a fresh authorized HTTP snapshot before reconnecting. */
+        default void onTerminalFailure() { onFailure(); }
 
         /** Reports transient connected editor count without exposing identity. */
         default void onPresence(int editors) {}
@@ -301,13 +314,26 @@ public final class NoteSocketClient {
                 WebSocket webSocket, Throwable failure, Response response) {
             if (closed) return;
             ready = false;
+            if (terminalHandshake(response)) {
+                closed = true;
+                listener.onTerminalFailure();
+                return;
+            }
             listener.onFailure();
             scheduleReconnect();
         }
 
         @Override
         public synchronized void onClosed(WebSocket webSocket, int code, String reason) {
-            if (!closed) scheduleReconnect();
+            if (closed) return;
+            ready = false;
+            if (terminalCloseCode(code)) {
+                closed = true;
+                listener.onTerminalFailure();
+                return;
+            }
+            listener.onFailure();
+            scheduleReconnect();
         }
 
         private void scheduleReconnect() {

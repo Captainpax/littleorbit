@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="current_destination">Current destination</string>
+    <string name="navigation_pane_title">Little Orbit navigation</string>
+    <string name="context_pane_title">%1$s actions</string>
+    <string name="settings_intro">Manage your relationship, device permissions, privacy, and companion watch from one place.</string>
+    <string name="settings_sign_in_hint">Sign in to manage relationship and device settings.</string>
+    <string name="settings_relationship_section">Relationship</string>
+    <string name="settings_device_section">This device</string>
+    <string name="settings_privacy_section">Privacy and support</string>
+    <string name="app_updates_intro">Choose when Little Orbit checks for a release. The signed APK downloads only after you approve it.</string>
+    <string name="installed_on_this_device">Installed on this device</string>
+    <string name="signed_update_summary">Every update is checked for its exact size, package, checksum, version, and signing certificate before Android opens the installer.</string>
+</resources>

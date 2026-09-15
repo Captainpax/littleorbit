@@ -33,5 +33,7 @@ class NotificationConnectionHub:
         for socket in tuple(self._connections.get(account_id, set())):
             try:
                 await socket.send_json({"type": "notification.available"})
-            except RuntimeError:
+            except Exception:
+                # Foreground hints are opportunistic; durable device polling owns
+                # delivery and a dead transport must never fail a committed feature.
                 self.remove(account_id, socket)

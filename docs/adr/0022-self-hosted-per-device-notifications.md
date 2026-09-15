@@ -10,9 +10,9 @@ Smooch alerts previously used an account-wide polling acknowledgement. One phone
 
 ## Decision
 
-The FastAPI service stores account-level notification preferences, random app-installation IDs, short-lived partner events, and one delivery row per active installation. Smooch creation and the first accepted note edit create their event in the feature transaction. Note alerts use a 30-minute document/editor cooldown and are skipped while the recipient already has that document open.
+The FastAPI service stores account-level notification preferences, random app-installation IDs, short-lived partner events, and one delivery row per active installation. Smooch creation, document creation, and the first accepted note edit create their event in the feature transaction. Note alerts use a 30-minute document/editor cooldown and are skipped while the recipient already has that document open.
 
-Foreground Android clients keep an authenticated first-party WebSocket that carries only `notification.available`; the client then fetches authorized event metadata. WorkManager registers the installation, polls at Android's 15-minute minimum, posts enabled channels, and acknowledges only events Android accepted. Lock-screen public versions are always generic. Events expire after seven days, individual delivery attempts normally expire with their 24-hour event deadline, and installations unseen for 90 days are removed.
+Foreground Android clients keep an authenticated first-party WebSocket that carries only `notification.available`; the client then fetches authorized event metadata. WorkManager registers the installation, polls at Android's 15-minute minimum, posts enabled channels, and acknowledges only events Android accepted. Lock-screen public versions are always generic. Events remain fetchable for 24 hours, their records are purged within seven days, and installations unseen for 90 days are removed. The legacy account-wide Smooch marker is migration-only and cannot suppress a per-installation delivery.
 
 The deployment remains one API process because the in-memory foreground hint hub is process-local. Durable polling remains authoritative, so a missed hint delays delivery without losing it.
 

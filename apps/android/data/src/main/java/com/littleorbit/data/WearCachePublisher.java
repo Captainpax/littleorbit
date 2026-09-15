@@ -15,6 +15,7 @@ import java.time.ZoneOffset;
 public final class WearCachePublisher {
     public static final String PATH_V1 = "/little-orbit/display-v1";
     public static final String PATH_V2 = "/little-orbit/display-v2";
+    public static final String PURGE_PATH = "/little-orbit/relationship-purge-v1";
     private final Context context;
 
     /** Creates the paired-device boundary without access to tokens or relationship content. */
@@ -24,9 +25,11 @@ public final class WearCachePublisher {
     }
 
     /** Sends a replacement cache record; repeated records are safe. */
-    public void publish(DisplayCacheEntity cache) {
+    public void publish(
+            DisplayCacheEntity cache, RelationshipDisplayIdentity.Snapshot relationship) {
         PutDataMapRequest map = PutDataMapRequest.create(PATH_V2);
-        map.getDataMap().putInt("schema_version", 2);
+        map.getDataMap().putInt("schema_version", 3);
+        putRelationship(map, relationship, true);
         map.getDataMap().putLong(
                 "relationship_start_epoch_day", cache.relationshipStartEpochDay);
         map.getDataMap().putLong("nearby_seconds", cache.nearbySeconds);
@@ -55,8 +58,33 @@ public final class WearCachePublisher {
         Wearable.getDataClient(context).putDataItem(map.asPutDataRequest().setUrgent());
     }
 
-    /** Replaces prior relationship values with an explicitly unavailable watch state. */
-    public void clear() {
-        publish(new DisplayCacheEntity("primary", -1, 0, 0, "No countdown yet", 0, 0));
+    /** Urgently invalidates prior watch data and leaves a durable generation barrier. */
+    public void clear(RelationshipDisplayIdentity.Snapshot purge) {
+        PutDataMapRequest marker = PutDataMapRequest.create(PURGE_PATH);
+        marker.getDataMap().putInt("schema_version", 1);
+        putRelationship(marker, purge, false);
+        Wearable.getDataClient(context).putDataItem(marker.asPutDataRequest().setUrgent());
+
+        PutDataMapRequest display = PutDataMapRequest.create(PATH_V2);
+        display.getDataMap().putInt("schema_version", 3);
+        putRelationship(display, purge, false);
+        display.getDataMap().putLong("relationship_start_epoch_day", -1);
+        display.getDataMap().putLong("nearby_seconds", 0);
+        display.getDataMap().putLong("nearby_processed_at", 0);
+        display.getDataMap().putString("countdown_title", "No countdown yet");
+        display.getDataMap().putLong("countdown_at", 0);
+        display.getDataMap().putLong("synced_at", 0);
+        Wearable.getDataClient(context).putDataItem(display.asPutDataRequest().setUrgent());
+        publishLegacy(new DisplayCacheEntity("primary", -1, 0, 0, "No countdown yet", 0, 0));
+    }
+
+    private static void putRelationship(
+            PutDataMapRequest request,
+            RelationshipDisplayIdentity.Snapshot relationship,
+            boolean active) {
+        request.getDataMap().putString("relationship_id", relationship.relationshipId());
+        request.getDataMap().putLong("relationship_generation", relationship.generation());
+        request.getDataMap().putBoolean("relationship_active", active);
+        request.getDataMap().putLong("authorized_at", System.currentTimeMillis());
     }
 }

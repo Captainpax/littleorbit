@@ -1,14 +1,18 @@
 package com.littleorbit.mobile;
 
 import android.content.Intent;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.FrameLayout;
 import androidx.annotation.LayoutRes;
 import androidx.activity.OnBackPressedCallback;
 import androidx.core.view.GravityCompat;
+import androidx.core.view.ViewCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.button.MaterialButton;
 import com.littleorbit.data.repository.OrbitRepository;
@@ -62,16 +66,21 @@ public abstract class OrbitShellActivity extends InsetAwareActivity {
     protected final void setOrbitContextActions(List<ContextAction> actions) {
         if (shell == null) return;
         shell.contextActions.removeAllViews();
+        boolean available = actions != null && !actions.isEmpty();
+        shell.openRightDrawer.setVisibility(available ? View.VISIBLE : View.GONE);
+        if (!available) {
+            shell.orbitDrawer.closeDrawer(GravityCompat.END);
+            return;
+        }
         for (ContextAction action : actions) {
-            MaterialButton button = new MaterialButton(this, null);
+            MaterialButton button = (MaterialButton) LayoutInflater.from(this)
+                    .inflate(R.layout.item_orbit_context_action, shell.contextActions, false);
             button.setText(action.label());
-            button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
             button.setOnClickListener(ignored -> {
                 shell.orbitDrawer.closeDrawer(GravityCompat.END);
                 action.action().run();
             });
-            shell.contextActions.addView(button, new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+            shell.contextActions.addView(button);
         }
     }
 
@@ -91,6 +100,11 @@ public abstract class OrbitShellActivity extends InsetAwareActivity {
         shell.shellTitle.setText(destination.title);
         shell.contextTitle.setText(destination.contextTitle);
         shell.contextDescription.setText(destination.contextDescription);
+        ViewCompat.setAccessibilityPaneTitle(
+                shell.leftDrawer, getString(R.string.navigation_pane_title));
+        ViewCompat.setAccessibilityPaneTitle(
+                shell.rightDrawer,
+                getString(R.string.context_pane_title, getString(destination.title)));
         shell.openLeftDrawer.setOnClickListener(
                 ignored -> shell.orbitDrawer.openDrawer(GravityCompat.START));
         shell.openRightDrawer.setOnClickListener(
@@ -108,8 +122,13 @@ public abstract class OrbitShellActivity extends InsetAwareActivity {
         // The context panel has a dedicated button so it cannot steal the system back edge.
         shell.orbitDrawer.setDrawerLockMode(
                 DrawerLayout.LOCK_MODE_LOCKED_CLOSED, GravityCompat.END);
-        if (!hasPersistentNavigation()) return;
-        installPersistentNavigation();
+        if (hasPersistentNavigation()) {
+            installPersistentNavigation();
+        } else {
+            shell.orbitDrawer.setDrawerLockMode(
+                    DrawerLayout.LOCK_MODE_UNLOCKED, GravityCompat.START);
+            installStartGestureExclusion();
+        }
     }
 
     private void bindNavigation() {
@@ -120,9 +139,9 @@ public abstract class OrbitShellActivity extends InsetAwareActivity {
         shell.navCountdowns.setOnClickListener(ignored -> open(CountdownActivity.class));
         shell.navTogether.setOnClickListener(ignored -> open(TogetherTimeActivity.class));
         shell.navProfile.setOnClickListener(ignored -> open(ProfilePhotoActivity.class));
-        shell.navSettings.setOnClickListener(ignored -> openMainSection(false));
+        shell.navSettings.setOnClickListener(ignored -> open(SettingsActivity.class));
         shell.navPrivacy.setOnClickListener(ignored -> open(PrivacyActivity.class));
-        shell.navUpdates.setOnClickListener(ignored -> openMainSection(true));
+        shell.navUpdates.setOnClickListener(ignored -> open(AppUpdatesActivity.class));
         shell.navSignIn.setOnClickListener(ignored -> open(SignInActivity.class));
         shell.navCreateAccount.setOnClickListener(ignored -> openWeb("/signup"));
         shell.navAbout.setOnClickListener(ignored -> openWeb("/"));
@@ -130,24 +149,30 @@ public abstract class OrbitShellActivity extends InsetAwareActivity {
 
     private void renderSignedInNavigation() {
         boolean signedIn = shellOrbit != null && shellOrbit.isSignedIn();
-        int memberVisibility = signedIn ? View.VISIBLE : View.GONE;
-        shell.navQuiz.setVisibility(memberVisibility);
-        shell.navSmooch.setVisibility(memberVisibility);
-        shell.navSpace.setVisibility(memberVisibility);
-        shell.navCountdowns.setVisibility(memberVisibility);
-        shell.navTogether.setVisibility(memberVisibility);
-        shell.navProfile.setVisibility(memberVisibility);
-        shell.navSettings.setVisibility(memberVisibility);
+        OrbitNavigationState state = new OrbitNavigationState(orbitDestination(), signedIn);
+        renderNavigationItem(shell.navHome, OrbitDestination.HOME, state);
+        renderNavigationItem(shell.navQuiz, OrbitDestination.QUIZ, state);
+        renderNavigationItem(shell.navSmooch, OrbitDestination.SMOOCH, state);
+        renderNavigationItem(shell.navSpace, OrbitDestination.SPACE, state);
+        renderNavigationItem(shell.navCountdowns, OrbitDestination.COUNTDOWNS, state);
+        renderNavigationItem(shell.navTogether, OrbitDestination.TOGETHER, state);
+        renderNavigationItem(shell.navProfile, OrbitDestination.PROFILE, state);
+        renderNavigationItem(shell.navSettings, OrbitDestination.SETTINGS, state);
+        renderNavigationItem(shell.navPrivacy, OrbitDestination.PRIVACY, state);
+        renderNavigationItem(shell.navUpdates, OrbitDestination.UPDATES, state);
         shell.navSignIn.setVisibility(signedIn ? View.GONE : View.VISIBLE);
         shell.navCreateAccount.setVisibility(signedIn ? View.GONE : View.VISIBLE);
     }
 
-    private void openMainSection(boolean updates) {
-        Intent intent = destinationIntent(MainActivity.class)
-                .putExtra(MainActivity.EXTRA_SHOW_MORE, true);
-        if (updates) intent.putExtra("show_updates", true);
-        OrbitMotion.start(this, intent);
-        closeDrawers();
+    private void renderNavigationItem(
+            MaterialButton button,
+            OrbitDestination destination,
+            OrbitNavigationState state) {
+        button.setVisibility(state.isVisible(destination) ? View.VISIBLE : View.GONE);
+        boolean selected = state.isSelected(destination);
+        button.setSelected(selected);
+        ViewCompat.setStateDescription(
+                button, selected ? getString(R.string.current_destination) : null);
     }
 
     private void open(Class<?> activity) {
@@ -198,19 +223,57 @@ public abstract class OrbitShellActivity extends InsetAwareActivity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.HORIZONTAL);
         content.addView(shell.leftDrawer, new LinearLayout.LayoutParams(
-                dp(216), ViewGroup.LayoutParams.MATCH_PARENT));
-        content.addView(shell.shellMain, new LinearLayout.LayoutParams(
+                getResources().getDimensionPixelSize(R.dimen.orbit_navigation_rail_width),
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        FrameLayout mainHost = new FrameLayout(this);
+        mainHost.addView(shell.shellMain, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER));
+        content.addView(mainHost, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
         shell.orbitDrawer.addView(content, 0, new DrawerLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        mainHost.addOnLayoutChangeListener((view, left, top, right, bottom,
+                oldLeft, oldTop, oldRight, oldBottom) -> boundMainContent(mainHost));
+        ViewCompat.setSystemGestureExclusionRects(shell.orbitDrawer, List.of());
         shell.openLeftDrawer.setVisibility(View.GONE);
+    }
+
+    private void boundMainContent(FrameLayout host) {
+        if (host.getWidth() <= 0) return;
+        ViewGroup.LayoutParams current = shell.shellMain.getLayoutParams();
+        int maximum = getResources().getDimensionPixelSize(R.dimen.orbit_content_max_width);
+        int target = Math.min(host.getWidth(), maximum);
+        if (current.width == target) return;
+        FrameLayout.LayoutParams bounded = new FrameLayout.LayoutParams(
+                target, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER);
+        shell.shellMain.setLayoutParams(bounded);
+    }
+
+    private void installStartGestureExclusion() {
+        shell.orbitDrawer.addOnLayoutChangeListener((view, left, top, right, bottom,
+                oldLeft, oldTop, oldRight, oldBottom) -> updateStartGestureExclusion());
+        shell.orbitDrawer.post(this::updateStartGestureExclusion);
+    }
+
+    private void updateStartGestureExclusion() {
+        int height = shell.orbitDrawer.getHeight();
+        if (height <= 0) return;
+        int edge = getResources().getDimensionPixelSize(R.dimen.orbit_drawer_edge_width);
+        int exclusionHeight = Math.min(height, getResources().getDimensionPixelSize(
+                R.dimen.orbit_gesture_exclusion_height));
+        int top = Math.max(0, (height - exclusionHeight) / 2);
+        boolean rtl = ViewCompat.getLayoutDirection(shell.orbitDrawer)
+                == ViewCompat.LAYOUT_DIRECTION_RTL;
+        Rect area = rtl
+                ? new Rect(shell.orbitDrawer.getWidth() - edge, top,
+                        shell.orbitDrawer.getWidth(), top + exclusionHeight)
+                : new Rect(0, top, edge, top + exclusionHeight);
+        ViewCompat.setSystemGestureExclusionRects(shell.orbitDrawer, List.of(area));
     }
 
     private boolean hasPersistentNavigation() {
         return getResources().getBoolean(R.bool.orbit_persistent_navigation);
     }
 
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
-    }
 }

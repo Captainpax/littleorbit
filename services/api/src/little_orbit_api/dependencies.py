@@ -10,7 +10,7 @@ from .clock import SystemClock
 from .config import Settings, get_settings
 from .database import session_scope
 from .models import Account, Session
-from .security import hash_token, validated_ip_address
+from .security import hash_token, resolve_client_address
 
 
 async def current_account(
@@ -64,11 +64,11 @@ async def current_admin(
 
 
 def request_client_ip(request: Request, settings: Settings = Depends(get_settings)) -> str:
-    """Use the address sanitized by the isolated gateway trust boundary."""
+    """Use forwarded client metadata only from the configured immediate peer."""
 
     peer = request.client.host if request.client else "unknown"
     gateway_value = request.headers.get("x-little-orbit-client-ip")
-    return validated_ip_address(gateway_value) or peer
+    return resolve_client_address(peer, gateway_value, settings.trusted_proxy_ip).address
 
 
 def require_recent_auth(authenticated_at: datetime, now: datetime, minutes: int = 10) -> None:

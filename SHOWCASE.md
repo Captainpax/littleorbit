@@ -20,7 +20,7 @@ RC13 replaces timestamp entry with a calm moment timeline. Timed and all-day eve
 
 ![Updater and More screen concept](docs/assets/android-update-more-concept.png)
 
-The companion study defines the updater and settings direction: the same planet motif, a visible verification step, calm progress language, and one More destination for pairing, privacy, archives, and app updates. RC4 moves the actual APK transfer to Little Orbit's resumable first-party endpoint.
+This early companion study established the updater and settings language: the same planet motif, a visible verification step, and calm progress wording. The current shell gives Settings and App updates their own selected destinations, while RC4 moved APK transfer to Little Orbit's resumable first-party endpoint.
 
 ![Generated RC5 quiz flow concept showing focused questions, partner guessing, private waiting, and shared reveal](docs/assets/android-quiz-rc5-concept.png)
 
@@ -36,7 +36,7 @@ Smooches now have their own centered destination. The primary screen keeps the s
 
 ![RC12 application-shell concept with a left destination drawer and a private recent-activity panel](docs/assets/android-shell-rc12-concept.png)
 
-RC12 gives the whole app one predictable shell. A phone opens the complete destination list from the left, a wide tablet keeps the same list visible as a rail, and the right control opens actions and recent context for the current screen. Home's panel uses content-free event metadata and a private per-person seen position.
+RC12 gives the whole app one predictable shell. A phone opens the complete destination list from the hamburger or a deliberate left-edge swipe, a wide tablet keeps the same list visible in a bounded rail, and the right control appears only when the current screen has actions or recent context. The selected destination remains visible, guest navigation exposes only public routes, and Home's panel uses content-free event metadata with a private per-person seen position.
 
 ![RC12 Our Space editor concept with a calm Markdown dock and contextual note directory](docs/assets/android-space-editor-rc12-concept.png)
 
@@ -44,7 +44,7 @@ The RC12 editor keeps the most common formatting actions in a compact dock direc
 
 ![Implemented RC12.1 preview-first document with verified inline PNG and animated GIF](docs/assets/android-space-preview-rc12-1-emulator.png)
 
-RC12.1 opens existing documents in preview and uses one Edit/Done editing action. Authorized private images appear at their Markdown position only after download size and digest verification; the emulator capture shows the PNG and one frame of the sanitized animated GIF. Account-synced notification controls now cover Smooches, document editing, quizzes, countdowns, and weekly summaries, while Android permission and channels remain visible per phone.
+RC12.1 opens existing documents in preview and uses one Edit/Preview action. Authorized private images appear at their Markdown position only after download size and digest verification; the emulator capture shows the PNG and one frame of the sanitized animated GIF. RC14 keeps the current selection stable during live patches, restores an interrupted workspace from encrypted app storage, refreshes the visible library so a partner's new document appears promptly, and closes the editor only for the exact inactive-relationship response. Account-synced notification controls cover Smooches, document creation and editing, quizzes, countdowns, and weekly summaries, while Android permission and channels remain visible per phone.
 
 ### Current Android implementation
 
@@ -79,6 +79,10 @@ The RC12 captures verify the paired Home hierarchy, complete left navigation, ab
 The signed RC7 Wear launcher capture verifies that the logo, relationship date fallback, nearby estimate, and stale status fit the round safe area. Its content remains scrollable for large text and smaller displays.
 
 RC8 adds synchronized, app-private couple thumbnails to the Wear launcher with styled initials as the fallback. Tile and complication surfaces remain text-only to keep their cache small and avoid putting faces on passive watch surfaces. The phone's Settings destination opens a guided installer that downloads and verifies the Wear APK, discovers wireless-debugging endpoints, pairs with the short-lived watch code, remembers the ADB identity in encrypted storage, and asks before proceeding on an old security patch. RC10.1 follows continuously updated service information, proves Kadb's lazy connection with an authenticated command, uses public Conscrypt APIs on Android 17, and commits the APK through a package session.
+
+The RC14 implementation scopes passive records to an opaque relationship generation. Sign-out, unpair, deletion, and an inactive-relationship response publish an urgent purge that wins over delayed records. A disconnected watch keeps the six-hour stale state, then deletes display values, names, thumbnails, and partial files at 24 hours and shows a simple open-phone prompt. The home widget selects a compact, one-glance layout below 180 dp and keeps a 48 dp countdown action while expanded widgets retain the complete card. The installer keeps typed manual endpoints stable while discovery continues, never saves or autofills the pairing code, offers signed-artifact retry, and still detects current, incompatible, and downgrade states before install.
+
+The RC14 visual pass keeps each shell destination to one title, lets Home cards grow under large text, and uses the same lavender, coral, amber, deep-navy, 24 dp card language across Home, Quiz, Countdowns, and private archives. Form fields now declare meaningful keyboard and autofill behavior, archive and quiz-history dates follow the device locale, passive widget labels remain readable at Android's minimum text guidance, and Android 13 launchers receive a purpose-built monochrome orbit mark. The Wear tile picker now shows representative square and round previews, while launcher, tile, and complication wording comes from localized resources.
 
 ## Public website
 
@@ -120,6 +124,8 @@ The console exposes service health, delivery and generation status, moderation q
 - [ ] Wear OS: in-app wireless install, remembered authorization, old-patch warning, profile-photo sync, phone capability detection, tile, complication, loading, stale, and disconnected states.
 - [x] Wear OS 5 round emulator: signed RC7 install, cold launch, safe-area fallback layout, and stale-state rendering.
 - [x] Wear API 34 round emulator: RC12 package launch, pairing-date fallback, nearby estimate, and explicit stale/open-phone state with no fatal runtime event.
+- [x] RC14 Wear API 34 round emulator: synthetic fresh, six-hour stale, unavailable, and 24-hour expiry states; expiry removed names, thumbnails, and interrupted thumbnail files, and 150% text remained reachable by scrolling.
+- [x] RC14 paired-note regression: partner B listed partner A's document and sanitized attachments, bidirectional live edits converged through a disconnect, and a document created while partner B remained in the library appeared automatically inside the foreground refresh window.
 - [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
 - [ ] Website remaining: patch notes/RSS in a feed reader, recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.

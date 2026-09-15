@@ -39,6 +39,7 @@ public final class DisplayCacheSyncWorker extends Worker {
     @Override
     public Result doWork() {
         if (sessions.read().isEmpty()) {
+            synchronizer.clear();
             return Result.success();
         }
         try {

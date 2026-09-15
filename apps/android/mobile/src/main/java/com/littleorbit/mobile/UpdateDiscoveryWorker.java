@@ -70,8 +70,8 @@ public final class UpdateDiscoveryWorker extends Worker {
         String prior = state.getString("notified_release_id", "");
         if (release.releaseId().equals(prior) && !required) return;
         state.edit().putString("notified_release_id", release.releaseId()).apply();
-        Intent open = new Intent(context, MainActivity.class)
-                .putExtra("show_update", true)
+        Intent open = new Intent(context, AppUpdatesActivity.class)
+                .putExtra(AppUpdatesActivity.EXTRA_SHOW_UPDATE, true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent content = PendingIntent.getActivity(context, 7302, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);

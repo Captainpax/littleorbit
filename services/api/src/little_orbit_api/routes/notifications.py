@@ -1,5 +1,7 @@
 """Authenticated preferences, per-device delivery, and foreground availability hints."""
 
+import asyncio
+from contextlib import suppress
 from typing import cast
 from uuid import UUID, uuid4
 
@@ -18,6 +20,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..clock import SystemClock
+from ..config import get_settings
 from ..couple_access import active_member, lock_couple
 from ..database import SessionFactory, session_scope
 from ..dependencies import current_account
@@ -34,14 +37,17 @@ from ..notification_schemas import (
     NotificationPreferencesUpdate,
 )
 from ..notification_service import (
+    discard_disabled_events,
     ensure_pending_deliveries,
     ensure_quiz_available_event,
     event_response,
     preferences_for,
     preferences_response,
 )
+from ..push_tokens import assign_push_token, clear_push_token
 from ..quiz_v2_service import materialize_day, utc_today
-from .notes import _authenticate, _compatible_socket
+from ..socket_auth import SocketIdentity, authenticate_socket, socket_session_active
+from .notes import _compatible_socket
 
 router = APIRouter(prefix="/v1", tags=["notifications"])
 
@@ -70,6 +76,7 @@ async def update_preferences(
     for field, value in payload.model_dump().items():
         setattr(item, field, value)
     item.updated_at = SystemClock().now()
+    await discard_disabled_events(session, item)
     await session.commit()
     return preferences_response(item)
 
@@ -112,6 +119,10 @@ async def register_device(
     device = await session.get(NotificationDevice, record_id)
     if device is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Device registration failed")
+    if not payload.notifications_enabled:
+        clear_push_token(device, now)
+    elif payload.push_token is not None:
+        await assign_push_token(session, device, payload.push_token, now, get_settings())
     if payload.notifications_enabled:
         await ensure_pending_deliveries(session, device)
     await session.commit()
@@ -119,6 +130,7 @@ async def register_device(
         device_id=device.device_id,
         last_seen_at=device.last_seen_at,
         notifications_enabled=device.notifications_enabled,
+        push_enabled=device.push_token_encrypted is not None,
     )
 
 
@@ -137,8 +149,10 @@ async def disable_device(
         )
     )
     if device is not None:
-        device.disabled_at = SystemClock().now()
+        now = SystemClock().now()
+        device.disabled_at = now
         device.notifications_enabled = False
+        clear_push_token(device, now)
         await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -166,15 +180,20 @@ async def pending_events(
                 NotificationEvent.recipient_id == actor.id,
                 NotificationEvent.couple_id == member.couple_id,
                 NotificationEvent.expires_at > SystemClock().now(),
-                NotificationEvent.legacy_consumed_at.is_(None),
             )
             .order_by(NotificationEvent.created_at)
             .limit(50)
         )
     )
-    resolved = [await event_response(session, item) for item in rows]
+    resolved: list[NotificationEventResponse] = []
+    for event in rows:
+        item = await event_response(session, event)
+        if item is None:
+            await session.delete(event)
+        else:
+            resolved.append(item)
     await session.commit()
-    return [item for item in resolved if item is not None]
+    return resolved
 
 
 async def _ensure_quiz_alert(
@@ -219,12 +238,11 @@ async def acknowledge_events(
     for delivery in deliveries:
         if delivery.displayed_at is None:
             delivery.displayed_at = now
+    acknowledged_event_ids = [delivery.event_id for delivery in deliveries]
     smooch_ids = list(
         await session.scalars(
             select(NotificationEvent.source_id).where(
-                NotificationEvent.id.in_(payload.event_ids),
-                NotificationEvent.recipient_id == actor.id,
-                NotificationEvent.couple_id == member.couple_id,
+                NotificationEvent.id.in_(acknowledged_event_ids),
                 NotificationEvent.kind == "smooch_received",
             )
         )
@@ -264,31 +282,39 @@ async def notification_socket(websocket: WebSocket, device_id: UUID = Query()) -
 
     if not await _compatible_socket(websocket):
         return
-    authorization = websocket.headers.get("authorization", "")
-    token = authorization[7:] if authorization.startswith("Bearer ") else ""
-    account_id = await _authenticate(token) if token else None
-    if account_id is None or not await _socket_device(account_id, device_id):
+    identity = await authenticate_socket(websocket.headers.get("authorization", ""))
+    if identity is None or not await _socket_device(identity, device_id):
         await websocket.close(code=4401)
         return
     await websocket.accept()
     hub = cast(NotificationConnectionHub, websocket.app.state.notification_connections)
-    hub.add(account_id, websocket)
+    hub.add(identity.account_id, websocket)
+    if not await _socket_device(identity, device_id):
+        hub.remove(identity.account_id, websocket)
+        await websocket.close(code=4401)
+        return
     await websocket.send_json({"type": "notification.ready"})
     try:
         while True:
-            await websocket.receive_text()
+            with suppress(TimeoutError):
+                await asyncio.wait_for(websocket.receive_text(), timeout=30)
+            if not await _socket_device(identity, device_id):
+                await websocket.close(code=4401)
+                return
     except WebSocketDisconnect:
         pass
     finally:
-        hub.remove(account_id, websocket)
+        hub.remove(identity.account_id, websocket)
 
 
-async def _socket_device(account_id: UUID, device_id: UUID) -> bool:
+async def _socket_device(identity: SocketIdentity, device_id: UUID) -> bool:
+    if not await socket_session_active(identity):
+        return False
     async with SessionFactory() as session:
         return (
             await session.scalar(
                 select(NotificationDevice.id).where(
-                    NotificationDevice.account_id == account_id,
+                    NotificationDevice.account_id == identity.account_id,
                     NotificationDevice.device_id == device_id,
                     NotificationDevice.disabled_at.is_(None),
                 )

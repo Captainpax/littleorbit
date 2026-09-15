@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getCurrentRelease } from "@/lib/release";
 import {
   publishRelease,
   regenerateBatch,
@@ -78,7 +79,8 @@ function BatchPreview({ batch }: { batch: Record<string, unknown> }) {
 
 export default async function AdminPage() {
   const session = await requireAdminSession();
-  const [overview, batches, reports, accounts, couples, events, bank] = await Promise.all([
+  const [release, overview, batches, reports, accounts, couples, events, bank] = await Promise.all([
+    getCurrentRelease(),
     adminGet<{ values: Record<string, unknown> }>("overview", session.token, { values: {} }),
     adminGet<Collection>("question-batches", session.token, { items: [] }),
     adminGet<Collection>("question-reports", session.token, { items: [] }),
@@ -180,27 +182,29 @@ export default async function AdminPage() {
       </section>
       <section id="content" className="panel admin-forms">
         <div><span className="eyebrow">Operations</span><h2>Registration and releases</h2></div>
+        <p className="fine-print">Currently published: {release.version} · phone version code {release.versionCode ?? "unknown"}
+          {release.wear ? ` · Wear version code ${release.wear.versionCode}` : " · no Wear artifact"}</p>
         <div className="inline-actions">
           <form action={setRegistration}><input type="hidden" name="enabled" value="true" /><button type="submit">Open registration</button></form>
           <form action={setRegistration}><input type="hidden" name="enabled" value="false" /><button type="submit">Pause registration</button></form>
         </div>
         <form action={publishRelease} className="admin-form-grid">
-          <label>Version<input name="version" required placeholder="1.0.0-rc.9" /></label>
-          <label>Version code<input name="version_code" type="number" min="1" defaultValue="6" required /></label>
+          <label>Version<input name="version" required placeholder="Next semantic version" /></label>
+          <label>Version code<input name="version_code" type="number" min="1" defaultValue={(release.versionCode ?? 0) + 1} required /></label>
           <label>Minimum Android<input name="minimum_android" type="number" min="29" max="36" defaultValue="29" required /></label>
-          <label>Compatibility floor<input name="minimum_supported_version_code" type="number" min="1" defaultValue="6" required /></label>
+          <label>Compatibility floor<input name="minimum_supported_version_code" type="number" min="1" defaultValue={release.minimumSupportedVersionCode ?? 1} required /></label>
           <label>Require after (optional)<input name="required_after" type="datetime-local" /></label>
-          <label>First-party APK URL<input name="apk_url" type="url" placeholder="https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.9/apk" required /></label>
+          <label>First-party APK URL<input name="apk_url" type="url" placeholder="https://lil-orb.pax-kun.com/api/v1/releases/{version}/apk" required /></label>
           <label>GitHub Release URL<input name="github_release_url" type="url" required /></label>
           <label>SHA-256<input name="sha256" pattern="[a-f0-9]{64}" required /></label>
           <label>APK bytes<input name="size_bytes" type="number" min="1" required /></label>
           <label>Package<input name="package_name" defaultValue="com.littleorbit.mobile" readOnly required /></label>
           <label>Signer SHA-256<input name="signer_sha256" pattern="[a-f0-9]{64}" defaultValue="43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337" required /></label>
-          <label>Wear APK URL<input name="wear_apk_url" type="url" placeholder="https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.9/wear-apk" /></label>
+          <label>Wear APK URL<input name="wear_apk_url" type="url" placeholder="https://lil-orb.pax-kun.com/api/v1/releases/{version}/wear-apk" /></label>
           <label>Wear SHA-256<input name="wear_sha256" pattern="[a-f0-9]{64}" /></label>
           <label>Wear APK bytes<input name="wear_size_bytes" type="number" min="1" /></label>
           <label>Wear package<input name="wear_package_name" defaultValue="com.littleorbit.mobile" /></label>
-          <label>Wear version code<input name="wear_version_code" type="number" min="1" defaultValue="6" /></label>
+          <label>Wear version code<input name="wear_version_code" type="number" min="1" placeholder={release.wear ? `Current: ${release.wear.versionCode}` : "Optional"} /></label>
           <label>Wear minimum API<input name="wear_minimum_android" type="number" min="30" max="36" defaultValue="30" /></label>
           <label>Release notes<textarea name="release_notes" required /></label>
           <label><input name="publish" type="checkbox" /> Publish on download page</label>

@@ -1,6 +1,7 @@
 """Authorized resumable upload and download routes for note attachments."""
 
 import asyncio
+import os
 from pathlib import Path
 from urllib.parse import quote
 from uuid import UUID, uuid4
@@ -10,7 +11,9 @@ from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..attachment_models import NoteAttachment
+from ..attachment_models import AttachmentJob, NoteAttachment
+from ..attachment_quota import adjust_storage, reserve_storage
+from ..attachment_responses import attachment_response
 from ..attachment_schemas import (
     AttachmentCreateRequest,
     AttachmentResponse,
@@ -19,8 +22,11 @@ from ..attachment_schemas import (
 from ..attachment_storage import (
     COUPLE_QUOTA_BYTES,
     MAX_CHUNK_BYTES,
+    MAX_CONCURRENT_UPLOADS_PER_COUPLE,
     AttachmentPolicyError,
     available_path,
+    has_upload_capacity,
+    processing_path,
     safe_file_name,
     sha256_file,
     staging_path,
@@ -43,20 +49,7 @@ def _response(item: NoteAttachment) -> AttachmentResponse:
         if item.status == "available"
         else None
     )
-    return AttachmentResponse(
-        id=item.id,
-        note_id=item.note_id,
-        file_name=item.file_name,
-        media_type=item.media_type,
-        size_bytes=item.size_bytes,
-        uploaded_bytes=item.uploaded_bytes,
-        sha256=item.sha256,
-        status=item.status,
-        rejection_reason=item.rejection_reason,
-        download_url=download_url,
-        created_at=item.created_at,
-        updated_at=item.updated_at,
-    )
+    return attachment_response(item, download_url=download_url)
 
 
 async def _authorized_note(
@@ -131,35 +124,83 @@ async def create_attachment(
 
     member, note = await _authorized_note(session, actor.id, note_id)
     await lock_couple(session, member.couple_id)
-    try:
-        validate_metadata(payload.media_type, payload.size_bytes, payload.sha256)
-        file_name = safe_file_name(payload.file_name)
-    except AttachmentPolicyError as error:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error)) from error
-    prior = await session.scalar(
-        select(NoteAttachment).where(
-            NoteAttachment.note_id == note.id,
-            NoteAttachment.operation_id == payload.operation_id,
-        )
-    )
+    file_name = _validated_file_name(payload)
+    prior = await _prior_upload(session, note.id, payload.operation_id)
     if prior is not None:
         if not _same_upload(prior, payload, file_name):
             raise HTTPException(status.HTTP_409_CONFLICT, "operation_id_payload_mismatch")
         return _upload_response(prior)
+    await _reserve_upload_capacity(session, member.couple_id, payload.size_bytes)
+    item = _new_attachment(note.id, member.couple_id, actor.id, payload, file_name)
+    session.add(item)
+    await session.commit()
+    return _upload_response(item)
+
+
+def _validated_file_name(payload: AttachmentCreateRequest) -> str:
+    try:
+        validate_metadata(payload.media_type, payload.size_bytes, payload.sha256)
+        return safe_file_name(payload.file_name)
+    except AttachmentPolicyError as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error)) from error
+
+
+async def _prior_upload(
+    session: AsyncSession, note_id: UUID, operation_id: UUID
+) -> NoteAttachment | None:
+    return await session.scalar(
+        select(NoteAttachment).where(
+            NoteAttachment.note_id == note_id,
+            NoteAttachment.operation_id == operation_id,
+        )
+    )
+
+
+async def _reserve_upload_capacity(
+    session: AsyncSession, couple_id: UUID, size_bytes: int
+) -> None:
+    concurrent = await session.scalar(
+        select(func.count()).select_from(NoteAttachment).where(
+            NoteAttachment.couple_id == couple_id,
+            NoteAttachment.deleted_at.is_(None),
+            NoteAttachment.status == "uploading",
+        )
+    )
+    if int(concurrent or 0) >= MAX_CONCURRENT_UPLOADS_PER_COUPLE:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "too_many_active_uploads")
     reserved = await session.scalar(
         select(func.coalesce(func.sum(NoteAttachment.size_bytes), 0)).where(
-            NoteAttachment.couple_id == member.couple_id,
+            NoteAttachment.couple_id == couple_id,
             NoteAttachment.deleted_at.is_(None),
             NoteAttachment.status.in_(("uploading", "pending_scan", "scanning", "available")),
         )
     )
-    if int(reserved or 0) + payload.size_bytes > COUPLE_QUOTA_BYTES:
+    if int(reserved or 0) + size_bytes > COUPLE_QUOTA_BYTES:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "couple_quota_exceeded")
+    storage_root = get_settings().attachment_storage_dir
+    capacity = await asyncio.to_thread(has_upload_capacity, storage_root, size_bytes)
+    if not capacity:
+        raise HTTPException(
+            status.HTTP_507_INSUFFICIENT_STORAGE, "attachment_storage_unavailable"
+        )
+    try:
+        await reserve_storage(session, size_bytes)
+    except AttachmentPolicyError as error:
+        raise HTTPException(status.HTTP_507_INSUFFICIENT_STORAGE, str(error)) from error
+
+
+def _new_attachment(
+    note_id: UUID,
+    couple_id: UUID,
+    actor_id: UUID,
+    payload: AttachmentCreateRequest,
+    file_name: str,
+) -> NoteAttachment:
     now = SystemClock().now()
-    item = NoteAttachment(
-        note_id=note.id,
-        couple_id=member.couple_id,
-        uploaded_by=actor.id,
+    return NoteAttachment(
+        note_id=note_id,
+        couple_id=couple_id,
+        uploaded_by=actor_id,
         operation_id=payload.operation_id,
         file_name=file_name,
         media_type=payload.media_type,
@@ -169,9 +210,6 @@ async def create_attachment(
         created_at=now,
         updated_at=now,
     )
-    session.add(item)
-    await session.commit()
-    return _upload_response(item)
 
 
 def _upload_response(item: NoteAttachment) -> AttachmentUploadResponse:
@@ -208,7 +246,8 @@ async def upload_attachment_chunk(
 ) -> AttachmentResponse:
     """Append exactly one bounded chunk at the server-advertised offset."""
 
-    await _authorized_attachment(session, actor.id, note_id, attachment_id)
+    authorized = await _authorized_attachment(session, actor.id, note_id, attachment_id)
+    await lock_couple(session, authorized.couple_id)
     item = await session.scalar(
         select(NoteAttachment).where(NoteAttachment.id == attachment_id).with_for_update()
     )
@@ -235,11 +274,23 @@ async def upload_attachment_chunk(
     if item.uploaded_bytes == item.size_bytes:
         actual_hash = await asyncio.to_thread(sha256_file, target)
         if actual_hash != item.sha256:
+            await adjust_storage(session, -item.size_bytes)
             item.status = "rejected"
             item.rejection_reason = "sha256_mismatch"
             await asyncio.to_thread(target.unlink, True)
         else:
             item.status = "pending_scan"
+            now = SystemClock().now()
+            session.add(
+                AttachmentJob(
+                    attachment_id=item.id,
+                    status="pending",
+                    attempts=0,
+                    next_attempt_at=now,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
     await session.commit()
     return _response(item)
 
@@ -269,10 +320,15 @@ def _append_chunk(target: Path, offset: int, body: bytes) -> None:
     mode = "r+b" if target.exists() else "wb"
     with target.open(mode) as output:
         output.seek(0, 2)
-        if output.tell() != offset:
+        stored_offset = output.tell()
+        if stored_offset < offset:
             raise AttachmentPolicyError("stored_offset_mismatch")
+        if stored_offset > offset:
+            output.truncate(offset)
+            output.seek(offset)
         output.write(body)
         output.flush()
+        os.fsync(output.fileno())
 
 
 @router.api_route(
@@ -293,7 +349,7 @@ async def download_attachment(
     if item.status != "available":
         raise HTTPException(status.HTTP_409_CONFLICT, "attachment_not_available")
     path = available_path(get_settings().attachment_storage_dir, item.storage_key)
-    if not path.is_file():
+    if not path.is_file() or path.stat().st_size != item.size_bytes:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "attachment_bytes_unavailable")
     headers = {
         "Cache-Control": "private, no-store",
@@ -301,7 +357,7 @@ async def download_attachment(
         "Content-Disposition": f"inline; filename*=UTF-8''{quote(item.file_name)}",
     }
     if request.method == "HEAD":
-        headers["Content-Length"] = str(path.stat().st_size)
+        headers["Content-Length"] = str(item.size_bytes)
         return Response(status_code=200, media_type=item.media_type, headers=headers)
     return FileResponse(path, media_type=item.media_type, filename=item.file_name, headers=headers)
 
@@ -319,6 +375,8 @@ async def delete_attachment(
 
     item = await _authorized_attachment(session, actor.id, note_id, attachment_id)
     await lock_couple(session, item.couple_id)
+    if item.status in {"uploading", "pending_scan", "scanning", "available"}:
+        await adjust_storage(session, -item.size_bytes)
     item.deleted_at = SystemClock().now()
     item.status = "deleted"
     item.updated_at = item.deleted_at
@@ -326,6 +384,7 @@ async def delete_attachment(
     root = get_settings().attachment_storage_dir
     await asyncio.gather(
         asyncio.to_thread(staging_path(root, item.storage_key).unlink, True),
+        asyncio.to_thread(processing_path(root, item.storage_key).unlink, True),
         asyncio.to_thread(available_path(root, item.storage_key).unlink, True),
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

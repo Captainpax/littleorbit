@@ -11,6 +11,7 @@ from pydantic import (
     model_validator,
 )
 
+from .attachment_schemas import AttachmentResponse
 from .quiz_v2_schemas import (
     CustomQuestionV2Request as CustomQuestionV2Request,
 )
@@ -192,10 +193,20 @@ class ArchiveSummary(StrictModel):
     ended_at: datetime
 
 
+class ArchiveNote(StrictModel):
+    """Immutable former-pairing note with clean read-only attachment metadata."""
+
+    id: UUID
+    title: str
+    body: str
+    revision: int
+    attachments: list[AttachmentResponse]
+
+
 class ArchiveDetail(ArchiveSummary):
     """Former-pairing content visible only to the original member."""
 
-    notes: list[dict[str, object]]
+    notes: list[ArchiveNote]
     countdowns: list[dict[str, object]]
     quiz_answers: list[dict[str, object]]
     smooches: list[dict[str, object]]
@@ -397,6 +408,7 @@ class TogetherSummaryV3(StrictModel):
     paired_days: int
     nearby_estimated_seconds: int
     nearby_last_processed_at: datetime | None
+    nearby_confidence: Literal["unavailable", "low", "medium", "high"]
     proximity_threshold_m: float
     location_enabled_by_me: bool
     location_enabled_by_both: bool
@@ -409,6 +421,17 @@ class TogetherHistoryDay(StrictModel):
     day: date
     estimated_seconds: int
     corrected: bool
+    revision: int = 0
+    corrected_by_display_name: str | None = None
+    correction_reason: str | None = None
+
+
+class TogetherDayCorrectionRequest(StrictModel):
+    """Optimistic, attributable correction to one completed UTC day."""
+
+    estimated_seconds: int = Field(ge=0, le=86_400)
+    expected_revision: int = Field(ge=0)
+    reason: Annotated[StrictText, Field(min_length=3, max_length=240)]
 
 
 class LocationBatchV2Response(StrictModel):
@@ -449,7 +472,7 @@ class HealthResponse(StrictModel):
 
 
 class AdminConfigResponse(StrictModel):
-    """Configuration dictionary whose secret values are already redacted."""
+    """Fixed allowlisted operational configuration."""
 
     values: dict[str, object]
 
@@ -663,37 +686,3 @@ class ClientUpdateRequired(StrictModel):
     code: Literal["client_update_required"] = "client_update_required"
     minimum_version_code: int
     release_url: Literal["/v1/releases/current"] = "/v1/releases/current"
-
-
-class AdminEnrollmentStart(StrictModel):
-    """Recent password proof required before revealing an enrollment URI."""
-
-    password: Annotated[str, Field(min_length=1, max_length=256)]
-
-
-class AdminEnrollmentChallenge(StrictModel):
-    """Temporary authenticator enrollment material."""
-
-    otpauth_uri: str
-    qr_svg_data_url: str
-
-
-class AdminEnrollmentConfirm(StrictModel):
-    """First authenticator code that proves enrollment succeeded."""
-
-    code: Annotated[str, Field(pattern=r"^[0-9]{6}$")]
-
-
-class AdminSessionRequest(StrictModel):
-    """Password plus TOTP or a one-time recovery code."""
-
-    email: EmailStr
-    password: Annotated[str, Field(min_length=1, max_length=256)]
-    totp_code: Annotated[str | None, Field(default=None, pattern=r"^[0-9]{6}$")]
-    recovery_code: Annotated[str | None, Field(default=None, min_length=13, max_length=32)]
-
-
-class AdminSessionResponse(SessionResponse):
-    """MFA-verified owner session and recovery codes shown during enrollment only."""
-
-    recovery_codes: list[str] = Field(default_factory=list)

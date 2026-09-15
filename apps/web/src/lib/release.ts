@@ -1,6 +1,7 @@
 export interface ReleaseMetadata {
   version: string;
   versionCode?: number;
+  minimumSupportedVersionCode?: number;
   minimumAndroid: string;
   sha256: string;
   releaseNotes: readonly string[];
@@ -34,25 +35,59 @@ export function hostedWearApkPath(version: string): string {
   return `/api/v1/releases/${encodeURIComponent(version)}/wear-apk`;
 }
 
+/** Turns stored Markdown release prose into clean text rows for public cards and RSS. */
+export function releaseNoteLines(markdown: string): readonly string[] {
+  let omitSection = false;
+  return markdown.replaceAll("\\n", "\n").split(/\r?\n/u).flatMap((rawLine) => {
+    const line = rawLine.trim();
+    const section = /^#{2,6}\s+(.+)$/u.exec(line);
+    if (section) {
+      omitSection = /^(?:candidate status|verified so far)$/iu.test(section[1] ?? "");
+      return [];
+    }
+    if (!line || omitSection || /^#\s/u.test(line)) return [];
+    const withoutBullet = line.replace(/^(?:[-*+]\s+|\d+[.)]\s+)/u, "");
+    return [withoutBullet
+      .replace(/!\[([^\]]*)\]\([^)]*\)/gu, "$1")
+      .replace(/\[([^\]]+)\]\([^)]*\)/gu, "$1")
+      .replace(/`([^`]+)`/gu, "$1")
+      .replace(/\*\*([^*]+)\*\*/gu, "$1")
+      .replace(/__([^_]+)__/gu, "$1")];
+  });
+}
+
+/** Keeps the download card concise while the patch-notes route retains full history. */
+export function releaseNoteHighlights(markdown: string): readonly string[] {
+  return releaseNoteLines(markdown).slice(0, 5);
+}
+
+/** Formats immutable publication instants consistently on every deployment host. */
+export function formatReleaseDate(publishedAt: string): string {
+  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" })
+    .format(new Date(publishedAt));
+}
+
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.13",
-  versionCode: 18,
+  version: "1.0.0-rc.14",
+  versionCode: 19,
+  minimumSupportedVersionCode: 6,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "951b9194f57c0daec8b7ddfd6aeebd487a6a3b4cea1eeed19a4157ab7527d8ef",
+  sha256: "4d0f2a636b04523c91bdb0ccf134302ebdf95328b312f7c112e98664654be8bb",
   releaseNotes: [
-    "Adds calendar-style timed and all-day countdowns, private reminders, and one-way calendar export.",
-    "Adds countdown and quiz transition alerts plus stricter generated-question typography.",
-    "Makes relationship avatars a picture each partner chooses for the other.",
+    "Repairs partner document discovery with a bounded foreground refresh and content-free wake event.",
+    "Adds the responsive drawer and tablet rail, clearer setup and pairing, and consistent cosmic components.",
+    "Hardens shared Markdown, private attachments, relationship cleanup, and location retention.",
+    "Adds installation-scoped alerts with first-party polling while optional Firebase wakeups remain unconfigured.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.13",
-  apkUrl: hostedApkPath("1.0.0-rc.13"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.14",
+  apkUrl: hostedApkPath("1.0.0-rc.14"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.13"),
-    sha256: "9227bbb70ecf127a36a70d3f33101938df35f4b4cf62d80b71ff4a653a1c1868",
-    sizeBytes: 14133466,
-    versionCode: 15,
+    apkUrl: hostedWearApkPath("1.0.0-rc.14"),
+    sha256: "6ce385654e323dfdcad9d5b6dec000a4f2549568d30b604ce6ea1400d642f0b6",
+    sizeBytes: 14188854,
+    versionCode: 16,
     minimumAndroid: 30,
   },
   published: true,
@@ -65,6 +100,7 @@ interface ApiRelease {
   github_release_url: string;
   sha256: string;
   minimum_android: number;
+  minimum_supported_version_code: number;
   release_notes: string;
   wear_apk_url?: string | null;
   wear_sha256?: string | null;
@@ -94,9 +130,10 @@ export async function getCurrentRelease(): Promise<ReleaseMetadata> {
     return {
       version: release.version,
       versionCode: release.version_code,
+      minimumSupportedVersionCode: release.minimum_supported_version_code,
       minimumAndroid: `Android API ${release.minimum_android} or newer`,
       sha256: release.sha256,
-      releaseNotes: release.release_notes.split("\n").filter(Boolean),
+      releaseNotes: releaseNoteHighlights(release.release_notes),
       githubUrl: release.github_release_url,
       apkUrl: hostedApkPath(release.version),
       wear: mapWearRelease(release),
@@ -121,7 +158,7 @@ export async function getReleaseHistory(): Promise<readonly ReleaseHistoryItem[]
       githubUrl: release.github_release_url,
       sha256: release.sha256,
       minimumAndroid: release.minimum_android,
-      releaseNotes: release.release_notes.split("\n").filter(Boolean),
+      releaseNotes: releaseNoteLines(release.release_notes),
       publishedAt: release.published_at,
     }));
   } catch {
@@ -137,7 +174,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-14T02:30:00Z",
+    publishedAt: "2026-09-15T03:58:07.671219Z",
   }];
 }
 

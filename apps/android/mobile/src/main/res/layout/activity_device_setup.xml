@@ -76,6 +76,12 @@
             android:minHeight="48dp"
             android:text="@string/countdown_notifications" />
         <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/notificationTogetherTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/together_time_notifications" />
+        <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/notificationWeekly"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

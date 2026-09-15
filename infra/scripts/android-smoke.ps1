@@ -8,6 +8,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+$attachmentTitlePath = Join-Path $root ".inspect\attachment-smoke-title.txt"
+if (-not (Test-Path -LiteralPath $attachmentTitlePath)) {
+    throw "Run create_attachment_smoke.py before the Android smoke test."
+}
+$attachmentTitle = (Get-Content -LiteralPath $attachmentTitlePath -Raw).Trim()
+if (-not $attachmentTitle) { throw "The attachment smoke title is empty." }
 $adb = Join-Path $env:LOCALAPPDATA "Android\Sdk\platform-tools\adb.exe"
 $apk = Join-Path $root "apps\android\mobile\build\outputs\apk\smoke\mobile-smoke.apk"
 $accountFile = Join-Path $root ".inspect\smoke-accounts.json"
@@ -81,6 +87,27 @@ function Tap-Optional([string]$Text, [int]$Attempts = 8) {
     return $false
 }
 
+function Get-InlineAttachmentCount {
+    $priorPreference = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
+    $files = @(& $adb -s $Serial shell run-as $package ls -1 cache/note-attachments 2>$null)
+    $exitCode = $LASTEXITCODE
+    $ErrorActionPreference = $priorPreference
+    if ($exitCode -ne 0) { return 0 }
+    return @($files | Where-Object { $_.Trim() }).Count
+}
+
+function Assert-NoPreviewFailures {
+    $log = (& $adb -s $Serial logcat -d -v brief) -join "`n"
+    if ($log -match 'MARKWON-IMAGE.*Error loading image' -or
+            $log -match 'Attachment is unavailable') {
+        throw "Inline attachment preview logged a private-image resolution failure."
+    }
+    if ($log -match 'FATAL EXCEPTION.*littleorbit') {
+        throw "Little Orbit crashed during the document smoke path."
+    }
+}
+
 & $adb -s $Serial wait-for-device | Out-Null
 & $adb -s $Serial reverse tcp:18180 tcp:18180 | Out-Null
 & $adb -s $Serial install -r $apk | Out-Null
@@ -105,9 +132,23 @@ if ($null -ne $drawerButton) {
 Tap-Node (Wait-Node -Text "Our Space")
 Start-Sleep -Seconds 1
 Wait-Node -Text "A shared place for plans, lists, and little moments." | Out-Null
-Tap-Node (Wait-Node -Text "Attachment smoke")
+& $adb -s $Serial shell run-as $package rm -rf cache/note-attachments 2>$null | Out-Null
+& $adb -s $Serial logcat -c | Out-Null
+Tap-Node (Wait-Node -Text $attachmentTitle)
 Wait-Node -Text "Attachments" | Out-Null
 Wait-Node -Text "transparent.png" | Out-Null
+$inlineCount = 0
+for ($index = 0; $inlineCount -lt 2 -and $index -lt 20; $index++) {
+    Start-Sleep -Milliseconds 500
+    $inlineCount = Get-InlineAttachmentCount
+}
+if ($inlineCount -lt 2) { throw "Both inline attachment previews were not downloaded." }
+Assert-NoPreviewFailures
+$resultDir = Join-Path $root ".inspect\emulator-matrix"
+New-Item -ItemType Directory -Force -Path $resultDir | Out-Null
+& $adb -s $Serial shell screencap -p /sdcard/little-orbit-preview.png | Out-Null
+& $adb -s $Serial pull /sdcard/little-orbit-preview.png `
+    (Join-Path $resultDir "$Serial-space-preview.png") | Out-Null
 Tap-Node (Wait-Node -Text "Edit")
 Wait-Node -IdSuffix "formattingMoreButton" | Out-Null
 $gif = Find-Node "transparent.gif" ""
@@ -122,9 +163,7 @@ for ($index = 0; $null -eq $gif -and $index -lt 4; $index++) {
     $gif = Find-Node "transparent.gif" ""
 }
 if ($null -eq $gif) { throw "The second sanitized attachment was unavailable." }
-
-$resultDir = Join-Path $root ".inspect\emulator-matrix"
-New-Item -ItemType Directory -Force -Path $resultDir | Out-Null
+Assert-NoPreviewFailures
 & $adb -s $Serial shell screencap -p /sdcard/little-orbit-smoke.png | Out-Null
 & $adb -s $Serial pull /sdcard/little-orbit-smoke.png (Join-Path $resultDir "$Serial-space.png") | Out-Null
-Write-Output "$Serial passed paired Home, drawer, Our Space, Markdown dock, and attachments smoke."
+Write-Output "$Serial passed paired Home, drawer, Our Space, inline Markdown, dock, and attachments smoke."

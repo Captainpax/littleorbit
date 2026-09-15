@@ -13,11 +13,15 @@ Attachments add a second trust boundary. A filename, declared media type, or aut
 
 Android opens one authenticated editor WebSocket for snapshot, presence, operations, acknowledgements, and reconnect. It coalesces typing into code-point insert/delete operations with stable operation IDs. Acknowledgements carry the current server body and revision; Android applies the smallest UTF-16 range patch and maps the current selection through it. Disconnected edits remain app-private drafts. Unsafe divergence pauses mutation and shows local and server versions.
 
+Existing documents open in preview. One explicit action enters editing and returns to preview. Rotation and process restoration put only a random workspace reference in Android saved state; the title, local and server bodies, revisions, operation ID, selection endpoints, and mode remain in Keystore-encrypted app storage. A restored local edit is reconciled against a newly authorized server snapshot before its WebSocket may send the local version. Authorization, access-revocation, and required-update WebSocket close codes stop automatic reconnect loops and force the same HTTP recheck; ordinary transport closes keep bounded reconnect behavior.
+
 Our Space stores Markdown text. Android renders CommonMark with table, strikethrough, task-list, and autolink extensions. It does not enable raw HTML or a general network-image loader. Remote image syntax becomes a deliberate link, while attachment references use a private `attachment://` identifier and the authorized attachment tray.
 
 Attachment metadata lives in PostgreSQL and bytes live in a private Compose volume. The API authorizes current couple membership before note or attachment lookup, locks the couple for quota reservation, accepts only fixed media types, limits each file to 100 MiB and a couple to 2 GiB, and accepts exact-offset chunks no larger than 4 MiB. An operation-ID replay must match the original filename, type, size, and digest.
 
 Original bytes remain staged and unavailable. An isolated media worker streams them to ClamAV, then removes source metadata by rebuilding images/PDFs or remuxing audio/video. Clean sanitized bytes receive a new size and SHA-256 digest before availability. Scanner outages retry in a fail-closed state; malware, malformed content, digest mismatch, or sanitization failure deletes bytes and records a content-free rejection reason. Android verifies the sanitized digest before preview and may keep an explicit app-private offline copy. Deletion, relationship-state reset, and archived-note purge remove their corresponding private files.
+
+Android scopes retained media by note. A successful refresh of both active and recoverable archived directories removes unknown note folders. Sign-out, unpair, account change, and an exact structured `relationship_inactive` error clear every encrypted note draft and workspace, cached preview, retained copy, and transient upload. Other HTTP 409 responses remain ordinary edit conflicts and cannot trigger this purge.
 
 ## Consequences
 

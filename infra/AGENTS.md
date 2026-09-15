@@ -16,6 +16,7 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 - Pin image versions and the validated Ollama model digest. Never use `latest`.
 - Keep secrets in environment/secret files outside Git and redact diagnostic output.
 - Permit forwarded headers only from `192.168.50.6` and restrict Windows Firewall port 8180 to that source for production.
+- Reserve `172.30.14.2` for Caddy and `172.30.14.3` for the API on the private gateway link; otherwise update-time start order can let the API claim the trusted-proxy address.
 - Use bounded container logs, health checks, restart policies, automated database backups, retention, and a tested restore path.
 - Start migration-aware workers only after the API health check proves Alembic reached head; a healthy database alone does not prove the current schema exists.
 - Keep the RC smoke stack in its own Compose project, volumes, network, host ports, and disposable `@example.com` accounts. Its Mailpit override must clear production SMTP credentials and TLS settings rather than inherit them.

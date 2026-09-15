@@ -32,6 +32,12 @@ public final class LittleOrbitWidgetProvider extends AppWidgetProvider {
         WidgetRenderWorker.enqueue(context);
     }
 
+    @Override
+    public void onAppWidgetOptionsChanged(
+            Context context, AppWidgetManager manager, int appWidgetId, android.os.Bundle options) {
+        WidgetRenderWorker.enqueue(context);
+    }
+
     static PendingIntent openApp(Context context) {
         Intent intent = new Intent().setClassName(
                 context.getPackageName(), "com.littleorbit.mobile.MainActivity");

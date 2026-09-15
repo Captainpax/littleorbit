@@ -20,6 +20,7 @@ EXCLUDED_PARTS = frozenset(
         ".venv313",
         "build",
         "node_modules",
+        "test-results",
     }
 )
 LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")

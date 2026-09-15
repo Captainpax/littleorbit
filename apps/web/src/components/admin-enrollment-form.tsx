@@ -9,6 +9,26 @@ interface Challenge {
   qr_svg_data_url: string;
 }
 
+interface EnrollmentStartPayload {
+  password: string;
+  current_totp_code?: string;
+  current_recovery_code?: string;
+}
+
+export function buildEnrollmentStartPayload(form: FormData): EnrollmentStartPayload {
+  const password = String(form.get("password") ?? "");
+  const currentTotpCode = String(form.get("current_totp_code") ?? "").trim();
+  const currentRecoveryCode = String(form.get("current_recovery_code") ?? "").trim();
+  if (currentTotpCode && currentRecoveryCode) {
+    throw new Error("Choose one current MFA proof.");
+  }
+  return {
+    password,
+    ...(currentTotpCode ? { current_totp_code: currentTotpCode } : {}),
+    ...(currentRecoveryCode ? { current_recovery_code: currentRecoveryCode } : {}),
+  };
+}
+
 export function AdminEnrollmentForm() {
   const [accessToken, setAccessToken] = useState("");
   const [challenge, setChallenge] = useState<Challenge | null>(null);
@@ -20,20 +40,30 @@ export function AdminEnrollmentForm() {
     setMessage("");
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email"));
-    const password = String(form.get("password"));
+    let enrollmentPayload: EnrollmentStartPayload;
+    try {
+      enrollmentPayload = buildEnrollmentStartPayload(form);
+    } catch {
+      setMessage("Enter one current authenticator code or one recovery code, not both.");
+      return;
+    }
     const login = await fetch("/api/v1/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password: enrollmentPayload.password }),
     });
     if (!login.ok) return setMessage("The owner credentials were not accepted.");
     const session = await login.json() as { access_token: string };
     const response = await fetch("/api/v1/admin/mfa/start", {
       method: "POST",
       headers: { Authorization: `Bearer ${session.access_token}`, "content-type": "application/json" },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify(enrollmentPayload),
     });
-    if (!response.ok) return setMessage("This account cannot enroll owner MFA.");
+    if (!response.ok) {
+      return setMessage(response.status === 401
+        ? "Replacing MFA requires one current authenticator or unused recovery code."
+        : "This account cannot enroll owner MFA.");
+    }
     setAccessToken(session.access_token);
     setChallenge(await response.json() as Challenge);
   }
@@ -78,6 +108,9 @@ export function AdminEnrollmentForm() {
     <p>Enrollment requires a verified owner account and a fresh password check.</p>
     <label>Email<input name="email" type="email" autoComplete="username" required /></label>
     <label>Password<input name="password" type="password" autoComplete="current-password" required /></label>
+    <p id="replacement-proof-help">For first setup, leave both fields blank. To replace enabled MFA, enter exactly one current proof.</p>
+    <label>Current authenticator code<input name="current_totp_code" inputMode="numeric" pattern="[0-9]{6}" autoComplete="one-time-code" aria-describedby="replacement-proof-help" /></label>
+    <label>Current recovery code<input name="current_recovery_code" minLength={13} maxLength={32} autoComplete="one-time-code" aria-describedby="replacement-proof-help" /></label>
     <p className="form-message" role="status">{message}</p>
     <button className="button">Continue securely</button>
   </form>;

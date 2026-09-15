@@ -23,16 +23,30 @@ class Settings(BaseSettings):
     token_pepper: SecretStr = Field(default=SecretStr("development-only-token-pepper"))
     totp_encryption_key: SecretStr | None = None
     outbox_encryption_key: SecretStr | None = None
+    push_token_encryption_key: SecretStr | None = None
+    fcm_project_id: str | None = None
+    google_application_credentials: Path | None = None
     smtp_host: str = "localhost"
     smtp_port: int = 1025
     smtp_from: str = "hello@lil-orb.pax-kun.com"
     smtp_starttls: bool = False
     smtp_username: str | None = None
     smtp_password: SecretStr | None = None
-    trusted_proxy_ip: str = "192.168.50.6"
+    trusted_proxy_ip: str = "172.30.14.2"
     registration_open: bool = True
     registration_ip_per_hour: int = 8
     registration_email_per_hour: int = 4
+    login_ip_per_15_minutes: int = Field(default=30, ge=1, le=10_000)
+    login_subject_per_15_minutes: int = Field(default=10, ge=1, le=10_000)
+    recovery_ip_per_hour: int = Field(default=20, ge=1, le=10_000)
+    recovery_subject_per_hour: int = Field(default=5, ge=1, le=10_000)
+    reset_ip_per_hour: int = Field(default=20, ge=1, le=10_000)
+    reset_subject_per_hour: int = Field(default=6, ge=1, le=10_000)
+    pair_redeem_ip_per_hour: int = Field(default=30, ge=1, le=10_000)
+    pair_redeem_subject_per_hour: int = Field(default=10, ge=1, le=10_000)
+    admin_auth_ip_per_15_minutes: int = Field(default=20, ge=1, le=10_000)
+    admin_auth_subject_per_15_minutes: int = Field(default=8, ge=1, le=10_000)
+    admin_mfa_enrollment_minutes: int = Field(default=10, ge=5, le=60)
     session_minutes: int = Field(default=43_200, ge=30, le=525_600)
     admin_session_minutes: int = Field(default=30, ge=5, le=1_440)
 

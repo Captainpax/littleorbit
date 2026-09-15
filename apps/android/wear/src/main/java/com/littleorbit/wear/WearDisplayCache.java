@@ -1,5 +1,6 @@
 package com.littleorbit.wear;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import java.time.Duration;
@@ -51,13 +52,23 @@ final class WearDisplayCache {
 
     static State read(Context context) {
         SharedPreferences values = preferences(context);
+        long syncedAt = values.getLong("synced_at", 0);
+        if (!WearRelationshipGuard.ensureReadable(
+                context, syncedAt, System.currentTimeMillis())) return State.unavailable();
+        values = preferences(context);
         return new State(
                 values.getLong("relationship_start_epoch_day", -1),
                 values.getLong("nearby_seconds", 0),
                 values.getLong("nearby_processed_at", 0),
-                values.getString("countdown_title", "No countdown yet"),
+                values.getString("countdown_title", ""),
                 values.getLong("countdown_at", 0),
                 values.getLong("synced_at", 0));
+    }
+
+    @SuppressLint("ApplySharedPref")
+    static void clearValues(Context context) {
+        // Purge callers must observe deletion before accepting another relationship record.
+        preferences(context).edit().clear().commit();
     }
 
     private static SharedPreferences preferences(Context context) {
@@ -88,6 +99,10 @@ final class WearDisplayCache {
             this.syncedAt = syncedAt;
         }
 
+        static State unavailable() {
+            return new State(-1, 0, 0, "", 0, 0);
+        }
+
         boolean available() {
             return syncedAt > 0;
         }
@@ -101,39 +116,17 @@ final class WearDisplayCache {
                     || Instant.ofEpochMilli(syncedAt).plus(STALE_AFTER).isBefore(now);
         }
 
-        String relationshipText() {
-            return relationshipText(LocalDate.now(ZoneOffset.UTC));
+        long relationshipDays(LocalDate today) {
+            if (!available() || relationshipStartEpochDay < 0) return -1;
+            return Math.max(0, today.toEpochDay() - relationshipStartEpochDay);
         }
 
-        String relationshipText(LocalDate today) {
-            return relationshipStartEpochDay < 0
-                    ? "Pair date unavailable"
-                    : Math.max(0, today.toEpochDay() - relationshipStartEpochDay) + " days";
+        long nearbyHours() {
+            return Math.max(0, nearbySeconds) / 3_600;
         }
 
-        String relationshipShort() {
-            return relationshipStartEpochDay < 0
-                    ? "—"
-                    : Math.max(
-                            0,
-                            LocalDate.now(ZoneOffset.UTC).toEpochDay()
-                                    - relationshipStartEpochDay)
-                            + "d";
-        }
-
-        String nearbyText() {
-            return nearbySeconds / 3_600
-                    + "h "
-                    + (nearbySeconds % 3_600) / 60
-                    + "m nearby";
-        }
-
-        String statusText() {
-            return stale() ? "Stale · open phone" : countdownTitle;
-        }
-
-        String accessibilityText() {
-            return relationshipText() + " together, " + nearbyText() + ", " + statusText();
+        long nearbyMinutesRemainder() {
+            return Math.max(0, nearbySeconds) % 3_600 / 60;
         }
     }
 }

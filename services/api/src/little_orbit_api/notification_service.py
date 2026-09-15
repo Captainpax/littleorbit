@@ -1,10 +1,11 @@
 """Transactional rules for preferences and partner-notification delivery."""
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .clock import SystemClock
@@ -22,10 +23,23 @@ from .notification_schemas import (
     NotificationKind,
     NotificationPreferencesResponse,
 )
+from .together_models import TogetherDay
 
 EVENT_TTL = timedelta(hours=24)
 ACTIVE_DEVICE_WINDOW = timedelta(days=30)
 NOTE_EDIT_COOLDOWN = timedelta(minutes=30)
+
+PREFERENCE_KINDS: dict[str, tuple[str, ...]] = {
+    "smooches_enabled": ("smooch_received",),
+    "note_editing_enabled": ("note_editing",),
+    "daily_quiz_enabled": (
+        "quiz_available",
+        "quiz_partner_finished",
+        "quiz_results_ready",
+    ),
+    "countdowns_enabled": ("countdown_created", "countdown_rescheduled"),
+    "together_time_enabled": ("together_time_corrected",),
+}
 
 
 async def partner_id_for(session: AsyncSession, couple_id: UUID, actor_id: UUID) -> UUID | None:
@@ -136,14 +150,31 @@ async def ensure_quiz_available_event(
 
 
 async def preferences_for(session: AsyncSession, account_id: UUID) -> NotificationPreference:
-    """Return defaults for an account that has not saved explicit choices yet."""
+    """Create defaults once and lock choices against concurrent alert creation."""
 
-    preferences = await session.get(NotificationPreference, account_id)
-    if preferences is not None:
-        return preferences
-    preferences = NotificationPreference(account_id=account_id, updated_at=SystemClock().now())
-    session.add(preferences)
-    await session.flush()
+    await session.execute(
+        insert(NotificationPreference)
+        .values(
+            account_id=account_id,
+            master_enabled=True,
+            smooches_enabled=True,
+            note_editing_enabled=True,
+            daily_quiz_enabled=True,
+            countdowns_enabled=True,
+            together_time_enabled=True,
+            weekly_summary_enabled=True,
+            updated_at=SystemClock().now(),
+        )
+        .on_conflict_do_nothing(index_elements=["account_id"])
+    )
+    preferences = await session.scalar(
+        select(NotificationPreference)
+        .where(NotificationPreference.account_id == account_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if preferences is None:
+        raise RuntimeError("Notification preferences could not be initialized")
     return preferences
 
 
@@ -156,9 +187,30 @@ def preferences_response(item: NotificationPreference) -> NotificationPreference
         note_editing_enabled=item.note_editing_enabled,
         daily_quiz_enabled=item.daily_quiz_enabled,
         countdowns_enabled=item.countdowns_enabled,
+        together_time_enabled=item.together_time_enabled,
         weekly_summary_enabled=item.weekly_summary_enabled,
         updated_at=item.updated_at,
     )
+
+
+async def discard_disabled_events(
+    session: AsyncSession, preferences: NotificationPreference
+) -> None:
+    """Discard ephemeral alerts that the recipient has explicitly disabled."""
+
+    disabled = [
+        kind
+        for field, kinds in PREFERENCE_KINDS.items()
+        if not preferences.master_enabled or not bool(getattr(preferences, field))
+        for kind in kinds
+    ]
+    if disabled:
+        await session.execute(
+            delete(NotificationEvent).where(
+                NotificationEvent.recipient_id == preferences.account_id,
+                NotificationEvent.kind.in_(disabled),
+            )
+        )
 
 
 async def enqueue_smooch_event(session: AsyncSession, smooch: Smooch) -> UUID | None:
@@ -231,6 +283,31 @@ async def enqueue_note_edit_event(
     return recipient_id
 
 
+async def enqueue_together_correction_event(
+    session: AsyncSession,
+    couple_id: UUID,
+    actor_id: UUID,
+    day_id: UUID,
+    day: date,
+    revision: int,
+) -> UUID | None:
+    """Notify the partner of a corrected total without placing its reason in push."""
+
+    recipient_id = await partner_id_for(session, couple_id, actor_id)
+    if recipient_id is None:
+        return None
+    return await _enqueue_partner_event(
+        session=session,
+        recipient_id=recipient_id,
+        couple_id=couple_id,
+        actor_id=actor_id,
+        kind="together_time_corrected",
+        source_id=day_id,
+        dedupe_key=f"together-day:{day.isoformat()}:{revision}",
+        preference="together_time_enabled",
+    )
+
+
 async def create_active_deliveries(session: AsyncSession, event: NotificationEvent) -> None:
     """Attach an event to every recently seen, enabled installation."""
 
@@ -246,8 +323,21 @@ async def create_active_deliveries(session: AsyncSession, event: NotificationEve
         )
     )
     now = SystemClock().now()
-    for device in devices:
-        session.add(NotificationDelivery(event_id=event.id, device_id=device.id, created_at=now))
+    rows = [
+        {
+            "id": uuid4(),
+            "event_id": event.id,
+            "device_id": device.id,
+            "created_at": now,
+        }
+        for device in devices
+    ]
+    if rows:
+        await session.execute(
+            insert(NotificationDelivery)
+            .values(rows)
+            .on_conflict_do_nothing(index_elements=["event_id", "device_id"])
+        )
 
 
 async def ensure_pending_deliveries(session: AsyncSession, device: NotificationDevice) -> None:
@@ -258,7 +348,12 @@ async def ensure_pending_deliveries(session: AsyncSession, device: NotificationD
             select(NotificationEvent).where(
                 NotificationEvent.recipient_id == device.account_id,
                 NotificationEvent.expires_at > SystemClock().now(),
-                NotificationEvent.legacy_consumed_at.is_(None),
+                NotificationEvent.couple_id.in_(
+                    select(CoupleMember.couple_id).where(
+                        CoupleMember.account_id == device.account_id,
+                        CoupleMember.left_at.is_(None),
+                    )
+                ),
                 ~NotificationEvent.id.in_(
                     select(NotificationDelivery.event_id).where(
                         NotificationDelivery.device_id == device.id
@@ -268,8 +363,21 @@ async def ensure_pending_deliveries(session: AsyncSession, device: NotificationD
         )
     )
     now = SystemClock().now()
-    for event in events:
-        session.add(NotificationDelivery(event_id=event.id, device_id=device.id, created_at=now))
+    rows = [
+        {
+            "id": uuid4(),
+            "event_id": event.id,
+            "device_id": device.id,
+            "created_at": now,
+        }
+        for event in events
+    ]
+    if rows:
+        await session.execute(
+            insert(NotificationDelivery)
+            .values(rows)
+            .on_conflict_do_nothing(index_elements=["event_id", "device_id"])
+        )
 
 
 async def event_response(
@@ -308,6 +416,23 @@ async def event_response(
         )
     if event.kind.startswith("countdown_"):
         return await _countdown_event_response(session, event, actor_name)
+    if event.kind == "together_time_corrected":
+        item = await session.scalar(
+            select(TogetherDay).where(
+                TogetherDay.id == event.source_id,
+                TogetherDay.couple_id == event.couple_id,
+            )
+        )
+        if item is None:
+            return None
+        return NotificationEventResponse(
+            id=event.id,
+            kind="together_time_corrected",
+            created_at=event.created_at,
+            expires_at=event.expires_at,
+            actor_display_name=actor_name,
+            together_day=item.day,
+        )
     return await _quiz_event_response(session, event, actor_name)
 
 

@@ -12,6 +12,7 @@ public final class TogetherTimeModels {
         @Json(name = "paired_days") public final long pairedDays;
         @Json(name = "nearby_estimated_seconds") public final long nearbyEstimatedSeconds;
         @Json(name = "nearby_last_processed_at") public final String nearbyLastProcessedAt;
+        @Json(name = "nearby_confidence") public final String nearbyConfidence;
         @Json(name = "proximity_threshold_m") public final double proximityThresholdM;
         @Json(name = "location_enabled_by_me") public final boolean locationByMe;
         @Json(name = "location_enabled_by_both") public final boolean locationByBoth;
@@ -19,12 +20,13 @@ public final class TogetherTimeModels {
 
         /** Creates one decoded privacy-limited pair and estimate summary. */
         public PairSummary(String pairedAt, long pairedDays, long nearbyEstimatedSeconds,
-                String nearbyLastProcessedAt, double proximityThresholdM,
+                String nearbyLastProcessedAt, String nearbyConfidence, double proximityThresholdM,
                 boolean locationByMe, boolean locationByBoth, String label) {
             this.pairedAt = pairedAt;
             this.pairedDays = pairedDays;
             this.nearbyEstimatedSeconds = nearbyEstimatedSeconds;
             this.nearbyLastProcessedAt = nearbyLastProcessedAt;
+            this.nearbyConfidence = nearbyConfidence;
             this.proximityThresholdM = proximityThresholdM;
             this.locationByMe = locationByMe;
             this.locationByBoth = locationByBoth;
@@ -119,12 +121,33 @@ public final class TogetherTimeModels {
         public final String day;
         @Json(name = "estimated_seconds") public final long estimatedSeconds;
         public final boolean corrected;
+        public final int revision;
+        @Json(name = "corrected_by_display_name") public final String correctedByDisplayName;
+        @Json(name = "correction_reason") public final String correctionReason;
 
         /** Creates a decoded history day. */
-        public HistoryDay(String day, long estimatedSeconds, boolean corrected) {
+        public HistoryDay(String day, long estimatedSeconds, boolean corrected, int revision,
+                String correctedByDisplayName, String correctionReason) {
             this.day = day;
             this.estimatedSeconds = estimatedSeconds;
             this.corrected = corrected;
+            this.revision = revision;
+            this.correctedByDisplayName = correctedByDisplayName;
+            this.correctionReason = correctionReason;
+        }
+    }
+
+    /** Optimistic correction to one completed UTC calendar day. */
+    public static final class DayCorrection {
+        @Json(name = "estimated_seconds") public final long estimatedSeconds;
+        @Json(name = "expected_revision") public final int expectedRevision;
+        public final String reason;
+
+        /** Creates a bounded retry-safe daily correction. */
+        public DayCorrection(long estimatedSeconds, int expectedRevision, String reason) {
+            this.estimatedSeconds = estimatedSeconds;
+            this.expectedRevision = expectedRevision;
+            this.reason = reason;
         }
     }
 

@@ -1,17 +1,20 @@
 package com.littleorbit.mobile;
 
-import android.app.DatePickerDialog;
-import android.app.TimePickerDialog;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.datepicker.MaterialDatePicker;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.timepicker.MaterialTimePicker;
+import com.google.android.material.timepicker.TimeFormat;
 import com.littleorbit.data.remote.CountdownApiModels;
 import com.littleorbit.mobile.databinding.DialogCountdownEditorBinding;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -93,6 +96,8 @@ final class CountdownEditorDialog {
         binding.timezoneInput.setAdapter(new ArrayAdapter<>(
                 activity, android.R.layout.simple_dropdown_item_1line, zones));
         binding.timezoneInput.setText(selected.getId(), false);
+        binding.timezoneInput.setThreshold(0);
+        binding.timezoneInput.setOnClickListener(view -> binding.timezoneInput.showDropDown());
     }
 
     private void restoreReminders() {
@@ -110,51 +115,80 @@ final class CountdownEditorDialog {
         binding.saveButton.setOnClickListener(ignored -> submit(false));
         binding.saveCalendarButton.setOnClickListener(ignored -> submit(true));
         binding.deleteButton.setVisibility(existing == null ? View.GONE : View.VISIBLE);
-        binding.deleteButton.setOnClickListener(ignored -> {
-            dialog.dismiss();
-            listener.delete(existing);
-        });
+        binding.deleteButton.setOnClickListener(ignored -> askToDelete());
     }
 
     private void chooseDate() {
-        new DatePickerDialog(
-                activity,
-                (picker, year, month, day) -> {
-                    date = LocalDate.of(year, month + 1, day);
-                    refreshPickerLabels();
-                },
-                date.getYear(), date.getMonthValue() - 1, date.getDayOfMonth())
-                .show();
+        long selection = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+        MaterialDatePicker<Long> picker = MaterialDatePicker.Builder.datePicker()
+                .setTitleText(R.string.choose_date)
+                .setSelection(selection)
+                .build();
+        picker.addOnPositiveButtonClickListener(value -> {
+            date = Instant.ofEpochMilli(value).atZone(ZoneOffset.UTC).toLocalDate();
+            refreshPickerLabels();
+        });
+        picker.show(activity.getSupportFragmentManager(), "countdown-date");
     }
 
     private void chooseTime() {
-        new TimePickerDialog(
-                activity,
-                (picker, hour, minute) -> {
-                    time = LocalTime.of(hour, minute);
-                    refreshPickerLabels();
-                },
-                time.getHour(), time.getMinute(), false)
+        int format = android.text.format.DateFormat.is24HourFormat(activity)
+                ? TimeFormat.CLOCK_24H : TimeFormat.CLOCK_12H;
+        MaterialTimePicker picker = new MaterialTimePicker.Builder()
+                .setTitleText(R.string.choose_time)
+                .setTimeFormat(format)
+                .setHour(time.getHour())
+                .setMinute(time.getMinute())
+                .build();
+        picker.addOnPositiveButtonClickListener(value -> {
+            time = LocalTime.of(picker.getHour(), picker.getMinute());
+            refreshPickerLabels();
+        });
+        picker.show(activity.getSupportFragmentManager(), "countdown-time");
+    }
+
+    private void askToDelete() {
+        if (existing == null) return;
+        new MaterialAlertDialogBuilder(activity)
+                .setTitle(activity.getString(
+                        R.string.rc14_countdown_delete_title, existing.title))
+                .setMessage(R.string.rc14_countdown_delete_message)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.rc14_delete_countdown, (ignored, which) -> {
+                    dialog.dismiss();
+                    listener.delete(existing);
+                })
                 .show();
     }
 
     private void refreshPickerLabels() {
-        binding.dateButton.setText(date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)));
-        binding.timeButton.setText(time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)));
+        String dateLabel = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM));
+        String timeLabel = time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT));
+        binding.dateButton.setText(dateLabel);
+        binding.dateButton.setContentDescription(activity.getString(
+                R.string.rc14_countdown_date_selected, dateLabel));
+        binding.timeButton.setText(timeLabel);
+        binding.timeButton.setContentDescription(activity.getString(
+                R.string.rc14_countdown_time_selected, timeLabel));
         binding.timeButton.setVisibility(binding.allDaySwitch.isChecked() ? View.GONE : View.VISIBLE);
     }
 
     private void submit(boolean addToCalendar) {
         String title = String.valueOf(binding.titleInput.getText()).trim();
+        binding.titleLayout.setError(null);
+        binding.timezoneLayout.setError(null);
+        if (title.isEmpty()) {
+            binding.titleLayout.setError(activity.getString(
+                    R.string.rc14_countdown_title_required));
+            binding.titleInput.requestFocus();
+            return;
+        }
         ZoneId zone;
         try {
             zone = ZoneId.of(binding.timezoneInput.getText().toString().trim());
         } catch (RuntimeException invalid) {
-            binding.editorStatus.setText(R.string.invalid_timezone);
-            return;
-        }
-        if (title.isEmpty()) {
-            binding.editorStatus.setText(R.string.countdown_date_required);
+            binding.timezoneLayout.setError(activity.getString(R.string.invalid_timezone));
+            binding.timezoneInput.requestFocus();
             return;
         }
         boolean allDay = binding.allDaySwitch.isChecked();

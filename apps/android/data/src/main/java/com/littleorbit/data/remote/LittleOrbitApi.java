@@ -20,6 +20,10 @@ public interface LittleOrbitApi {
     @GET("api/v1/health/live")
     Call<HealthDto> health();
 
+    /** Submits an explicitly enabled content-free Android crash fingerprint. */
+    @POST("api/v1/diagnostics/crash")
+    Call<ApiModels.Message> reportCrash(@Body DiagnosticApiModels.Report report);
+
     /** Loads public signed-APK update metadata without requiring an account session. */
     @GET("api/v1/releases/current")
     Call<ApiModels.ApkRelease> currentRelease();
@@ -296,7 +300,7 @@ public interface LittleOrbitApi {
     Call<TogetherTimeModels.PairSummary> togetherSummaryV3();
 
     /** Loads thirty coordinate-free UTC days of nearby estimates. */
-    @GET("api/v2/together-time/history")
+    @GET("api/v3/together-time/history")
     Call<java.util.List<TogetherTimeModels.HistoryDay>> togetherHistory(@Query("days") int days);
 
     /** Proposes a shared start date for partner approval. */
@@ -321,9 +325,14 @@ public interface LittleOrbitApi {
             @Body ApiModels.TogetherCorrectionRequest request);
 
     /** Uploads a bounded encrypted-queue batch after consent checks. */
-    @POST("api/v2/together-time/locations")
+    @POST("api/v3/together-time/location-batches")
     Call<TogetherTimeModels.LocationBatchResult> uploadLocations(
             @Body ApiModels.LocationBatch request);
+
+    /** Applies an optimistic correction to one completed UTC day. */
+    @PUT("api/v3/together-time/days/{day}")
+    Call<TogetherTimeModels.HistoryDay> correctTogetherDay(
+            @Path("day") String day, @Body TogetherTimeModels.DayCorrection request);
 
     /** Loads member and mutual privacy settings. */
     @GET("api/v1/couple/preferences")
@@ -344,6 +353,19 @@ public interface LittleOrbitApi {
     /** Loads one private former-pairing archive. */
     @GET("api/v1/couple/archives/{archiveId}")
     Call<ApiModels.ArchiveDetail> archive(@Path("archiveId") String archiveId);
+
+    /** Lists clean files retained in one authorized former-pairing note. */
+    @GET("api/v1/couple/archives/{archiveId}/notes/{noteId}/attachments")
+    Call<java.util.List<NoteApiModels.Attachment>> archiveAttachments(
+            @Path("archiveId") String archiveId, @Path("noteId") String noteId);
+
+    /** Downloads one clean former-pairing file without restoring shared access. */
+    @Streaming
+    @GET("api/v1/couple/archives/{archiveId}/notes/{noteId}/attachments/{attachmentId}/content")
+    Call<okhttp3.ResponseBody> downloadArchiveAttachment(
+            @Path("archiveId") String archiveId,
+            @Path("noteId") String noteId,
+            @Path("attachmentId") String attachmentId);
 
     /** Exports owner-visible account data. */
     @GET("api/v1/account/export")

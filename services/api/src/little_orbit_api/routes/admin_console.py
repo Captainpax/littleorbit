@@ -32,6 +32,7 @@ from ..models import (
     SecurityEvent,
     Session,
 )
+from ..notification_models import NotificationDevice
 from ..release_service import PublishedReleaseImmutable, upsert_apk_release
 from ..schemas import (
     AdminAccountAction,
@@ -149,6 +150,16 @@ async def update_account(
         )
         for active_session in sessions:
             active_session.revoked_at = now
+        devices = await session.scalars(
+            select(NotificationDevice).where(NotificationDevice.account_id == account.id)
+        )
+        for device in devices:
+            device.notifications_enabled = False
+            device.disabled_at = now
+            device.push_token_encrypted = None
+            device.push_token_hash = None
+            device.push_token_refreshed_at = None
+            device.push_token_invalidated_at = now
     session.add(
         SecurityEvent(
             actor_id=admin.id,
@@ -171,6 +182,7 @@ async def revoke_account_sessions(
     """Revoke every active session and record who initiated the action."""
 
     now = SystemClock().now()
+    await session.get(Account, account_id, with_for_update=True)
     records = await session.scalars(
         select(Session).where(Session.account_id == account_id, Session.revoked_at.is_(None))
     )

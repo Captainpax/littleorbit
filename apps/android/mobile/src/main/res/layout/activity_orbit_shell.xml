@@ -43,9 +43,11 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:accessibilityHeading="true"
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
                     android:text="@string/app_name"
                     android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
 
@@ -56,6 +58,7 @@
                     android:layout_height="52dp"
                     android:contentDescription="@string/open_context_panel"
                     android:text=""
+                    android:visibility="gone"
                     app:icon="@drawable/ic_context_panel"
                     app:iconGravity="textStart"
                     app:iconPadding="0dp" />
@@ -71,7 +74,7 @@
 
     <ScrollView
         android:id="@+id/leftDrawer"
-        android:layout_width="304dp"
+        android:layout_width="@dimen/orbit_navigation_drawer_width"
         android:layout_height="match_parent"
         android:layout_gravity="start"
         android:background="@color/navy_surface_muted"
@@ -87,28 +90,29 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="18dp"
+                android:accessibilityHeading="true"
                 android:text="@string/app_name"
                 android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
 
-            <com.google.android.material.button.MaterialButton android:id="@+id/navHome" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/home" app:icon="@drawable/ic_home" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navQuiz" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/quiz" app:icon="@drawable/ic_quiz" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navSmooch" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/smooches" app:icon="@drawable/ic_smooch" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navSpace" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/our_space" app:icon="@drawable/ic_notes" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navCountdowns" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/countdowns" app:icon="@drawable/ic_countdown" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navTogether" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/together_details" app:icon="@drawable/ic_nearby" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navProfile" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/profile_photo" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navSettings" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/settings" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navPrivacy" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/privacy_controls" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navUpdates" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/app_updates" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navSignIn" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/sign_in" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navCreateAccount" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/create_account" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/navAbout" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="start|center_vertical" android:text="@string/about_little_orbit" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navHome" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/home" app:icon="@drawable/ic_home" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navQuiz" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/quiz" app:icon="@drawable/ic_quiz" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navSmooch" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/smooches" app:icon="@drawable/ic_smooch" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navSpace" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/our_space" app:icon="@drawable/ic_notes" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navCountdowns" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/countdowns" app:icon="@drawable/ic_countdown" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navTogether" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/together_details" app:icon="@drawable/ic_nearby" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navProfile" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="@string/profile_photo" app:icon="@drawable/ic_profile" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navSettings" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/settings" app:icon="@drawable/ic_settings" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navPrivacy" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/privacy_controls" app:icon="@drawable/ic_privacy" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navUpdates" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="@string/app_updates" app:icon="@drawable/ic_update" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navSignIn" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:text="@string/sign_in" app:icon="@drawable/ic_profile" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navCreateAccount" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/create_account" app:icon="@drawable/ic_pair" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/navAbout" style="@style/Widget.LittleOrbit.Button.Navigation" android:layout_width="match_parent" android:layout_height="52dp" android:text="@string/about_little_orbit" app:icon="@drawable/ic_info" />
         </LinearLayout>
     </ScrollView>
 
     <ScrollView
         android:id="@+id/rightDrawer"
-        android:layout_width="336dp"
+        android:layout_width="@dimen/orbit_context_drawer_width"
         android:layout_height="match_parent"
         android:layout_gravity="end"
         android:background="@color/navy_surface_muted"
@@ -124,6 +128,7 @@
                 android:id="@+id/contextTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:accessibilityHeading="true"
                 android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
 
             <TextView

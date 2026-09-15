@@ -156,6 +156,7 @@ async def submit_answer(
     """Store one answer idempotently and reveal only after both active members submit."""
 
     member = await active_member(session, actor.id)
+    await lock_couple(session, member.couple_id)
     question = await session.scalar(
         select(Question).where(Question.id == question_id, Question.disabled_at.is_(None))
     )
@@ -206,6 +207,7 @@ async def create_custom_question(
     """Create a couple-scoped prompt that either active partner may answer."""
 
     member = await active_member(session, actor.id)
+    await lock_couple(session, member.couple_id)
     question = Question(
         publish_date=payload.publish_date,
         kind=payload.kind,

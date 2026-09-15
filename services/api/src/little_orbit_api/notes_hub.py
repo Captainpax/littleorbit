@@ -46,7 +46,7 @@ class NoteConnectionHub:
         for socket in tuple(self._connections.get(note_id, {})):
             try:
                 await socket.send_json(payload)
-            except RuntimeError:
+            except Exception:
                 self.remove(note_id, socket)
 
     async def disconnect(self, note_ids: list[UUID]) -> None:
@@ -54,4 +54,9 @@ class NoteConnectionHub:
 
         for note_id in note_ids:
             for socket in tuple(self._connections.pop(note_id, {})):
-                await socket.close(code=4403)
+                try:
+                    await socket.close(code=4403)
+                except Exception:
+                    # The database authorization change is authoritative. A stale
+                    # transport will also fail the next periodic session recheck.
+                    continue

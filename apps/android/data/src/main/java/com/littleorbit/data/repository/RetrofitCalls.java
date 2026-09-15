@@ -13,7 +13,7 @@ final class RetrofitCalls {
             Response<T> response = call.execute();
             T body = response.body();
             if (!response.isSuccessful() || body == null) {
-                throw new OrbitServiceException(response.code());
+                throw failure(response);
             }
             return body;
         } catch (IOException exception) {
@@ -24,9 +24,16 @@ final class RetrofitCalls {
     static void executeVoid(Call<Void> call) {
         try {
             Response<Void> response = call.execute();
-            if (!response.isSuccessful()) throw new OrbitServiceException(response.code());
+            if (!response.isSuccessful()) throw failure(response);
         } catch (IOException exception) {
             throw new OrbitServiceException(exception);
         }
+    }
+
+    private static OrbitServiceException failure(Response<?> response) {
+        String safeCode = SafeServiceError.code(response);
+        return safeCode == null
+                ? new OrbitServiceException(response.code())
+                : new OrbitServiceException(response.code(), safeCode);
     }
 }

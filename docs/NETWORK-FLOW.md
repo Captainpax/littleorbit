@@ -33,7 +33,7 @@ flowchart TD
 
 Only gateway port 8180 is published by Compose. Windows Firewall allows that production port only from `192.168.50.6`. The address `192.168.50.182` needs a DHCP reservation before production use. The worker waits for API health so migrations finish before maintenance or scheduled generation can query the new schema.
 
-Caddy trusts incoming `X-Forwarded-For` only when its immediate peer is `192.168.50.6`. It overwrites a private `X-Little-Orbit-Client-IP` header before proxying to FastAPI. FastAPI validates that value as one IP address and does not enable Uvicorn's generic proxy-header trust.
+Caddy trusts incoming `X-Forwarded-For` only when its immediate peer is `192.168.50.6`. It overwrites a private `X-Little-Orbit-Client-IP` header before proxying to FastAPI. FastAPI accepts that private header only from Caddy's fixed `gateway-api` address, validates it as exactly one IP address, and does not enable Uvicorn's generic proxy-header trust. Compose reserves `172.30.14.2` for Caddy and `172.30.14.3` for FastAPI so update-time start order cannot give the trusted proxy address to the application container. Direct or malformed values fall back to the socket peer for throttling.
 
 ## Authentication and pairing
 
@@ -44,21 +44,47 @@ sequenceDiagram
     participant API
     participant DB as PostgreSQL
     A->>API: Register + 18+/terms + honeypot
+    API->>DB: Commit capped IP + email digest counters
     API->>DB: Store Argon2id hash + hashed verification token
     API-->>A: Neutral response; email verification link
     A->>API: Consume verification token once
     A->>API: Create pair code
     API->>DB: Store hashed 8-char code, expires +10m
     B->>API: Redeem code
-    API->>DB: Lock code; verify B and capacity; mark pending
+    API->>DB: Commit capped IP + account digest counters
+    API->>DB: Lock both accounts, then code; recheck eligibility and capacity
     API-->>A: Ask creator to confirm B
     A->>API: Confirm pending partner
+    API->>DB: Re-lock accounts in UUID order; recheck expiry and eligibility
     API->>DB: One transaction: consume code + create two-member couple
     API-->>A: Return shared paired state
     API-->>B: Pairing becomes visible on the next authenticated refresh
 ```
 
-Public registration, resend, and recovery responses are identical for known and unknown emails. Rate limits apply to IP and normalized email keys.
+Public registration, resend, and recovery responses are identical for known and unknown emails. Login, resend, recovery, reset, pair redemption, and administrator proof limits use capped PostgreSQL counters. The service commits these attempts independently, persists only scope-separated keyed hashes, applies the IP bucket before an attacker-controlled subject, and removes inactive rows within 24 hours plus the worker interval.
+
+Password reset locks the account and all outstanding reset tokens, consumes every link, changes the password, and revokes all sessions in one transaction. Login, rotation, administrator issuance, revocation, unpairing, and deletion share the account row as their outer serialization boundary so a stale credential cannot create a surviving session after reset.
+
+## Administrator MFA replacement
+
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant API
+    participant DB as PostgreSQL
+    Admin->>API: Start replacement with password + current TOTP/recovery
+    API->>DB: Commit capped IP + administrator digest counters
+    API->>DB: Lock account and MFA; recheck exact live session + current proof
+    API->>DB: Store encrypted pending secret with bounded expiry
+    Note over DB: Current factor remains active
+    API-->>Admin: Authenticator enrollment URI
+    Admin->>API: Confirm one code from pending factor
+    API->>DB: Recheck account, session, pending expiry, and TOTP replay counter
+    API->>DB: Swap factor + hash new recovery codes + revoke every prior session
+    API-->>Admin: One new MFA session + recovery codes shown once
+    Admin->>API: Read operational configuration
+    API-->>Admin: Explicit safe allowlist only
+```
 
 ## Live notes
 
@@ -68,11 +94,23 @@ sequenceDiagram
     participant API
     participant DB as PostgreSQL
     participant B as Partner B
+    B->>API: GET authorized note directory while library is foreground
+    API->>DB: Authorize current couple before listing notes
+    API-->>B: Ordered directory snapshot
+    A->>API: POST document(operation_id, title, body)
+    API->>DB: Insert once + enqueue bounded note alert atomically
+    API-->>B: notification.available (content-free)
+    loop Every 5 s while B's library remains visible
+        B->>API: Refresh authorized directory
+        API-->>B: Changed snapshot or identical snapshot
+    end
     A->>API: Open one WSS editor session(note_id)
     API->>DB: Authorize actor before note lookup
+    API->>DB: After hub registration, recheck exact session + account + note access
     API-->>A: Snapshot(revision N) + unique-account presence
     A->>API: Operation(op_id, base N, insert/delete)
-    API->>DB: Lock note; dedupe op_id; transform; append revision N+1
+    API->>DB: Lock account + exact session, then couple + note
+    API->>DB: Dedupe op_id; transform; append revision N+1
     API-->>A: Ack(op_id, current body, revision N+1)
     API-->>B: Applied operation(revision N+1)
     Note over A,B: Body input debounces 750 ms;<br/>ack patches preserve cursor/selection;<br/>duplicate operation IDs return current state
@@ -84,7 +122,13 @@ sequenceDiagram
     A->>API: Rename or archive with metadata operation ID
     API->>DB: Lock couple + note; dedupe; increment metadata revision
     Note over DB: Archived notes reject body operations<br/>and remain restorable for 7 days
+    loop Every operation or 30 s idle heartbeat
+        API->>DB: Recheck session, account, and current note access
+        DB-->>API: Active or terminal revocation
+    end
 ```
+
+Session expiry, revocation, suspension, deletion, unpairing, or note archival closes the socket. The server retains only the keyed session digest needed for revalidation; the raw bearer token is not kept in connection state. Android does not rebuild the library for an identical snapshot, and leaving the library stops its directory refresh.
 
 ## Private note attachments
 
@@ -264,7 +308,7 @@ flowchart TD
     Bucket --> Estimate[Update aggregate estimate + last-updated]
     Skip --> Estimate
     Estimate --> Cache[Minimal widget/watch cache]
-    Samples --> Expiry[Delete raw coordinates within 24 h]
+    Samples --> Expiry[Schedule expiry at 23 h 55 min<br/>Defensive hard delete at 24 h]
     OptOut[Either partner opts out or permission is removed] --> StopLocal[Stop service + clear local queue]
     StopLocal --> Delete[Delete both partners' raw coordinates]
     Delete --> Stop[Reject future uploads until mutual consent]
@@ -272,7 +316,7 @@ flowchart TD
     CorrectionAudit --> Estimate
 ```
 
-Collection may continue into the encrypted local queue while the network is offline. Upload and server processing resume later. Two consecutive confident nearby pairs are still required; RC10 improves the chance of collecting evidence without converting sparse or distant samples into false together-time.
+Collection may continue into the encrypted local queue while the network is offline. Upload and server processing resume later, except that a sample already inside the five-minute cleanup margin is rejected instead of being reintroduced near its hard retention ceiling. Two consecutive confident nearby pairs are still required; continuous collection improves the chance of collecting evidence without converting sparse or distant samples into false together-time.
 
 ## Smooch delivery and weekly history
 
@@ -310,12 +354,20 @@ sequenceDiagram
     participant Feature as Smooch / note / countdown / quiz transition
     participant DB as PostgreSQL
     participant Hub as API foreground hub
+    participant Push as Optional FCM worker
     participant Phone1 as Partner phone 1
     participant Phone2 as Partner phone 2
     Feature->>DB: Insert feature row + short-lived event atomically
     DB->>DB: Create delivery per active enabled installation
     Feature-->>Hub: Commit succeeded; signal recipient account
     Hub-->>Phone1: notification.available (no content)
+    DB->>Push: Claim pending installation + exact token generation
+    Push-->>Phone2: notification.available (no content)
+    Push->>DB: Record result only if token generation still matches
+    loop Every client message or 30 s idle heartbeat
+        Phone1->>Hub: Keep foreground subscription open
+        Hub->>DB: Recheck exact session, active account, and installation
+    end
     Phone1->>DB: Authenticated pending fetch for installation UUID
     Phone2->>DB: WorkManager fallback pending fetch
     DB-->>Phone1: Authorized display metadata
@@ -324,7 +376,7 @@ sequenceDiagram
     Note over Phone2,DB: Phone 2 stays pending until it posts and acks
 ```
 
-Installation IDs are random app-generated UUIDs rather than hardware identifiers. Account preferences gate event creation; Android runtime permission and notification-channel state gate each phone's post. A note edit creates an alert only for the first accepted body change inside a 30-minute document/editor window and skips it when the partner already has that document open. Countdown metadata excludes notes and private reminder choices; quiz metadata is limited to the UTC date. Preparing a missing daily quiz alert uses an isolated transaction so a pool outage cannot block unrelated pending events. Events are fetchable for 24 hours, retained for at most seven days for bounded recovery, and removed with the account or couple. Installations unseen for 90 days are purged. The foreground hint hub is process-local, so the current self-hosted deployment runs one API process; durable polling remains authoritative if a hint is missed.
+Installation IDs are random app-generated UUIDs rather than hardware identifiers. Account preferences gate event creation; disabling a category removes its waiting events, while Android runtime permission and notification-channel state gate each phone's post. Delivery backfill uses conflict-safe inserts and ignores the retired account-wide Smooch-consumed marker, so an old client cannot suppress a current installation. Optional FCM addresses are keyed-hashed and encrypted; send results are bound to the exact digest and claim time, and terminally invalid digests cannot be re-registered. Android retains only a rejection digest, attempts one bounded Firebase token rotation, and continues first-party polling. The foreground socket closes after session expiry or revocation, account suspension or deletion, or installation disablement. Document creation and the first accepted body change inside a 30-minute document/editor window may create a note alert; it is skipped when the partner already has that document open. Countdown metadata excludes notes and private reminder choices; quiz metadata is limited to the UTC date. Preparing a missing daily quiz alert uses an isolated transaction so a pool outage cannot block unrelated pending events. Events are fetchable for 24 hours, retained for at most seven days for bounded recovery, and deleted immediately on unpair; installations unseen for 90 days are purged. The foreground hint hub is process-local, so the current self-hosted deployment runs one API process; durable polling remains authoritative if a hint is missed.
 
 ## Email delivery
 
@@ -336,7 +388,7 @@ sequenceDiagram
     participant Worker
     participant SMTP
     User->>API: Signup / resend / forgot password
-    API->>DB: Apply IP+email limit and cooldown
+    API->>DB: Commit capped hashed IP+email counters and cooldown
     API->>DB: Store token hash + expiry + one-use state
     API-->>User: Same neutral response for every email
     API->>DB: Queue template + opaque delivery reference in outbox
@@ -346,10 +398,11 @@ sequenceDiagram
     Worker->>DB: Record redacted delivery outcome
     Worker-->>User: Link carries token in URL fragment
     User->>API: Submit raw token
-    API->>DB: Hash and consume atomically if valid
+    API->>DB: Lock account + every reset token; consume complete set if valid
+    API->>DB: Replace password + revoke every session in same transaction
 ```
 
-Email and recovery tokens use URL fragments so browsers do not send them in HTTP request targets or proxy logs. The client submits the token explicitly to the API, where it is hashed and consumed once. Existing query-string links remain accepted during the transition. Local development uses Mailpit. Production uses configured SMTP and never exposes Mailpit publicly. The worker polls the outbox every 30 seconds by default.
+Email and recovery tokens use URL fragments so browsers do not send them in HTTP request targets or proxy logs. The client submits the token explicitly to the API, where it is hashed. A successful password reset consumes every outstanding link for the account and revokes every active session; a concurrent link cannot survive the account lock. Existing query-string links remain accepted during the transition. Local development uses Mailpit. Production uses configured SMTP and never exposes Mailpit publicly. The worker polls the outbox every 30 seconds by default.
 
 ## Android offline and wearable cache
 
@@ -361,7 +414,11 @@ flowchart LR
     Work -->|idempotency key + base revision| API[FastAPI]
     API -->|accepted state| Room
     API -->|stale revision| Conflict[Explicit local/server reconciliation]
-    Phone[Phone cache publisher] -->|Versioned Wearable Data Layer| Watch[Wear OS cache]
+    Phone[Phone cache publisher] -->|Scoped generation over Wearable Data Layer| Guard[Wear generation guard]
+    Purge[Sign-out / unpair / inactive response] -->|Urgent inactive generation| Guard
+    Guard -->|Accept current generation| Watch[Wear OS cache]
+    Guard -->|Reject legacy, older, or post-purge payload| Drop[Discard]
+    Watch -->|24 h without authorization| Delete[Delete display, names, thumbnails, partial files]
     Room --> Sync[Bounded display-cache sync worker]
     Sync --> Render[Unique widget-render worker]
     Render --> Widget[Home-screen widget]
@@ -370,10 +427,13 @@ flowchart LR
     Watch --> Tile[Wear OS tile]
     Watch --> Complication[Watch-face complication]
     Room -->|age threshold| Stale[Stale-data indicator]
-    Watch -->|age threshold| Stale
+    Watch -->|6 h age threshold| Stale
+    Delete --> Unavailable
 ```
 
-Tokens stay in Android Keystore-backed storage. Offline queues contain encrypted countdown mutations, note drafts, location samples, and at most five unexpired Smooch sends. Widget, tile, and complication caches contain only the confirmed pairing instant, coordinate-free nearby seconds and process time, next countdown, and cache-sync time. The separate Wear launcher profile cache contains only display names and server-normalized 128-pixel thumbnails received through the Wearable Data Layer. RC6 publishes the v2 display cache plus the legacy v1 path for one release so an older watch fails stale rather than displaying a new value with the wrong meaning. RC9 coalesces home-widget rendering through WorkManager so cache reads finish under a worker-owned lifecycle; receiver callbacks only enqueue bounded work.
+Tokens stay in Android Keystore-backed storage. Offline queues contain encrypted countdown mutations, note drafts, location samples, and at most five unexpired Smooch sends. An interrupted Our Space editor stores its content and selection in encrypted app storage while Android saved state carries only an opaque workspace key. An exact structured `relationship_inactive` response, sign-out, unpair, or account change clears note workspaces, preview cache, retained media, and transient uploads; an ordinary revision-conflict 409 does not. Widget, tile, and complication caches contain only the confirmed pairing instant, coordinate-free nearby seconds and process time, next countdown, cache-sync time, and an opaque local relationship fingerprint/generation. The separate Wear launcher profile cache contains only display names and server-normalized 128-pixel thumbnails received through the Wearable Data Layer.
+
+The phone advances the generation on sign-out, unpair, account deletion, or `relationship_inactive`, then publishes a durable urgent purge path and inactive display/profile replacements. The watch handles purge records before active records in each batch, clears old and partial files before a new relationship, and rejects an older or same-generation post-purge record. An asynchronous asset checks the generation again before replacing a thumbnail. Fresh values become visibly stale after six hours. At 24 hours without an accepted phone authorization, a best-effort alarm and every passive-surface read delete Wear relationship state and show unavailable. Boot restores the deadline check. The home widget also checks the active phone relationship identity around its Room read and stops rendering data after 24 hours. RC9 coalesces widget rendering through WorkManager so receiver callbacks only enqueue bounded work.
 
 ## Partner-assigned avatar processing and synchronization
 
@@ -412,23 +472,28 @@ sequenceDiagram
     participant Phone as Little Orbit phone app
     participant API as Public release API
     participant Watch as Wear OS wireless ADB
-    Person->>Phone: More > Install on watch
+    Person->>Phone: Settings > Install on watch
     Phone->>API: Fetch current immutable release metadata
     Phone->>API: Download exact versioned Wear APK
     Phone->>Phone: Verify endpoint, bytes, hash, package, version, watch feature, signer
     Phone->>Phone: Track pairing/connect services and port changes with local DNS-SD
+    alt discovery unavailable or incomplete
+        Person->>Phone: Enter current host, pairing port, and connection port
+        Note over Phone: Manual fields stay authoritative until Scan again
+    end
     Person->>Phone: Enter the watch's short-lived pairing code
+    Phone->>Phone: Copy code into transient request, then clear field
     Phone->>Watch: Pair with reusable phone identity
     Phone->>Watch: Prove authorization with a bounded echo command
     Phone->>Watch: Read watch characteristic, SDK, installed version, security patch
     alt patch before 2026-05-01 or unknown
-        Phone-->>Person: Warn; cancel or explicitly install anyway
+        Phone-->>Person: Warn, then cancel or explicitly install anyway
     end
-    Phone->>Watch: Create package session; write verified APK; commit with -r
+    Phone->>Watch: Create package session, write verified APK, and commit with -r
     Watch-->>Person: Little Orbit app, tile, and complication available
 ```
 
-The phone checks connected nodes and the `little_orbit_display_v2` capability so More can distinguish no watch, a missing watch app, and a connected Little Orbit watch. The installer starts only after a person opens it, supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. API 34+ discovery callbacks replace and remove service information continuously; older releases serialize one-shot resolution. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
+The phone checks connected nodes and the `little_orbit_display_v2` capability so Settings can distinguish no watch, a missing watch app, and a connected Little Orbit watch. The installer starts only after a person opens it, supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. Manual values cannot be overwritten by a late discovery callback; **Scan again** explicitly returns to automatic selection. The pairing-code field disables saved state, autofill, and personalized keyboard learning, clears as soon as installation begins and whenever the screen stops, and never appears in diagnostics. A failed signed-artifact preparation exposes a bounded retry. API 34+ discovery callbacks replace and remove service information continuously; older releases serialize one-shot resolution. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
 
 ## Patch notes and RSS
 
@@ -460,7 +525,7 @@ sequenceDiagram
     API-->>Phone: Immutable version, URLs, size, hashes, floor, optional UTC enforcement
     Phone->>Phone: Validate trusted API path, package, pinned signer, and update policy
     alt optional release
-        Phone-->>Person: Prompt once this process; persistent More banner
+        Phone-->>Person: Prompt once this process; persistent Home banner and App updates destination
     else active compatibility floor excludes installed version
         Phone-->>Person: Update required or exit
     end

@@ -11,10 +11,10 @@ plugins {
 
 group = "com.littleorbit"
 version = "0.1.0"
-extra["littleOrbitVersionCode"] = 18
-extra["littleOrbitWearVersionCode"] = 15
-extra["littleOrbitVersionName"] = "1.0.0-rc.13"
-extra["littleOrbitWearVersionName"] = "1.0.0-rc.12.1"
+extra["littleOrbitVersionCode"] = 19
+extra["littleOrbitWearVersionCode"] = 16
+extra["littleOrbitVersionName"] = "1.0.0-rc.14"
+extra["littleOrbitWearVersionName"] = "1.0.0-rc.14"
 
 val signingEnvironment = listOf(
     "ANDROID_SIGNING_STORE_FILE",

@@ -1,10 +1,19 @@
 """Authenticated WebSocket note synchronization with idempotent acknowledgements."""
 
+import asyncio
 from datetime import timedelta
 from typing import cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +27,6 @@ from ..client_compatibility import (
     update_required,
 )
 from ..clock import SystemClock
-from ..config import get_settings
 from ..couple_access import active_member, lock_couple
 from ..database import SessionFactory, session_scope
 from ..dependencies import current_account
@@ -36,28 +44,14 @@ from ..models import (
     CoupleMember,
     Note,
     NoteOperation,
-    Session,
 )
 from ..note_edit_service import NoteAccessRevoked, NoteEditMessage, apply_note_edit
 from ..notes_hub import NoteConnectionHub
 from ..notification_hub import NotificationConnectionHub
-from ..security import hash_token
+from ..notification_service import enqueue_note_edit_event
+from ..socket_auth import SocketIdentity, authenticate_socket, socket_session_active
 
 router = APIRouter(tags=["notes"])
-
-
-async def _authenticate(token: str) -> UUID | None:
-    settings = get_settings()
-    digest = hash_token(token, settings.token_pepper.get_secret_value())
-    async with SessionFactory() as db:
-        account_id = await db.scalar(
-            select(Session.account_id).where(
-                Session.token_hash == digest,
-                Session.revoked_at.is_(None),
-                Session.expires_at > SystemClock().now(),
-            )
-        )
-        return account_id
 
 
 async def _authorized_snapshot(account_id: UUID, note_id: UUID) -> dict[str, object] | None:
@@ -115,6 +109,7 @@ async def list_notes(
 @router.post("/v1/notes", response_model=NoteResponse, status_code=status.HTTP_201_CREATED)
 async def create_note(
     payload: NoteCreateRequest,
+    request: Request,
     actor: Account = Depends(current_account),
     session: AsyncSession = Depends(session_scope),
 ) -> NoteResponse:
@@ -146,7 +141,20 @@ async def create_note(
         f"note:create:{payload.operation_id}", target_type="note",
         target_id=note.id, target_title=note.title,
     )
+    notify_account = await enqueue_note_edit_event(
+        session,
+        member.couple_id,
+        actor.id,
+        note.id,
+        partner_viewing=False,
+    )
     await session.commit()
+    if notify_account is not None:
+        notifications = cast(
+            NotificationConnectionHub,
+            request.app.state.notification_connections,
+        )
+        await notifications.available(notify_account)
     return _note_response(note)
 
 
@@ -343,21 +351,25 @@ async def note_socket(websocket: WebSocket, note_id: UUID) -> None:
 
     if not await _compatible_socket(websocket):
         return
-    account_id, snapshot = await _authorized_socket(websocket, note_id)
-    if account_id is None or snapshot is None:
+    identity, snapshot = await _authorized_socket(websocket, note_id)
+    if identity is None or snapshot is None:
         await websocket.close(code=4401)
         return
     await websocket.accept()
     hub = cast(NoteConnectionHub, websocket.app.state.note_connections)
-    hub.add(note_id, websocket, account_id)
-    live_snapshot = await _authorized_snapshot(account_id, note_id)
+    hub.add(note_id, websocket, identity.account_id)
+    if not await socket_session_active(identity):
+        hub.remove(note_id, websocket)
+        await websocket.close(code=4401)
+        return
+    live_snapshot = await _authorized_snapshot(identity.account_id, note_id)
     if live_snapshot is None:
         hub.remove(note_id, websocket)
         await websocket.close(code=4403)
         return
     await websocket.send_json(live_snapshot)
     await hub.broadcast(note_id, {"type": "note.presence", "editors": hub.count(note_id)})
-    await _run_note_socket(websocket, note_id, account_id, hub)
+    await _run_note_socket(websocket, note_id, identity, hub)
 
 
 async def _compatible_socket(websocket: WebSocket) -> bool:
@@ -376,20 +388,20 @@ async def _compatible_socket(websocket: WebSocket) -> bool:
 
 async def _authorized_socket(
     websocket: WebSocket, note_id: UUID
-) -> tuple[UUID | None, dict[str, object] | None]:
+) -> tuple[SocketIdentity | None, dict[str, object] | None]:
     """Resolve authentication and note authorization without revealing existence."""
 
-    authorization = websocket.headers.get("authorization", "")
-    token = authorization[7:] if authorization.startswith("Bearer ") else ""
-    account_id = await _authenticate(token) if token else None
-    snapshot = await _authorized_snapshot(account_id, note_id) if account_id else None
-    return account_id, snapshot
+    identity = await authenticate_socket(websocket.headers.get("authorization", ""))
+    snapshot = (
+        await _authorized_snapshot(identity.account_id, note_id) if identity else None
+    )
+    return identity, snapshot
 
 
 async def _run_note_socket(
     websocket: WebSocket,
     note_id: UUID,
-    account_id: UUID,
+    identity: SocketIdentity,
     hub: NoteConnectionHub,
 ) -> None:
     """Receive validated operations until disconnect or authorization revocation."""
@@ -397,13 +409,23 @@ async def _run_note_socket(
     try:
         while True:
             try:
-                message = NoteEditMessage.model_validate(await websocket.receive_json())
+                payload = await asyncio.wait_for(websocket.receive_json(), timeout=30)
+                if not await _socket_note_active(identity, note_id):
+                    await websocket.close(code=4401)
+                    return
+                message = NoteEditMessage.model_validate(payload)
                 result = await apply_note_edit(
                     note_id,
-                    account_id,
+                    identity.account_id,
                     message,
-                    partner_viewing=hub.has_other_account(note_id, account_id),
+                    session_token_hash=identity.token_hash,
+                    partner_viewing=hub.has_other_account(note_id, identity.account_id),
                 )
+            except TimeoutError:
+                if not await _socket_note_active(identity, note_id):
+                    await websocket.close(code=4401)
+                    return
+                continue
             except NoteAccessRevoked:
                 await websocket.close(code=4403)
                 return
@@ -422,3 +444,9 @@ async def _run_note_socket(
     finally:
         hub.remove(note_id, websocket)
         await hub.broadcast(note_id, {"type": "note.presence", "editors": hub.count(note_id)})
+
+
+async def _socket_note_active(identity: SocketIdentity, note_id: UUID) -> bool:
+    if not await socket_session_active(identity):
+        return False
+    return await _authorized_snapshot(identity.account_id, note_id) is not None

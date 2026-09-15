@@ -1,5 +1,6 @@
 package com.littleorbit.wear;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -29,31 +30,37 @@ final class WearProfileStore {
             throws IOException {
         File target = new File(context.getFilesDir(), partner ? "partner.webp" : "me.webp");
         File pending = new File(target.getPath() + ".pending");
-        try (input; FileOutputStream output = new FileOutputStream(pending)) {
-            byte[] buffer = new byte[8192];
-            int total = 0;
-            int read;
-            while ((read = input.read(buffer)) >= 0) {
-                total += read;
-                if (total > MAX_THUMBNAIL_BYTES) throw new IOException("Thumbnail exceeds limit");
-                output.write(buffer, 0, read);
-            }
-        }
         try {
-            Files.move(
-                    pending.toPath(), target.toPath(),
-                    StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException atomicUnavailable) {
-            Files.move(pending.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        }
-        if (!target.isFile()) {
+            try (input; FileOutputStream output = new FileOutputStream(pending)) {
+                byte[] buffer = new byte[8192];
+                int total = 0;
+                int read;
+                while ((read = input.read(buffer)) >= 0) {
+                    total += read;
+                    if (total > MAX_THUMBNAIL_BYTES) {
+                        throw new IOException("Thumbnail exceeds limit");
+                    }
+                    output.write(buffer, 0, read);
+                }
+            }
+            replace(pending, target);
+            if (!target.isFile()) throw new IOException("Could not replace thumbnail");
+        } finally {
             delete(context, pending.getName());
-            throw new IOException("Could not replace thumbnail");
         }
     }
 
     static synchronized void clearPhoto(Context context, boolean partner) {
         delete(context, partner ? "partner.webp" : "me.webp");
+        delete(context, partner ? "partner.webp.pending" : "me.webp.pending");
+    }
+
+    @SuppressLint("ApplySharedPref")
+    static synchronized void clearAll(Context context) {
+        // Names must be gone before a delayed photo callback can evaluate its guard.
+        context.getSharedPreferences("profile", Context.MODE_PRIVATE).edit().clear().commit();
+        clearPhoto(context, false);
+        clearPhoto(context, true);
     }
 
     static synchronized State read(Context context) {
@@ -67,6 +74,16 @@ final class WearProfileStore {
     private static Bitmap bitmap(Context context, String name) {
         File file = new File(context.getFilesDir(), name);
         return file.isFile() ? BitmapFactory.decodeFile(file.getPath()) : null;
+    }
+
+    private static void replace(File pending, File target) throws IOException {
+        try {
+            Files.move(
+                    pending.toPath(), target.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException atomicUnavailable) {
+            Files.move(pending.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     private static void delete(Context context, String name) {

@@ -17,7 +17,6 @@ import com.littleorbit.data.remote.CountdownApiModels;
 import com.littleorbit.data.repository.OrbitRepository;
 import com.littleorbit.mobile.databinding.ActivityCountdownBinding;
 import dagger.hilt.android.AndroidEntryPoint;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -77,7 +76,7 @@ public final class CountdownActivity extends OrbitShellActivity {
         List<CountdownApiModels.Countdown> future = new ArrayList<>();
         List<CountdownApiModels.Countdown> history = new ArrayList<>();
         for (CountdownApiModels.Countdown item : countdowns) {
-            (isPast(item) ? history : future).add(item);
+            (CountdownPresentation.isPast(item, Instant.now()) ? history : future).add(item);
         }
         next = future.isEmpty() ? null : future.get(0);
         Collections.reverse(history);
@@ -120,6 +119,9 @@ public final class CountdownActivity extends OrbitShellActivity {
         params.topMargin = dp(10);
         card.setLayoutParams(params);
         card.setOnClickListener(view -> openEditor(item));
+        card.setFocusable(true);
+        card.setContentDescription(getString(
+                R.string.rc14_countdown_row_description, item.title, displayTime(item)));
         return card;
     }
 
@@ -128,6 +130,7 @@ public final class CountdownActivity extends OrbitShellActivity {
         view.setText(value);
         view.setTextColor(getColor(R.color.cloud));
         view.setTextSize(size);
+        view.setLineSpacing(0, 1.1f);
         if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         return view;
     }
@@ -194,13 +197,6 @@ public final class CountdownActivity extends OrbitShellActivity {
         if (ValueAnimator.areAnimatorsEnabled()) TransitionManager.beginDelayedTransition(binding.getRoot());
     }
 
-    private static boolean isPast(CountdownApiModels.Countdown value) {
-        if ("all_day".equals(value.timingKind) && value.occursOn != null) {
-            return LocalDate.parse(value.occursOn).isBefore(LocalDate.now());
-        }
-        return eventInstant(value).isBefore(Instant.now());
-    }
-
     private static Instant eventInstant(CountdownApiModels.Countdown value) {
         return Instant.parse(value.occursAt);
     }
@@ -209,7 +205,8 @@ public final class CountdownActivity extends OrbitShellActivity {
         if ("all_day".equals(value.timingKind) && value.occursOn != null) {
             return LocalDate.parse(value.occursOn)
                     .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
-                    + " · " + getString(R.string.all_day_event);
+                    + " · " + getString(R.string.all_day_event)
+                    + " · " + value.timezone;
         }
         ZoneId deviceZone = ZoneId.systemDefault();
         ZonedDateTime local = eventInstant(value).atZone(deviceZone);
@@ -218,15 +215,27 @@ public final class CountdownActivity extends OrbitShellActivity {
                 ? result : result + " · " + value.timezone;
     }
 
-    private static String remaining(CountdownApiModels.Countdown value) {
-        long hours = Math.max(0, Duration.between(Instant.now(), eventInstant(value)).toHours());
-        return (hours / 24) + " days  " + String.format(java.util.Locale.getDefault(), "%02d", hours % 24)
-                + " hours";
+    private String remaining(CountdownApiModels.Countdown value) {
+        CountdownPresentation.Remaining time = CountdownPresentation.remaining(
+                eventInstant(value), Instant.now());
+        if (time.elapsed()) return getString(R.string.rc14_countdown_now);
+        List<String> parts = new ArrayList<>();
+        if (time.days() > 0) parts.add(quantity(R.plurals.rc14_countdown_days, time.days()));
+        if (time.hours() > 0) parts.add(quantity(R.plurals.rc14_countdown_hours, time.hours()));
+        if (time.days() == 0 && time.minutes() > 0) {
+            parts.add(quantity(R.plurals.rc14_countdown_minutes, time.minutes()));
+        }
+        return String.join(" · ", parts);
     }
 
-    private static String syncLabel(CountdownApiModels.Countdown value) {
-        if (value.syncConflict) return " · sync conflict";
-        return value.pendingSync ? " · pending sync" : "";
+    private String syncLabel(CountdownApiModels.Countdown value) {
+        if (value.syncConflict) return " · " + getString(R.string.rc14_sync_conflict);
+        return value.pendingSync ? " · " + getString(R.string.rc14_pending_sync) : "";
+    }
+
+    private String quantity(int resource, long count) {
+        int safe = (int) Math.min(Integer.MAX_VALUE, count);
+        return getResources().getQuantityString(resource, safe, safe);
     }
 
     private int dp(int value) {

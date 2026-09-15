@@ -15,20 +15,36 @@ public final class LittleOrbitApplication extends Application implements Configu
     @Inject HiltWorkerFactory workerFactory;
     @Inject SessionStore sessions;
     @Inject ForegroundNotificationSocket notificationSocket;
+    @Inject CrashDiagnosticStore crashDiagnostics;
     private int visibleActivities;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        FirebasePushBootstrap.initialize(this);
         NotificationChannels.create(this);
+        installCrashCapture();
         UpdateDiscoveryWorker.schedule(this);
         registerActivityLifecycleCallbacks(new ForegroundNotifications());
         if (sessions.read().isPresent() && PermissionChecks.notificationsGranted(this)) {
             PartnerNotificationWorker.schedule(this, true);
             PartnerNotificationWorker.enqueue(this);
+            CrashDiagnosticWorker.enqueue(this);
         } else {
             PartnerNotificationWorker.schedule(this, false);
         }
+    }
+
+    private void installCrashCapture() {
+        Thread.UncaughtExceptionHandler previous = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, failure) -> {
+            try {
+                crashDiagnostics.capture(failure, BuildConfig.VERSION_CODE, BuildConfig.VERSION_NAME);
+            } catch (RuntimeException ignored) {
+                // Crash reporting must never replace Android's original crash path.
+            }
+            if (previous != null) previous.uncaughtException(thread, failure);
+        });
     }
 
     /** Routes WorkManager construction through Hilt without a global service locator. */

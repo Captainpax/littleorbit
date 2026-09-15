@@ -16,7 +16,6 @@ import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
-import retrofit2.Response;
 
 /** Resumable private note-attachment transfer and verified app-private caching. */
 final class NoteAttachmentTransfer {
@@ -61,13 +60,38 @@ final class NoteAttachmentTransfer {
     }
 
     File download(String noteId, NoteApiModels.Attachment attachment) {
-        File directory = new File(context.getCacheDir(), "note-attachments");
-        if (!directory.isDirectory() && !directory.mkdirs()) {
+        return download(
+                noteId,
+                attachment,
+                api.downloadNoteAttachment(noteId, attachment.id),
+                true);
+    }
+
+    File downloadArchive(
+            String archiveId, String noteId, NoteApiModels.Attachment attachment) {
+        return download(
+                noteId,
+                attachment,
+                api.downloadArchiveAttachment(archiveId, noteId, attachment.id),
+                false);
+    }
+
+    private File download(
+            String noteId,
+            NoteApiModels.Attachment attachment,
+            Call<ResponseBody> request,
+            boolean allowRetainedCopy) {
+        File retained = retainedFile(noteId, attachment.id);
+        if (allowRetainedCopy && retained.isFile()
+                && attachment.sha256.equals(sha256(retained))) return retained;
+        if (allowRetainedCopy && retained.isFile()) retained.delete();
+        File directory = cacheDirectory();
+        if (!ensureDirectory(directory)) {
             throw new OrbitServiceException(-1, "attachment_cache_failed");
         }
-        File target = new File(directory, attachment.id);
+        File target = cacheFile(directory, attachment.id);
         if (target.isFile() && attachment.sha256.equals(sha256(target))) return target;
-        ResponseBody response = execute(api.downloadNoteAttachment(noteId, attachment.id));
+        ResponseBody response = execute(request);
         try (InputStream input = response.byteStream();
                 FileOutputStream output = new FileOutputStream(target)) {
             copyExpectedBytes(input, output, attachment.sizeBytes);
@@ -80,6 +104,37 @@ final class NoteAttachmentTransfer {
             throw new OrbitServiceException(-1, "attachment_hash_failed");
         }
         return target;
+    }
+
+    static boolean ensureDirectory(File directory) {
+        if (directory.isDirectory()) return true;
+        return directory.mkdirs() || directory.isDirectory();
+    }
+
+    void evict(String attachmentId) {
+        File target = cacheFile(cacheDirectory(), attachmentId);
+        if (target.isFile()) target.delete();
+    }
+
+    private File cacheDirectory() {
+        return new File(context.getCacheDir(), "note-attachments");
+    }
+
+    private File retainedFile(String noteId, String attachmentId) {
+        File root = new File(context.getFilesDir(), "kept-space");
+        return new File(new File(root, safeUuid(noteId)), safeUuid(attachmentId));
+    }
+
+    private static File cacheFile(File directory, String attachmentId) {
+        return new File(directory, safeUuid(attachmentId));
+    }
+
+    private static String safeUuid(String value) {
+        try {
+            return UUID.fromString(value).toString();
+        } catch (IllegalArgumentException failure) {
+            throw new OrbitServiceException(-1, "attachment_id_invalid", failure);
+        }
     }
 
     private static String sha256(File file) {
@@ -127,16 +182,7 @@ final class NoteAttachmentTransfer {
     }
 
     private static <T> T execute(Call<T> call) {
-        try {
-            Response<T> response = call.execute();
-            T body = response.body();
-            if (!response.isSuccessful() || body == null) {
-                throw new OrbitServiceException(response.code());
-            }
-            return body;
-        } catch (IOException error) {
-            throw new OrbitServiceException(error);
-        }
+        return RetrofitCalls.execute(call);
     }
 
     private static OrbitServiceException failure(

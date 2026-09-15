@@ -1,5 +1,5 @@
 import { PageIntro } from "@/components/page-intro";
-import { getReleaseHistory } from "@/lib/release";
+import { formatReleaseDate, getReleaseHistory } from "@/lib/release";
 
 export const metadata = { title: "Patch notes" };
 
@@ -14,7 +14,7 @@ export default async function PatchNotesPage() {
       {releases.map((release) => <article id={release.version} className="release-card" key={release.version}>
         <div className="release-top"><div><span className="eyebrow">Version code {release.versionCode}</span>
           <h2>{release.version}</h2></div><time dateTime={release.publishedAt}>
-            {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(release.publishedAt))}
+            {formatReleaseDate(release.publishedAt)}
           </time></div>
         <ul>{release.releaseNotes.map((note) => <li key={note}>{note}</li>)}</ul>
         <p className="fine-print">Android API {release.minimumAndroid}+ · SHA-256 <code>{release.sha256}</code></p>

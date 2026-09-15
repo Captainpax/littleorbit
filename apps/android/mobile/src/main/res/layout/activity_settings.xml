@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/orbit_screen_padding_horizontal"
+        android:paddingTop="@dimen/orbit_screen_padding_vertical"
+        android:paddingEnd="@dimen/orbit_screen_padding_horizontal"
+        android:paddingBottom="32dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_intro"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+        <LinearLayout
+            android:id="@+id/signedOutSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_sign_in_hint"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/signedOutSignIn"
+                style="@style/Widget.LittleOrbit.Button.Primary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/sign_in" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/memberSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/TextAppearance.LittleOrbit.Eyebrow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:accessibilityHeading="true"
+                android:text="@string/settings_relationship_section" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/profilePhotoButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/profile_photo"
+                app:icon="@drawable/ic_profile" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pairingButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/pairing"
+                app:icon="@drawable/ic_pair" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/countdownsButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/countdowns"
+                app:icon="@drawable/ic_countdown" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/smoochButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/smooches"
+                app:icon="@drawable/ic_smooch" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/togetherButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/together_details"
+                app:icon="@drawable/ic_nearby" />
+
+            <TextView
+                style="@style/TextAppearance.LittleOrbit.Eyebrow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="26dp"
+                android:accessibilityHeading="true"
+                android:text="@string/settings_device_section" />
+
+            <TextView
+                android:id="@+id/notificationStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:accessibilityLiveRegion="polite"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/notificationSetupButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/check_notification_permission"
+                app:icon="@drawable/ic_notifications" />
+
+            <TextView
+                android:id="@+id/locationStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:accessibilityLiveRegion="polite"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/locationSetupButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/location_setup"
+                app:icon="@drawable/ic_location" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pauseNearbyButton"
+                style="@style/Widget.LittleOrbit.Button.Text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/pause_nearby_tracking"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/wearStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:accessibilityLiveRegion="polite"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/wearInstallButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/install_watch_app"
+                app:icon="@drawable/ic_watch" />
+
+            <TextView
+                style="@style/TextAppearance.LittleOrbit.Eyebrow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="26dp"
+                android:accessibilityHeading="true"
+                android:text="@string/settings_privacy_section" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/privacyButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/privacy_controls"
+                app:icon="@drawable/ic_privacy" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/archivesButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/past_archives"
+                app:icon="@drawable/ic_archive" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/appUpdatesButton"
+                style="@style/Widget.LittleOrbit.Button.SettingRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/app_updates"
+                app:icon="@drawable/ic_update" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/crashDiagnosticsSwitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:minHeight="48dp"
+                android:text="@string/share_crash_diagnostics" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/share_crash_diagnostics_summary"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/signOutButton"
+                style="@style/Widget.LittleOrbit.Button.Text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/sign_out" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

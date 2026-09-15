@@ -26,6 +26,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
                     android:text="@string/our_space"
                     android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
 
@@ -46,12 +47,48 @@
                     android:text="@string/note_presence_solo"
                     android:textColor="@color/lavender_soft" />
 
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/libraryRecoveryCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/navy_surface_muted"
+                    app:cardCornerRadius="18dp"
+                    app:strokeColor="@color/orbit_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/libraryRecoveryText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:accessibilityLiveRegion="polite"
+                            android:text="@string/space_library_unavailable"
+                            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/libraryRetryButton"
+                            style="@style/Widget.LittleOrbit.Button.Outline"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/retry" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <EditText
                     android:id="@+id/searchInput"
                     style="@style/Widget.LittleOrbit.Input"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
+                    android:importantForAutofill="no"
                     android:hint="@string/search_space"
                     android:imeOptions="actionDone"
                     android:inputType="text"
@@ -121,7 +158,7 @@
                         android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:contentDescription="@string/back_to_space"
-                        android:text="‹" />
+                        android:text="@string/rc14_back_symbol" />
 
                     <EditText
                         android:id="@+id/titleInput"
@@ -129,8 +166,11 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:importantForAutofill="no"
+                        android:inputType="textCapSentences"
                         android:gravity="center"
                         android:hint="@string/note_title"
+                        android:saveEnabled="false"
                         android:singleLine="true"
                         android:textColor="@color/cloud"
                         android:textColorHint="@color/muted"
@@ -143,6 +183,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center"
+                        android:saveEnabled="false"
                         android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle"
                         android:visibility="gone" />
 
@@ -152,7 +193,7 @@
                         android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:contentDescription="@string/archive_note"
-                        android:text="⋮"
+                        android:text="@string/visual_more_glyph"
                         android:textSize="24sp" />
                 </LinearLayout>
 
@@ -184,9 +225,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="340dp"
                     android:layout_marginTop="10dp"
+                    android:importantForAutofill="no"
                     android:gravity="top"
                     android:hint="@string/space_markdown_hint"
                     android:inputType="textCapSentences|textMultiLine"
+                    android:saveEnabled="false"
                     android:textColor="@color/cloud"
                     android:textColorHint="@color/muted"
                     android:textSize="17sp" />
@@ -200,6 +243,7 @@
                     android:linksClickable="true"
                     android:minHeight="340dp"
                     android:padding="18dp"
+                    android:saveEnabled="false"
                     android:textColor="@color/cloud"
                     android:textSize="17sp"
                     android:visibility="gone" />
@@ -210,6 +254,15 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="@string/remote_images_blocked"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.Body"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/rawHtmlNotice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/raw_html_neutralized"
                     android:textAppearance="@style/TextAppearance.LittleOrbit.Body"
                     android:visibility="gone" />
 
@@ -227,6 +280,39 @@
                     android:layout_marginTop="8dp"
                     android:orientation="vertical" />
 
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/attachmentRecoveryCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/navy_surface_muted"
+                    app:cardCornerRadius="18dp"
+                    app:strokeColor="@color/orbit_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/space_attachments_unavailable"
+                            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/attachmentRetryButton"
+                            style="@style/Widget.LittleOrbit.Button.Outline"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/retry" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <TextView
                     android:id="@+id/statusText"
                     android:layout_width="match_parent"
@@ -234,6 +320,41 @@
                     android:layout_marginTop="12dp"
                     android:accessibilityLiveRegion="polite"
                     android:textColor="@color/lavender" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/editorRecoveryCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/navy_surface_muted"
+                    app:cardCornerRadius="18dp"
+                    app:strokeColor="@color/orbit_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/editorRecoveryText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:accessibilityLiveRegion="polite"
+                            android:text="@string/note_draft_preserved"
+                            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/editorRetryButton"
+                            style="@style/Widget.LittleOrbit.Button.Outline"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/retry" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
                 <LinearLayout
                     android:id="@+id/conflictCard"
@@ -256,6 +377,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
+                        android:saveEnabled="false"
                         android:textColor="@color/cloud" />
 
                     <com.google.android.material.button.MaterialButton
@@ -303,7 +425,7 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:contentDescription="@string/format_bold"
-                            android:text="B"
+                            android:text="@string/visual_format_bold_glyph"
                             android:textStyle="bold" />
 
                         <com.google.android.material.button.MaterialButton
@@ -312,7 +434,7 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:contentDescription="@string/format_italic"
-                            android:text="I"
+                            android:text="@string/visual_format_italic_glyph"
                             android:textStyle="italic" />
 
                         <com.google.android.material.button.MaterialButton
@@ -321,7 +443,7 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:contentDescription="@string/format_heading"
-                            android:text="H" />
+                            android:text="@string/visual_format_heading_glyph" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/listButton"
@@ -329,7 +451,7 @@
                             android:layout_width="52dp"
                             android:layout_height="48dp"
                             android:contentDescription="@string/format_list"
-                            android:text="-" />
+                            android:text="@string/visual_format_list_glyph" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/checkButton"
@@ -337,7 +459,7 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:contentDescription="@string/format_checklist"
-                            android:text="[ ]" />
+                            android:text="@string/visual_format_checklist_glyph" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/linkButton"
@@ -353,7 +475,7 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:contentDescription="@string/attach_file"
-                            android:text="+" />
+                            android:text="@string/visual_add_glyph" />
 
 
                         <com.google.android.material.button.MaterialButton
@@ -362,7 +484,7 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:contentDescription="@string/more_formatting"
-                            android:text="…" />
+                            android:text="@string/visual_more_glyph" />
                     </LinearLayout>
                 </HorizontalScrollView>
 </LinearLayout>

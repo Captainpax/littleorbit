@@ -8,14 +8,13 @@ import android.os.SystemClock;
 import android.view.View;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.littleorbit.mobile.databinding.ActivityWearInstallerBinding;
 import dagger.hilt.android.AndroidEntryPoint;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.inject.Inject;
@@ -30,6 +29,8 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     private NsdWatchDiscovery.Session discovery;
     private volatile WearReleaseMetadata release;
     private volatile File verifiedApk;
+    private volatile boolean manualOverride;
+    private volatile boolean artifactPreparing;
     @Inject WearReleaseClient releases;
     @Inject WearApkVerifier verifier;
     @Inject NsdWatchDiscovery nsd;
@@ -46,13 +47,20 @@ public final class WearInstallerActivity extends InsetAwareActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityWearInstallerBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-        binding.showManualWear.setOnClickListener(view -> toggleManualFields());
+        binding.showManualWear.setOnClickListener(view -> showManualFields());
         binding.restartWearDiscovery.setOnClickListener(view -> requestDiscoveryPermission());
+        binding.retryWearArtifact.setOnClickListener(view -> prepareArtifact());
         binding.installWearNow.setOnClickListener(view -> beginInstall());
         binding.forgetWearKey.setOnClickListener(view -> forgetIdentity());
         syncIdentityButton();
         prepareArtifact();
         requestDiscoveryPermission();
+    }
+
+    @Override
+    protected void onStop() {
+        binding.wearPairingCode.setText("");
+        super.onStop();
     }
 
     @Override
@@ -62,9 +70,10 @@ public final class WearInstallerActivity extends InsetAwareActivity {
         super.onDestroy();
     }
 
-    private void toggleManualFields() {
-        int current = binding.manualWearFields.getVisibility();
-        binding.manualWearFields.setVisibility(current == View.VISIBLE ? View.GONE : View.VISIBLE);
+    private void showManualFields() {
+        manualOverride = true;
+        binding.manualWearFields.setVisibility(View.VISIBLE);
+        binding.showManualWear.setVisibility(View.GONE);
     }
 
     private void requestDiscoveryPermission() {
@@ -77,7 +86,10 @@ public final class WearInstallerActivity extends InsetAwareActivity {
 
     private void startDiscovery() {
         if (discovery != null) discovery.close();
+        manualOverride = false;
         endpoints = WearEndpointRegistry.Snapshot.empty();
+        binding.manualWearFields.setVisibility(View.GONE);
+        binding.showManualWear.setVisibility(View.VISIBLE);
         binding.wearDiscoveryStatus.setText(R.string.wear_searching);
         try {
             discovery = nsd.discover(new NsdWatchDiscovery.Listener() {
@@ -96,12 +108,13 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     private void discovered(WearEndpointRegistry.Snapshot value) {
         endpoints = value;
         WearEndpointRegistry.Endpoint pairing = value.pairing();
-        if (pairing != null) {
+        if (!manualOverride && pairing != null) {
             binding.wearHost.setText(pairing.host());
-            binding.wearPairPort.setText(Integer.toString(pairing.port()));
+            binding.wearPairPort.setText(String.format(Locale.getDefault(), "%d", pairing.port()));
         }
-        if (value.connect() != null) {
-            binding.wearConnectPort.setText(Integer.toString(value.connect().port()));
+        if (!manualOverride && value.connect() != null) {
+            binding.wearConnectPort.setText(String.format(
+                    Locale.getDefault(), "%d", value.connect().port()));
         }
         int message = discoveryMessage(value);
         binding.wearDiscoveryStatus.setText(message);
@@ -116,11 +129,17 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     }
 
     private void showManualDiscovery() {
-        binding.manualWearFields.setVisibility(View.VISIBLE);
+        showManualFields();
         binding.wearDiscoveryStatus.setText(R.string.wear_discovery_failed);
     }
 
     private void prepareArtifact() {
+        if (artifactPreparing) return;
+        artifactPreparing = true;
+        release = null;
+        verifiedApk = null;
+        binding.retryWearArtifact.setVisibility(View.GONE);
+        status(R.string.wear_preparing, true, false);
         executor.execute(() -> {
             try {
                 WearReleaseMetadata metadata = releases.metadata();
@@ -129,18 +148,21 @@ public final class WearInstallerActivity extends InsetAwareActivity {
                 if (failure != null) throw new IllegalStateException(failure);
                 release = metadata;
                 verifiedApk = apk;
+                artifactPreparing = false;
                 status(R.string.wear_ready, false, true);
             } catch (Exception failure) {
+                artifactPreparing = false;
                 status(R.string.wear_prepare_failed, false, false);
+                showArtifactRetry();
             }
         });
     }
 
     private void beginInstall() {
         if (release == null || verifiedApk == null) return;
-        InstallRequest request = installRequest();
+        WearInstallRequest request = installRequest();
         if (!request.canStart(keys.isRemembered())) {
-            binding.manualWearFields.setVisibility(View.VISIBLE);
+            showManualFields();
             binding.wearDiscoveryStatus.setText(R.string.wear_address_needed);
             return;
         }
@@ -149,25 +171,19 @@ public final class WearInstallerActivity extends InsetAwareActivity {
         executor.execute(() -> connectInspectAndInstall(request));
     }
 
-    private InstallRequest installRequest() {
-        WearEndpointRegistry.Snapshot snapshot = endpoints;
+    private WearInstallRequest installRequest() {
         String host = binding.wearHost.getText().toString().trim();
         int pairPort = number(binding.wearPairPort.getText().toString());
         int connectPort = number(binding.wearConnectPort.getText().toString());
         String code = binding.wearPairingCode.getText().toString().trim();
-        WearEndpointRegistry.Endpoint manualPair = endpoint("manual-pair", host, pairPort);
-        WearEndpointRegistry.Endpoint manualConnect = endpoint("manual-connect", host, connectPort);
-        WearEndpointRegistry.Endpoint selectedPair = snapshot.pairing() != null
-                ? snapshot.pairing() : manualPair;
-        List<WearEndpointRegistry.Endpoint> candidates = new ArrayList<>(snapshot.connectCandidates());
-        if (manualConnect != null) candidates.add(manualConnect);
-        return new InstallRequest(selectedPair, unique(candidates), code);
+        return WearInstallRequest.create(
+                endpoints, manualOverride, host, pairPort, connectPort, code);
     }
 
-    private void connectInspectAndInstall(InstallRequest request) {
+    private void connectInspectAndInstall(WearInstallRequest request) {
         try {
             Inspection inspection = keys.isRemembered()
-                    ? inspect(request.connectCandidates) : Inspection.empty();
+                    ? inspect(request.connectCandidates()) : Inspection.empty();
             if (inspection.selected == null) inspection = pairAndInspect(request, inspection.failure);
             applyPolicy(inspection.selected);
         } catch (WatchAdbException failure) {
@@ -175,7 +191,7 @@ public final class WearInstallerActivity extends InsetAwareActivity {
         }
     }
 
-    private Inspection pairAndInspect(InstallRequest request, WatchAdbException previous)
+    private Inspection pairAndInspect(WearInstallRequest request, WatchAdbException previous)
             throws WatchAdbException {
         if (!request.canPair()) {
             throw previous != null ? previous : new WatchAdbException(
@@ -183,7 +199,8 @@ public final class WearInstallerActivity extends InsetAwareActivity {
                     WatchAdbException.Reason.AUTHORIZATION_REJECTED);
         }
         status(R.string.wear_pairing, true, false);
-        adb.pair(request.pairing.host(), request.pairing.port(), request.code);
+        adb.pair(
+                request.pairing().host(), request.pairing().port(), request.pairingCode());
         status(R.string.wear_waiting_for_tls, true, false);
         long deadline = SystemClock.elapsedRealtime() + TLS_READY_TIMEOUT_MS;
         WatchAdbException last = null;
@@ -211,15 +228,15 @@ public final class WearInstallerActivity extends InsetAwareActivity {
         return new Inspection(null, last);
     }
 
-    private List<WearEndpointRegistry.Endpoint> pairingCandidates(InstallRequest request) {
+    private List<WearEndpointRegistry.Endpoint> pairingCandidates(WearInstallRequest request) {
         List<WearEndpointRegistry.Endpoint> result = new ArrayList<>();
         for (WearEndpointRegistry.Endpoint endpoint : endpoints.connectCandidates()) {
-            if (endpoint.matchesDevice(request.pairing)) result.add(endpoint);
+            if (endpoint.matchesDevice(request.pairing())) result.add(endpoint);
         }
-        for (WearEndpointRegistry.Endpoint endpoint : request.connectCandidates) {
-            if (endpoint.matchesDevice(request.pairing)) result.add(endpoint);
+        for (WearEndpointRegistry.Endpoint endpoint : request.connectCandidates()) {
+            if (endpoint.matchesDevice(request.pairing())) result.add(endpoint);
         }
-        return unique(result);
+        return WearInstallRequest.unique(result);
     }
 
     private void applyPolicy(Selected selected) {
@@ -236,7 +253,7 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     }
 
     private void warnOldPatch(Selected selected) {
-        runOnUiThread(() -> new AlertDialog.Builder(this)
+        runOnUiThread(() -> new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.wear_patch_warning_title)
                 .setMessage(getString(R.string.wear_patch_warning, selected.device.securityPatch()))
                 .setNegativeButton(R.string.cancel, (dialog, which) -> setReady())
@@ -264,7 +281,7 @@ public final class WearInstallerActivity extends InsetAwareActivity {
             if (endpoint.matchesDevice(selected.endpoint)
                     && endpoint.port() != selected.endpoint.port()) refreshed.add(endpoint);
         }
-        Inspection inspection = inspect(unique(refreshed));
+        Inspection inspection = inspect(WearInstallRequest.unique(refreshed));
         if (inspection.selected == null) {
             showFailure(failure);
             return;
@@ -281,7 +298,9 @@ public final class WearInstallerActivity extends InsetAwareActivity {
         status(getString(message, failure.diagnosticCode()), false, true);
         if (isEndpointFailure(failure)
                 || failure.reason() == WatchAdbException.Reason.ADDRESS_INVALID) {
-            runOnUiThread(() -> binding.manualWearFields.setVisibility(View.VISIBLE));
+            runOnUiThread(() -> {
+                showManualFields();
+            });
         }
     }
 
@@ -316,6 +335,14 @@ public final class WearInstallerActivity extends InsetAwareActivity {
         binding.forgetWearKey.setVisibility(keys.isRemembered() ? View.VISIBLE : View.GONE);
     }
 
+    private void showArtifactRetry() {
+        runOnUiThread(() -> {
+            if (!isFinishing() && !isDestroyed()) {
+                binding.retryWearArtifact.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
     private void setBusy(int message) { status(message, true, false); }
 
     private void setReady() { status(R.string.wear_ready, false, true); }
@@ -330,23 +357,9 @@ public final class WearInstallerActivity extends InsetAwareActivity {
             binding.wearInstallStatus.setText(message);
             binding.wearInstallProgress.setVisibility(busy ? View.VISIBLE : View.GONE);
             binding.installWearNow.setEnabled(enabled);
+            binding.installWearNow.setAlpha(enabled ? 1f : 0.45f);
             syncIdentityButton();
         });
-    }
-
-    private static WearEndpointRegistry.Endpoint endpoint(String name, String host, int port) {
-        return host.isBlank() || port <= 0 || port > 65_535 ? null
-                : new WearEndpointRegistry.Endpoint(name, host, port, 0);
-    }
-
-    private static List<WearEndpointRegistry.Endpoint> unique(
-            List<WearEndpointRegistry.Endpoint> candidates) {
-        List<WearEndpointRegistry.Endpoint> result = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
-        for (WearEndpointRegistry.Endpoint endpoint : candidates) {
-            if (seen.add(endpoint.host() + ":" + endpoint.port())) result.add(endpoint);
-        }
-        return List.copyOf(result);
     }
 
     private static void pauseBeforeRetry() throws WatchAdbException {
@@ -361,14 +374,6 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     private static int number(String value) {
         try { return Integer.parseInt(value.trim()); }
         catch (NumberFormatException invalid) { return 0; }
-    }
-
-    private record InstallRequest(WearEndpointRegistry.Endpoint pairing,
-            List<WearEndpointRegistry.Endpoint> connectCandidates, String code) {
-        boolean canPair() { return pairing != null && code.matches("[0-9]{6}"); }
-        boolean canStart(boolean remembered) {
-            return (remembered && !connectCandidates.isEmpty()) || canPair();
-        }
     }
 
     private record Selected(WearEndpointRegistry.Endpoint endpoint,

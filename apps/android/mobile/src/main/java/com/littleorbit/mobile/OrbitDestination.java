@@ -28,6 +28,10 @@ public enum OrbitDestination {
             R.string.privacy_controls,
             R.string.context_privacy_title,
             R.string.context_privacy_description),
+    ARCHIVES(
+            R.string.archive_title,
+            R.string.archive_context_title,
+            R.string.archive_context_description),
     UPDATES(
             R.string.app_updates,
             R.string.app_updates,

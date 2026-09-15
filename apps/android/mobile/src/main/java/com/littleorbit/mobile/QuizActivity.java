@@ -1,13 +1,14 @@
 package com.littleorbit.mobile;
 
 import android.content.Intent;
+import android.animation.ValueAnimator;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import androidx.appcompat.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import androidx.lifecycle.ViewModelProvider;
 import com.littleorbit.data.remote.QuizApiModels;
 import com.littleorbit.mobile.databinding.ActivityQuizBinding;
@@ -44,14 +45,13 @@ public final class QuizActivity extends OrbitShellActivity {
     }
 
     private void bindActions() {
-        binding.backButton.setOnClickListener(view -> finish());
-        binding.historyButton.setOnClickListener(view -> open(QuizHistoryActivity.class));
-        binding.customButton.setOnClickListener(view -> open(CustomQuestionActivity.class));
         binding.previousButton.setOnClickListener(view -> model.previous());
         binding.nextButton.setOnClickListener(view -> model.next());
         binding.primaryButton.setOnClickListener(view -> primaryAction());
         binding.resultDoneButton.setOnClickListener(view -> returnHome());
         binding.reportButton.setOnClickListener(view -> showReportReasons());
+        binding.retryButton.setOnClickListener(view ->
+                model.load(getIntent().getStringExtra(EXTRA_QUIZ_DATE)));
     }
 
     @Override
@@ -62,10 +62,17 @@ public final class QuizActivity extends OrbitShellActivity {
     private void render(QuizScreenState state) {
         rendered = state;
         binding.statusText.setText(state.error == null ? "" : state.error);
+        binding.retryButton.setVisibility(state.error == null ? View.GONE : View.VISIBLE);
         QuizScreenState.Mode mode = state.mode();
-        setContentVisible(mode != QuizScreenState.Mode.LOADING);
+        setContentVisible(mode != QuizScreenState.Mode.LOADING
+                && mode != QuizScreenState.Mode.EMPTY);
         if (mode == QuizScreenState.Mode.LOADING) {
             binding.statusText.setText(state.error == null ? getString(R.string.loading) : state.error);
+            return;
+        }
+        if (mode == QuizScreenState.Mode.EMPTY) {
+            binding.statusText.setText(R.string.rc14_quiz_unavailable);
+            binding.retryButton.setVisibility(View.VISIBLE);
             return;
         }
         renderProgress(state);
@@ -74,6 +81,7 @@ public final class QuizActivity extends OrbitShellActivity {
             case WAITING -> renderWaiting(state.day);
             case REVIEW -> renderReview(state.day);
             case QUESTION -> renderQuestion(state);
+            case EMPTY -> throw new IllegalStateException("Empty handled before render");
             case LOADING -> throw new IllegalStateException("Loading handled before render");
         }
     }
@@ -94,7 +102,7 @@ public final class QuizActivity extends OrbitShellActivity {
         binding.resultDoneButton.setVisibility(View.GONE);
         QuizApiModels.Question question = state.day.questions.get(state.questionIndex);
         binding.categoryChip.setText(categoryLabel(question));
-        binding.questionText.setText(question.prompt);
+        binding.questionText.setText(QuizTypography.inline(question.prompt));
         binding.questionHint.setText(R.string.question_private);
         binding.answerContainer.setVisibility(View.VISIBLE);
         answerRenderer.bind(question);
@@ -112,6 +120,7 @@ public final class QuizActivity extends OrbitShellActivity {
     private void animateQuestionChange(String questionId) {
         if (questionId.equals(lastQuestionId)) return;
         lastQuestionId = questionId;
+        if (!ValueAnimator.areAnimatorsEnabled()) return;
         for (View view : List.of(binding.questionCard, binding.answerContainer)) {
             view.animate().cancel();
             view.setAlpha(0.72f);
@@ -135,11 +144,15 @@ public final class QuizActivity extends OrbitShellActivity {
     }
 
     private void addReviewRow(QuizApiModels.Question question, int index) {
-        TextView row = contentText((index + 1) + ". " + question.prompt + "\n"
+        TextView row = contentText((index + 1) + ". "
+                + QuizTypography.inline(question.prompt) + "\n"
                 + answerLabel(question, question.myAnswer));
         row.setBackgroundResource(R.drawable.card_background_muted);
         row.setPadding(dp(16), dp(14), dp(16), dp(14));
         row.setOnClickListener(view -> model.editQuestion(index));
+        row.setFocusable(true);
+        row.setContentDescription(getString(
+                R.string.rc14_edit_answer_description, index + 1, row.getText()));
         LinearLayout.LayoutParams params = matchParams();
         params.bottomMargin = dp(10);
         binding.answerContainer.addView(row, params);
@@ -174,13 +187,13 @@ public final class QuizActivity extends OrbitShellActivity {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(14), dp(16), dp(14));
         card.setBackgroundResource(R.drawable.card_background_muted);
-        TextView prompt = contentText(question.prompt);
+        TextView prompt = contentText(QuizTypography.inline(question.prompt));
         prompt.setTextColor(getColor(R.color.cloud));
         prompt.setTextSize(17);
         card.addView(prompt);
-        card.addView(contentText(getString(R.string.you_label) + "  ·  "
+        card.addView(contentText(getString(R.string.you_label) + " · "
                 + answerLabel(question, question.myAnswer)));
-        card.addView(contentText(getString(R.string.partner_label) + "  ·  "
+        card.addView(contentText(getString(R.string.partner_label) + " · "
                 + answerLabel(question, question.partnerAnswer)));
         if ("partner_guess".equals(question.kind)) {
             card.addView(contentText(guessLabel(question)));
@@ -231,7 +244,7 @@ public final class QuizActivity extends OrbitShellActivity {
             getString(R.string.report_duplicate), getString(R.string.report_other)
         };
         String[] codes = {"unsafe", "irrelevant", "repeated", "other"};
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.report_dialog_title)
                 .setItems(labels, (dialog, which) -> model.report(codes[which], labels[which]))
                 .setNegativeButton(R.string.cancel, null)
@@ -247,6 +260,8 @@ public final class QuizActivity extends OrbitShellActivity {
                 : state.reviewing
                         ? getString(R.string.review_answers)
                         : getString(R.string.question_progress, state.questionIndex + 1, total));
+        binding.progressContainer.setImportantForAccessibility(
+                View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         for (int index = 0; index < total; index++) {
             View segment = new View(this);
             GradientDrawable bar = new GradientDrawable();
@@ -254,6 +269,7 @@ public final class QuizActivity extends OrbitShellActivity {
             bar.setColor(getColor(state.day.revealed || index < completed
                     ? R.color.coral : R.color.orbit_border));
             segment.setBackground(bar);
+            segment.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(5), 1);
             if (index > 0) params.leftMargin = dp(5);
             binding.progressContainer.addView(segment, params);
@@ -265,19 +281,19 @@ public final class QuizActivity extends OrbitShellActivity {
         view.setText(text);
         view.setTextColor(getColor(R.color.muted));
         view.setTextSize(15);
+        view.setLineSpacing(0, 1.12f);
         view.setGravity(Gravity.START);
         view.setPadding(0, dp(7), 0, dp(3));
         return view;
     }
 
     private static String categoryLabel(QuizApiModels.Question question) {
-        String label = question.category.replace('_', ' ');
-        return (question.intimacy ? "MUTUAL · " : "") + label.toUpperCase();
+        return QuizTypography.category(question.category, question.intimacy);
     }
 
-    private static String answerLabel(
+    private String answerLabel(
             QuizApiModels.Question question, Map<String, Object> answer) {
-        if (answer == null) return "Not answered";
+        if (answer == null) return getString(R.string.rc14_not_answered);
         if (answer.containsKey("text")) return String.valueOf(answer.get("text"));
         if (answer.containsKey("selected_option_id")) {
             return optionLabel(question, String.valueOf(answer.get("selected_option_id")));
@@ -289,22 +305,28 @@ public final class QuizActivity extends OrbitShellActivity {
         }
         if (answer.get("ratings") instanceof Map<?, ?> ratings) {
             return question.options.stream()
-                    .map(option -> option.label + ": " + ratings.get(option.id))
-                    .collect(java.util.stream.Collectors.joining("  ·  "));
+                    .map(option -> getString(
+                            R.string.rc14_weighted_answer,
+                            QuizTypography.inline(option.label),
+                            String.valueOf(ratings.get(option.id))))
+                    .collect(java.util.stream.Collectors.joining(" · "));
         }
         if (answer.containsKey("self_option_id")) {
-            return optionLabel(question, String.valueOf(answer.get("self_option_id")))
-                    + " · guessed "
-                    + optionLabel(question, String.valueOf(answer.get("guess_option_id")));
+            return getString(
+                    R.string.rc14_guess_answer,
+                    optionLabel(question, String.valueOf(answer.get("self_option_id"))),
+                    optionLabel(question, String.valueOf(answer.get("guess_option_id"))));
         }
-        if (answer.containsKey("rating")) return answer.get("rating") + " of 5";
+        if (answer.containsKey("rating")) {
+            return getString(R.string.rc14_rating_answer, String.valueOf(answer.get("rating")));
+        }
         return String.valueOf(answer);
     }
 
     private static String optionLabel(QuizApiModels.Question question, String optionId) {
         return question.options.stream()
                 .filter(option -> option.id.equals(optionId))
-                .map(option -> option.label)
+                .map(option -> QuizTypography.inline(option.label))
                 .findFirst()
                 .orElse(optionId);
     }

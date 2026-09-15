@@ -19,6 +19,20 @@ Open `http://localhost:8180` for the website and `http://localhost:8025` for dev
 
 The first model initialization downloads roughly 2.5 GB. Add `-f infra/compose.gpu.yaml` only after NVIDIA container support works in Docker Desktop. CPU fallback is slower but retains curated-question coverage.
 
+## RC14 API security checks
+
+The normal API suite runs the pure security-boundary tests and skips destructive PostgreSQL integration cases unless an isolated database URL is supplied. The integration fixture truncates every application table before each case, so it must point only at a disposable test database created for this run. Never use a development, smoke, staging, or production database.
+
+```powershell
+.\.venv313\Scripts\python.exe -m pytest services\api\tests\test_security_rc14.py
+$env:LITTLE_ORBIT_TEST_DATABASE_URL = "<isolated postgresql+asyncpg test URL>"
+.\.venv313\Scripts\alembic.exe -c services\api\alembic.ini upgrade head
+.\.venv313\Scripts\python.exe -m pytest services\api\tests\test_security_rc14_postgres.py services\api\tests\test_auth_enumeration_postgres.py services\api\tests\test_notifications_postgres.py services\api\tests\test_location_retention_postgres.py
+Remove-Item Env:LITTLE_ORBIT_TEST_DATABASE_URL
+```
+
+The test harness copies `LITTLE_ORBIT_TEST_DATABASE_URL` into `DATABASE_URL` before importing the application. Its fixtures truncate every application table; the explicit URL must therefore name only a disposable database. Migration `0017` adds capped hashed throttle buckets and a separate encrypted pending administrator-MFA factor. Migration `0020` adds encrypted FCM addressing and bounded wake state. Exercise a clean upgrade through the current head, then verify limit expiry/capping, reset-link family invalidation, deleted-account login rejection, current-factor proof for MFA replacement, old-session revocation, configuration allowlisting, pairing eligibility under locks, one-sided legacy-answer hiding, revoked-session note mutation rejection, independent notification acknowledgements, legacy migration, delivery-backfill races, token-rotation races, invalid-token cleanup, unpair purge, and raw-location deletion through both the declared expiry and absolute 24-hour predicates.
+
 ## Isolated paired-account smoke stack
 
 Use the RC smoke project when Android needs real paired accounts, attachment processing, and Mailpit without touching hosted data or volumes. It binds the gateway to `127.0.0.1:18180` and Mailpit to `127.0.0.1:18025`; PostgreSQL, attachment bytes, and ClamAV definitions receive Compose-project-specific volumes. The development override explicitly clears Gmail credentials and production TLS settings before Mailpit starts.
@@ -26,6 +40,7 @@ Use the RC smoke project when Android needs real paired accounts, attachment pro
 ```powershell
 .\infra\scripts\smoke-stack.ps1 up
 .\.venv313\Scripts\python.exe infra\scripts\create_smoke_couple.py
+.\.venv313\Scripts\python.exe infra\scripts\note-sync-smoke.py
 .\.venv313\Scripts\python.exe infra\scripts\create_attachment_smoke.py
 .\.venv313\Scripts\python.exe infra\scripts\notification-smoke.py
 .\gradlew.bat :apps:android:mobile:assembleSmoke
@@ -33,7 +48,7 @@ Use the RC smoke project when Android needs real paired accounts, attachment pro
 .\infra\scripts\smoke-stack.ps1 down
 ```
 
-The account generator creates unique `@example.com` accounts, consumes their Mailpit verification links, confirms a pair, and writes credentials only to ignored `.inspect/smoke-accounts.json`. The attachment seed uploads a synthetic transparent PNG and animated GIF through the private scan/sanitize pipeline and inserts their `attachment://` links. The notification smoke verifies a content-free foreground hint, independent delivery and acknowledgement for two installations, legacy Smooch suppression, note-edit cooldown, and partner-viewing suppression. The Android smoke build targets the loopback gateway through `adb reverse tcp:18180 tcp:18180`. Its script signs in, checks the responsive shell, opens the synthetic Attachment smoke note, verifies both sanitized attachments, switches from preview to the Markdown dock, and stores an ignored screenshot. Run it sequentially on API 29, API 30, API 36 phone, and a wide API 36 tablet. Launch the Wear debug APK separately on the API 34 watch emulator and check the explicit stale fallback. Never point this workflow at the production Compose project.
+The account generator creates unique `@example.com` accounts, consumes their Mailpit verification links, confirms a pair, and writes credentials only to ignored `.inspect/smoke-accounts.json`. The note-sync smoke creates a document as the first partner, requires the second partner to list it, exercises live edits in both directions, disconnect/reconnect catch-up, and identical final snapshots. The attachment seed uploads a synthetic transparent PNG and animated GIF through the private scan/sanitize pipeline, inserts their `attachment://` links, and records a unique ignored document title so repeated runs cannot select a stale fixture. The notification smoke verifies a content-free foreground hint, independent delivery and acknowledgement for two installations, legacy Smooch suppression, note-edit cooldown, and partner-viewing suppression. The Android smoke build targets the loopback gateway through `adb reverse tcp:18180 tcp:18180`. Its script signs in, checks the responsive shell, opens that exact synthetic attachment note, verifies both sanitized attachments, switches from preview to the Markdown dock, and stores an ignored screenshot. Run it sequentially on API 29, API 30, API 36 phone, and a wide API 36 tablet. Launch the Wear debug APK separately on the API 34 watch emulator and check the explicit stale fallback. Never point this workflow at the production Compose project.
 
 ## Partner notification development
 

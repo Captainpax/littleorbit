@@ -1,1 +1,26 @@
-<resources><string name="widget_description">Together-time estimate and next countdown</string></resources>
+<resources>
+    <string name="widget_description">Together-time estimate and next countdown</string>
+    <string name="widget_brand">LITTLE ORBIT</string>
+    <string name="widget_pair_to_start">Pair to start your orbit</string>
+    <string name="widget_together_unavailable">Together-time unavailable</string>
+    <string name="widget_nearby_unavailable">Nearby estimate unavailable</string>
+    <string name="widget_open_to_refresh">Open Little Orbit to refresh</string>
+    <string name="widget_stale">ESTIMATE · STALE</string>
+    <string name="widget_stale_compact">STALE</string>
+    <string name="widget_unavailable">DATA UNAVAILABLE</string>
+    <string name="widget_unavailable_compact">UNAVAILABLE</string>
+    <string name="widget_tap_to_refresh">TAP TO REFRESH</string>
+    <string name="widget_accessibility_unavailable">Little Orbit relationship data unavailable. Open the phone to refresh.</string>
+    <string name="widget_accessibility_summary">%1$s, %2$s, %3$s%4$s</string>
+    <string name="widget_accessibility_stale">, stale</string>
+    <string name="widget_accessibility_compact_action">%1$s Tap the widget to refresh.</string>
+    <string name="widget_accessibility_open">%1$s. Open Little Orbit.</string>
+    <plurals name="widget_days_together">
+        <item quantity="one">%d day together</item>
+        <item quantity="other">%d days together</item>
+    </plurals>
+    <plurals name="widget_nearby_hours">
+        <item quantity="one">%d hour nearby · estimate</item>
+        <item quantity="other">%d hours nearby · estimate</item>
+    </plurals>
+</resources>

@@ -1,6 +1,8 @@
 package com.littleorbit.mobile;
 
 import android.content.Context;
+import android.content.res.Configuration;
+import android.text.InputType;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
@@ -29,11 +31,14 @@ public final class QuizAnswerRenderer {
     private Spinner selfChoice;
     private Spinner partnerGuess;
     private final Map<String, RadioGroup> ratingGroups = new LinkedHashMap<>();
+    private final boolean stackedRatings;
 
     /** Creates a renderer bound to one answer container. */
     public QuizAnswerRenderer(Context context, LinearLayout container) {
         this.context = context;
         this.container = container;
+        Configuration configuration = context.getResources().getConfiguration();
+        stackedRatings = configuration.screenWidthDp < 380 || configuration.fontScale >= 1.3f;
     }
 
     /** Rebuilds controls for one immutable question snapshot. */
@@ -53,7 +58,7 @@ public final class QuizAnswerRenderer {
             case "partner_guess" -> bindPartnerGuess();
             case "weighted_choice" -> bindWeighted();
             case "weighted_scale" -> bindLegacyRating();
-            default -> addHint("This question type needs a newer Little Orbit update.");
+            default -> addHint(context.getString(R.string.rc14_unsupported_question));
         }
     }
 
@@ -66,14 +71,15 @@ public final class QuizAnswerRenderer {
             case "partner_guess" -> partnerAnswer();
             case "weighted_choice" -> weightedAnswer();
             case "weighted_scale" -> legacyRatingAnswer();
-            default -> throw new IllegalStateException("Unsupported question type");
+            default -> throw new IllegalStateException(
+                    context.getString(R.string.rc14_unsupported_question));
         };
     }
 
     private void bindSingle() {
         singleGroup = verticalRadioGroup();
         for (QuizApiModels.Option option : question.options) {
-            MaterialRadioButton button = radio(option.label, option.id);
+            MaterialRadioButton button = radio(QuizTypography.inline(option.label), option.id);
             singleGroup.addView(button);
             if (option.id.equals(stringValue(question.myAnswer, "selected_option_id"))) {
                 button.setChecked(true);
@@ -86,7 +92,7 @@ public final class QuizAnswerRenderer {
         List<String> selected = stringList(question.myAnswer, "selected_option_ids");
         for (QuizApiModels.Option option : question.options) {
             MaterialCheckBox check = new MaterialCheckBox(context);
-            check.setText(option.label);
+            check.setText(QuizTypography.inline(option.label));
             check.setTag(option.id);
             check.setTextColor(context.getColor(R.color.cloud));
             check.setMinHeight(dp(56));
@@ -106,17 +112,20 @@ public final class QuizAnswerRenderer {
         textInput.setHintTextColor(context.getColor(R.color.muted));
         textInput.setBackgroundResource(R.drawable.card_background_muted);
         textInput.setGravity(android.view.Gravity.TOP);
+        textInput.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         textInput.setMinHeight(dp(132));
         textInput.setPadding(dp(16), dp(14), dp(16), dp(14));
         container.addView(textInput, matchParams());
     }
 
     private void bindPartnerGuess() {
-        addHint("First, choose your answer");
+        addHint(context.getString(R.string.rc14_self_answer));
         selfChoice = optionSpinner();
         selectSpinner(selfChoice, stringValue(question.myAnswer, "self_option_id"));
         container.addView(selfChoice, matchParams());
-        addHint("Then guess your partner’s answer");
+        addHint(context.getString(R.string.rc14_partner_guess));
         partnerGuess = optionSpinner();
         selectSpinner(partnerGuess, stringValue(question.myAnswer, "guess_option_id"));
         container.addView(partnerGuess, matchParams());
@@ -125,29 +134,31 @@ public final class QuizAnswerRenderer {
     private void bindWeighted() {
         Map<String, Object> saved = nestedMap(question.myAnswer, "ratings");
         for (QuizApiModels.Option option : question.options) {
-            TextView label = label(option.label);
+            String optionLabel = QuizTypography.inline(option.label);
+            TextView label = label(optionLabel);
             container.addView(label);
-            RadioGroup group = horizontalRatingGroup();
+            RadioGroup group = ratingGroup();
             Number selected = saved.get(option.id) instanceof Number number ? number : null;
             for (int rating = 1; rating <= 5; rating++) {
-                MaterialRadioButton button = radio(String.valueOf(rating), String.valueOf(rating));
-                group.addView(button, weightedRadioParams());
+                MaterialRadioButton button = ratingButton(optionLabel, rating);
+                group.addView(button, ratingParams());
                 if (selected != null && selected.intValue() == rating) {
                     button.setChecked(true);
                 }
             }
             ratingGroups.put(option.id, group);
             container.addView(group);
-            container.addView(anchorRow());
+            if (!stackedRatings) container.addView(anchorRow());
         }
     }
 
     private void bindLegacyRating() {
-        singleGroup = horizontalRatingGroup();
+        singleGroup = ratingGroup();
         Number saved = question.myAnswer == null ? null : (Number) question.myAnswer.get("rating");
         for (int rating = 1; rating <= 5; rating++) {
-            MaterialRadioButton button = radio(String.valueOf(rating), String.valueOf(rating));
-            singleGroup.addView(button, weightedRadioParams());
+            MaterialRadioButton button = ratingButton(
+                    QuizTypography.inline(question.prompt), rating);
+            singleGroup.addView(button, ratingParams());
             if (saved != null && saved.intValue() == rating) {
                 button.setChecked(true);
             }
@@ -165,7 +176,7 @@ public final class QuizAnswerRenderer {
                 .map(item -> String.valueOf(item.getTag()))
                 .collect(Collectors.toList());
         if (selected.isEmpty()) {
-            throw new IllegalStateException("Choose at least one option");
+            throw new IllegalStateException(context.getString(R.string.rc14_choose_multiple));
         }
         return Map.of("kind", "multiple_choice", "selected_option_ids", selected);
     }
@@ -173,7 +184,7 @@ public final class QuizAnswerRenderer {
     private Map<String, Object> textAnswer() {
         String text = textInput == null ? "" : String.valueOf(textInput.getText()).trim();
         if (text.isEmpty()) {
-            throw new IllegalStateException("Write an answer first");
+            throw new IllegalStateException(context.getString(R.string.rc14_write_answer));
         }
         return Map.of("kind", "free_text", "text", text);
     }
@@ -201,10 +212,10 @@ public final class QuizAnswerRenderer {
         return group;
     }
 
-    private RadioGroup horizontalRatingGroup() {
+    private RadioGroup ratingGroup() {
         RadioGroup group = new RadioGroup(context);
-        group.setOrientation(RadioGroup.HORIZONTAL);
-        group.setWeightSum(5);
+        group.setOrientation(stackedRatings ? RadioGroup.VERTICAL : RadioGroup.HORIZONTAL);
+        if (!stackedRatings) group.setWeightSum(5);
         return group;
     }
 
@@ -220,10 +231,22 @@ public final class QuizAnswerRenderer {
         return button;
     }
 
+    private MaterialRadioButton ratingButton(String optionLabel, int rating) {
+        String anchor = rating == 1
+                ? scaleLow() : rating == 5 ? scaleHigh()
+                : context.getString(R.string.rc14_rating_middle);
+        String visible = stackedRatings && (rating == 1 || rating == 5)
+                ? rating + " · " + anchor : String.valueOf(rating);
+        MaterialRadioButton button = radio(visible, String.valueOf(rating));
+        button.setContentDescription(context.getString(
+                R.string.rc14_rating_description, optionLabel, rating, anchor));
+        return button;
+    }
+
     private Spinner optionSpinner() {
         Spinner spinner = new Spinner(context);
         List<String> labels = question.options.stream()
-                .map(item -> item.label)
+                .map(item -> QuizTypography.inline(item.label))
                 .collect(Collectors.toList());
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 context, android.R.layout.simple_spinner_dropdown_item, labels);
@@ -235,21 +258,25 @@ public final class QuizAnswerRenderer {
     }
 
     private void selectSpinner(Spinner spinner, String optionId) {
-        if (optionId != null && optionId.matches("o[1-6]")) {
-            spinner.setSelection(Integer.parseInt(optionId.substring(1)) - 1);
+        if (optionId == null) return;
+        for (int index = 0; index < question.options.size(); index++) {
+            if (optionId.equals(question.options.get(index).id)) {
+                spinner.setSelection(index);
+                return;
+            }
         }
     }
 
     private String selectedOptionId(Spinner spinner) {
         if (spinner == null || spinner.getSelectedItemPosition() < 0) {
-            throw new IllegalStateException("Choose an option");
+            throw new IllegalStateException(context.getString(R.string.rc14_choose_option));
         }
-        return "o" + (spinner.getSelectedItemPosition() + 1);
+        return question.options.get(spinner.getSelectedItemPosition()).id;
     }
 
-    private static String checkedTag(RadioGroup group) {
+    private String checkedTag(RadioGroup group) {
         if (group == null || group.getCheckedRadioButtonId() == View.NO_ID) {
-            throw new IllegalStateException("Choose a rating or option");
+            throw new IllegalStateException(context.getString(R.string.rc14_choose_option));
         }
         View checked = group.findViewById(group.getCheckedRadioButtonId());
         return String.valueOf(checked.getTag());
@@ -273,10 +300,8 @@ public final class QuizAnswerRenderer {
     private LinearLayout anchorRow() {
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        String low = question.scaleLowLabel == null ? "Low" : question.scaleLowLabel;
-        String high = question.scaleHighLabel == null ? "High" : question.scaleHighLabel;
-        row.addView(anchor(low, android.view.Gravity.START));
-        row.addView(anchor(high, android.view.Gravity.END));
+        row.addView(anchor(scaleLow(), android.view.Gravity.START));
+        row.addView(anchor(scaleHigh(), android.view.Gravity.END));
         return row;
     }
 
@@ -306,8 +331,25 @@ public final class QuizAnswerRenderer {
         return params;
     }
 
-    private LinearLayout.LayoutParams weightedRadioParams() {
+    private RadioGroup.LayoutParams ratingParams() {
+        if (stackedRatings) {
+            RadioGroup.LayoutParams params = new RadioGroup.LayoutParams(
+                    RadioGroup.LayoutParams.MATCH_PARENT,
+                    RadioGroup.LayoutParams.WRAP_CONTENT);
+            params.bottomMargin = dp(4);
+            return params;
+        }
         return new RadioGroup.LayoutParams(0, dp(54), 1);
+    }
+
+    private String scaleLow() {
+        return QuizTypography.inline(question.scaleLowLabel == null
+                ? context.getString(R.string.rc14_scale_low) : question.scaleLowLabel);
+    }
+
+    private String scaleHigh() {
+        return QuizTypography.inline(question.scaleHighLabel == null
+                ? context.getString(R.string.rc14_scale_high) : question.scaleHighLabel);
     }
 
     private int dp(int value) {

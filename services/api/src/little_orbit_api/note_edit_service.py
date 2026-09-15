@@ -12,7 +12,7 @@ from .clock import SystemClock
 from .couple_access import lock_couple
 from .database import SessionFactory
 from .domain.notes import Delete, Edit, Insert, InvalidEdit, apply_edit, transform
-from .models import CoupleMember, Note, NoteOperation
+from .models import Account, CoupleMember, Note, NoteOperation, Session
 from .notification_service import enqueue_note_edit_event
 
 
@@ -37,12 +37,15 @@ async def apply_note_edit(
     account_id: UUID,
     message: NoteEditMessage,
     *,
+    session_token_hash: str,
     partner_viewing: bool = False,
 ) -> dict[str, object]:
     """Authorize, serialize, apply, and acknowledge one retry-safe edit."""
 
     async with SessionFactory() as db:
-        couple_id = await _authorized_couple(db, note_id, account_id)
+        couple_id = await _authorized_couple(
+            db, note_id, account_id, session_token_hash
+        )
         result = await _apply_locked(
             db, note_id, account_id, couple_id, message, partner_viewing
         )
@@ -51,8 +54,27 @@ async def apply_note_edit(
 
 
 async def _authorized_couple(
-    db: AsyncSession, note_id: UUID, account_id: UUID
+    db: AsyncSession,
+    note_id: UUID,
+    account_id: UUID,
+    session_token_hash: str,
 ) -> UUID:
+    now = SystemClock().now()
+    account = await db.get(Account, account_id, with_for_update=True)
+    if account is None or account.suspended_at is not None or account.deleted_at is not None:
+        raise NoteAccessRevoked
+    live_session = await db.scalar(
+        select(Session)
+        .where(
+            Session.account_id == account_id,
+            Session.token_hash == session_token_hash,
+            Session.revoked_at.is_(None),
+            Session.expires_at > now,
+        )
+        .with_for_update()
+    )
+    if live_session is None:
+        raise NoteAccessRevoked
     couple_id = await db.scalar(
         select(CoupleMember.couple_id)
         .join(Note, Note.couple_id == CoupleMember.couple_id)

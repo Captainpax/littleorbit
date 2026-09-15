@@ -117,7 +117,7 @@ async def test_foreground_hint_is_content_free_and_prunes_failed_socket() -> Non
     account_id = uuid4()
     healthy = AsyncMock()
     failed = AsyncMock()
-    failed.send_json.side_effect = RuntimeError("closed")
+    failed.send_json.side_effect = OSError("transport closed")
     hub.add(account_id, healthy)
     hub.add(account_id, failed)
 

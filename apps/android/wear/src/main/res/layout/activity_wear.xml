@@ -2,8 +2,7 @@
 <androidx.wear.widget.BoxInsetLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#050C1A">
+    android:layout_height="match_parent">
 
     <ScrollView
         android:layout_width="match_parent"
@@ -18,21 +17,26 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="4dp">
+            android:paddingStart="8dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="16dp">
 
             <LinearLayout
+                android:id="@+id/wearPlanetRow"
                 android:layout_width="wrap_content"
                 android:layout_height="52dp"
                 android:gravity="center"
+                android:importantForAccessibility="yes"
                 android:orientation="horizontal">
-                <FrameLayout android:layout_width="48dp" android:layout_height="48dp" android:background="@drawable/planet_me">
-                    <ImageView android:id="@+id/wearMyPhoto" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" android:visibility="gone" />
-                    <TextView android:id="@+id/wearMyInitial" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="Y" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
+                <FrameLayout android:layout_width="48dp" android:layout_height="48dp" android:background="@drawable/planet_me" android:importantForAccessibility="noHideDescendants">
+                    <ImageView android:id="@+id/wearMyPhoto" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" android:scaleType="centerCrop" android:visibility="gone" />
+                    <TextView android:id="@+id/wearMyInitial" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="@string/you_initial" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
                 </FrameLayout>
-                <TextView android:layout_width="26dp" android:layout_height="match_parent" android:gravity="center" android:text="✦" android:textColor="#FFC45B" android:textSize="20sp" />
-                <FrameLayout android:layout_width="48dp" android:layout_height="48dp" android:background="@drawable/planet_partner">
-                    <ImageView android:id="@+id/wearPartnerPhoto" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" android:visibility="gone" />
-                    <TextView android:id="@+id/wearPartnerInitial" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="?" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
+                <TextView android:layout_width="26dp" android:layout_height="match_parent" android:gravity="center" android:importantForAccessibility="no" android:text="@string/orbit_spark" android:textColor="#FFC45B" android:textSize="20sp" />
+                <FrameLayout android:layout_width="48dp" android:layout_height="48dp" android:background="@drawable/planet_partner" android:importantForAccessibility="noHideDescendants">
+                    <ImageView android:id="@+id/wearPartnerPhoto" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@null" android:scaleType="centerCrop" android:visibility="gone" />
+                    <TextView android:id="@+id/wearPartnerInitial" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="@string/unknown_initial" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
                 </FrameLayout>
             </LinearLayout>
 
@@ -41,6 +45,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
+                android:importantForAccessibility="no"
                 android:letterSpacing="0.12"
                 android:text="@string/together_for"
                 android:textColor="#CEC7FF"
@@ -52,6 +57,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"
+                android:accessibilityHeading="true"
                 android:maxLines="2"
                 android:text="@string/unavailable"
                 android:textColor="#F7F6FF"
@@ -74,11 +80,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
+                android:accessibilityLiveRegion="polite"
                 android:gravity="center"
                 android:maxLines="2"
                 android:text="@string/open_phone_to_refresh"
                 android:textColor="#FFC45B"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
         </LinearLayout>
     </ScrollView>
 </androidx.wear.widget.BoxInsetLayout>

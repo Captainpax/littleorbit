@@ -9,13 +9,13 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..clock import SystemClock
-from ..countdown_models import Countdown, CountdownReminder
+from ..countdown_models import Countdown
 from ..database import session_scope
 from ..dependencies import current_account
 from ..interaction_models import Smooch
+from ..legacy_quiz_privacy import revealed_legacy_answers
 from ..models import (
     Account,
-    Couple,
     CoupleMember,
     DeletionJob,
     LocationSample,
@@ -26,6 +26,7 @@ from ..models import (
     TogetherBucket,
 )
 from ..profile_models import RelationshipAvatar
+from ..relationship_service import end_active_relationship, lock_accounts
 from ..schemas import AccountDeletionRequest, AccountDeletionResponse, AccountExportResponse
 from ..security import verify_password
 
@@ -43,11 +44,7 @@ async def _relationship_export(
             select(Countdown).where(Countdown.couple_id == membership.couple_id)
         )
     )
-    answers = list(
-        await session.scalars(
-            select(QuizAnswer).where(QuizAnswer.couple_id == membership.couple_id)
-        )
-    )
+    answers = await revealed_legacy_answers(session, membership.couple_id)
     smooches = list(
         await session.scalars(select(Smooch).where(Smooch.couple_id == membership.couple_id))
     )
@@ -184,51 +181,6 @@ async def export_account(
     )
 
 
-async def _end_active_pairing(session: AsyncSession, actor_id: UUID) -> UUID | None:
-    membership = await session.scalar(
-        select(CoupleMember)
-        .where(CoupleMember.account_id == actor_id, CoupleMember.left_at.is_(None))
-        .with_for_update()
-    )
-    if membership is None:
-        return None
-    now = SystemClock().now()
-    couple = await session.get(Couple, membership.couple_id, with_for_update=True)
-    members = list(
-        await session.scalars(
-            select(CoupleMember)
-            .where(
-                CoupleMember.couple_id == membership.couple_id,
-                CoupleMember.left_at.is_(None),
-            )
-            .with_for_update()
-        )
-    )
-    if couple:
-        couple.ended_at = now
-        couple.updated_at = now
-    for member in members:
-        member.left_at = now
-        member.intimacy_enabled = False
-        member.location_enabled = False
-    await session.execute(
-        delete(LocationSample).where(LocationSample.couple_id == membership.couple_id)
-    )
-    await session.execute(
-        delete(RelationshipAvatar).where(
-            RelationshipAvatar.couple_id == membership.couple_id
-        )
-    )
-    await session.execute(
-        delete(CountdownReminder).where(
-            CountdownReminder.countdown_id.in_(
-                select(Countdown.id).where(Countdown.couple_id == membership.couple_id)
-            )
-        )
-    )
-    return membership.couple_id
-
-
 @router.post("/deletion", response_model=AccountDeletionResponse)
 async def schedule_deletion(
     payload: AccountDeletionRequest,
@@ -242,16 +194,30 @@ async def schedule_deletion(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Password is incorrect")
     now = SystemClock().now()
     execute_after = now + timedelta(days=7)
-    couple_id = await _end_active_pairing(session, actor.id)
-    actor.deleted_at = now
-    actor.updated_at = now
+    couple_id = await end_active_relationship(session, actor.id, now)
+    locked_accounts = await lock_accounts(session, (actor.id,))
+    locked_actor = locked_accounts[0] if len(locked_accounts) == 1 else None
+    if (
+        locked_actor is None
+        or locked_actor.suspended_at is not None
+        or locked_actor.deleted_at is not None
+        or not verify_password(locked_actor.password_hash, payload.password)
+    ):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Password is incorrect")
+    locked_actor.deleted_at = now
+    locked_actor.updated_at = now
     for active_session in await session.scalars(
-        select(Session).where(Session.account_id == actor.id, Session.revoked_at.is_(None))
+        select(Session).where(
+            Session.account_id == locked_actor.id,
+            Session.revoked_at.is_(None),
+        )
     ):
         active_session.revoked_at = now
-    await session.execute(delete(OneUseToken).where(OneUseToken.account_id == actor.id))
+    await session.execute(
+        delete(OneUseToken).where(OneUseToken.account_id == locked_actor.id)
+    )
     job = DeletionJob(
-        account_id=actor.id,
+        account_id=locked_actor.id,
         execute_after=execute_after,
         status="scheduled",
         requested_at=now,

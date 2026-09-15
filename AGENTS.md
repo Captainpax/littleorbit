@@ -34,15 +34,20 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - A couple has exactly two active, verified accounts.
 - Pair codes are eight characters, single-use, expire after ten minutes, and are redeemed atomically only after creator confirmation.
 - Verification and reset tokens are stored as hashes, expire, and are consumed once.
+- A successful password reset consumes every outstanding reset token for that account and revokes every session in the same account-locked transaction. Session issuance and rotation use the same outer account lock.
+- Public authentication, recovery, pair redemption, and administrator proof attempts use capped PostgreSQL counters keyed by domain-separated subject hashes. IP limits run before attacker-controlled subject limits, and expired counters are purged.
+- Replacing enabled administrator MFA requires the current password plus one current TOTP or recovery proof. The new encrypted factor remains pending until confirmation, then every earlier session is revoked.
 - Quiz responses remain hidden until both partners submit.
 - Intimacy questions require both partners' current opt-in; either opt-out takes effect immediately.
 - Note operation IDs are idempotent and server revisions increase monotonically.
+- Long-running note and notification sockets revalidate the account and exact session after registration, for every client operation, and at least every 30 seconds while idle. Revocation closes the socket.
 - Note attachments authorize the current couple before lookup, reserve bounded quota, remain unavailable until a clean scan and metadata-removal pass, and are verified by their sanitized digest before preview.
 - Note attachment uploads use exact offsets and stable operation IDs; unscanned bytes are never served, private files remain couple-authorized, and deletion or note purge removes stored bytes.
 - Note presence counts unique authenticated accounts; archived notes reject content operations and are recoverable for seven days.
 - Couple activity is a 30-day, content-free metadata timeline. It may name a note or countdown but never stores note bodies, attachment names, quiz answers, locations, or custom Smooch text.
 - Relationship age begins at the immutable confirmed pairing instant. Together-time sessions never overlap; uploaded samples are deduplicated and results are labelled estimates.
 - Relationship avatars belong to the active couple. Only the other current member may assign or remove a person's avatar; self-assignment is invalid, and unpairing deletes both images.
+- Passive widget and Wear records carry only an opaque relationship identity and monotonic local generation. Sign-out, unpairing, or `relationship_inactive` advances a durable purge barrier; disconnected Wear relationship data is deleted after 24 hours and cannot be revived by an older payload.
 - A countdown is either a timed instant with an IANA timezone or an all-day local date. Reminder offsets belong privately to one member, while partner alerts exclude notes and reminder choices.
 - A Smooch uses one approved emoji and phrase key, is limited to five sends per account in a rolling hour, survives unpairing in private archives, and is erased when either original participant deletes their account.
 - Partner notification preferences belong to the account; delivery acknowledgements belong to one random installation ID. Foreground WSS hints contain no event content, lock-screen public versions stay generic, acknowledging one phone never consumes another phone's delivery, and a failed quiz-availability check never blocks unrelated pending alerts.

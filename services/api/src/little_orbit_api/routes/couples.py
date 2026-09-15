@@ -7,13 +7,21 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..activity_models import ActivityEvent, ActivitySeen
+from ..attachment_models import NoteAttachment
+from ..attachment_responses import attachment_response
 from ..clock import SystemClock
-from ..countdown_models import Countdown, CountdownReminder
-from ..couple_access import active_member, both_members_consent
+from ..countdown_models import Countdown
+from ..couple_access import (
+    active_member,
+    archived_member,
+    both_members_consent,
+    lock_couple,
+    relationship_inactive_error,
+)
 from ..database import session_scope
 from ..dependencies import current_account
 from ..interaction_models import Smooch
+from ..legacy_quiz_privacy import revealed_legacy_answers
 from ..models import (
     Account,
     Couple,
@@ -22,10 +30,11 @@ from ..models import (
     Note,
     QuizAnswer,
 )
-from ..profile_models import RelationshipAvatar
 from ..quiz_v2_service import revoke_unrevealed_intimacy
+from ..relationship_service import end_active_relationship
 from ..schemas import (
     ArchiveDetail,
+    ArchiveNote,
     ArchiveSummary,
     CouplePreferencesRequest,
     CouplePreferencesResponse,
@@ -35,24 +44,18 @@ from ..schemas import (
 router = APIRouter(prefix="/v1/couple", tags=["couple"])
 
 
-async def _preferences(
-    session: AsyncSession, member: CoupleMember
-) -> CouplePreferencesResponse:
+async def _preferences(session: AsyncSession, member: CoupleMember) -> CouplePreferencesResponse:
     couple = await session.get(Couple, member.couple_id)
-    if couple is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
+    if couple is None or couple.ended_at is not None:
+        raise relationship_inactive_error()
     return CouplePreferencesResponse(
         couple_id=couple.id,
         anniversary_date=couple.anniversary_date,
         proximity_threshold_m=couple.proximity_threshold_m,
         intimacy_enabled_by_me=member.intimacy_enabled,
-        intimacy_enabled_by_both=await both_members_consent(
-            session, couple.id, "intimacy_enabled"
-        ),
+        intimacy_enabled_by_both=await both_members_consent(session, couple.id, "intimacy_enabled"),
         location_enabled_by_me=member.location_enabled,
-        location_enabled_by_both=await both_members_consent(
-            session, couple.id, "location_enabled"
-        ),
+        location_enabled_by_both=await both_members_consent(session, couple.id, "location_enabled"),
         home_timezone=couple.home_timezone,
     )
 
@@ -75,10 +78,8 @@ async def update_preferences(
 ) -> CouplePreferencesResponse:
     """Apply revocable member consent and shared estimate settings transactionally."""
 
-    member = await active_member(session, actor.id, lock=True)
-    couple = await session.get(Couple, member.couple_id, with_for_update=True)
-    if couple is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
+    member = await active_member(session, actor.id)
+    couple = await lock_couple(session, member.couple_id)
     if payload.intimacy_enabled is not None:
         member.intimacy_enabled = payload.intimacy_enabled
         if not payload.intimacy_enabled:
@@ -112,67 +113,18 @@ async def unpair(
 ) -> UnpairResponse:
     """End all sharing immediately while retaining each member's private archive."""
 
-    member = await active_member(session, actor.id, lock=True)
-    couple = await session.get(Couple, member.couple_id, with_for_update=True)
-    members = list(
-        await session.scalars(
-            select(CoupleMember)
-            .where(
-                CoupleMember.couple_id == member.couple_id,
-                CoupleMember.left_at.is_(None),
-            )
-            .with_for_update()
-        )
-    )
-    if couple is None or len(members) != 2:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state changed; retry")
     ended_at = SystemClock().now()
-    couple.ended_at = ended_at
-    couple.updated_at = ended_at
-    for current in members:
-        current.left_at = ended_at
-        current.intimacy_enabled = False
-        current.location_enabled = False
-    await session.execute(
-        delete(LocationSample).where(LocationSample.couple_id == couple.id)
-    )
-    await session.execute(
-        delete(RelationshipAvatar).where(RelationshipAvatar.couple_id == couple.id)
-    )
-    await session.execute(
-        delete(CountdownReminder).where(
-            CountdownReminder.countdown_id.in_(
-                select(Countdown.id).where(Countdown.couple_id == couple.id)
-            )
-        )
-    )
-    await session.execute(delete(ActivitySeen).where(ActivitySeen.couple_id == couple.id))
-    await session.execute(delete(ActivityEvent).where(ActivityEvent.couple_id == couple.id))
+    couple_id = await end_active_relationship(session, actor.id, ended_at)
+    if couple_id is None:
+        raise relationship_inactive_error()
     await session.commit()
     from .notes import disconnect_couple_notes
 
-    await disconnect_couple_notes(couple.id, request.app.state.note_connections)
-    return UnpairResponse(archive_id=couple.id, ended_at=ended_at)
+    await disconnect_couple_notes(couple_id, request.app.state.note_connections)
+    return UnpairResponse(archive_id=couple_id, ended_at=ended_at)
 
 
-async def _archive_membership(
-    session: AsyncSession, account_id: UUID, couple_id: UUID
-) -> CoupleMember:
-    membership = await session.scalar(
-        select(CoupleMember).where(
-            CoupleMember.account_id == account_id,
-            CoupleMember.couple_id == couple_id,
-            CoupleMember.left_at.is_not(None),
-        )
-    )
-    if membership is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Archive is unavailable")
-    return membership
-
-
-async def _archive_summary(
-    session: AsyncSession, membership: CoupleMember
-) -> ArchiveSummary:
+async def _archive_summary(session: AsyncSession, membership: CoupleMember) -> ArchiveSummary:
     partner_name = await session.scalar(
         select(Account.display_name)
         .join(CoupleMember, CoupleMember.account_id == Account.id)
@@ -217,54 +169,85 @@ async def archive_detail(
 ) -> ArchiveDetail:
     """Read immutable content from one former couple without restoring sharing."""
 
-    membership = await _archive_membership(session, actor.id, archive_id)
+    membership = await archived_member(session, actor.id, archive_id)
     summary = await _archive_summary(session, membership)
     notes = list(await session.scalars(select(Note).where(Note.couple_id == archive_id)))
+    attachments = list(
+        await session.scalars(
+            select(NoteAttachment).where(
+                NoteAttachment.couple_id == archive_id,
+                NoteAttachment.status == "available",
+                NoteAttachment.deleted_at.is_(None),
+            )
+        )
+    )
+    attachments_by_note: dict[UUID, list[NoteAttachment]] = {}
+    for item in attachments:
+        attachments_by_note.setdefault(item.note_id, []).append(item)
     countdowns = list(
         await session.scalars(select(Countdown).where(Countdown.couple_id == archive_id))
     )
-    answers = list(
-        await session.scalars(select(QuizAnswer).where(QuizAnswer.couple_id == archive_id))
-    )
-    smooches = list(
-        await session.scalars(select(Smooch).where(Smooch.couple_id == archive_id))
-    )
+    answers = await revealed_legacy_answers(session, archive_id)
+    smooches = list(await session.scalars(select(Smooch).where(Smooch.couple_id == archive_id)))
     return ArchiveDetail(
         **summary.model_dump(),
         notes=[
-            {"id": str(item.id), "title": item.title, "body": item.body, "revision": item.revision}
-            for item in notes
+            _archive_note(item, archive_id, attachments_by_note.get(item.id, [])) for item in notes
         ],
-        countdowns=[
-            {
-                "id": str(item.id),
-                "title": item.title,
-                "occurs_at": item.occurs_at,
-                "timezone": item.timezone,
-                "timing_kind": item.timing_kind,
-                "occurs_on": item.occurs_on,
-                "notes": item.notes,
-            }
-            for item in countdowns
-        ],
-        quiz_answers=[
-            {
-                "question_id": str(item.question_id),
-                "account_id": str(item.account_id),
-                "answer": item.answer,
-                "submitted_at": item.submitted_at,
-            }
-            for item in answers
-        ],
-        smooches=[
-            {
-                "id": str(item.id),
-                "sender_id": str(item.sender_id) if item.sender_id else None,
-                "recipient_id": str(item.recipient_id) if item.recipient_id else None,
-                "emoji": item.emoji,
-                "phrase_key": item.phrase_key,
-                "sent_at": item.sent_at,
-            }
-            for item in smooches
+        countdowns=[_archive_countdown(item) for item in countdowns],
+        quiz_answers=[_archive_answer(item) for item in answers],
+        smooches=[_archive_smooch(item) for item in smooches],
+    )
+
+
+def _archive_countdown(item: Countdown) -> dict[str, object]:
+    return {
+        "id": str(item.id),
+        "title": item.title,
+        "occurs_at": item.occurs_at,
+        "timezone": item.timezone,
+        "timing_kind": item.timing_kind,
+        "occurs_on": item.occurs_on,
+        "notes": item.notes,
+    }
+
+
+def _archive_answer(item: QuizAnswer) -> dict[str, object]:
+    return {
+        "question_id": str(item.question_id),
+        "account_id": str(item.account_id),
+        "answer": item.answer,
+        "submitted_at": item.submitted_at,
+    }
+
+
+def _archive_smooch(item: Smooch) -> dict[str, object]:
+    return {
+        "id": str(item.id),
+        "sender_id": str(item.sender_id) if item.sender_id else None,
+        "recipient_id": str(item.recipient_id) if item.recipient_id else None,
+        "emoji": item.emoji,
+        "phrase_key": item.phrase_key,
+        "sent_at": item.sent_at,
+    }
+
+
+def _archive_note(note: Note, archive_id: UUID, attachments: list[NoteAttachment]) -> ArchiveNote:
+    """Build one typed archive note after the route authorized former membership."""
+
+    return ArchiveNote(
+        id=note.id,
+        title=note.title,
+        body=note.body,
+        revision=note.revision,
+        attachments=[
+            attachment_response(
+                item,
+                download_url=(
+                    f"/api/v1/couple/archives/{archive_id}/notes/{note.id}"
+                    f"/attachments/{item.id}/content"
+                ),
+            )
+            for item in sorted(attachments, key=lambda value: value.created_at)
         ],
     )

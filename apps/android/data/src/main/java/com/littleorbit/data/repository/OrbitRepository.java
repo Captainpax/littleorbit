@@ -2,6 +2,7 @@ package com.littleorbit.data.repository;
 
 import com.littleorbit.data.remote.ApiModels;
 import com.littleorbit.data.remote.CountdownApiModels;
+import com.littleorbit.data.remote.DiagnosticApiModels;
 import com.littleorbit.data.remote.ActivityApiModels;
 import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.remote.NotificationApiModels;
@@ -15,6 +16,9 @@ import java.util.concurrent.CompletableFuture;
 
 /** Authenticated application boundary used by Android presentation code. */
 public interface OrbitRepository {
+    /** Sends one explicitly enabled report containing only app code identifiers. */
+    CompletableFuture<ApiModels.Message> reportCrash(DiagnosticApiModels.Report report);
+
     /** Returns whether an encrypted local session is available. */
     boolean isSignedIn();
 
@@ -161,6 +165,10 @@ public interface OrbitRepository {
     /** Loads thirty coordinate-free UTC days of nearby estimates. */
     CompletableFuture<List<TogetherTimeModels.HistoryDay>> togetherHistory();
 
+    /** Applies an attributable correction to one completed nearby-time day. */
+    CompletableFuture<TogetherTimeModels.HistoryDay> correctTogetherDay(
+            String day, TogetherTimeModels.DayCorrection request);
+
     /** Proposes a relationship start date for mutual approval. */
     CompletableFuture<TogetherTimeModels.StartDateProposal> proposeStartDate(
             TogetherTimeModels.ProposalRequest request);
@@ -226,6 +234,14 @@ public interface OrbitRepository {
 
     /** Loads one private read-only former-pairing archive. */
     CompletableFuture<ApiModels.ArchiveDetail> archive(String archiveId);
+
+    /** Loads only clean files retained in one authorized archived note. */
+    CompletableFuture<List<NoteApiModels.Attachment>> archiveAttachments(
+            String archiveId, String noteId);
+
+    /** Downloads and verifies one read-only former-pairing attachment. */
+    CompletableFuture<File> downloadArchiveAttachment(
+            String archiveId, String noteId, NoteApiModels.Attachment attachment);
 
     /** Loads a portable owner-visible export. */
     CompletableFuture<Map<String, Object>> exportAccount();

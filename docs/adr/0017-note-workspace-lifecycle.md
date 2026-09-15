@@ -12,6 +12,11 @@ Each couple may own multiple titled plain-text notes. Body operations retain ser
 
 Every content or metadata mutation locks and reauthorizes the current couple so unpairing cannot race an accepted edit.
 
+Android closes the note editor WebSocket whenever the activity loses foreground focus. It keeps the encrypted body, title, base revision, and both selection endpoints, then fetches a fresh authorized HTTP snapshot before opening a new editor session. A delayed load cannot reopen a background presence socket.
+Each connection also receives a local generation number. Callbacks must match both the selected note and the current generation, so a late acknowledgement or presence update from a closed socket cannot mutate a newly reconnected editor for the same note.
+
+While the foreground library is visible, Android fetches its authorized directory at a bounded five-second interval. Identical ordered ID, revision, metadata, title, and body snapshots do not rebuild the view. A manual Refresh action remains available, background activities stop polling, and only the exact structured `relationship_inactive` response disables refresh and starts local pair-data cleanup.
+
 ## Consequences
 
-The UI gains a list/detail workspace and explicit recovery. Metadata has its own revision path. Presence remains approximate across disconnects but cannot claim both partners merely because one account opened multiple connections.
+The UI gains a list/detail workspace and explicit recovery. Metadata has its own revision path. Presence remains approximate across disconnects but cannot claim both partners merely because one account opened multiple connections or left the app in the background.

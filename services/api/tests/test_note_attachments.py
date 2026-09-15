@@ -7,7 +7,7 @@ from fastapi import HTTPException, Request
 from PIL import Image
 from pypdf import PdfWriter
 
-from little_orbit_api.attachment_media import sanitize_file
+from little_orbit_api.attachment_media import AttachmentRejected, sanitize_file
 from little_orbit_api.attachment_storage import (
     MAX_CHUNK_BYTES,
     AttachmentPolicyError,
@@ -97,6 +97,38 @@ def test_pdf_sanitizer_discards_document_metadata(tmp_path: Path) -> None:
 
     reader = PdfReader(target)
     assert reader.metadata is None or not reader.metadata.get("/Author")
+
+
+def test_sanitizer_rejects_declared_type_that_disagrees_with_signature(
+    tmp_path: Path,
+) -> None:
+    """A client-provided MIME label cannot choose the sanitizer for different bytes."""
+
+    source = tmp_path / "disguised.png"
+    target = tmp_path / "target"
+    Image.new("RGB", (8, 8), "purple").save(source, format="PNG")
+
+    with pytest.raises(AttachmentRejected, match="media_type_mismatch"):
+        sanitize_file(source, target, "image/jpeg")
+
+    assert not target.exists()
+
+
+def test_pdf_sanitizer_rejects_more_than_one_hundred_pages(tmp_path: Path) -> None:
+    """PDF rasterization remains bounded by the public page limit."""
+
+    source = tmp_path / "too-many-pages.pdf"
+    target = tmp_path / "target"
+    writer = PdfWriter()
+    for _ in range(101):
+        writer.add_blank_page(width=8, height=8)
+    with source.open("wb") as output:
+        writer.write(output)
+
+    with pytest.raises(AttachmentRejected, match="too_many_pdf_pages"):
+        sanitize_file(source, target, "application/pdf")
+
+    assert not target.exists()
 
 
 def test_gif_sanitizer_keeps_animation_readable(tmp_path: Path) -> None:

@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from time import perf_counter
 
 from little_orbit_ai.ollama import OllamaClient, OllamaSettings
@@ -15,151 +15,25 @@ from little_orbit_ai.pipeline import (
 )
 from little_orbit_ai.safety import normalized_hash
 from little_orbit_ai.schemas import CandidateQuestion, Category, IconKey, QuestionKind
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .activity_models import ActivityEvent
-from .attachment_models import NoteAttachment
-from .attachment_storage import available_path, staging_path
 from .clock import SystemClock
 from .config import get_settings
 from .database import SessionFactory
-from .interaction_models import Smooch
 from .mail import deliver_pending_mail
+from .maintenance import run_maintenance_once
 from .models import (
-    Account,
-    CoupleMember,
     CuratedBankQuestion,
-    DeletionJob,
     GenerationBatch,
-    LocationSample,
-    MailOutbox,
-    Note,
-    OneUseToken,
     Question,
     QuizAnswer,
     QuizDayQuestion,
-    Session,
 )
-from .notification_service import purge_notification_state
-from .together_models import RelationshipStartProposal, TogetherOperation
+from .push_delivery import deliver_push_wakes_once
+from .quiz_notification_scheduler import ensure_daily_quiz_notifications
 
 LOGGER = logging.getLogger(__name__)
-
-
-async def run_maintenance_once() -> None:
-    """Delete expired raw coordinates and expired authentication material."""
-
-    now = SystemClock().now()
-    async with SessionFactory() as session:
-        attachment_keys = await _expired_note_attachment_keys(session, now)
-        rejected_keys = list(
-            await session.scalars(
-                select(NoteAttachment.storage_key).where(
-                    NoteAttachment.status == "rejected",
-                    NoteAttachment.updated_at <= now - timedelta(days=7),
-                )
-            )
-        )
-        await _purge_expired_records(session, now)
-        jobs = list(
-            await session.scalars(
-                select(DeletionJob)
-                .where(
-                    DeletionJob.status == "scheduled",
-                    DeletionJob.execute_after <= now,
-                    DeletionJob.account_id.is_not(None),
-                )
-                .with_for_update(skip_locked=True)
-            )
-        )
-        for job in jobs:
-            await _complete_deletion_job(session, job, now)
-        await session.commit()
-    await _delete_attachment_files([*attachment_keys, *rejected_keys])
-
-
-async def _purge_expired_records(session: AsyncSession, now: datetime) -> None:
-    """Apply bounded privacy retention and proposal expiration policies."""
-
-    await session.execute(delete(LocationSample).where(LocationSample.expires_at <= now))
-    await session.execute(
-        delete(OneUseToken).where(OneUseToken.expires_at <= now - timedelta(days=7))
-    )
-    await session.execute(delete(Session).where(Session.expires_at <= now - timedelta(days=7)))
-    await session.execute(delete(Note).where(Note.purge_after.is_not(None), Note.purge_after <= now))
-    await session.execute(
-        delete(NoteAttachment).where(
-            NoteAttachment.status == "rejected",
-            NoteAttachment.updated_at <= now - timedelta(days=7),
-        )
-    )
-    await session.execute(
-        delete(ActivityEvent).where(ActivityEvent.created_at <= now - timedelta(days=30))
-    )
-    await purge_notification_state(session, now)
-    await session.execute(
-        update(RelationshipStartProposal)
-        .where(
-            RelationshipStartProposal.status == "pending",
-            RelationshipStartProposal.expires_at <= now,
-        )
-        .values(status="expired", decided_at=now)
-    )
-    await session.execute(
-        delete(TogetherOperation).where(TogetherOperation.created_at <= now - timedelta(days=30))
-    )
-    await session.execute(
-        delete(RelationshipStartProposal).where(
-            RelationshipStartProposal.status != "pending",
-            RelationshipStartProposal.created_at <= now - timedelta(days=90),
-        )
-    )
-
-
-async def _expired_note_attachment_keys(
-    session: AsyncSession, now: datetime
-) -> list[str]:
-    """Capture private file keys before cascading expired-note metadata."""
-
-    expired_notes = select(Note.id).where(
-        Note.purge_after.is_not(None), Note.purge_after <= now
-    )
-    return list(
-        await session.scalars(
-            select(NoteAttachment.storage_key).where(
-                NoteAttachment.note_id.in_(expired_notes)
-            )
-        )
-    )
-
-
-async def _delete_attachment_files(storage_keys: list[str]) -> None:
-    """Remove both unpublished and sanitized bytes after metadata commits."""
-
-    root = get_settings().attachment_storage_dir
-    for storage_key in storage_keys:
-        await asyncio.gather(
-            asyncio.to_thread(staging_path(root, storage_key).unlink, True),
-            asyncio.to_thread(available_path(root, storage_key).unlink, True),
-        )
-
-
-async def _complete_deletion_job(
-    session: AsyncSession, job: DeletionJob, completed_at: datetime
-) -> None:
-    """Erase an account and durable Smooch history when its grace period ends."""
-
-    account = await session.get(Account, job.account_id)
-    job.status = "completed"
-    job.completed_at = completed_at
-    job.account_id = None
-    if account is None:
-        return
-    couple_ids = select(CoupleMember.couple_id).where(CoupleMember.account_id == account.id)
-    await session.execute(delete(Smooch).where(Smooch.couple_id.in_(couple_ids)))
-    await session.execute(delete(MailOutbox).where(MailOutbox.recipient == account.email_normalized))
-    await session.delete(account)
 
 
 def _ollama_settings() -> OllamaSettings:
@@ -188,7 +62,9 @@ async def _recent_question_prompts(target: date) -> list[str]:
 async def _pool_exists(target: date) -> bool:
     async with SessionFactory() as session:
         general = await session.scalar(
-            select(func.count()).select_from(Question).where(
+            select(func.count())
+            .select_from(Question)
+            .where(
                 Question.publish_date == target,
                 Question.couple_id.is_(None),
                 Question.intimacy.is_(False),
@@ -197,7 +73,9 @@ async def _pool_exists(target: date) -> bool:
             )
         )
         intimacy = await session.scalar(
-            select(func.count()).select_from(Question).where(
+            select(func.count())
+            .select_from(Question)
+            .where(
                 Question.publish_date == target,
                 Question.couple_id.is_(None),
                 Question.intimacy.is_(True),
@@ -207,7 +85,9 @@ async def _pool_exists(target: date) -> bool:
         )
         if target == SystemClock().now().date() and general != 5:
             general = await session.scalar(
-                select(func.count()).select_from(Question).where(
+                select(func.count())
+                .select_from(Question)
+                .where(
                     Question.publish_date == target,
                     Question.couple_id.is_(None),
                     Question.intimacy.is_(False),
@@ -215,7 +95,9 @@ async def _pool_exists(target: date) -> bool:
                 )
             )
             intimacy = await session.scalar(
-                select(func.count()).select_from(Question).where(
+                select(func.count())
+                .select_from(Question)
+                .where(
                     Question.publish_date == target,
                     Question.couple_id.is_(None),
                     Question.intimacy.is_(True),
@@ -289,9 +171,7 @@ async def _persist_pool(
         session.add_all(stored)
         await session.flush()
         session.add(
-            _generation_record(
-                target, result, settings, stored, database_quarantine, duration_ms
-            )
+            _generation_record(target, result, settings, stored, database_quarantine, duration_ms)
         )
         await session.commit()
 
@@ -301,7 +181,9 @@ async def _is_database_duplicate(
 ) -> bool:
     digest = normalized_hash(item.prompt)
     matches = await session.scalar(
-        select(func.count()).select_from(Question).where(
+        select(func.count())
+        .select_from(Question)
+        .where(
             Question.couple_id.is_(None),
             Question.publish_date >= target - timedelta(days=30),
             Question.publish_date < target,
@@ -473,16 +355,12 @@ async def _improve_seeded_pool(
         await _persist_pool(target, result, settings, bank, duration_ms)
 
 
-async def _record_seed_attempt(
-    target: date, result: PipelineResult, duration_ms: int
-) -> None:
+async def _record_seed_attempt(target: date, result: PipelineResult, duration_ms: int) -> None:
     """Record a failed AI attempt without disturbing safe curated coverage."""
 
     async with SessionFactory() as session:
         batch = await session.scalar(
-            select(GenerationBatch)
-            .where(GenerationBatch.publish_date == target)
-            .with_for_update()
+            select(GenerationBatch).where(GenerationBatch.publish_date == target).with_for_update()
         )
         if batch is None or batch.fallback_reason != "coverage_seed":
             return
@@ -506,17 +384,15 @@ async def _replace_unanswered_pool(target: date) -> bool:
             select(func.count()).select_from(QuizAnswer).where(QuizAnswer.question_id.in_(ids))
         )
         materialized = await session.scalar(
-            select(func.count()).select_from(QuizDayQuestion).where(
-                QuizDayQuestion.question_id.in_(ids)
-            )
+            select(func.count())
+            .select_from(QuizDayQuestion)
+            .where(QuizDayQuestion.question_id.in_(ids))
         )
         if answered or materialized:
             return False
         await session.execute(delete(GenerationBatch).where(GenerationBatch.publish_date == target))
         await session.execute(
-            delete(Question).where(
-                Question.publish_date == target, Question.couple_id.is_(None)
-            )
+            delete(Question).where(Question.publish_date == target, Question.couple_id.is_(None))
         )
         await session.commit()
     return True
@@ -531,24 +407,53 @@ async def _poll_mail_forever(interval_seconds: int) -> None:
         await asyncio.sleep(max(interval_seconds, 5))
 
 
+async def _poll_push_forever(interval_seconds: int) -> None:
+    """Dispatch content-free device wakes without coupling them to feature writes."""
+
+    while True:
+        try:
+            await deliver_push_wakes_once()
+        except Exception:
+            LOGGER.exception("content-free push cycle failed")
+        await asyncio.sleep(max(interval_seconds, 5))
+
+
 async def _run_scheduled_jobs_forever(interval_seconds: int) -> None:
     while True:
         try:
-            await run_maintenance_once()
             await ensure_question_coverage()
         except Exception:
-            LOGGER.exception("scheduled maintenance cycle failed")
+            LOGGER.exception("question coverage cycle failed")
+        try:
+            await ensure_daily_quiz_notifications()
+        except Exception:
+            LOGGER.exception("daily quiz notification cycle failed")
         await asyncio.sleep(max(interval_seconds, 3600))
+
+
+async def _run_privacy_maintenance_forever(interval_seconds: int) -> None:
+    """Enforce short-lived location and deletion policies at least every five minutes."""
+
+    while True:
+        try:
+            await run_maintenance_once()
+        except Exception:
+            LOGGER.exception("privacy maintenance cycle failed")
+        await asyncio.sleep(max(interval_seconds, 300))
 
 
 async def run_forever(
     mail_interval_seconds: int = 30,
+    push_interval_seconds: int = 5,
+    privacy_interval_seconds: int = 300,
     scheduled_interval_seconds: int = 3600,
 ) -> None:
     """Run mail polling independently from slower maintenance and AI work."""
 
     await asyncio.gather(
         _poll_mail_forever(mail_interval_seconds),
+        _poll_push_forever(push_interval_seconds),
+        _run_privacy_maintenance_forever(privacy_interval_seconds),
         _run_scheduled_jobs_forever(scheduled_interval_seconds),
     )
 

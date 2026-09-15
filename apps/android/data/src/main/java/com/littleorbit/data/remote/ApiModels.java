@@ -430,9 +430,32 @@ public final class ApiModels {
         }
     }
 
+    /** Immutable former-pairing note and its clean read-only files. */
+    public static final class ArchiveNote {
+        public final String id;
+        public final String title;
+        public final String body;
+        public final int revision;
+        public final List<NoteApiModels.Attachment> attachments;
+
+        /** Creates a decoded archived note. */
+        public ArchiveNote(
+                String id,
+                String title,
+                String body,
+                int revision,
+                List<NoteApiModels.Attachment> attachments) {
+            this.id = id;
+            this.title = title;
+            this.body = body;
+            this.revision = revision;
+            this.attachments = attachments == null ? List.of() : List.copyOf(attachments);
+        }
+    }
+
     /** Private former-pairing content that can never enter a new couple. */
     public static final class ArchiveDetail extends ArchiveSummary {
-        public final List<Map<String, Object>> notes;
+        public final List<ArchiveNote> notes;
         public final List<Map<String, Object>> countdowns;
         @Json(name = "quiz_answers") public final List<Map<String, Object>> quizAnswers;
         public final List<Map<String, Object>> smooches;
@@ -443,7 +466,7 @@ public final class ApiModels {
                 String partnerDisplayName,
                 String joinedAt,
                 String endedAt,
-                List<Map<String, Object>> notes,
+                List<ArchiveNote> notes,
                 List<Map<String, Object>> countdowns,
                 List<Map<String, Object>> quizAnswers,
                 List<Map<String, Object>> smooches) {

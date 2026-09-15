@@ -50,6 +50,8 @@ Test website pages, `/patch-notes`, `/patch-notes.xml`, `/.well-known/assetlinks
 
 Set Docker Desktop/engine and the Compose stack to start after host reboot. Reboot the host, then verify DHCP address, firewall scope, all health checks, public HTTPS, WSS, email, worker schedules, and one curated fallback pool while Ollama is stopped.
 
+The internal `gateway-api` link reserves `172.30.14.2` for Caddy and `172.30.14.3` for FastAPI. Keep both assignments together with `TRUSTED_PROXY_IP`; this prevents a recreated API container from dynamically taking the trusted proxy address before Caddy starts. After a Compose recreation, inspect the resolved configuration and confirm both containers are healthy before testing forwarded-client throttles.
+
 ## Signed Android releases
 
 Keep the PKCS12 release store and its four `ANDROID_SIGNING_*` settings outside Git. Back them up separately because Android will reject an update signed by a replacement key. Increment `versionCode` before every published update, set the intended `versionName`, then build and verify both targets:
@@ -168,3 +170,13 @@ Build RC13 with phone version code 18. Reuse the exact RC12.1 Wear code 15 APK b
 After publication, verify `/api/v1/releases/current`, complete and ranged phone/Wear downloads, `/download`, `/patch-notes`, `/patch-notes.xml`, `/showcase`, and the exact generated release manifest hashes. A device/emulator check cannot close the two-physical-phone alert timing, actual calendar provider, OEM alarm/battery, or phone-to-watch transfer gates.
 
 Before publication, test an authorized synthetic image and PDF through reservation, chunk resume, clean scan, metadata removal, verified Android preview, keep-offline preview, deletion, and note-expiry cleanup. Reject an unauthorized note ID before attachment lookup, a conflicting idempotency replay, an oversized chunk, a wrong original digest, a quarantined file, and a download attempted before availability. Run both backup scripts after deployment and complete a disposable restore drill before treating attachments as production-ready.
+
+## RC14 API security migration
+
+Take a PostgreSQL backup before migration `0017`. The migration adds privacy-minimized throttle buckets and separate pending administrator-MFA fields; it does not replace an enabled factor. Upgrade the API and worker to the same revision, wait for Alembic head and health, and confirm the worker removes inactive throttle rows. Do not run `test_security_rc14_postgres.py` against this database because that isolated test suite truncates all application tables.
+
+Before serving RC14 traffic, verify configured limits with synthetic accounts and confirm no raw IP, email, token, password, TOTP, recovery code, or pair code appears in the throttle table or security events. Exercise a successful reset with two outstanding links, an old-session rotation attempt, deleted-account login, pair redemption expiry/reuse and competing confirmations, and a one-sided legacy quiz export. Replace an enrolled test administrator factor using current proof; confirm the old factor remains valid until the new factor is confirmed, every earlier session is then revoked, recovery codes remain one-use, and the configuration response contains only the documented allowlist.
+
+Open note and notification sockets with disposable sessions, then revoke each session while the socket is active and while it is idle. Both paths must close within the 30-second revalidation bound, and a queued note operation after revocation must not commit. These checks establish server behavior only; the two-physical-phone notification and full phone/watch release gates remain open.
+
+Raw-location ingestion schedules expiry five minutes before `recorded_at + 24 hours`. After deploying the API and worker, run one maintenance cycle and use privacy-safe aggregate queries to prove that no `location_samples` row is past either `expires_at` or `recorded_at + 24 hours`. Repeat after at least one normal five-minute worker interval. Backups must continue excluding all `location_samples` rows.

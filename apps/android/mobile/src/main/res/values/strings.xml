@@ -22,6 +22,7 @@
     <string name="wear_installer_title">Install Little Orbit on your watch</string>
     <string name="wear_installer_intro">Your phone downloads and verifies the signed watch app, then sends it directly over your private Wi-Fi. No computer or Play Store is needed.</string>
     <string name="wear_step_one">ONE-TIME WATCH SETUP</string>
+    <string name="wear_step_two">VERIFIED WATCH APP</string>
     <string name="wear_pair_instructions">Keep the phone and watch on the same Wi-Fi. On your watch, open Settings → System → About → tap Build number seven times. Then open Developer options → Wireless debugging → Pair new device. Keep that screen open and enter its six-digit code below.</string>
     <string name="wear_pairing_code">Six-digit pairing code</string>
     <string name="wear_searching">Looking for your watch on this Wi-Fi…</string>
@@ -36,6 +37,7 @@
     <string name="wear_preparing">Downloading and verifying the signed Wear app…</string>
     <string name="wear_ready">Verified Wear app ready</string>
     <string name="wear_prepare_failed">The signed Wear app could not be prepared. Check your connection and try again.</string>
+    <string name="wear_retry_download">Try download again</string>
     <string name="wear_address_needed">Keep Wireless debugging open, or enter the watch address and ports manually.</string>
     <string name="wear_pairing">Authorizing this phone with your watch…</string>
     <string name="wear_connecting">Finding your authorized watch…</string>
@@ -95,7 +97,6 @@
     <string name="smooch_intro">Tap a little signal for your partner. You can send five in a rolling hour.</string>
     <string name="smooch_concept_intro">Send a tiny spark across your orbit.</string>
     <string name="smooch_remaining_default">5 sends left this hour</string>
-    <string name="smooch_remaining">%1$d sends left this hour</string>
     <string name="this_week">This week</string>
     <string name="smooch_week_sent">You sent\n%1$d</string>
     <string name="smooch_week_received">%1$s sent\n%2$d</string>
@@ -106,7 +107,6 @@
     <string name="smooch_sent_warm">Sent to %1$s. A little spark is on its way.</string>
     <string name="smooch_selected">Selected %1$s</string>
     <string name="send_smooch">Send a Smooch</string>
-    <string name="smooch_sent_status">Sent to %1$s · %2$d left this hour</string>
     <string name="smooch_queued">You’re offline. This Smooch will retry for up to 15 minutes.</string>
     <string name="smooch_rate_limited">Your orbit needs a tiny breather. Try again when an hourly slot opens.</string>
     <string name="smooch_lock_screen_setting">Show the full Smooch on my lock screen</string>
@@ -123,10 +123,11 @@
     <string name="smooch_tiny_spark">%1$s sent you a tiny spark %2$s</string>
     <string name="smooch_notification_private_title">Little Orbit</string>
     <string name="smooch_notification_private_message">You have a new Smooch</string>
-    <string name="smooch_weekly_notification">You shared %1$d Smooches last week.</string>
     <string name="nearby_tracking_channel">Nearby-time tracking</string>
     <string name="nearby_tracking_title">Little Orbit is estimating nearby time</string>
     <string name="nearby_tracking_message">Location is sampled every five minutes while both partners consent. Tap for controls.</string>
+    <string name="together_time_notifications">Together-time corrections</string>
+    <string name="together_time_corrected_notification">%1$s updated a together-time day. Tap to review.</string>
     <string name="update_available">Update available</string>
     <string name="update_required_title">Little Orbit update required</string>
     <string name="update_notification_message">Little Orbit %1$s is ready. Tap to review and download.</string>
@@ -159,7 +160,7 @@
     <string name="manual_download">Manual download</string>
     <string name="wear_update_guidance">The phone installs the verified self-hosted watch APK over private Wi-Fi. The one-time authorization is encrypted for future watch updates.</string>
     <string name="finish_setup">Finish your orbit setup</string>
-    <string name="setup_intro">Choose what you want to enable. You can skip every step and return from More at any time.</string>
+    <string name="setup_intro">Choose what you want to enable. You can skip every step and return from Settings at any time.</string>
     <string name="start_setup">Start setup</string>
     <string name="setup_prompt">Enable notifications, location estimates, and the optional Wear OS companion when you are ready.</string>
     <string name="enable_notifications">Enable notifications</string>
@@ -300,7 +301,7 @@
     <string name="no_preview_app">No compatible preview app is installed.</string>
     <string name="saving_offline">Saving a private offline copy…</string>
     <string name="saved_offline">Available offline on this device.</string>
-    <string name="attachment_uploading">Uploading · %1$d of %2$d bytes</string>
+    <string name="attachment_uploading">Uploading · %1$s of %2$s</string>
     <string name="attachment_scanning">Scanning privately · %1$s</string>
     <string name="attachment_rejected">That file was rejected and is unavailable.</string>
     <string name="attachment_rejected_malware">The safety scan found unsafe content. No bytes were kept.</string>
@@ -332,13 +333,10 @@
     <string name="archive_title">Private archive</string>
     <string name="no_archives">No past pairing archives.</string>
     <string name="together_details">Together-time details</string>
-    <string name="together_estimate">Estimated together: %1$d minutes · last updated %2$s</string>
     <string name="together_summary_v2">%1$s\nNearby estimate: %2$dh %3$dm\nLast location processed: %4$s</string>
-    <string name="together_summary_v3">%1$d days in your orbit\nPaired %2$s\n\nNearby estimate: %3$dh %4$dm\nWithin %6$.0f m · Last processed: %5$s</string>
     <string name="nearby_collection_active">Both partners enabled location. Two matched samples begin an estimate; this phone samples every five minutes while tracking runs, with a 15-minute fallback.</string>
     <string name="nearby_history_title">Nearby-time history</string>
     <string name="correct_estimate_title">Correct an estimated minute</string>
-    <string name="relationship_age_days">%1$d days together</string>
     <string name="start_date_unset">Relationship start date not set</string>
     <string name="start_date_hint">Start date (YYYY-MM-DD)</string>
     <string name="propose_start_date">Propose start date</string>
@@ -349,6 +347,16 @@
     <string name="start_date_partner_proposed">Your partner proposed %1$s. Review it before deciding.</string>
     <string name="start_date_format">Use a valid date in YYYY-MM-DD format.</string>
     <string name="no_nearby_history">No nearby-time history in the last 30 days.</string>
+    <string name="correction_hours">Hours together (0–24)</string>
+    <string name="correction_minutes">Minutes (0–59)</string>
+    <string name="nearby_confidence">Estimate confidence: %1$s</string>
+    <string name="confidence_high">high · updated within 30 minutes</string>
+    <string name="confidence_medium">medium · updated within 2 hours</string>
+    <string name="confidence_low">low · updated within 24 hours</string>
+    <string name="confidence_unavailable">unavailable · waiting for matched samples</string>
+    <string name="corrected_suffix"> · corrected by %1$s</string>
+    <string name="a_partner">a partner</string>
+    <string name="nearby_day_choice">%1$s · %2$d h %3$d m</string>
     <string name="never">never</string>
     <string name="no_together_buckets">No estimated minutes to review yet.</string>
     <string name="correction_seconds">Corrected seconds (0–60)</string>
@@ -392,7 +400,6 @@
     <string name="quiz_history_title">Your shared orbit</string>
     <string name="quiz_history_hint">Open the last seven days to catch up. Older days stay available as read-only memories for 30 days.</string>
     <string name="quiz_history_empty">No quiz days yet.</string>
-    <string name="quiz_history_row">%1$s\n%2$s · %3$d of 5 answered · %4$d custom</string>
     <string name="custom_question_title">Write one for your orbit</string>
     <string name="custom_step">STEP %1$d OF 3</string>
     <string name="custom_basics_hint">Start with a warm prompt, then choose how you both answer.</string>
@@ -407,12 +414,10 @@
     <string name="custom_queue_empty">No questions queued by you yet.</string>
     <string name="custom_queue_row">%1$s · slot %2$d\n%3$s</string>
     <string name="custom_shared_row">Shared for %1$s · slot %2$d\n%3$s</string>
-    <string name="partner_surprises">Your partner has %1$d surprise question(s) waiting.</string>
     <string name="custom_queued_for">Queued for %1$s.</string>
     <string name="question_reported">Question hidden and sent for review.</string>
     <string name="no_countdowns">No countdowns yet.</string>
     <string name="countdown_title">Countdown title</string>
-    <string name="countdown_time_hint">UTC instant, for example 2026-12-31T20:00:00Z</string>
     <string name="timezone_hint">IANA timezone, for example America/Los_Angeles</string>
     <string name="optional_notes">Optional notes</string>
     <string name="create_countdown">Create countdown</string>
@@ -472,6 +477,8 @@
     <string name="save_notification_choices">Save notification choices</string>
     <string name="check_notifications_now">Check notifications now</string>
     <string name="notification_diagnostics">Delivery diagnostics</string>
+    <string name="share_crash_diagnostics">Share private crash diagnostics</string>
+    <string name="share_crash_diagnostics_summary">Off by default. When enabled, Little Orbit may send app class, method, line, and version identifiers after a crash. Messages, document text, file paths, account details, and locations are never included.</string>
     <string name="notification_choices_saved">Notification choices saved.</string>
     <string name="open_android_notification_settings">Open Android notification settings</string>
 </resources>

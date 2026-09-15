@@ -33,24 +33,29 @@ public final class TogetherComplicationService extends ComplicationDataSourceSer
     @Override
     public ComplicationData getPreviewData(@NonNull ComplicationType type) {
         return new ShortTextComplicationData.Builder(
-                new PlainComplicationText.Builder("42d").build(),
-                new PlainComplicationText.Builder("Little Orbit preview").build())
+                new PlainComplicationText.Builder(getString(R.string.complication_preview_short)).build(),
+                new PlainComplicationText.Builder(getString(R.string.complication_preview_a11y)).build())
                 .build();
     }
 
     private ComplicationData displayData(
             WearDisplayCache.State cache, ComplicationType type) {
+        WearDisplayText display = new WearDisplayText(this);
         if (type == ComplicationType.LONG_TEXT) {
-            String value = cache.relationshipText() + " together · " + cache.nearbyText();
+            String value = display.longComplication(cache);
             return new LongTextComplicationData.Builder(
                     new PlainComplicationText.Builder(value).build(),
-                    new PlainComplicationText.Builder(cache.accessibilityText()).build())
+                    new PlainComplicationText.Builder(display.accessibility(cache)).build())
                     .build();
         }
-        if (cache.stale()) {
-            return shortData(cache.relationshipShort(), "Little Orbit stale; open phone");
+        if (!cache.available()) {
+            return shortData(display.relationshipShort(cache), display.accessibility(cache));
         }
-        return shortData(cache.relationshipShort(), cache.accessibilityText());
+        if (cache.stale()) {
+            return shortData(
+                    display.relationshipShort(cache), getString(R.string.complication_stale_a11y));
+        }
+        return shortData(display.relationshipShort(cache), display.accessibility(cache));
     }
 
     private ComplicationData shortData(String text, String description) {

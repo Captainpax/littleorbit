@@ -1,32 +1,24 @@
 package com.littleorbit.mobile;
 
-import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.pdf.PdfRenderer;
-import android.net.Uri;
-import android.os.ParcelFileDescriptor;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import androidx.core.content.FileProvider;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.repository.OrbitRepository;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /** Builds private attachment tray cards and bounded on-device previews. */
 public final class NoteAttachmentViews {
-    private static final int PREVIEW_TEXT_BYTES = 64 * 1024;
     private final NotesActivity activity;
     private final OrbitRepository orbit;
     private final LinearLayout container;
@@ -34,6 +26,7 @@ public final class NoteAttachmentViews {
     private final Removed removed;
     private final Inserted inserted;
     private final ChooseAgain chooseAgain;
+    private final PrivateAttachmentPreview previewer;
 
     /** Creates an attachment presenter owned by one Our Space editor. */
     public NoteAttachmentViews(
@@ -47,11 +40,12 @@ public final class NoteAttachmentViews {
         this.removed = removed;
         this.inserted = inserted;
         this.chooseAgain = chooseAgain;
+        this.previewer = new PrivateAttachmentPreview(activity);
     }
 
     /** Replaces tray state with authorized server metadata. */
     public void show(String noteId, List<NoteApiModels.Attachment> attachments) {
-        removeStaleOfflineCopies(attachments);
+        removeStaleOfflineCopies(noteId, attachments);
         container.removeAllViews();
         if (attachments.isEmpty()) {
             TextView empty = text(activity.getString(R.string.no_attachments));
@@ -64,6 +58,14 @@ public final class NoteAttachmentViews {
         }
     }
 
+    /** Removes app-private copies whose note has left both active and recoverable lists. */
+    public void retainOfflineNotes(Collection<String> authorizedNoteIds) {
+        Set<String> retained = new HashSet<>();
+        for (String noteId : authorizedNoteIds) retained.add(safeUuid(noteId));
+        removeUnknownNoteDirectories(
+                new File(activity.getFilesDir(), "kept-space"), retained);
+    }
+
     /** Opens a verified attachment from an inline Markdown image link. */
     public void previewFull(String noteId, NoteApiModels.Attachment attachment) {
         status.setText(R.string.loading_preview);
@@ -74,7 +76,7 @@ public final class NoteAttachmentViews {
                         return;
                     }
                     status.setText(R.string.note_ready);
-                    openExternal(file, attachment.mediaType);
+                    previewer.show(file, attachment);
                 }));
     }
 
@@ -114,7 +116,7 @@ public final class NoteAttachmentViews {
         MaterialButton insert = button(R.string.insert_attachment);
         insert.setOnClickListener(view -> inserted.completed(attachment));
         MaterialButton preview = button(R.string.preview_attachment);
-        preview.setOnClickListener(view -> preview(noteId, attachment, content));
+        preview.setOnClickListener(view -> preview(noteId, attachment));
         MaterialButton delete = button(R.string.delete_attachment);
         delete.setOnClickListener(view -> confirmDelete(noteId, attachment));
         actions.addView(insert, weighted());
@@ -122,7 +124,7 @@ public final class NoteAttachmentViews {
         actions.addView(delete, weighted());
         content.addView(actions);
         MaterialButton keep = button(
-                pinned(attachment) ? R.string.remove_offline : R.string.keep_offline);
+                pinned(noteId, attachment) ? R.string.remove_offline : R.string.keep_offline);
         keep.setOnClickListener(view -> togglePin(noteId, attachment, keep));
         content.addView(keep, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(44)));
@@ -160,17 +162,16 @@ public final class NoteAttachmentViews {
                         status.setText(R.string.attachment_delete_failed);
                         return;
                     }
-                    offlineFile(attachment).delete();
+                    offlineFile(noteId, attachment).delete();
                     status.setText(R.string.attachment_deleted);
                     removed.completed(noteId);
                 }));
     }
 
-    private void preview(
-            String noteId, NoteApiModels.Attachment attachment, LinearLayout content) {
-        File offline = offlineFile(attachment);
-        if (offline.isFile()) {
-            showPreview(content, attachment, offline);
+    private void preview(String noteId, NoteApiModels.Attachment attachment) {
+        File offline = verifiedOfflineFile(noteId, attachment);
+        if (offline != null) {
+            showPreview(attachment, offline);
             status.setText(R.string.note_ready);
             return;
         }
@@ -182,97 +183,25 @@ public final class NoteAttachmentViews {
                         return;
                     }
                     status.setText(R.string.note_ready);
-                    showPreview(content, attachment, file);
+                    showPreview(attachment, file);
                 }));
     }
 
-    private void showPreview(
-            LinearLayout content, NoteApiModels.Attachment attachment, File file) {
-        View prior = content.findViewWithTag("attachment-preview");
-        if (prior != null) content.removeView(prior);
-        View preview;
-        if (attachment.mediaType.startsWith("image/")) {
-            preview = imagePreview(file);
-        } else if ("application/pdf".equals(attachment.mediaType)) {
-            preview = pdfPreview(file);
-        } else if (attachment.mediaType.startsWith("text/")) {
-            preview = textPreview(file);
-        } else {
-            openExternal(file, attachment.mediaType);
-            return;
-        }
-        preview.setTag("attachment-preview");
-        content.addView(preview);
-    }
-
-    private ImageView imagePreview(File file) {
-        Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
-        ImageView image = new ImageView(activity);
-        image.setAdjustViewBounds(true);
-        image.setMaxHeight(dp(320));
-        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        image.setImageBitmap(bitmap);
-        return image;
-    }
-
-    private View pdfPreview(File file) {
-        try (ParcelFileDescriptor descriptor =
-                        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
-                PdfRenderer renderer = new PdfRenderer(descriptor);
-                PdfRenderer.Page page = renderer.openPage(0)) {
-            Bitmap bitmap = Bitmap.createBitmap(
-                    Math.max(page.getWidth(), 1), Math.max(page.getHeight(), 1),
-                    Bitmap.Config.ARGB_8888);
-            bitmap.eraseColor(activity.getColor(android.R.color.white));
-            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-            ImageView image = new ImageView(activity);
-            image.setAdjustViewBounds(true);
-            image.setMaxHeight(dp(360));
-            image.setImageBitmap(bitmap);
-            return image;
-        } catch (IOException | RuntimeException error) {
-            return text(activity.getString(R.string.attachment_preview_failed));
-        }
-    }
-
-    private TextView textPreview(File file) {
-        try {
-            byte[] bytes = Files.readAllBytes(file.toPath());
-            int length = Math.min(bytes.length, PREVIEW_TEXT_BYTES);
-            TextView preview = text(new String(bytes, 0, length, StandardCharsets.UTF_8));
-            preview.setTextColor(activity.getColor(R.color.cloud));
-            preview.setPadding(0, dp(10), 0, 0);
-            return preview;
-        } catch (IOException error) {
-            return text(activity.getString(R.string.attachment_preview_failed));
-        }
-    }
-
-    private void openExternal(File file, String mediaType) {
-        Uri uri = FileProvider.getUriForFile(
-                activity, activity.getPackageName() + ".files", file);
-        Intent intent = new Intent(Intent.ACTION_VIEW)
-                .setDataAndType(uri, mediaType)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        try {
-            activity.startActivity(Intent.createChooser(
-                    intent, activity.getString(R.string.preview_attachment)));
-        } catch (RuntimeException error) {
-            status.setText(R.string.no_preview_app);
-        }
+    private void showPreview(NoteApiModels.Attachment attachment, File file) {
+        previewer.show(file, attachment);
     }
 
     private void togglePin(
             String noteId, NoteApiModels.Attachment attachment, MaterialButton button) {
-        if (pinned(attachment)) {
-            offlineFile(attachment).delete();
+        if (pinned(noteId, attachment)) {
+            offlineFile(noteId, attachment).delete();
             button.setText(R.string.keep_offline);
             return;
         }
         status.setText(R.string.saving_offline);
         orbit.downloadNoteAttachment(noteId, attachment).whenComplete((file, failure) ->
                 activity.runOnUiThread(() -> {
-                    if (failure != null || !copyOffline(file, attachment)) {
+                    if (failure != null || !copyOffline(noteId, file, attachment)) {
                         status.setText(R.string.attachment_preview_failed);
                         return;
                     }
@@ -281,26 +210,42 @@ public final class NoteAttachmentViews {
                 }));
     }
 
-    private boolean copyOffline(File source, NoteApiModels.Attachment attachment) {
-        File target = offlineFile(attachment);
+    private boolean copyOffline(
+            String noteId, File source, NoteApiModels.Attachment attachment) {
+        File target = offlineFile(noteId, attachment);
         File parent = target.getParentFile();
         try {
             if (parent != null && !parent.isDirectory() && !parent.mkdirs()) return false;
             Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            return true;
+            if (AttachmentFileIntegrity.matches(target, attachment.sha256)) return true;
+            target.delete();
+            return false;
         } catch (IOException error) {
             return false;
         }
     }
 
-    private boolean pinned(NoteApiModels.Attachment attachment) {
-        return offlineFile(attachment).isFile();
+    private boolean pinned(String noteId, NoteApiModels.Attachment attachment) {
+        return verifiedOfflineFile(noteId, attachment) != null;
     }
 
-    private void removeStaleOfflineCopies(List<NoteApiModels.Attachment> attachments) {
+    private File verifiedOfflineFile(
+            String noteId, NoteApiModels.Attachment attachment) {
+        File file = offlineFile(noteId, attachment);
+        if (AttachmentFileIntegrity.matches(file, attachment.sha256)) return file;
+        if (file.isFile()) file.delete();
+        return null;
+    }
+
+    private void removeStaleOfflineCopies(
+            String noteId, List<NoteApiModels.Attachment> attachments) {
         Set<String> currentIds = new HashSet<>();
-        for (NoteApiModels.Attachment item : attachments) currentIds.add(item.id);
-        File directory = new File(activity.getFilesDir(), "kept-space");
+        for (NoteApiModels.Attachment item : attachments) {
+            currentIds.add(safeUuid(item.id));
+        }
+        File root = new File(activity.getFilesDir(), "kept-space");
+        removeLegacyUnscopedFiles(root);
+        File directory = new File(root, safeUuid(noteId));
         File[] files = directory.listFiles(File::isFile);
         if (files == null) return;
         for (File file : files) {
@@ -308,8 +253,43 @@ public final class NoteAttachmentViews {
         }
     }
 
-    private File offlineFile(NoteApiModels.Attachment attachment) {
-        return new File(new File(activity.getFilesDir(), "kept-space"), attachment.id);
+    private void removeLegacyUnscopedFiles(File root) {
+        File[] legacy = root.listFiles(File::isFile);
+        if (legacy == null) return;
+        for (File file : legacy) file.delete();
+    }
+
+    static void removeUnknownNoteDirectories(File root, Set<String> retained) {
+        File[] entries = root.listFiles();
+        if (entries == null) return;
+        for (File entry : entries) {
+            if (entry.isFile()) {
+                entry.delete();
+            } else if (entry.isDirectory() && !retained.contains(entry.getName())) {
+                deleteTree(entry);
+            }
+        }
+    }
+
+    private static void deleteTree(File target) {
+        File[] children = target.listFiles();
+        if (children != null) {
+            for (File child : children) deleteTree(child);
+        }
+        target.delete();
+    }
+
+    private File offlineFile(String noteId, NoteApiModels.Attachment attachment) {
+        File root = new File(activity.getFilesDir(), "kept-space");
+        return new File(new File(root, safeUuid(noteId)), safeUuid(attachment.id));
+    }
+
+    private static String safeUuid(String value) {
+        try {
+            return UUID.fromString(value).toString();
+        } catch (IllegalArgumentException | NullPointerException failure) {
+            return "invalid";
+        }
     }
 
     private MaterialButton button(int label) {
@@ -334,8 +314,9 @@ public final class NoteAttachmentViews {
         String size = android.text.format.Formatter.formatShortFileSize(
                 activity, attachment.sizeBytes);
         return switch (attachment.status) {
-            case "uploading" -> activity.getString(
-                    R.string.attachment_uploading, attachment.uploadedBytes, attachment.sizeBytes);
+            case "uploading" -> activity.getString(R.string.attachment_uploading,
+                    android.text.format.Formatter.formatShortFileSize(
+                            activity, attachment.uploadedBytes), size);
             case "pending_scan", "scanning" ->
                     activity.getString(R.string.attachment_scanning, size);
             case "rejected" -> rejectionDetail(attachment.rejectionReason);

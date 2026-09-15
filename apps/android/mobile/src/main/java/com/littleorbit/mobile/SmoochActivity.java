@@ -1,20 +1,24 @@
 package com.littleorbit.mobile;
 
+import android.animation.ValueAnimator;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import androidx.annotation.StringRes;
+import androidx.core.view.ViewCompat;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.littleorbit.data.SmoochSendWorker;
 import com.littleorbit.data.remote.ApiModels;
 import com.littleorbit.data.remote.SmoochApiModels;
-import com.littleorbit.data.repository.OrbitServiceException;
 import com.littleorbit.data.repository.OrbitRepository;
 import com.littleorbit.data.repository.SmoochOutbox;
 import com.littleorbit.mobile.databinding.ActivitySmoochBinding;
 import dagger.hilt.android.AndroidEntryPoint;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import javax.inject.Inject;
 
@@ -23,18 +27,33 @@ import javax.inject.Inject;
 public final class SmoochActivity extends OrbitShellActivity {
     private static final List<String> EMOJIS = List.of(
             "😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑");
+    private static final List<Integer> EMOJI_LABELS = List.of(
+            R.string.rc14_smooch_kiss,
+            R.string.rc14_smooch_love_eyes,
+            R.string.rc14_smooch_shy,
+            R.string.rc14_smooch_mischief,
+            R.string.rc14_smooch_fire,
+            R.string.rc14_smooch_eyes,
+            R.string.rc14_smooch_heart,
+            R.string.rc14_smooch_bear,
+            R.string.rc14_smooch_peach);
+    private static final String STATE_SELECTED = "selected_smooch";
     @Inject OrbitRepository orbit;
     @Inject SmoochOutbox outbox;
     private ActivitySmoochBinding binding;
     private String selected = EMOJIS.get(0);
     private String partnerName = "Partner";
-    private List<Button> emojiButtons = List.of();
+    private List<MaterialButton> emojiButtons = List.of();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = ActivitySmoochBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        if (savedInstanceState != null) {
+            String restored = savedInstanceState.getString(STATE_SELECTED);
+            if (EMOJIS.contains(restored)) selected = restored;
+        }
         bindEmojiButtons();
         binding.sendSmoochButton.setOnClickListener(view -> send());
         setOrbitContextActions(List.of(
@@ -56,9 +75,12 @@ public final class SmoochActivity extends OrbitShellActivity {
                 binding.emoji3, binding.emoji4, binding.emoji5, binding.emoji6,
                 binding.emoji7, binding.emoji8);
         for (int index = 0; index < emojiButtons.size(); index++) {
-            Button button = emojiButtons.get(index);
+            MaterialButton button = emojiButtons.get(index);
             String emoji = EMOJIS.get(index);
+            @StringRes int label = EMOJI_LABELS.get(index);
             button.setText(emoji);
+            button.setContentDescription(getString(
+                    R.string.rc14_smooch_choice_description, getString(label), emoji));
             button.setOnClickListener(view -> {
                 selected = emoji;
                 binding.selectedSmooch.setText(emoji);
@@ -71,7 +93,17 @@ public final class SmoochActivity extends OrbitShellActivity {
 
     private void updateEmojiSelection() {
         for (int index = 0; index < emojiButtons.size(); index++) {
-            emojiButtons.get(index).setAlpha(EMOJIS.get(index).equals(selected) ? 1f : 0.55f);
+            MaterialButton button = emojiButtons.get(index);
+            boolean chosen = EMOJIS.get(index).equals(selected);
+            button.setChecked(chosen);
+            button.setSelected(chosen);
+            button.setStrokeWidth(dp(chosen ? 2 : 1));
+            button.setStrokeColor(ColorStateList.valueOf(getColor(
+                    chosen ? R.color.lavender : R.color.orbit_border)));
+            button.setBackgroundTintList(ColorStateList.valueOf(getColor(
+                    chosen ? R.color.navy_surface_high : R.color.navy_surface_muted)));
+            ViewCompat.setStateDescription(button, getString(
+                    chosen ? R.string.rc14_selected : R.string.rc14_not_selected));
         }
     }
 
@@ -80,21 +112,23 @@ public final class SmoochActivity extends OrbitShellActivity {
         binding.sendSmoochButton.setEnabled(false);
         orbit.sendSmooch(new SmoochApiModels.SendRequest(operationId, selected))
                 .whenComplete((sent, failure) -> runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
                     binding.sendSmoochButton.setEnabled(true);
                     if (failure == null) {
                         partnerName = sent.partnerName;
                         binding.smoochStatus.setText(getString(
                                 R.string.smooch_sent_warm, sent.partnerName));
-                        binding.remainingText.setText(getString(
-                                R.string.smooch_remaining, sent.remaining));
+                        showRemaining(sent.remaining);
                         animatePulse();
                         loadStatus();
                         loadHistory();
-                    } else if (statusCode(failure) == -1) {
+                    } else if (SafeRequestFailure.classify(failure)
+                            == SafeRequestFailure.OFFLINE) {
                         outbox.enqueue(operationId, selected, System.currentTimeMillis());
                         SmoochSendWorker.enqueue(this);
                         binding.smoochStatus.setText(R.string.smooch_queued);
-                    } else if (statusCode(failure) == 429) {
+                    } else if (SafeRequestFailure.classify(failure)
+                            == SafeRequestFailure.RATE_LIMITED) {
                         binding.smoochStatus.setText(R.string.smooch_rate_limited);
                     } else {
                         binding.smoochStatus.setText(R.string.request_failed);
@@ -104,6 +138,12 @@ public final class SmoochActivity extends OrbitShellActivity {
 
     private void animatePulse() {
         binding.orbitPulse.animate().cancel();
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            binding.orbitPulse.setScaleX(1f);
+            binding.orbitPulse.setScaleY(1f);
+            binding.orbitPulse.setAlpha(1f);
+            return;
+        }
         binding.orbitPulse.setScaleX(0.88f);
         binding.orbitPulse.setScaleY(0.88f);
         binding.orbitPulse.setAlpha(0.65f);
@@ -116,14 +156,18 @@ public final class SmoochActivity extends OrbitShellActivity {
     }
 
     private void loadStatus() {
-        orbit.smoochStatus().thenAccept(status -> runOnUiThread(() -> showStatus(status)))
+        orbit.smoochStatus().thenAccept(status -> runOnUiThread(() -> {
+            if (!isFinishing() && !isDestroyed()) showStatus(status);
+        }))
                 .exceptionally(failure -> null);
     }
 
     private void showStatus(SmoochApiModels.Status status) {
         partnerName = status.partnerName;
         binding.partnerPlanet.setText(initial(partnerName));
-        binding.remainingText.setText(getString(R.string.smooch_remaining, status.remaining));
+        binding.partnerPlanet.setContentDescription(getString(
+                R.string.rc14_partner_planet_description, partnerName));
+        showRemaining(status.remaining);
         binding.sendSmoochButton.setEnabled(status.remaining > 0);
         showCurrentWeek(status.currentWeek);
     }
@@ -137,12 +181,15 @@ public final class SmoochActivity extends OrbitShellActivity {
     }
 
     private void loadHistory() {
-        orbit.smoochWeeks(12).thenAccept(weeks -> runOnUiThread(() -> showHistory(weeks)))
+        orbit.smoochWeeks(12).thenAccept(weeks -> runOnUiThread(() -> {
+            if (!isFinishing() && !isDestroyed()) showHistory(weeks);
+        }))
                 .exceptionally(failure -> null);
     }
 
     private void loadTimezone() {
         orbit.preferences().thenAccept(preferences -> runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
             binding.smoochWeekZone.setText(getString(
                     R.string.smooch_week_timezone, preferences.homeTimezone));
             binding.usePhoneTimezone.setEnabled(
@@ -156,6 +203,7 @@ public final class SmoochActivity extends OrbitShellActivity {
                 null, null, null, ZoneId.systemDefault().getId());
         orbit.updatePreferences(mutation).whenComplete((preferences, failure) ->
                 runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
                     if (failure == null) {
                         loadTimezone();
                         loadHistory();
@@ -220,7 +268,7 @@ public final class SmoochActivity extends OrbitShellActivity {
         for (String emoji : EMOJIS) {
             Integer count = week.emojiCounts.get(emoji);
             if (count != null && count > 0) {
-                if (result.length() > 0) result.append("  ");
+                if (result.length() > 0) result.append(" · ");
                 result.append(emoji).append(" ").append(count);
             }
         }
@@ -229,20 +277,23 @@ public final class SmoochActivity extends OrbitShellActivity {
 
     private static String initial(String value) {
         return value == null || value.isBlank()
-                ? "P" : value.substring(0, value.offsetByCodePoints(0, 1)).toUpperCase();
+                ? "P" : value.substring(0, value.offsetByCodePoints(0, 1))
+                        .toUpperCase(Locale.ROOT);
+    }
+
+    private void showRemaining(int remaining) {
+        binding.remainingText.setText(getResources().getQuantityString(
+                R.plurals.rc14_smooches_remaining, remaining, remaining));
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(STATE_SELECTED, selected);
     }
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private static int statusCode(Throwable failure) {
-        Throwable current = failure;
-        while (current.getCause() != null && !(current
-                instanceof OrbitServiceException)) {
-            current = current.getCause();
-        }
-        return current instanceof OrbitServiceException service
-                ? service.statusCode() : -1;
-    }
 }

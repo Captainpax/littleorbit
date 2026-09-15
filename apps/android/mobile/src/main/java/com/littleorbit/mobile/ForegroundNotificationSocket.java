@@ -44,7 +44,9 @@ public final class ForegroundNotificationSocket {
         boolean enabled = PermissionChecks.notificationsGranted(context);
         orbit.registerNotificationDevice(device.id(),
                 new NotificationApiModels.DeviceUpsert(
-                        com.littleorbit.mobile.BuildConfig.VERSION_CODE, enabled))
+                        com.littleorbit.mobile.BuildConfig.VERSION_CODE,
+                        enabled,
+                        device.pushToken()))
                 .thenRun(() -> connect(requested))
                 .exceptionally(failure -> {
                     device.failed("Foreground connection will use scheduled checks");

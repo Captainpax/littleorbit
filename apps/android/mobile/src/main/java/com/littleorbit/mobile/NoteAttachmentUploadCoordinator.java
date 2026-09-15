@@ -100,7 +100,9 @@ public final class NoteAttachmentUploadCoordinator {
                 FileOutputStream output = new FileOutputStream(target)) {
             if (input == null) return null;
             long total = transferBounded(input, output);
-            return expectedSize < 0 || total == expectedSize ? target : null;
+            if (expectedSize < 0 || total == expectedSize) return target;
+            target.delete();
+            return null;
         } catch (IOException error) {
             target.delete();
             return null;

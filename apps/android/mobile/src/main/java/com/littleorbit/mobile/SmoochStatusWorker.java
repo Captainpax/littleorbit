@@ -106,7 +106,8 @@ public final class SmoochStatusWorker extends Worker {
         android.content.SharedPreferences state = context.getSharedPreferences(
                 "smooch_settings", Context.MODE_PRIVATE);
         if (prior.weekEnd.equals(state.getString("last_recap", ""))) return;
-        String text = context.getString(R.string.smooch_weekly_notification, prior.combined);
+        String text = context.getResources().getQuantityString(
+                R.plurals.smooch_weekly_notification, prior.combined, prior.combined);
         Notification notification = new NotificationCompat.Builder(
                 context, NotificationChannels.SMOOCHES)
                 .setSmallIcon(R.drawable.ic_smooch)

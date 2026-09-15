@@ -8,7 +8,7 @@ Manual checks caused release candidates to be missed, while automatic APK transf
 
 ## Decision
 
-RC10 asks once whether optional automatic detection is enabled. When enabled, WorkManager fetches public metadata about every six hours. An active required compatibility floor is always checked. An available optional update prompts at most once per cold process and remains visible in More; choosing Later suppresses only the current process. The worker never downloads APK bytes. Download and installation begin only after explicit approval and keep the existing origin, size, checksum, package, newer-version, and signer checks.
+RC10 asks once whether optional automatic detection is enabled. When enabled, WorkManager fetches public metadata about every six hours. An active required compatibility floor is always checked. An available optional update prompts at most once per cold process and remains visible from Home and the dedicated App updates destination; choosing Later suppresses only the current process. The worker never downloads APK bytes. Download and installation begin only after explicit approval and keep the existing origin, size, checksum, package, newer-version, and signer checks.
 
 A running or paused DownloadManager transfer with no progress for five minutes becomes a visible stalled state that can be retried cleanly.
 

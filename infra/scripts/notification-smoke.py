@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -13,11 +14,12 @@ import websockets
 
 ROOT = Path(__file__).resolve().parents[2]
 ACCOUNT_FILE = ROOT / ".inspect/smoke-accounts.json"
-HTTP = "http://127.0.0.1:18180/api/v1"
-WS = "ws://127.0.0.1:18180/ws/v1"
+ORIGIN = os.environ.get("LITTLE_ORBIT_SMOKE_ORIGIN", "http://127.0.0.1:18180")
+HTTP = f"{ORIGIN}/api/v1"
+WS = f"{ORIGIN.replace('http://', 'ws://').replace('https://', 'wss://')}/ws/v1"
 CLIENT_HEADERS = {
     "X-Little-Orbit-Client": "android",
-    "X-Little-Orbit-Version-Code": "17",
+    "X-Little-Orbit-Version-Code": "19",
 }
 
 
@@ -49,12 +51,25 @@ def register_device(token: str, device_id: str) -> None:
         "PUT",
         f"/notification-devices/{device_id}",
         token,
-        {"platform": "android", "app_version_code": 17, "notifications_enabled": True},
+        {"platform": "android", "app_version_code": 19, "notifications_enabled": True},
     )
 
 
 def pending(token: str, device_id: str) -> list[dict[str, Any]]:
     return request_json("GET", f"/notifications/pending?device_id={device_id}", token)
+
+
+def acknowledge_all(token: str, device_id: str) -> None:
+    """Clear backfilled events for a newly registered disposable installation."""
+
+    events = pending(token, device_id)
+    if events:
+        request_json(
+            "POST",
+            "/notifications/deliveries/ack",
+            token,
+            {"device_id": device_id, "event_ids": [item["id"] for item in events]},
+        )
 
 
 async def await_type(socket: Any, wanted: str) -> dict[str, Any]:
@@ -68,6 +83,9 @@ async def await_type(socket: Any, wanted: str) -> dict[str, Any]:
 async def verify_note_edit_alert(
     first_token: str, second_token: str, second_device: str
 ) -> None:
+    baseline = sum(
+        item["kind"] == "note_editing" for item in pending(second_token, second_device)
+    )
     note = request_json(
         "POST",
         "/notes",
@@ -80,13 +98,22 @@ async def verify_note_edit_alert(
     async with websockets.connect(uri, additional_headers=first_headers) as first:
         await await_type(first, "note.snapshot")
         await send_insert(first, 0, 0, "First")
-        assert sum(item["kind"] == "note_editing" for item in pending(second_token, second_device)) == 1
+        assert sum(
+            item["kind"] == "note_editing"
+            for item in pending(second_token, second_device)
+        ) == baseline + 1
         await send_insert(first, 1, 5, " second")
-        assert sum(item["kind"] == "note_editing" for item in pending(second_token, second_device)) == 1
+        assert sum(
+            item["kind"] == "note_editing"
+            for item in pending(second_token, second_device)
+        ) == baseline + 1
         async with websockets.connect(uri, additional_headers=second_headers) as second:
             await await_type(second, "note.snapshot")
             await send_insert(first, 2, 12, " third")
-            assert sum(item["kind"] == "note_editing" for item in pending(second_token, second_device)) == 1
+            assert sum(
+                item["kind"] == "note_editing"
+                for item in pending(second_token, second_device)
+            ) == baseline + 1
 
 
 async def send_insert(socket: Any, revision: int, position: int, text: str) -> None:
@@ -113,6 +140,8 @@ async def main() -> None:
     first_device, second_device = str(uuid4()), str(uuid4())
     register_device(second, first_device)
     register_device(second, second_device)
+    acknowledge_all(second, first_device)
+    acknowledge_all(second, second_device)
     request_json(
         "PATCH",
         "/notification-preferences",
@@ -123,6 +152,7 @@ async def main() -> None:
             "note_editing_enabled": True,
             "daily_quiz_enabled": True,
             "countdowns_enabled": True,
+            "together_time_enabled": True,
             "weekly_summary_enabled": True,
         },
     )
@@ -137,14 +167,24 @@ async def main() -> None:
     first_pending = pending(second, first_device)
     second_pending = pending(second, second_device)
     assert [item["id"] for item in first_pending] == [item["id"] for item in second_pending]
+    smooch_event_ids = [
+        item["id"] for item in first_pending if item["kind"] == "smooch_received"
+    ]
+    assert len(smooch_event_ids) == 1
     request_json(
         "POST",
         "/notifications/deliveries/ack",
         second,
-        {"device_id": first_device, "event_ids": [first_pending[0]["id"]]},
+        {"device_id": first_device, "event_ids": smooch_event_ids},
     )
-    assert pending(second, first_device) == []
-    assert len(pending(second, second_device)) == 1
+    assert not any(
+        item["kind"] == "smooch_received"
+        for item in pending(second, first_device)
+    )
+    assert sum(
+        item["kind"] == "smooch_received"
+        for item in pending(second, second_device)
+    ) == 1
     assert request_json("GET", "/smooches/pending", second) == []
     await verify_note_edit_alert(first, second, second_device)
     remaining = pending(second, second_device)

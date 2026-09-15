@@ -18,6 +18,7 @@ Own the public discovery/account website and the metadata-only owner console.
 - Public account-recovery responses must resist account enumeration.
 - Download metadata includes version, minimum Android level, SHA-256, release notes, and a GitHub Release URL; the versioned Little Orbit API endpoint hosts the APK bytes with resumable delivery.
 - Keep the checked-in release fallback byte-for-byte aligned with the newest signed publication so an API restart cannot replace a valid download with stale metadata.
+- Treat stored release notes as Markdown input: remove presentation syntax before text-card/RSS output, keep download highlights bounded, retain full notes on `/patch-notes`, format publication dates in UTC, and wrap immutable hashes on narrow screens.
 - Meet keyboard, focus, large-text, reduced-motion, contrast, metadata, and mobile layout requirements.
 - Inventory every repository-owned Markdown file for each web update. Update or create all affected public, operations, architecture, release, and contributor documents, and always review and update `ROADMAP.md` for behavior, scope, milestone, or release changes.
 

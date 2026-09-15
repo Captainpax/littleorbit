@@ -2,6 +2,7 @@
 
 import hashlib
 import re
+import shutil
 from pathlib import Path, PurePath
 
 ALLOWED_MEDIA_TYPES = frozenset(
@@ -22,6 +23,9 @@ ALLOWED_MEDIA_TYPES = frozenset(
 )
 MAX_FILE_BYTES = 100 * 1024 * 1024
 COUPLE_QUOTA_BYTES = 2 * 1024 * 1024 * 1024
+GLOBAL_QUOTA_BYTES = 50 * 1024 * 1024 * 1024
+MIN_FREE_STORAGE_BYTES = 5 * 1024 * 1024 * 1024
+MAX_CONCURRENT_UPLOADS_PER_COUPLE = 4
 MAX_CHUNK_BYTES = 4 * 1024 * 1024
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
@@ -70,6 +74,13 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def has_upload_capacity(root: Path, incoming_bytes: int) -> bool:
+    """Check the shared volume has room for an upload plus a fixed safety reserve."""
+
+    root.mkdir(parents=True, exist_ok=True)
+    return shutil.disk_usage(root).free >= incoming_bytes + MIN_FREE_STORAGE_BYTES
+
+
 def staging_path(root: Path, storage_key: str) -> Path:
     """Resolve a server-generated staging key beneath the configured root."""
 
@@ -80,3 +91,9 @@ def available_path(root: Path, storage_key: str) -> Path:
     """Resolve sanitized available bytes beneath the configured root."""
 
     return root / "available" / storage_key
+
+
+def processing_path(root: Path, storage_key: str) -> Path:
+    """Resolve an unpublished sanitizer output on the same atomic filesystem."""
+
+    return root / "processing" / f"{storage_key}.work"

@@ -6,6 +6,36 @@ x-logging: &bounded-logging
     max-size: 10m
     max-file: "3"
 
+x-database-role-service: &database-role-service
+  image: postgres:17.6-alpine
+  restart: "no"
+  environment:
+    PGHOST: postgres
+    PGDATABASE: ${POSTGRES_DB:-little_orbit}
+    PGUSER: ${POSTGRES_USER:-little_orbit}
+    PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    POSTGRES_API_PASSWORD: ${POSTGRES_API_PASSWORD:?set POSTGRES_API_PASSWORD in .env}
+    POSTGRES_WORKER_PASSWORD: ${POSTGRES_WORKER_PASSWORD:?set POSTGRES_WORKER_PASSWORD in .env}
+    POSTGRES_MEDIA_PASSWORD: ${POSTGRES_MEDIA_PASSWORD:?set POSTGRES_MEDIA_PASSWORD in .env}
+    POSTGRES_BACKUP_PASSWORD: ${POSTGRES_BACKUP_PASSWORD:?set POSTGRES_BACKUP_PASSWORD in .env}
+  command:
+    - sh
+    - -ec
+    - >-
+      psql --set=ON_ERROR_STOP=1
+      --set=database_name="$$PGDATABASE"
+      --set=owner_role="$$PGUSER"
+      --set=api_password="$$POSTGRES_API_PASSWORD"
+      --set=worker_password="$$POSTGRES_WORKER_PASSWORD"
+      --set=media_password="$$POSTGRES_MEDIA_PASSWORD"
+      --set=backup_password="$$POSTGRES_BACKUP_PASSWORD"
+      --file=/bootstrap-roles.sql
+  volumes:
+    - ./postgres/bootstrap-roles.sql:/bootstrap-roles.sql:ro
+  networks:
+    - private
+  logging: *bounded-logging
+
 services:
   gateway:
     image: caddy:2.10.2-alpine
@@ -20,8 +50,10 @@ services:
       web:
         condition: service_healthy
     networks:
-      - edge
-      - private
+      edge:
+      gateway-api:
+        ipv4_address: 172.30.14.2
+      gateway-web:
     healthcheck:
       test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:8180/api/v1/health/live"]
       interval: 15s
@@ -42,6 +74,7 @@ services:
       NEXT_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8180}
     networks:
       - private
+      - gateway-web
     healthcheck:
       test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:3000/status"]
       interval: 20s
@@ -53,15 +86,19 @@ services:
     build:
       context: ..
       dockerfile: services/api/Dockerfile
+      target: runtime
     restart: unless-stopped
-    command: ["sh", "-c", "alembic -c services/api/alembic.ini upgrade head && uvicorn little_orbit_api.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers"]
+    command: ["uvicorn", "little_orbit_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]
     expose:
       - "8000"
     env_file:
       - ../.env
     environment:
+      DATABASE_URL: ${DATABASE_API_URL:?set DATABASE_API_URL in .env}
       RELEASE_STORAGE_DIR: /var/lib/little-orbit/releases
       ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
+      # The API trusts only Caddy's fixed address on the isolated gateway link.
+      TRUSTED_PROXY_IP: 172.30.14.2
     volumes:
       - ../data/releases:/var/lib/little-orbit/releases:ro
       - attachment-data:/var/lib/little-orbit/attachments
@@ -70,8 +107,14 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+      database-grants:
+        condition: service_completed_successfully
     networks:
-      - private
+      private:
+      gateway-api:
+        # Reserve .2 for Caddy so the API cannot claim the trusted-proxy
+        # address while the gateway is being recreated during an update.
+        ipv4_address: 172.30.14.3
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/health/live', timeout=3)"]
       interval: 15s
@@ -83,6 +126,7 @@ services:
     build:
       context: ..
       dockerfile: services/api/Dockerfile
+      target: runtime
     user: "0:0"
     restart: "no"
     command:
@@ -94,15 +138,75 @@ services:
     network_mode: none
     logging: *bounded-logging
 
+  database-bootstrap:
+    <<: *database-role-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+      target: runtime
+    restart: "no"
+    command: ["alembic", "-c", "services/api/alembic.ini", "upgrade", "head"]
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: ${DATABASE_OWNER_URL:?set DATABASE_OWNER_URL in .env}
+    depends_on:
+      database-bootstrap:
+        condition: service_completed_successfully
+    networks:
+      - private
+    logging: *bounded-logging
+
+  database-grants:
+    <<: *database-role-service
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  backup-postgres:
+    image: postgres:17.6-alpine
+    profiles: ["tools"]
+    restart: "no"
+    command:
+      - pg_dump
+      - --format=custom
+      - --no-owner
+      - --exclude-table-data=public.location_samples
+      - --username=little_orbit_backup
+      - ${POSTGRES_DB:-little_orbit}
+    environment:
+      PGHOST: postgres
+      PGPASSWORD: ${POSTGRES_BACKUP_PASSWORD:?set POSTGRES_BACKUP_PASSWORD in .env}
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,mode=1770
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - private
+    logging: *bounded-logging
+
   worker:
     build:
       context: ..
       dockerfile: services/api/Dockerfile
+      target: runtime
     restart: unless-stopped
     command: ["python", "-m", "little_orbit_api.worker"]
     env_file:
       - ../.env
     environment:
+      DATABASE_URL: ${DATABASE_WORKER_URL:?set DATABASE_WORKER_URL in .env}
       ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
     volumes:
       - attachment-data:/var/lib/little-orbit/attachments
@@ -122,23 +226,33 @@ services:
     build:
       context: ..
       dockerfile: services/api/Dockerfile
+      target: media
     restart: unless-stopped
     command: ["python", "-m", "little_orbit_api.attachment_media"]
-    env_file:
-      - ../.env
     environment:
+      LITTLE_ORBIT_ENV: ${LITTLE_ORBIT_ENV:-production}
+      DATABASE_URL: ${DATABASE_MEDIA_URL:?set DATABASE_MEDIA_URL in .env}
       ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
       CLAMAV_HOST: clamav
       CLAMAV_PORT: "3310"
     volumes:
       - attachment-data:/var/lib/little-orbit/attachments
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=512m,mode=1770,uid=65532,gid=65532
+    pids_limit: 128
+    mem_limit: 2g
+    cpus: 2.0
     depends_on:
       api:
         condition: service_healthy
       clamav:
         condition: service_healthy
     networks:
-      - private
       - media-private
     logging: *bounded-logging
 
@@ -172,6 +286,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - private
+      - media-private
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -220,6 +335,13 @@ services:
 networks:
   edge:
   private:
+  gateway-api:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.14.0/28
+  gateway-web:
+    internal: true
   ai-private:
     internal: true
   media-private:

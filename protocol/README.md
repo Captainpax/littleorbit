@@ -6,6 +6,8 @@ RC8 adds the authenticated, content-limited orbit profile contract and the publi
 
 RC10 keeps the older relationship-date endpoints for protocol compatibility, but clients render `paired_at` and `paired_days` from the v3 summary. A future removal of the unused proposal fields requires its own versioned contract and migration decision.
 
+RC14 adds optional `current_totp_code` and `current_recovery_code` fields to the browser-only administrator MFA start request. Existing first-enrollment requests remain valid. Once MFA is enabled, the server requires exactly one current factor in addition to the password before it stages a replacement. This owner-console contract carries no relationship data and is covered by API and web validation rather than the Android-consumed public fixtures.
+
 Rules:
 
 - Schemas use JSON Schema draft 2020-12 and reject unknown fields.

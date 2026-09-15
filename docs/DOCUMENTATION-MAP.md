@@ -57,6 +57,15 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0022-self-hosted-per-device-notifications.md` — account choices, random installations, content-free hints, and independent delivery acknowledgement.
 - `docs/adr/0023-partner-assigned-relationship-avatars.md` — relationship-scoped images selected only by the other partner.
 - `docs/adr/0024-calendar-countdowns-and-transition-alerts.md` — timed/all-day moments, private reminders, one-way calendar export, and countdown/quiz alerts.
+- `docs/adr/0025-persistent-authentication-boundaries.md` — persistent hashed throttles, staged administrator MFA replacement, account-first transitions, session revalidation, and legacy reveal enforcement.
+- `docs/adr/0026-relationship-scoped-passive-caches.md` — generation-scoped widget and Wear authorization, urgent purge ordering, and bounded offline expiry.
+- `docs/adr/0027-content-free-fcm-wakeups.md` — optional opaque FCM wakes while the first-party per-installation queue remains authoritative.
+- `docs/adr/0028-isolated-attachment-media-worker.md` — least-privilege scanning, sanitization, atomic publication, and private archive access.
+- `docs/adr/0029-relationship-invalidation-purge-protocol.md` — structured invalidation and generation-ordered phone, widget, and Wear cleanup.
+- `docs/adr/0030-together-time-retention-and-corrections.md` — short raw-coordinate retention, 30-day minute detail, durable totals, and audited corrections.
+- `docs/adr/0031-opt-in-sanitized-crash-diagnostics.md` — bounded opt-in code-only crash grouping and staged retention.
+- `docs/adr/0032-docker-stale-socket-recovery.md` — evidence-preserving Docker runtime recovery without resetting durable state.
+- `docs/adr/0033-age-encrypted-coordinated-backups.md` — paired database and attachment snapshots encrypted without plaintext intermediates.
 
 ## Operations and verification
 
@@ -77,6 +86,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-RC12-2026-09-13.md` — RC12 shell, activity, attachment, compatibility-matrix, build, and release evidence.
 - `docs/operations/VERIFICATION-RC12.1-2026-09-13.md` — RC12.1 preview, notification, compatibility, artifact, and deployment evidence.
 - `docs/operations/VERIFICATION-RC13-2026-09-13.md` — RC13 countdown, quiz, AI whitespace, avatar, compatibility, artifact, and deployment evidence.
+- `docs/operations/VERIFICATION-RC14-2026-09-14.md` — RC14 API security plus Android passive-cache, Wear expiry, installer, emulator, and build evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -99,6 +109,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.12.md` — responsive shell, private activity, Markdown dock, attachment repair, and isolated smoke workflow.
 - `docs/releases/1.0.0-rc.12.1.md` — preview-first documents, inline private images, per-device notifications, motion, and Android 10 repairs.
 - `docs/releases/1.0.0-rc.13.md` — calendar-style countdowns, quiz transitions, generated-text validation, and partner-assigned avatars.
+- `docs/releases/1.0.0-rc.14.md` — published adaptive shell, security, privacy retention, notification, attachment, backup, and emulator candidate.
 <!-- documentation-inventory:end -->
 
 ## Review routing

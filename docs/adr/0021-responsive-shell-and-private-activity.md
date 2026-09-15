@@ -11,7 +11,7 @@ Couples also lacked a small answer to “what changed?” after opening the app.
 
 ## Decision
 
-Every top-level Android destination uses one shell. Phones open the full navigation from the left. At 840dp and wider, the same navigation becomes a static view beside the main content rather than a locked-open drawer. The end drawer is available only through a dedicated toolbar control and contains actions for the current destination. It remains locked against edge gestures so it does not compete with predictive back.
+Every top-level Android destination uses one shell. Home, Settings, and App updates are independent destinations, and the current item has an explicit selected state. Phones open the full navigation from the hamburger or a narrow left-edge gesture-exclusion region that preserves the rest of predictive back. At 840dp and wider, the same navigation becomes a bounded static view beside centered, width-bounded content rather than a locked-open drawer. The end drawer is available only through a dedicated toolbar control, remains locked against edge gestures, and is hidden when the destination has no actions.
 
 Home's end panel includes a current-couple activity page. Feature services append an event only while holding the couple lock that protects the underlying mutation. Each event has a couple-local monotonic sequence and retry-safe dedupe key. Stored fields are limited to the fixed event kind, actor, time, navigation target, optional target title, and optional approved Smooch emoji. The feed excludes note bodies, attachment names or bytes, quiz prompts and answers, coordinates, account email, and custom prose.
 

@@ -8,12 +8,14 @@ import android.os.Bundle;
 import android.view.View;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.littleorbit.data.repository.ProfileRepository;
 import com.littleorbit.mobile.databinding.ActivityProfilePhotoBinding;
 import dagger.hilt.android.AndroidEntryPoint;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Locale;
 import javax.inject.Inject;
 
 /** Relationship-avatar picker where each person chooses only their partner's image. */
@@ -41,9 +43,11 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
         binding = ActivityProfilePhotoBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         binding.choosePhoto.setOnClickListener(view -> pickPhoto.launch("image/*"));
-        binding.removePhoto.setOnClickListener(view -> removePhoto());
+        binding.removePhoto.setOnClickListener(view -> askToRemovePhoto());
         render(profiles.cached());
-        profiles.refresh().thenAccept(state -> runOnUiThread(() -> render(state)));
+        profiles.refresh().thenAccept(state -> runOnUiThread(() -> {
+            if (!isFinishing() && !isDestroyed()) render(state);
+        }));
     }
 
     @Override
@@ -88,11 +92,14 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
     private void upload(byte[] webp) {
         setBusy(true);
         profiles.uploadPartnerPhoto(webp).thenAccept(state -> runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
             render(state);
             binding.profileStatus.setText(R.string.partner_avatar_saved);
             setBusy(false);
         })).exceptionally(failure -> {
-            runOnUiThread(this::fail);
+            runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed()) fail();
+            });
             return null;
         });
     }
@@ -100,13 +107,30 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
     private void removePhoto() {
         setBusy(true);
         profiles.deletePartnerPhoto().thenAccept(state -> runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
             render(state);
             binding.profileStatus.setText(R.string.partner_avatar_removed);
             setBusy(false);
         })).exceptionally(failure -> {
-            runOnUiThread(this::fail);
+            runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed()) fail();
+            });
             return null;
         });
+    }
+
+    private void askToRemovePhoto() {
+        ProfileRepository.State state = profiles.cached();
+        if (!state.paired() || state.partnerPhoto() == null) return;
+        String partnerName = state.partnerName();
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.rc14_remove_partner_avatar_title, partnerName))
+                .setMessage(R.string.rc14_remove_partner_avatar_message)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(
+                        getString(R.string.rc14_remove_partner_avatar, partnerName),
+                        (dialog, which) -> removePhoto())
+                .show();
     }
 
     private void render(ProfileRepository.State state) {
@@ -114,12 +138,22 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
         String partnerName = state.paired() ? state.partnerName() : getString(R.string.not_paired);
         binding.profileName.setText(partnerName);
         binding.profileInitial.setText(initial(partnerName));
+        binding.partnerAvatarLabel.setText(getString(
+                R.string.rc14_partner_avatar_heading, partnerName));
+        binding.removePhoto.setText(getString(
+                R.string.rc14_remove_partner_avatar, partnerName));
+        String partnerDescription = getString(
+                R.string.rc14_partner_avatar_description, partnerName);
+        binding.profilePreview.setContentDescription(partnerDescription);
+        binding.profileInitial.setContentDescription(partnerDescription);
         byte[] bytes = state.partnerPhoto();
         if (bytes == null) {
             binding.profilePreview.setVisibility(View.GONE);
             binding.profileInitial.setVisibility(View.VISIBLE);
             binding.removePhoto.setEnabled(false);
             binding.choosePhoto.setEnabled(state.paired());
+            binding.choosePhoto.setText(getString(
+                    R.string.rc14_choose_partner_avatar, partnerName));
             return;
         }
         binding.profilePreview.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
@@ -127,11 +161,15 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
         binding.profileInitial.setVisibility(View.GONE);
         binding.removePhoto.setEnabled(true);
         binding.choosePhoto.setEnabled(true);
+        binding.choosePhoto.setText(getString(
+                R.string.rc14_replace_partner_avatar, partnerName));
     }
 
     private void renderOwn(ProfileRepository.State state) {
         binding.myName.setText(state.myName());
         binding.myInitial.setText(initial(state.myName()));
+        binding.myPreview.setContentDescription(getString(R.string.rc14_own_avatar_description));
+        binding.myInitial.setContentDescription(getString(R.string.rc14_own_avatar_description));
         byte[] bytes = state.myPhoto();
         binding.myPreview.setVisibility(bytes == null ? View.GONE : View.VISIBLE);
         binding.myInitial.setVisibility(bytes == null ? View.VISIBLE : View.GONE);
@@ -153,6 +191,7 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
     }
 
     private static String initial(String name) {
-        return name == null || name.isBlank() ? "Y" : name.substring(0, 1).toUpperCase();
+        return name == null || name.isBlank()
+                ? "Y" : name.substring(0, name.offsetByCodePoints(0, 1)).toUpperCase(Locale.ROOT);
     }
 }

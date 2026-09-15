@@ -129,11 +129,18 @@ class ClientAddress:
 def resolve_client_address(
     peer: str, forwarded_for: str | None, trusted_proxy: str
 ) -> ClientAddress:
-    """Trust the first forwarded address only from the configured direct proxy peer."""
+    """Trust one valid forwarded address only from one valid configured peer."""
 
-    if peer == trusted_proxy and forwarded_for:
-        return ClientAddress(forwarded_for.split(",", maxsplit=1)[0].strip(), True)
-    return ClientAddress(peer, False)
+    canonical_peer = validated_ip_address(peer)
+    canonical_proxy = validated_ip_address(trusted_proxy)
+    canonical_forwarded = validated_ip_address(forwarded_for)
+    if (
+        canonical_peer is not None
+        and canonical_peer == canonical_proxy
+        and canonical_forwarded is not None
+    ):
+        return ClientAddress(canonical_forwarded, True)
+    return ClientAddress(canonical_peer or "unknown", False)
 
 
 def validated_ip_address(value: str | None) -> str | None:

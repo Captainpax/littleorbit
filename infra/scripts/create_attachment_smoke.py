@@ -18,7 +18,8 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parents[2]
 HTTP = "http://127.0.0.1:18180/api/v1"
 WS = "ws://127.0.0.1:18180/ws/v1"
-CLIENT = {"X-Little-Orbit-Client": "android", "X-Little-Orbit-Version-Code": "17"}
+CLIENT = {"X-Little-Orbit-Client": "android", "X-Little-Orbit-Version-Code": "19"}
+TITLE_FILE = ROOT / ".inspect/attachment-smoke-title.txt"
 
 
 def json_request(method: str, path: str, token: str, payload: object | None = None) -> Any:
@@ -111,8 +112,9 @@ async def main() -> None:
     login = json_request("POST", "/auth/login", "", {
         "email": config["accounts"][0]["email"], "password": config["password"]})
     token = login["access_token"]
+    title = f"Attachment smoke {uuid4().hex[:8]}"
     note = json_request("POST", "/notes", token, {
-        "operation_id": str(uuid4()), "title": "Attachment smoke", "body": ""})
+        "operation_id": str(uuid4()), "title": title, "body": ""})
     png_id = upload(token, note["id"], "transparent.png", "image/png",
                     image_bytes("PNG", ("#A89BFF", "#A89BFF")))
     gif_id = upload(token, note["id"], "transparent.gif", "image/gif",
@@ -122,7 +124,8 @@ async def main() -> None:
             f"![Sanitized PNG](attachment://{png_id})\n\n"
             f"![Animated GIF](attachment://{gif_id})\n")
     await set_markdown(token, note["id"], body)
-    print("Created Attachment smoke with inline sanitized PNG and animated GIF.")
+    TITLE_FILE.write_text(title, encoding="utf-8")
+    print(f"Created {title} with inline sanitized PNG and animated GIF.")
 
 
 if __name__ == "__main__":

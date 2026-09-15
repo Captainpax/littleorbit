@@ -44,6 +44,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/custom_prompt"
+                android:importantForAutofill="no"
                 android:inputType="textCapSentences|textMultiLine"
                 android:minHeight="112dp" />
 
@@ -76,6 +77,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/custom_options_lines"
+                android:importantForAutofill="no"
                 android:inputType="textCapSentences|textMultiLine"
                 android:minHeight="120dp" />
 
@@ -85,7 +87,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="@string/low_anchor" />
+                android:hint="@string/low_anchor"
+                android:importantForAutofill="no"
+                android:inputType="textCapSentences" />
 
             <EditText
                 android:id="@+id/highAnchorInput"
@@ -93,7 +97,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="@string/high_anchor" />
+                android:hint="@string/high_anchor"
+                android:importantForAutofill="no"
+                android:inputType="textCapSentences" />
 
             <com.google.android.material.checkbox.MaterialCheckBox
                 android:id="@+id/surpriseInput"

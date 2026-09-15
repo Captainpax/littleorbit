@@ -6,10 +6,13 @@ import pytest
 from pydantic import ValidationError
 
 from little_orbit_api.domain.location import (
+    PRIVACY_MAINTENANCE_INTERVAL,
+    RAW_LOCATION_RETENTION,
     Point,
     TimedPoint,
     decide_proximity,
     estimate_nearby_minutes,
+    raw_location_expires_at,
 )
 from little_orbit_api.domain.notes import Delete, Insert, InvalidEdit, apply_edit, transform
 from little_orbit_api.schemas import CouplePreferencesRequest, RegistrationRequest
@@ -35,12 +38,28 @@ def test_out_of_bounds_note_edit_fails_without_mutation() -> None:
         apply_edit("small", Delete(4, 2))
 
 
-def test_location_requires_accuracy_bound_to_fit_threshold() -> None:
+def test_location_uses_both_accuracy_readings_for_bounded_estimate() -> None:
     same_place_poor_accuracy = decide_proximity(Point(45, -122, 80), Point(45, -122, 80))
     same_place_good_accuracy = decide_proximity(Point(45, -122, 5), Point(45, -122, 5))
+    unusable_accuracy = decide_proximity(Point(45, -122, 150), Point(45, -122, 150))
     assert same_place_poor_accuracy.uncertain
-    assert not same_place_poor_accuracy.together
+    assert same_place_poor_accuracy.together
     assert same_place_good_accuracy.together
+    assert not unusable_accuracy.together
+
+
+def test_raw_location_expiry_leaves_one_cleanup_interval_before_hard_limit() -> None:
+    recorded_at = datetime(2026, 9, 14, 12, 30, tzinfo=UTC)
+
+    expires_at = raw_location_expires_at(recorded_at)
+
+    assert expires_at == recorded_at + RAW_LOCATION_RETENTION - PRIVACY_MAINTENANCE_INTERVAL
+    assert expires_at < recorded_at + timedelta(hours=24)
+
+
+def test_raw_location_expiry_requires_an_absolute_instant() -> None:
+    with pytest.raises(ValueError, match="timezone"):
+        raw_location_expires_at(datetime(2026, 9, 14, 12, 30))
 
 
 def test_nearby_estimate_counts_interval_between_confident_samples() -> None:

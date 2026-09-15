@@ -18,11 +18,12 @@ public final class LittleOrbitTileService extends TileService {
     @Override
     protected ListenableFuture<TileBuilders.Tile> onTileRequest(@NonNull RequestBuilders.TileRequest request) {
         WearDisplayCache.State cache = WearDisplayCache.read(this);
+        WearDisplayText display = new WearDisplayText(this);
         LayoutElementBuilders.Column column = new LayoutElementBuilders.Column.Builder()
-                .addContent(text("LITTLE ORBIT"))
-                .addContent(text(cache.relationshipText()))
-                .addContent(text(cache.nearbyText()))
-                .addContent(text(cache.statusText()))
+                .addContent(text(getString(R.string.tile_eyebrow)))
+                .addContent(text(display.relationship(cache)))
+                .addContent(text(display.nearby(cache)))
+                .addContent(text(display.status(cache)))
                 .build();
         LayoutElementBuilders.Layout layout =
                 new LayoutElementBuilders.Layout.Builder().setRoot(column).build();

@@ -50,8 +50,26 @@ public final class SpaceLibraryViews {
 
     /** Replaces the current active-note snapshot and reapplies the search. */
     public void setNotes(List<NoteApiModels.Note> value) {
+        if (sameSnapshot(notes, value)) return;
         notes = List.copyOf(value);
         renderActive();
+    }
+
+    private static boolean sameSnapshot(
+            List<NoteApiModels.Note> current, List<NoteApiModels.Note> incoming) {
+        if (current.size() != incoming.size()) return false;
+        for (int index = 0; index < current.size(); index++) {
+            NoteApiModels.Note first = current.get(index);
+            NoteApiModels.Note second = incoming.get(index);
+            if (!first.id.equals(second.id)
+                    || first.revision != second.revision
+                    || first.metadataRevision != second.metadataRevision
+                    || !first.title.equals(second.title)
+                    || !first.body.equals(second.body)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Inserts a new server snapshot or replaces its existing card. */

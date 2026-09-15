@@ -169,6 +169,7 @@ public final class DeviceSetupActivity extends InsetAwareActivity {
         binding.notificationNotes.setChecked(preferences.noteEditing);
         binding.notificationQuiz.setChecked(preferences.dailyQuiz);
         binding.notificationCountdowns.setChecked(preferences.countdowns);
+        binding.notificationTogetherTime.setChecked(preferences.togetherTime);
         binding.notificationWeekly.setChecked(preferences.weeklySummary);
         enableNotificationChoices(preferences.master);
         new NotificationSettingsStore(this).save(preferences);
@@ -181,6 +182,7 @@ public final class DeviceSetupActivity extends InsetAwareActivity {
                 binding.notificationNotes.isChecked(),
                 binding.notificationQuiz.isChecked(),
                 binding.notificationCountdowns.isChecked(),
+                binding.notificationTogetherTime.isChecked(),
                 binding.notificationWeekly.isChecked());
         binding.notificationDiagnostics.setText(R.string.loading);
         AsyncUi.observe(this, orbit.updateNotificationPreferences(update),
@@ -197,6 +199,7 @@ public final class DeviceSetupActivity extends InsetAwareActivity {
         binding.notificationNotes.setEnabled(enabled);
         binding.notificationQuiz.setEnabled(enabled);
         binding.notificationCountdowns.setEnabled(enabled);
+        binding.notificationTogetherTime.setEnabled(enabled);
         binding.notificationWeekly.setEnabled(enabled);
     }
 

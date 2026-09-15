@@ -4,14 +4,16 @@ from datetime import timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..clock import SystemClock
 from ..config import Settings, get_settings
 from ..database import session_scope
-from ..dependencies import current_account
-from ..models import Account, Couple, CoupleMember, PairCode
+from ..dependencies import current_account, request_client_ip
+from ..models import Account, Couple, CoupleMember, PairCode, SecurityEvent
+from ..rate_limit import consume_rate_limits, request_rules
+from ..relationship_service import lock_accounts
 from ..schemas import (
     PairCodeResponse,
     PairConfirmRequest,
@@ -34,6 +36,65 @@ async def _active_couple_id(session: AsyncSession, account_id: UUID) -> UUID | N
     return couple_id
 
 
+def _eligible(account: Account) -> bool:
+    return (
+        account.verified_at is not None
+        and account.suspended_at is None
+        and account.deleted_at is None
+    )
+
+
+async def _locked_active_memberships(
+    session: AsyncSession, account_ids: tuple[UUID, UUID]
+) -> list[CoupleMember]:
+    return list(
+        await session.scalars(
+            select(CoupleMember)
+            .where(
+                CoupleMember.account_id.in_(account_ids),
+                CoupleMember.left_at.is_(None),
+            )
+            .order_by(CoupleMember.account_id)
+            .with_for_update()
+        )
+    )
+
+
+async def _redeem_allowed(
+    client_ip: str, actor_id: UUID, settings: Settings
+) -> bool:
+    decision = await consume_rate_limits(
+        request_rules(
+            "pair-redeem",
+            client_ip,
+            str(actor_id),
+            ip_limit=settings.pair_redeem_ip_per_hour,
+            subject_limit=settings.pair_redeem_subject_per_hour,
+            window=timedelta(hours=1),
+        ),
+        settings=settings,
+    )
+    return decision.allowed
+
+
+async def _reject_redeem_limit(session: AsyncSession, actor_id: UUID) -> None:
+    session.add(
+        SecurityEvent(
+            actor_id=actor_id,
+            event_type="pair_redeem_rate_limit",
+            outcome="blocked",
+            metadata_json={},
+            created_at=SystemClock().now(),
+        )
+    )
+    await session.commit()
+    raise HTTPException(
+        status.HTTP_429_TOO_MANY_REQUESTS,
+        "Pairing is temporarily unavailable",
+        headers={"Retry-After": "3600"},
+    )
+
+
 @router.post("/codes", response_model=PairCodeResponse, status_code=status.HTTP_201_CREATED)
 async def create_code(
     actor: Account = Depends(current_account),
@@ -42,7 +103,10 @@ async def create_code(
 ) -> PairCodeResponse:
     """Create a ten-minute unambiguous pair code for a verified unpaired account."""
 
-    if actor.verified_at is None or await _active_couple_id(session, actor.id):
+    accounts = await lock_accounts(session, (actor.id,))
+    if len(accounts) != 1 or not _eligible(accounts[0]):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Account cannot start pairing")
+    if await _active_couple_id(session, actor.id):
         raise HTTPException(status.HTTP_409_CONFLICT, "Account cannot start pairing")
     now = SystemClock().now()
     raw = new_pair_code()
@@ -63,28 +127,42 @@ async def create_code(
 async def redeem_code(
     payload: PairRedeemRequest,
     actor: Account = Depends(current_account),
+    client_ip: str = Depends(request_client_ip),
     session: AsyncSession = Depends(session_scope),
     settings: Settings = Depends(get_settings),
 ) -> PairingState:
     """Lock and reserve a valid pair code for creator confirmation."""
 
+    if not await _redeem_allowed(client_ip, actor.id, settings):
+        await _reject_redeem_limit(session, actor.id)
     now = SystemClock().now()
     digest = hash_token(payload.code, settings.token_pepper.get_secret_value())
-    code = await session.scalar(
+    preview = await session.scalar(
         select(PairCode)
         .where(
             PairCode.code_hash == digest,
             PairCode.expires_at > now,
             PairCode.consumed_at.is_(None),
         )
+    )
+    if preview is None or preview.creator_id == actor.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pair code is invalid or expired")
+    account_ids = (actor.id, preview.creator_id)
+    accounts = await lock_accounts(session, account_ids)
+    locked_now = SystemClock().now()
+    code = await session.scalar(
+        select(PairCode)
+        .where(
+            PairCode.id == preview.id,
+            PairCode.code_hash == digest,
+            PairCode.expires_at > locked_now,
+            PairCode.consumed_at.is_(None),
+        )
         .with_for_update()
     )
-    invalid = code is None or code.creator_id == actor.id or code.pending_partner_id is not None
-    invalid = (
-        invalid
-        or actor.verified_at is None
-        or await _active_couple_id(session, actor.id) is not None
-    )
+    invalid = len(accounts) != 2 or any(not _eligible(item) for item in accounts)
+    invalid = invalid or code is None or code.pending_partner_id is not None
+    invalid = invalid or bool(await _locked_active_memberships(session, account_ids))
     if invalid or code is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pair code is invalid or expired")
     code.pending_partner_id = actor.id
@@ -101,7 +179,7 @@ async def confirm_pairing(
     """Create a two-member couple and consume the code in one transaction."""
 
     now = SystemClock().now()
-    code = await session.scalar(
+    preview = await session.scalar(
         select(PairCode)
         .where(
             PairCode.id == payload.request_id,
@@ -109,38 +187,40 @@ async def confirm_pairing(
             PairCode.expires_at > now,
             PairCode.consumed_at.is_(None),
         )
+    )
+    if preview is None or preview.pending_partner_id is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pairing request is invalid or expired")
+    account_ids = (actor.id, preview.pending_partner_id)
+    locked_accounts = await lock_accounts(session, account_ids)
+    locked_now = SystemClock().now()
+    code = await session.scalar(
+        select(PairCode)
+        .where(
+            PairCode.id == payload.request_id,
+            PairCode.creator_id == actor.id,
+            PairCode.pending_partner_id == preview.pending_partner_id,
+            PairCode.expires_at > locked_now,
+            PairCode.consumed_at.is_(None),
+        )
         .with_for_update()
     )
-    if code is None or code.pending_partner_id is None:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pairing request is invalid or expired")
-    account_ids = (actor.id, code.pending_partner_id)
-    locked_accounts = list(
-        await session.scalars(
-            select(Account)
-            .where(Account.id.in_(account_ids))
-            .order_by(Account.id)
-            .with_for_update()
-        )
+    eligible = len(locked_accounts) == 2 and all(
+        _eligible(account) for account in locked_accounts
     )
-    if len(locked_accounts) != 2:
+    if code is None or not eligible:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pairing request is invalid or expired")
-    active_count = await session.scalar(
-        select(func.count())
-        .select_from(CoupleMember)
-        .where(CoupleMember.account_id.in_(account_ids), CoupleMember.left_at.is_(None))
-    )
-    if active_count:
+    if await _locked_active_memberships(session, account_ids):
         raise HTTPException(status.HTTP_409_CONFLICT, "One account is already paired")
-    couple = Couple(created_at=now, updated_at=now, proximity_threshold_m=100.0)
+    couple = Couple(created_at=locked_now, updated_at=locked_now, proximity_threshold_m=100.0)
     session.add(couple)
     await session.flush()
     session.add_all(
         [
-            CoupleMember(couple_id=couple.id, account_id=account_id, joined_at=now)
+            CoupleMember(couple_id=couple.id, account_id=account_id, joined_at=locked_now)
             for account_id in account_ids
         ]
     )
-    code.consumed_at = now
+    code.consumed_at = locked_now
     await session.commit()
     return PairingState(state="paired", request_id=code.id, couple_id=couple.id)
 

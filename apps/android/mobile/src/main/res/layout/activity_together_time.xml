@@ -4,11 +4,8 @@
     android:background="@drawable/background_cosmic" android:fillViewport="true">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="24dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/together_details"
-            android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
         <TextView android:id="@+id/summaryText" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="18dp"
+            android:layout_height="wrap_content"
             android:background="@drawable/card_background_feature" android:padding="20dp"
             android:textColor="@color/cloud" android:textSize="18sp" />
         <TextView android:id="@+id/collectionState" android:layout_width="match_parent"
@@ -24,15 +21,21 @@
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="26dp" android:text="@string/correct_estimate_title"
             android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
-        <Spinner android:id="@+id/bucketPicker" style="@style/Widget.LittleOrbit.Spinner"
+        <Spinner android:id="@+id/dayPicker" style="@style/Widget.LittleOrbit.Spinner"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" />
-        <EditText android:id="@+id/secondsInput" style="@style/Widget.LittleOrbit.Input"
+        <EditText android:id="@+id/hoursInput" style="@style/Widget.LittleOrbit.Input"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:hint="@string/correction_seconds" android:inputType="number" />
+            android:hint="@string/correction_hours" android:importantForAutofill="no"
+            android:inputType="number" />
+        <EditText android:id="@+id/minutesInput" style="@style/Widget.LittleOrbit.Input"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="@string/correction_minutes" android:importantForAutofill="no"
+            android:inputType="number" />
         <EditText android:id="@+id/reasonInput" style="@style/Widget.LittleOrbit.Input"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:hint="@string/correction_reason" />
+            android:hint="@string/correction_reason" android:importantForAutofill="no"
+            android:inputType="textCapSentences" />
         <com.google.android.material.button.MaterialButton android:id="@+id/correctButton"
             style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:layout_marginTop="16dp"

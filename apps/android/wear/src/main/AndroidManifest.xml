@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:name="android.hardware.type.watch" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -12,8 +13,17 @@
         <activity android:name=".WearActivity" android:exported="true" android:taskAffinity="">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity>
-        <service android:name=".LittleOrbitTileService" android:exported="true" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+        <service
+            android:name=".LittleOrbitTileService"
+            android:description="@string/tile_description"
+            android:exported="true"
+            android:icon="@drawable/wear_icon"
+            android:label="@string/tile_name"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
             <intent-filter><action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER"/></intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tile_preview" />
         </service>
         <service android:name=".TogetherComplicationService" android:exported="true" android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
             <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST"/></intent-filter>
@@ -26,5 +36,10 @@
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/little-orbit/" />
             </intent-filter>
         </service>
+        <receiver android:name=".WearCacheExpiryReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

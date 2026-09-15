@@ -16,6 +16,7 @@ NotificationKind = Literal[
     "quiz_available",
     "quiz_partner_finished",
     "quiz_results_ready",
+    "together_time_corrected",
 ]
 
 
@@ -27,6 +28,7 @@ class NotificationPreferencesResponse(StrictModel):
     note_editing_enabled: bool
     daily_quiz_enabled: bool
     countdowns_enabled: bool
+    together_time_enabled: bool
     weekly_summary_enabled: bool
     updated_at: datetime
 
@@ -39,6 +41,7 @@ class NotificationPreferencesUpdate(StrictModel):
     note_editing_enabled: bool
     daily_quiz_enabled: bool
     countdowns_enabled: bool
+    together_time_enabled: bool
     weekly_summary_enabled: bool
 
 
@@ -48,6 +51,7 @@ class NotificationDeviceUpsert(StrictModel):
     platform: Literal["android"]
     app_version_code: int = Field(ge=1, le=2_147_483_647)
     notifications_enabled: bool
+    push_token: str | None = Field(default=None, min_length=20, max_length=4096, pattern=r"^\S+$")
 
 
 class NotificationDeviceResponse(StrictModel):
@@ -56,6 +60,7 @@ class NotificationDeviceResponse(StrictModel):
     device_id: UUID
     last_seen_at: datetime
     notifications_enabled: bool
+    push_enabled: bool
 
 
 class NotificationEventResponse(StrictModel):
@@ -73,6 +78,7 @@ class NotificationEventResponse(StrictModel):
     countdown_id: UUID | None = None
     countdown_title: str | None = Field(default=None, max_length=120)
     quiz_date: date | None = None
+    together_day: date | None = None
 
 
 class NotificationDeliveryAck(StrictModel):

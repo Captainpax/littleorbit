@@ -5,6 +5,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.repository.OrbitRepository;
 import com.littleorbit.mobile.databinding.ActivityNotesBinding;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
@@ -48,13 +49,21 @@ final class NoteAttachmentController {
     void reset(NoteApiModels.Note note) {
         attachments = List.of();
         polls = 0;
+        binding.attachmentRecoveryCard.setVisibility(android.view.View.GONE);
         markdown.setAttachments(note.id, attachments);
         load(note.id);
     }
 
     void clear() {
         attachments = List.of();
+        polls = 0;
+        markdown.clearAttachments();
+        binding.attachmentRecoveryCard.setVisibility(android.view.View.GONE);
         binding.attachmentContainer.removeAllViews();
+    }
+
+    void retainOfflineNotes(Collection<String> authorizedNoteIds) {
+        views.retainOfflineNotes(authorizedNoteIds);
     }
 
     void choose() {
@@ -86,7 +95,11 @@ final class NoteAttachmentController {
     }
 
     private void insertLink(NoteApiModels.Attachment attachment) {
-        String safeName = attachment.fileName.replace("]", "");
+        String safeName = attachment.fileName
+                .replace("\\", "")
+                .replace("]", "")
+                .replace("\n", " ")
+                .replace("\r", " ");
         String link = attachment.mediaType.startsWith("image/")
                 ? "![" + safeName + "](attachment://" + attachment.id + ")"
                 : "[" + safeName + "](attachment://" + attachment.id + ")";
@@ -98,13 +111,17 @@ final class NoteAttachmentController {
             NoteApiModels.Note note = current.get();
             if (note == null || !noteId.equals(note.id)) return;
             attachments = List.copyOf(items);
+            binding.attachmentRecoveryCard.setVisibility(android.view.View.GONE);
             markdown.setAttachments(noteId, attachments);
             views.show(noteId, items);
             if (previewMode.getAsBoolean()) renderPreview.run();
             if (isProcessing(items) && polls++ < 20) {
                 binding.getRoot().postDelayed(() -> load(noteId), 3000);
             }
-        })).exceptionally(failure -> null);
+        })).exceptionally(failure -> {
+            activity.runOnUiThread(() -> showLoadFailure(noteId));
+            return null;
+        });
     }
 
     private static boolean isProcessing(List<NoteApiModels.Attachment> items) {
@@ -119,5 +136,12 @@ final class NoteAttachmentController {
         if (note == null || !noteId.equals(note.id)) return;
         polls = 0;
         load(noteId);
+    }
+
+    private void showLoadFailure(String noteId) {
+        NoteApiModels.Note note = current.get();
+        if (note == null || !noteId.equals(note.id)) return;
+        binding.attachmentRetryButton.setOnClickListener(ignored -> reload(noteId));
+        binding.attachmentRecoveryCard.setVisibility(android.view.View.VISIBLE);
     }
 }

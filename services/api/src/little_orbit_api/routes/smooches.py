@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..activity_schemas import ActivityEmoji
 from ..activity_service import record_activity
 from ..clock import SystemClock
-from ..couple_access import active_member, lock_couple
+from ..couple_access import active_member, lock_couple, relationship_inactive_error
 from ..database import session_scope
 from ..dependencies import current_account
 from ..interaction_models import Smooch
@@ -50,7 +50,7 @@ async def _partner(session: AsyncSession, member: CoupleMember) -> Account:
         )
     )
     if partner is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
+        raise relationship_inactive_error()
     return partner
 
 
@@ -154,8 +154,8 @@ async def smooch_status(
     member = await active_member(session, actor.id)
     partner = await _partner(session, member)
     couple = await session.get(Couple, member.couple_id)
-    if couple is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
+    if couple is None or couple.ended_at is not None:
+        raise relationship_inactive_error()
     now = SystemClock().now()
     recent = list(
         await session.scalars(
@@ -246,6 +246,7 @@ async def acknowledge_deliveries(
             NotificationEvent.kind == "smooch_received",
             NotificationEvent.source_id.in_(payload.smooch_ids),
             NotificationEvent.recipient_id == actor.id,
+            NotificationEvent.couple_id == member.couple_id,
             NotificationEvent.legacy_consumed_at.is_(None),
         )
         .values(legacy_consumed_at=SystemClock().now())
@@ -277,7 +278,11 @@ async def smooch_weeks(
         member = archived_member
     couple = await session.get(Couple, member.couple_id)
     if couple is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
+        if archive_id is None:
+            raise relationship_inactive_error()
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "History is unavailable")
+    if archive_id is None and couple.ended_at is not None:
+        raise relationship_inactive_error()
     current = week_start(SystemClock().now(), couple.home_timezone)
     first = current - timedelta(weeks=weeks - 1)
     range_start, _ = week_bounds_utc(first, couple.home_timezone)

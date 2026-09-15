@@ -3,8 +3,19 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, Uuid
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import text as sql_text
 
 from .database import Base
 
@@ -22,6 +33,7 @@ class NotificationPreference(Base):
     note_editing_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     daily_quiz_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     countdowns_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    together_time_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     weekly_summary_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -33,6 +45,12 @@ class NotificationDevice(Base):
     __table_args__ = (
         UniqueConstraint("account_id", "device_id"),
         Index("ix_notification_device_active", "account_id", "last_seen_at", "disabled_at"),
+        Index(
+            "uq_notification_device_push_hash",
+            "push_token_hash",
+            unique=True,
+            postgresql_where=sql_text("push_token_hash IS NOT NULL"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
@@ -45,6 +63,13 @@ class NotificationDevice(Base):
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    push_token_encrypted: Mapped[str | None] = mapped_column(Text)
+    push_token_hash: Mapped[str | None] = mapped_column(String(64))
+    push_token_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    push_last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    push_last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    push_failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    push_token_invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class NotificationEvent(Base):

@@ -17,6 +17,7 @@ import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.OutOfQuotaPolicy;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
@@ -39,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 public final class PartnerNotificationWorker extends Worker {
     private static final String PERIODIC = "little-orbit-partner-notifications";
     private static final String NOW = "little-orbit-partner-notifications-now";
+    private static final String URGENT = "little-orbit-partner-notifications-urgent";
     private final Context context;
     private final OrbitRepository orbit;
     private final NotificationDeviceStore device;
@@ -88,9 +90,18 @@ public final class PartnerNotificationWorker extends Worker {
     }
 
     private void register(boolean allowed) throws Exception {
-        orbit.registerNotificationDevice(device.id(),
-                new NotificationApiModels.DeviceUpsert(BuildConfig.VERSION_CODE, allowed))
+        String pushToken = device.pushToken();
+        if (allowed && pushToken == null) FirebasePushBootstrap.requestToken(context);
+        NotificationApiModels.Device registered = orbit.registerNotificationDevice(device.id(),
+                new NotificationApiModels.DeviceUpsert(
+                        BuildConfig.VERSION_CODE, allowed, pushToken))
                 .get(30, TimeUnit.SECONDS);
+        if (!allowed || pushToken == null) return;
+        if (registered.pushEnabled) {
+            device.pushTokenAccepted();
+        } else if (device.rejectPushToken(pushToken)) {
+            FirebasePushBootstrap.rotateRejectedToken(context);
+        }
     }
 
     private int deliver(NotificationApiModels.Preferences preferences) throws Exception {
@@ -114,6 +125,7 @@ public final class PartnerNotificationWorker extends Worker {
             case "countdown_created", "countdown_rescheduled" -> preferences.countdowns;
             case "quiz_available", "quiz_partner_finished", "quiz_results_ready" ->
                     preferences.dailyQuiz;
+            case "together_time_corrected" -> preferences.togetherTime;
             default -> false;
         };
     }
@@ -170,6 +182,9 @@ public final class PartnerNotificationWorker extends Worker {
         if ("quiz_results_ready".equals(event.kind)) {
             return context.getString(R.string.quiz_results_notification);
         }
+        if ("together_time_corrected".equals(event.kind)) {
+            return context.getString(R.string.together_time_corrected_notification, partner);
+        }
         return SmoochPhrases.render(context, event.phraseKey, partner, event.emoji);
     }
 
@@ -177,6 +192,9 @@ public final class PartnerNotificationWorker extends Worker {
         if ("note_editing".equals(kind)) return NotificationChannels.SHARED_SPACE;
         if (kind.startsWith("countdown_")) return NotificationChannels.COUNTDOWNS;
         if (kind.startsWith("quiz_")) return NotificationChannels.QUIZ;
+        if ("together_time_corrected".equals(kind)) {
+            return NotificationChannels.TOGETHER_CORRECTIONS;
+        }
         return NotificationChannels.SMOOCHES;
     }
 
@@ -187,6 +205,9 @@ public final class PartnerNotificationWorker extends Worker {
         }
         if (event.kind.startsWith("countdown_")) return new Intent(context, CountdownActivity.class);
         if (event.kind.startsWith("quiz_")) return new Intent(context, QuizActivity.class);
+        if ("together_time_corrected".equals(event.kind)) {
+            return new Intent(context, TogetherTimeActivity.class);
+        }
         return new Intent(context, SmoochActivity.class);
     }
 
@@ -194,6 +215,7 @@ public final class PartnerNotificationWorker extends Worker {
         if ("note_editing".equals(kind)) return R.drawable.ic_notes;
         if (kind.startsWith("countdown_")) return R.drawable.ic_countdown;
         if (kind.startsWith("quiz_")) return R.drawable.ic_quiz;
+        if ("together_time_corrected".equals(kind)) return R.drawable.ic_nearby;
         return R.drawable.ic_smooch;
     }
 
@@ -201,6 +223,9 @@ public final class PartnerNotificationWorker extends Worker {
         if ("note_editing".equals(kind)) return context.getString(R.string.space_notification_title);
         if (kind.startsWith("countdown_")) return context.getString(R.string.countdowns);
         if (kind.startsWith("quiz_")) return context.getString(R.string.quiz);
+        if ("together_time_corrected".equals(kind)) {
+            return context.getString(R.string.together_details);
+        }
         return context.getString(R.string.smooches);
     }
 
@@ -230,7 +255,8 @@ public final class PartnerNotificationWorker extends Worker {
         android.content.SharedPreferences state = context.getSharedPreferences(
                 "smooch_settings", Context.MODE_PRIVATE);
         if (prior.weekEnd.equals(state.getString("last_recap", ""))) return;
-        String text = context.getString(R.string.smooch_weekly_notification, prior.combined);
+        String text = context.getResources().getQuantityString(
+                R.plurals.smooch_weekly_notification, prior.combined, prior.combined);
         Notification notification = new NotificationCompat.Builder(context, NotificationChannels.SMOOCHES)
                 .setSmallIcon(R.drawable.ic_smooch)
                 .setContentTitle(context.getString(R.string.smooch_weekly_title))
@@ -260,6 +286,7 @@ public final class PartnerNotificationWorker extends Worker {
         if (!enabled) {
             manager.cancelUniqueWork(PERIODIC);
             manager.cancelUniqueWork(NOW);
+            manager.cancelUniqueWork(URGENT);
             return;
         }
         PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
@@ -269,12 +296,28 @@ public final class PartnerNotificationWorker extends Worker {
         manager.enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.UPDATE, request);
     }
 
+    /** Cancels every current and legacy relationship-notification job. */
+    public static void cancel(Context context) {
+        schedule(context, false);
+    }
+
     /** Requests a prompt server check after a foreground hint or app resume. */
     public static void enqueue(Context context) {
         OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(PartnerNotificationWorker.class)
                 .setConstraints(network()).setBackoffCriteria(
                         BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build();
-        WorkManager.getInstance(context).enqueueUniqueWork(NOW, ExistingWorkPolicy.REPLACE, request);
+        WorkManager.getInstance(context).enqueueUniqueWork(NOW, ExistingWorkPolicy.KEEP, request);
+    }
+
+    /** Runs a server fetch promptly after an authenticated high-priority FCM wake. */
+    public static void enqueueExpedited(Context context) {
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(PartnerNotificationWorker.class)
+                .setConstraints(network())
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+                .build();
+        WorkManager.getInstance(context).enqueueUniqueWork(
+                URGENT, ExistingWorkPolicy.KEEP, request);
     }
 
     private static Constraints network() {

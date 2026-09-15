@@ -13,6 +13,7 @@
     "**/build/**",
     "backups/**",
     "data/**",
-    "dist/**"
+    "dist/**",
+    "test-results/**"
   ]
 }

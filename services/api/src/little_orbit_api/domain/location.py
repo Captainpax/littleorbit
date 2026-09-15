@@ -6,8 +6,10 @@ from itertools import pairwise
 from math import asin, cos, radians, sin, sqrt
 
 EARTH_RADIUS_M = 6_371_000.0
-PAIR_WINDOW = timedelta(minutes=10)
+PAIR_WINDOW = timedelta(minutes=16)
 MAX_CONFIDENT_GAP = timedelta(minutes=20)
+RAW_LOCATION_RETENTION = timedelta(hours=24)
+PRIVACY_MAINTENANCE_INTERVAL = timedelta(minutes=5)
 
 
 @dataclass(frozen=True)
@@ -48,6 +50,18 @@ class MinuteEstimate:
     estimated_distance_m: float
 
 
+def raw_location_expires_at(recorded_at: datetime) -> datetime:
+    """Return an expiry that gives periodic cleanup time before the 24-hour ceiling."""
+
+    if recorded_at.tzinfo is None:
+        raise ValueError("recorded_at must include a timezone offset")
+    return (
+        recorded_at.astimezone(UTC)
+        + RAW_LOCATION_RETENTION
+        - PRIVACY_MAINTENANCE_INTERVAL
+    )
+
+
 def haversine_m(left: Point, right: Point) -> float:
     """Return great-circle distance in metres for two WGS84-like points."""
 
@@ -59,13 +73,15 @@ def haversine_m(left: Point, right: Point) -> float:
 
 
 def decide_proximity(left: Point, right: Point, threshold_m: float = 100.0) -> ProximityDecision:
-    """Classify proximity conservatively while exposing accuracy uncertainty."""
+    """Classify a bounded estimate using distance and both reported accuracies."""
 
     measured = haversine_m(left, right)
     uncertainty = left.accuracy_m + right.accuracy_m
     minimum = max(0.0, measured - uncertainty)
     maximum = measured + uncertainty
-    together = maximum <= threshold_m
+    definite = maximum <= threshold_m
+    estimated = measured <= threshold_m and max(left.accuracy_m, right.accuracy_m) <= threshold_m
+    together = definite or estimated
     uncertain = minimum <= threshold_m < maximum
     return ProximityDecision(measured, minimum, maximum, together, uncertain)
 

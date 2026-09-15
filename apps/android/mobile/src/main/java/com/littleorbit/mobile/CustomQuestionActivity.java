@@ -167,7 +167,10 @@ public final class CustomQuestionActivity extends InsetAwareActivity {
                         R.string.custom_shared_row, item.publishDate, item.customSlot, item.prompt));
             }
             if (queue.partnerSurpriseCount > 0) {
-                addQueueText(getString(R.string.partner_surprises, queue.partnerSurpriseCount));
+                addQueueText(getResources().getQuantityString(
+                        R.plurals.visual_partner_surprises,
+                        queue.partnerSurpriseCount,
+                        queue.partnerSurpriseCount));
             }
         });
     }

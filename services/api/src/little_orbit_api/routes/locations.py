@@ -10,10 +10,15 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..clock import SystemClock
-from ..couple_access import active_member, both_members_consent
+from ..couple_access import (
+    active_member,
+    both_members_consent,
+    lock_couple,
+    relationship_inactive_error,
+)
 from ..database import session_scope
 from ..dependencies import current_account
-from ..domain.location import Point, decide_proximity
+from ..domain.location import Point, decide_proximity, raw_location_expires_at
 from ..models import Account, Couple, CoupleMember, LocationSample, SecurityEvent, TogetherBucket
 from ..schemas import (
     LocationBatchRequest,
@@ -32,7 +37,7 @@ def _validate_recorded_at(recorded_at: datetime) -> None:
     if recorded_at.tzinfo is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "recorded_at needs an offset")
     instant = recorded_at.astimezone(UTC)
-    if instant < now - timedelta(hours=24) or instant > now + timedelta(minutes=5):
+    if raw_location_expires_at(instant) <= now or instant > now + timedelta(minutes=5):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "sample time is outside policy")
 
 
@@ -114,11 +119,9 @@ async def upload_locations(
     """Deduplicate a bounded batch and derive minutes only under mutual consent."""
 
     member = await active_member(session, actor.id)
+    couple = await lock_couple(session, member.couple_id)
     if not member.location_enabled:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Location sharing is disabled")
-    couple = await session.get(Couple, member.couple_id)
-    if couple is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
     mutual = await both_members_consent(session, member.couple_id, "location_enabled")
     if not mutual:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Mutual location sharing is disabled")
@@ -137,7 +140,7 @@ async def upload_locations(
                 latitude=item.latitude,
                 longitude=item.longitude,
                 accuracy_m=item.accuracy_m,
-                expires_at=SystemClock().now() + timedelta(hours=24),
+                expires_at=raw_location_expires_at(item.recorded_at),
             )
             .on_conflict_do_nothing(index_elements=["account_id", "sample_id"])
             .returning(LocationSample.id)
@@ -169,8 +172,8 @@ async def together_summary(
 
     member = await active_member(session, actor.id)
     couple = await session.get(Couple, member.couple_id)
-    if couple is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Pairing state is unavailable")
+    if couple is None or couple.ended_at is not None:
+        raise relationship_inactive_error()
     total, updated = (
         await session.execute(
             select(
@@ -224,6 +227,7 @@ async def correct_bucket(
     """Apply an attributable correction without creating overlapping intervals."""
 
     member = await active_member(session, actor.id)
+    await lock_couple(session, member.couple_id)
     bucket = await session.scalar(
         select(TogetherBucket)
         .where(TogetherBucket.id == bucket_id, TogetherBucket.couple_id == member.couple_id)

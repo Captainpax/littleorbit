@@ -1,5 +1,6 @@
 package com.littleorbit.data.repository;
 
+import com.littleorbit.data.DisplayCacheSynchronizer;
 import com.littleorbit.data.WearProfilePublisher;
 import com.littleorbit.data.remote.LittleOrbitApi;
 import com.littleorbit.data.remote.ProfileApiModels;
@@ -13,7 +14,6 @@ import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
-import retrofit2.Response;
 
 /** Serial profile synchronizer that preserves the last encrypted state during outages. */
 @Singleton
@@ -22,6 +22,7 @@ public final class NetworkProfileRepository implements ProfileRepository {
     private final LittleOrbitApi api;
     private final ProfilePhotoStore store;
     private final WearProfilePublisher wear;
+    private final DisplayCacheSynchronizer displays;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "orbit-profile-sync");
         thread.setDaemon(true);
@@ -31,10 +32,14 @@ public final class NetworkProfileRepository implements ProfileRepository {
     /** Creates the authenticated profile sync boundary. */
     @Inject
     public NetworkProfileRepository(
-            LittleOrbitApi api, ProfilePhotoStore store, WearProfilePublisher wear) {
+            LittleOrbitApi api,
+            ProfilePhotoStore store,
+            WearProfilePublisher wear,
+            DisplayCacheSynchronizer displays) {
         this.api = api;
         this.store = store;
         this.wear = wear;
+        this.displays = displays;
     }
 
     @Override public State cached() { return store.read(); }
@@ -43,7 +48,14 @@ public final class NetworkProfileRepository implements ProfileRepository {
     public CompletableFuture<State> refresh() {
         return CompletableFuture.supplyAsync(() -> {
             try { return refreshNow(); }
-            catch (RuntimeException failure) { return store.read(); }
+            catch (RuntimeException failure) {
+                if (RelationshipCachePurger.relationshipInactive(failure)) {
+                    clearAll();
+                    displays.clear();
+                    throw failure;
+                }
+                return store.read();
+            }
         }, executor);
     }
 
@@ -100,26 +112,11 @@ public final class NetworkProfileRepository implements ProfileRepository {
     }
 
     private static <T> T execute(Call<T> call) {
-        try {
-            Response<T> response = call.execute();
-            if (!response.isSuccessful() || response.body() == null) {
-                throw new ProfileServiceException("Profile request failed: " + response.code());
-            }
-            return response.body();
-        } catch (IOException failure) {
-            throw new ProfileServiceException("Profile request failed", failure);
-        }
+        return RetrofitCalls.execute(call);
     }
 
     private static void executeNoBody(Call<Void> call) {
-        try {
-            Response<Void> response = call.execute();
-            if (!response.isSuccessful()) {
-                throw new ProfileServiceException("Profile request failed: " + response.code());
-            }
-        } catch (IOException failure) {
-            throw new ProfileServiceException("Profile request failed", failure);
-        }
+        RetrofitCalls.executeVoid(call);
     }
 
     /** Content-free profile sync failure. */

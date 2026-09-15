@@ -1,6 +1,8 @@
 package com.littleorbit.data.remote;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import org.junit.Test;
@@ -24,5 +26,13 @@ public final class NoteSocketClientTest {
     @Test
     public void editPlanDoesNothingForIdenticalContent() {
         assertEquals(List.of(), NoteSocketClient.editPlan("same", "same"));
+    }
+
+    @Test
+    public void authorizationAndCompatibilityClosesRequireHttpRecheck() {
+        assertTrue(NoteSocketClient.terminalCloseCode(4401));
+        assertTrue(NoteSocketClient.terminalCloseCode(4403));
+        assertTrue(NoteSocketClient.terminalCloseCode(4426));
+        assertFalse(NoteSocketClient.terminalCloseCode(1001));
     }
 }

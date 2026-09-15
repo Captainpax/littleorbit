@@ -1,23 +1,22 @@
 """FastAPI application factory and route assembly."""
 
-from datetime import timedelta
-
 from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from .client_compatibility import AndroidCompatibilityMiddleware
 from .notes_hub import NoteConnectionHub
 from .notification_hub import NotificationConnectionHub
-from .rate_limit import FixedWindowLimiter
 from .routes import (
     account,
     activity,
     admin,
     admin_console,
+    archive_attachments,
     attachments,
     auth,
     countdowns,
     couples,
+    diagnostics,
     health,
     locations,
     notes,
@@ -44,12 +43,6 @@ def create_app() -> FastAPI:
     )
     app.state.note_connections = NoteConnectionHub()
     app.state.notification_connections = NotificationConnectionHub()
-    app.state.registration_ip_limiter = FixedWindowLimiter(
-        limit=8, window=timedelta(hours=1)
-    )
-    app.state.registration_email_limiter = FixedWindowLimiter(
-        limit=4, window=timedelta(hours=1)
-    )
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=[
@@ -65,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(pairing.router)
     app.include_router(couples.router)
+    app.include_router(diagnostics.router)
     app.include_router(quizzes.router)
     app.include_router(quizzes_v2.router)
     app.include_router(countdowns.router)
@@ -80,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(notes.router)
     app.include_router(notifications.router)
     app.include_router(attachments.router)
+    app.include_router(archive_attachments.router)
     app.include_router(smooches.router)
     return app
 

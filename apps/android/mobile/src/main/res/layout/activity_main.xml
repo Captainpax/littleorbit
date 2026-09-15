@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/homeScroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/background_cosmic"
-    android:orientation="vertical">
-
-    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-        <ScrollView
-            android:id="@+id/homeScroll"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:fillViewport="true">
+    android:clipToPadding="false"
+    android:fillViewport="true">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -48,44 +42,50 @@
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="26dp" android:gravity="center" android:orientation="horizontal">
                     <FrameLayout android:id="@+id/myPlanet" android:layout_width="92dp" android:layout_height="92dp" android:background="@drawable/planet_lavender" android:clickable="true" android:contentDescription="@string/edit_profile_photo" android:focusable="true">
                         <com.google.android.material.imageview.ShapeableImageView android:id="@+id/myPlanetImage" android:layout_width="match_parent" android:layout_height="match_parent" android:padding="4dp" android:scaleType="centerCrop" android:visibility="gone" app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.LittleOrbit.Circle" />
-                        <TextView android:id="@+id/myPlanetInitial" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="Y" android:textColor="@color/cloud" android:textSize="30sp" android:textStyle="bold" />
+                        <TextView android:id="@+id/myPlanetInitial" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="@string/rc14_your_initial" android:textColor="@color/cloud" android:textSize="30sp" android:textStyle="bold" />
                     </FrameLayout>
-                    <TextView android:id="@+id/smoochSpark" android:layout_width="46dp" android:layout_height="46dp" android:layout_marginHorizontal="8dp" android:clickable="true" android:contentDescription="@string/send_smooch" android:focusable="true" android:gravity="center" android:text="✦" android:textColor="@color/amber" android:textSize="34sp" />
+                    <TextView android:id="@+id/smoochSpark" android:layout_width="48dp" android:layout_height="48dp" android:layout_marginHorizontal="8dp" android:clickable="true" android:contentDescription="@string/send_smooch" android:focusable="true" android:gravity="center" android:text="@string/visual_orbit_spark" android:textColor="@color/amber" android:textSize="34sp" />
                     <FrameLayout android:layout_width="92dp" android:layout_height="92dp" android:background="@drawable/planet_coral" android:contentDescription="@string/partner_planet">
                         <com.google.android.material.imageview.ShapeableImageView android:id="@+id/partnerPlanetImage" android:layout_width="match_parent" android:layout_height="match_parent" android:padding="4dp" android:scaleType="centerCrop" android:visibility="gone" app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.LittleOrbit.Circle" />
-                        <TextView android:id="@+id/partnerPlanet" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="?" android:textColor="@color/cloud" android:textSize="30sp" android:textStyle="bold" />
+                        <TextView android:id="@+id/partnerPlanet" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="@string/rc14_unknown_initial" android:textColor="@color/cloud" android:textSize="30sp" android:textStyle="bold" />
                     </FrameLayout>
                 </LinearLayout>
 
                 <TextView android:id="@+id/greetingText" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:gravity="center" android:text="@string/welcome_orbit" android:textAppearance="@style/TextAppearance.LittleOrbit.Title" android:textSize="27sp" />
                 <TextView android:id="@+id/statusText" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:accessibilityLiveRegion="polite" android:gravity="center" android:text="@string/connect_intro" android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
 
+                <com.littleorbit.mobile.SetupChecklistView
+                    android:id="@+id/setupChecklist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone" />
+
                 <LinearLayout android:id="@+id/sharedContent" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:orientation="vertical">
-                    <com.google.android.material.card.MaterialCardView android:id="@+id/togetherButton" android:layout_width="match_parent" android:layout_height="106dp" android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/navy_surface" app:cardCornerRadius="24dp" app:strokeColor="@color/orbit_border" app:strokeWidth="1dp">
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+                    <com.google.android.material.card.MaterialCardView android:id="@+id/togetherButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="true" android:minHeight="106dp" app:cardBackgroundColor="@color/navy_surface" app:cardCornerRadius="24dp" app:strokeColor="@color/orbit_border" app:strokeWidth="1dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:minHeight="106dp" android:orientation="horizontal" android:padding="16dp">
                             <ImageView android:layout_width="40dp" android:layout_height="40dp" android:contentDescription="@null" android:padding="5dp" android:src="@drawable/ic_nearby" />
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/nearby_together_label" android:textAppearance="@style/TextAppearance.LittleOrbit.Eyebrow" />
-                                <TextView android:id="@+id/nearbyText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="0h 0m nearby · estimate" android:textColor="@color/cloud" android:textSize="22sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/nearbyText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/visual_nearby_placeholder" android:textColor="@color/cloud" android:textSize="22sp" android:textStyle="bold" />
                                 <TextView android:id="@+id/togetherText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/start_date_unset" android:textColor="@color/muted" android:textSize="12sp" />
                             </LinearLayout>
                             <ImageView android:layout_width="24dp" android:layout_height="24dp" android:contentDescription="@null" android:src="@drawable/ic_chevron" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <com.google.android.material.card.MaterialCardView android:id="@+id/countdownsButton" android:layout_width="match_parent" android:layout_height="92dp" android:layout_marginTop="12dp" android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/navy_surface_muted" app:cardCornerRadius="24dp" app:strokeColor="@color/orbit_border" app:strokeWidth="1dp">
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+                    <com.google.android.material.card.MaterialCardView android:id="@+id/countdownsButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:clickable="true" android:focusable="true" android:minHeight="92dp" app:cardBackgroundColor="@color/navy_surface_muted" app:cardCornerRadius="24dp" app:strokeColor="@color/orbit_border" app:strokeWidth="1dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:minHeight="92dp" android:orientation="horizontal" android:padding="16dp">
                             <ImageView android:layout_width="38dp" android:layout_height="38dp" android:contentDescription="@null" android:src="@drawable/ic_countdown" />
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/countdown_label" android:textAppearance="@style/TextAppearance.LittleOrbit.Eyebrow" />
-                                <TextView android:id="@+id/countdownText" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:text="@string/no_countdowns" android:textColor="@color/cloud" android:textSize="20sp" android:textStyle="bold" />
+                                <TextView android:id="@+id/countdownText" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="2" android:text="@string/no_countdowns" android:textColor="@color/cloud" android:textSize="20sp" android:textStyle="bold" />
                             </LinearLayout>
                             <ImageView android:layout_width="24dp" android:layout_height="24dp" android:contentDescription="@null" android:src="@drawable/ic_chevron" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <com.google.android.material.card.MaterialCardView android:id="@+id/quizButton" android:layout_width="match_parent" android:layout_height="96dp" android:layout_marginTop="12dp" android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/navy_surface_muted" app:cardCornerRadius="24dp" app:strokeColor="@color/orbit_border" app:strokeWidth="1dp">
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+                    <com.google.android.material.card.MaterialCardView android:id="@+id/quizButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:clickable="true" android:focusable="true" android:minHeight="96dp" app:cardBackgroundColor="@color/navy_surface_muted" app:cardCornerRadius="24dp" app:strokeColor="@color/orbit_border" app:strokeWidth="1dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:minHeight="96dp" android:orientation="horizontal" android:padding="16dp">
                             <ImageView android:layout_width="38dp" android:layout_height="38dp" android:contentDescription="@null" android:src="@drawable/ic_quiz" />
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/today_orbit" android:textAppearance="@style/TextAppearance.LittleOrbit.Eyebrow" />
@@ -95,8 +95,8 @@
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <com.google.android.material.card.MaterialCardView android:id="@+id/notesButton" android:layout_width="match_parent" android:layout_height="92dp" android:layout_marginTop="12dp" android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/navy_surface_muted" app:cardCornerRadius="24dp" app:strokeColor="@color/orbit_border" app:strokeWidth="1dp">
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+                    <com.google.android.material.card.MaterialCardView android:id="@+id/notesButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:clickable="true" android:focusable="true" android:minHeight="92dp" app:cardBackgroundColor="@color/navy_surface_muted" app:cardCornerRadius="24dp" app:strokeColor="@color/orbit_border" app:strokeWidth="1dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:minHeight="92dp" android:orientation="horizontal" android:padding="16dp">
                             <ImageView android:layout_width="38dp" android:layout_height="38dp" android:contentDescription="@null" android:src="@drawable/ic_notes" />
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/note_label" android:textAppearance="@style/TextAppearance.LittleOrbit.Eyebrow" />
@@ -115,33 +115,4 @@
                     <com.google.android.material.button.MaterialButton android:id="@+id/createAccountButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/create_account" />
                 </LinearLayout>
             </LinearLayout>
-        </ScrollView>
-
-        <ScrollView android:id="@+id/moreScroll" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:visibility="gone">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/more" android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/more_intro" android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/profilePhotoButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="@string/profile_photo" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/moreCountdownsButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/countdowns" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/moreSmoochButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/smooches" app:icon="@drawable/ic_smooch" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/morePairingButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/pairing" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/moreTogetherButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/together_details" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/privacyButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/privacy_controls" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/archivesButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/past_archives" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/appUpdatesButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/app_updates" />
-                <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/autoUpdateDetection" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="@string/auto_update_detection" android:textColor="@color/cloud" />
-                <TextView android:id="@+id/lastUpdateCheck" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/muted" />
-                <TextView android:id="@+id/notificationStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:textColor="@color/muted" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/notificationSetupButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/check_notification_permission" />
-                <TextView android:id="@+id/locationStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/muted" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/locationSetupButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/location_setup" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/pauseNearbyButton" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/pause_nearby_tracking" android:visibility="gone" />
-                <TextView android:id="@+id/wearStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/muted" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/wearInstallButton" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/install_watch_app" />
-                <TextView android:id="@+id/versionText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/muted" />
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/wear_update_guidance" android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/signOutButton" style="@style/Widget.LittleOrbit.Button.Text" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="@string/sign_out" />
-            </LinearLayout>
-        </ScrollView>
-    </FrameLayout>
-</LinearLayout>
+</ScrollView>

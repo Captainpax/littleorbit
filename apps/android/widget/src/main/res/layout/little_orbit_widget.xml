@@ -19,9 +19,9 @@
             android:layout_weight="1"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.12"
-            android:text="LITTLE ORBIT"
+            android:text="@string/widget_brand"
             android:textColor="#CEC7FF"
-            android:textSize="10sp" />
+            android:textSize="11sp" />
         <ImageView
             android:layout_width="84dp"
             android:layout_height="40dp"
@@ -34,8 +34,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
+        android:autoSizeMaxTextSize="23sp"
+        android:autoSizeMinTextSize="16sp"
+        android:autoSizeStepGranularity="1sp"
+        android:autoSizeTextType="uniform"
+        android:ellipsize="end"
         android:fontFamily="sans-serif-medium"
-        android:text="Together-time unavailable"
+        android:maxLines="2"
+        android:text="@string/widget_together_unavailable"
         android:textColor="#F7F6FF"
         android:textSize="23sp" />
 
@@ -44,7 +50,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="3dp"
-        android:text="Nearby estimate unavailable"
+        android:maxLines="2"
+        android:text="@string/widget_nearby_unavailable"
         android:textColor="#AEBBD2"
         android:textSize="11sp" />
 
@@ -54,10 +61,11 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:background="@drawable/widget_countdown"
+        android:ellipsize="end"
         android:fontFamily="sans-serif"
         android:maxLines="2"
         android:padding="10dp"
-        android:text="Open Little Orbit to refresh"
+        android:text="@string/widget_open_to_refresh"
         android:textColor="#AEBBD2"
         android:textSize="12sp" />
 
@@ -68,16 +76,18 @@
         android:layout_marginTop="7dp"
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.1"
-        android:text="ESTIMATE · STALE"
+        android:text="@string/widget_stale"
         android:textColor="#FFC45B"
-        android:textSize="9sp" />
+        android:textSize="11sp" />
 
     <TextView
         android:id="@+id/widget_refresh"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:layout_marginTop="4dp"
-        android:text="TAP TO REFRESH"
+        android:gravity="center_vertical"
+        android:minWidth="96dp"
+        android:text="@string/widget_tap_to_refresh"
         android:textColor="#CEC7FF"
-        android:textSize="9sp" />
+        android:textSize="11sp" />
 </LinearLayout>

@@ -7,6 +7,7 @@ import com.littleorbit.data.DisplayCacheSyncWorker;
 import com.littleorbit.data.local.LocationQueueDao;
 import com.littleorbit.data.remote.ApiModels;
 import com.littleorbit.data.remote.CountdownApiModels;
+import com.littleorbit.data.remote.DiagnosticApiModels;
 import com.littleorbit.data.remote.ActivityApiModels;
 import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.remote.NotificationApiModels;
@@ -36,9 +37,10 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     private final LocationQueueDao locationQueue;
     private final DisplayCacheSynchronizer displaySynchronizer;
     private final Context context;
-    private final CountdownOfflineStore offlineCountdowns;
+    private final CountdownSyncGateway countdownGateway;
     private final ProfileRepository profiles;
     private final SmoochOutbox smoochOutbox;
+    private final NoteDraftStore noteDrafts;
     private final NoteAttachmentTransfer attachments;
     private final ExecutorService executor = Executors.newFixedThreadPool(3, runnable -> {
         Thread thread = new Thread(runnable, "orbit-network-" + threadIds.incrementAndGet());
@@ -56,22 +58,21 @@ public final class NetworkOrbitRepository implements OrbitRepository {
             CountdownOfflineStore offlineCountdowns,
             ProfileRepository profiles,
             SmoochOutbox smoochOutbox,
+            NoteDraftStore noteDrafts,
             @ApplicationContext Context context) {
         this.api = api;
         this.sessions = sessions;
         this.locationQueue = locationQueue;
         this.displaySynchronizer = displaySynchronizer;
         this.context = context;
-        this.offlineCountdowns = offlineCountdowns;
+        this.countdownGateway = new CountdownSyncGateway(api, offlineCountdowns, context);
         this.profiles = profiles;
         this.smoochOutbox = smoochOutbox;
+        this.noteDrafts = noteDrafts;
         this.attachments = new NoteAttachmentTransfer(api, context);
     }
 
-    @Override
-    public boolean isSignedIn() {
-        return sessions.read().isPresent();
-    }
+    @Override public boolean isSignedIn() { return sessions.read().isPresent(); }
 
     @Override
     public CompletableFuture<ApiModels.SessionResponse> signIn(String email, String password) {
@@ -210,39 +211,32 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     @Override
     public CompletableFuture<List<CountdownApiModels.Countdown>> countdowns() {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                List<CountdownApiModels.Countdown> remote = RetrofitCalls.execute(api.countdowns());
-                offlineCountdowns.replaceRemote(remote);
-                return offlineCountdowns.cached();
-            } catch (OrbitServiceException failure) {
-                if (failure.statusCode() != -1) {
-                    throw failure;
-                }
-                return offlineCountdowns.cached();
-            }
-        }, executor);
+        return purge(CompletableFuture.supplyAsync(countdownGateway::load, executor));
     }
 
     @Override
     public CompletableFuture<CountdownApiModels.Countdown> createCountdown(
             CountdownApiModels.Mutation mutation) {
-        return CompletableFuture.supplyAsync(() -> createCountdownOrQueue(mutation), executor);
+        return purge(CompletableFuture.supplyAsync(
+                () -> countdownGateway.create(mutation), executor));
     }
 
     @Override
     public CompletableFuture<CountdownApiModels.Countdown> updateCountdown(
             String countdownId, CountdownApiModels.Mutation mutation) {
-        return CompletableFuture.supplyAsync(
-                () -> updateCountdownOrQueue(countdownId, mutation), executor);
+        return purge(CompletableFuture.supplyAsync(
+                () -> countdownGateway.update(countdownId, mutation), executor));
     }
 
     @Override
     public CompletableFuture<ApiModels.Message> deleteCountdown(
             String countdownId, CountdownApiModels.DeleteRequest request) {
-        return CompletableFuture.supplyAsync(
-                () -> deleteCountdownOrQueue(countdownId, request), executor);
+        return purge(CompletableFuture.supplyAsync(
+                () -> countdownGateway.delete(countdownId, request), executor));
     }
+
+    @Override public CompletableFuture<ApiModels.Message> reportCrash(
+            DiagnosticApiModels.Report report) { return async(api.reportCrash(report)); }
 
     @Override
     public CompletableFuture<CountdownApiModels.Countdown> replaceCountdownReminders(
@@ -255,8 +249,8 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     @Override
     public CompletableFuture<Void> markActivitySeen(long throughSequence, String operationId) {
-        return CompletableFuture.runAsync(() -> RetrofitCalls.executeVoid(api.markActivitySeen(
-                new ActivityApiModels.SeenRequest(throughSequence, operationId))), executor);
+        return purge(CompletableFuture.runAsync(() -> RetrofitCalls.executeVoid(api.markActivitySeen(
+                new ActivityApiModels.SeenRequest(throughSequence, operationId))), executor));
     }
 
     @Override
@@ -292,10 +286,10 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     @Override
     public CompletableFuture<Void> acknowledgeSmooches(List<String> ids) {
-        return CompletableFuture.runAsync(
+        return purge(CompletableFuture.runAsync(
                 () -> RetrofitCalls.executeVoid(
                         api.acknowledgeSmooches(new SmoochApiModels.DeliveryAck(ids))),
-                executor);
+                executor));
     }
 
     @Override
@@ -306,6 +300,12 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     @Override
     public CompletableFuture<List<TogetherTimeModels.HistoryDay>> togetherHistory() {
         return async(api.togetherHistory(30));
+    }
+
+    @Override
+    public CompletableFuture<TogetherTimeModels.HistoryDay> correctTogetherDay(
+            String day, TogetherTimeModels.DayCorrection request) {
+        return async(api.correctTogetherDay(day, request));
     }
 
     @Override
@@ -337,10 +337,7 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         return async(api.correctTogetherBucket(bucketId, request));
     }
 
-    @Override
-    public CompletableFuture<List<NoteApiModels.Note>> notes() {
-        return async(api.notes());
-    }
+    @Override public CompletableFuture<List<NoteApiModels.Note>> notes() { return async(api.notes()); }
 
     @Override
     public CompletableFuture<NoteApiModels.Note> createNote(NoteApiModels.CreateRequest request) {
@@ -389,8 +386,8 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     @Override
     public CompletableFuture<Void> disableNotificationDevice(String deviceId) {
-        return CompletableFuture.runAsync(
-                () -> RetrofitCalls.executeVoid(api.disableNotificationDevice(deviceId)), executor);
+        return purge(CompletableFuture.runAsync(
+                () -> RetrofitCalls.executeVoid(api.disableNotificationDevice(deviceId)), executor));
     }
 
     @Override
@@ -402,9 +399,9 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     @Override
     public CompletableFuture<Void> acknowledgeNotifications(
             String deviceId, List<String> eventIds) {
-        return CompletableFuture.runAsync(
+        return purge(CompletableFuture.runAsync(
                 () -> RetrofitCalls.executeVoid(api.acknowledgeNotifications(
-                        new NotificationApiModels.DeliveryAck(deviceId, eventIds))), executor);
+                        new NotificationApiModels.DeliveryAck(deviceId, eventIds))), executor));
     }
 
     @Override
@@ -415,21 +412,23 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     @Override
     public CompletableFuture<NoteApiModels.Attachment> uploadNoteAttachment(
             String noteId, String displayName, String mediaType, File file) {
-        return CompletableFuture.supplyAsync(
-                () -> attachments.upload(noteId, displayName, mediaType, file), executor);
+        return purge(CompletableFuture.supplyAsync(
+                () -> attachments.upload(noteId, displayName, mediaType, file), executor));
     }
 
     @Override
     public CompletableFuture<File> downloadNoteAttachment(
             String noteId, NoteApiModels.Attachment attachment) {
-        return CompletableFuture.supplyAsync(
-                () -> attachments.download(noteId, attachment), executor);
+        return purge(CompletableFuture.supplyAsync(
+                () -> attachments.download(noteId, attachment), executor));
     }
 
     @Override
     public CompletableFuture<Void> deleteNoteAttachment(String noteId, String attachmentId) {
-        return CompletableFuture.runAsync(
-                () -> RetrofitCalls.executeVoid(api.deleteNoteAttachment(noteId, attachmentId)), executor);
+        return purge(CompletableFuture.runAsync(() -> {
+            RetrofitCalls.executeVoid(api.deleteNoteAttachment(noteId, attachmentId));
+            attachments.evict(attachmentId);
+        }, executor));
     }
 
     @Override
@@ -448,9 +447,10 @@ public final class NetworkOrbitRepository implements OrbitRepository {
 
     @Override
     public CompletableFuture<ApiModels.UnpairResult> unpair() {
-        return async(api.unpair()).thenApply(result -> {
-            clearRelationshipState();
-            return result;
+        return async(api.unpair()).whenComplete((result, failure) -> {
+            if (result != null || RelationshipCachePurger.relationshipInactive(failure)) {
+                clearRelationshipState();
+            }
         });
     }
 
@@ -462,6 +462,19 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     @Override
     public CompletableFuture<ApiModels.ArchiveDetail> archive(String archiveId) {
         return async(api.archive(archiveId));
+    }
+
+    @Override
+    public CompletableFuture<List<NoteApiModels.Attachment>> archiveAttachments(
+            String archiveId, String noteId) {
+        return async(api.archiveAttachments(archiveId, noteId));
+    }
+
+    @Override
+    public CompletableFuture<File> downloadArchiveAttachment(
+            String archiveId, String noteId, NoteApiModels.Attachment attachment) {
+        return CompletableFuture.supplyAsync(
+                () -> attachments.downloadArchive(archiveId, noteId, attachment), executor);
     }
 
     @Override
@@ -479,26 +492,23 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     private void clearLocalSession() {
-        clearRelationshipState();
-        profiles.clearAll();
-        sessions.clear();
+        try {
+            clearRelationshipState();
+            profiles.clearAll();
+        } finally {
+            sessions.clear();
+        }
     }
 
     private void clearRelationshipState() {
         disableLocationWork();
-        offlineCountdowns.clear();
+        countdownGateway.clear();
         DisplayCacheSyncWorker.cancel(context);
         displaySynchronizer.clear();
         profiles.clearPartner();
         smoochOutbox.clear();
-        clearKeptSpace();
-    }
-
-    private void clearKeptSpace() {
-        File directory = new File(context.getFilesDir(), "kept-space");
-        File[] files = directory.listFiles(File::isFile);
-        if (files == null) return;
-        for (File file : files) file.delete();
+        noteDrafts.clearAll();
+        RelationshipCachePurger.clearFiles(context);
     }
 
     private void configureLocationWork(boolean enabled) {
@@ -514,57 +524,12 @@ public final class NetworkOrbitRepository implements OrbitRepository {
         locationQueue.clear();
     }
 
-    private CountdownApiModels.Countdown createCountdownOrQueue(
-            CountdownApiModels.Mutation mutation) {
-        try {
-            CountdownApiModels.Countdown result = RetrofitCalls.execute(api.createCountdown(mutation));
-            DisplayCacheSyncWorker.enqueue(context);
-            return result;
-        } catch (OrbitServiceException failure) {
-            if (failure.statusCode() == -1) {
-                return offlineCountdowns.queueCreate(mutation);
-            }
-            throw failure;
-        }
-    }
-
-    private CountdownApiModels.Countdown updateCountdownOrQueue(
-            String countdownId, CountdownApiModels.Mutation mutation) {
-        if (countdownId.startsWith("local:")) {
-            return offlineCountdowns.queueUpdate(countdownId, mutation);
-        }
-        try {
-            CountdownApiModels.Countdown result = RetrofitCalls.execute(
-                    api.updateCountdown(countdownId, mutation));
-            DisplayCacheSyncWorker.enqueue(context);
-            return result;
-        } catch (OrbitServiceException failure) {
-            if (failure.statusCode() == -1) {
-                return offlineCountdowns.queueUpdate(countdownId, mutation);
-            }
-            throw failure;
-        }
-    }
-
-    private ApiModels.Message deleteCountdownOrQueue(
-            String countdownId, CountdownApiModels.DeleteRequest request) {
-        if (countdownId.startsWith("local:")) {
-            return offlineCountdowns.queueDelete(countdownId, request);
-        }
-        try {
-            ApiModels.Message result = RetrofitCalls.execute(api.deleteCountdown(countdownId, request));
-            DisplayCacheSyncWorker.enqueue(context);
-            return result;
-        } catch (OrbitServiceException failure) {
-            if (failure.statusCode() == -1) {
-                return offlineCountdowns.queueDelete(countdownId, request);
-            }
-            throw failure;
-        }
-    }
-
     private <T> CompletableFuture<T> async(Call<T> call) {
-        return CompletableFuture.supplyAsync(() -> RetrofitCalls.execute(call), executor);
+        return purge(CompletableFuture.supplyAsync(() -> RetrofitCalls.execute(call), executor));
+    }
+
+    private <T> CompletableFuture<T> purge(CompletableFuture<T> request) {
+        return RelationshipCachePurger.purgeWhenInactive(request, this::clearRelationshipState);
     }
 
 }
