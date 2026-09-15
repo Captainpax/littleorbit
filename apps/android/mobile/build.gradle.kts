@@ -79,7 +79,7 @@ dependencies {
     implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.32")
     implementation(libs.okhttp)
     implementation(libs.retrofit)
-    implementation("androidx.core:core:1.16.0")
+    implementation("androidx.core:core:1.19.0")
     implementation(libs.material)
     implementation(libs.hilt.android)
     annotationProcessor(libs.androidx.hilt.compiler)
