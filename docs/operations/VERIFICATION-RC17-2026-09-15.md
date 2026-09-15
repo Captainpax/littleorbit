@@ -29,7 +29,14 @@ The note directory held five active documents. Four rows formed one exact-conten
 
 ## Publication evidence
 
-Publication and live endpoint evidence is appended after the immutable release record, containers, and public downloads are verified.
+- A coordinated `age`-encrypted PostgreSQL and attachment backup completed at `2026-09-15T16:02:15Z` before the data repair. The database dump excluded raw coordinate rows.
+- Source commit `7faf788d6bc3bc973c4394090b8a20e06aa61ef9` is tagged `v1.0.0-rc.17`; the follow-up metadata commit `1145bc3` is on `main`. The [GitHub prerelease](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.17) contains both APKs, both checksum sidecars, and the release manifest.
+- The production API, worker, web app, and gateway were rebuilt. API, web, PostgreSQL, Ollama, ClamAV, and gateway health checks passed, and recent API, worker, web, and gateway logs contained no fatal, traceback, exception, panic, or error match.
+- The immutable self-hosted release record was published at `2026-09-15T16:04:11.93985Z`. Its phone and Wear codes, byte counts, hashes, URLs, packages, signer, and Android floors match the analyzed manifest.
+- Complete public phone and Wear downloads were 36,221,117 and 14,189,898 bytes and matched the artifact hashes above. Both public endpoints returned `206 Partial Content` for bytes `0-1023` with correct total lengths.
+- Local and public API liveness and readiness returned HTTP 200. `/download`, `/patch-notes`, and `/patch-notes.xml` returned HTTP 200 and named RC17; the feed used `application/rss+xml`.
+- After the encrypted backup, the maintenance transaction archived exactly three untouched revision-zero duplicate documents for the normal seven-day recovery window. The edited original remains, the active directory now has two documents, and no exact duplicate group remains.
+- The maintenance transaction recomputed the coordinate-free estimate. It remains zero because no retained paired observations classified as nearby. Freshness now stops at the older member stream (`2026-09-14T22:50:23.046Z`) instead of advancing from the other phone alone.
 
 ## Open physical gate
 
