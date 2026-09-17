@@ -51,5 +51,7 @@ jobs:
           java-version: "17"
           cache: gradle
       - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
       - run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - run: ./gradlew :apps:android:domain:test :apps:android:data:testDebugUnitTest :apps:android:data:lintDebug :apps:android:mobile:testDebugUnitTest :apps:android:mobile:lintDebug :apps:android:wear:testDebugUnitTest :apps:android:wear:lintDebug :apps:android:mobile:assembleDebug :apps:android:wear:assembleDebug --stacktrace
