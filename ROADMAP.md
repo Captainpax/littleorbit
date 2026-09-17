@@ -62,11 +62,11 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Retire legacy v1/v2 together-time writers with `410 Gone` and require phone code 23 for the new location and live-state semantics.
 - [x] Rebuild and independently analyze the final signed RC14 candidates, stage their immutable bytes, and verify an RC13-to-RC14 signed replacement and cold launch on API 36 before authorized publication.
 - [x] Sign and self-host the RC13 phone and Wear artifacts, retain byte-range downloads, and configure the reviewed production proxy/firewall route.
-- [ ] Rotate the Gmail SMTP app password and re-enroll the owner administrator TOTP before 1.0 promotion.
+- [ ] Complete the remaining owner-controlled credential tasks: rotate the Gmail SMTP app password and re-enroll the owner administrator TOTP.
 - [x] Publish the staged RC14 phone and Wear candidates and verify current metadata, complete and ranged self-hosted downloads, hashes, RSS notes, and local/public production health.
-- [ ] Complete the published updater, TLS renewal/recovery, SMTP, WSS revocation, and final production-security gates before 1.0 promotion.
+- [ ] Complete the remaining production observations for the published updater, TLS renewal/recovery, SMTP, WSS revocation, and administrator MFA re-enrollment.
 - [ ] Complete the two-phone, tablet, and Wear OS 1.0 end-to-end gate, including a measured nearby interval, self-hosted notification latency, session and relationship purge, accessibility, large text, navigation modes, offline recovery, and smoke-account deletion.
-- [ ] Build, sign, self-host, and publish 1.0 phone code 23 and Wear code 18; verify immutable metadata, complete and ranged downloads, updater discovery, RSS notes, migration 0025, and production health.
+- [x] Build, sign, self-host, and publish 1.0 phone code 23 and Wear code 18; verify immutable metadata, complete and ranged downloads, updater discovery, RSS notes, migration 0025, production health, and a non-destructive Pixel upgrade.
 
 ## 1.x — Reliability and reach
 

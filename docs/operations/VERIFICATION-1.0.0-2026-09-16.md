@@ -48,8 +48,15 @@ The compatibility floor is phone code 23 with enforcement scheduled for `2026-09
 
 ## Production evidence
 
-Production deployment and publication evidence is appended only after migration, service health, immutable release metadata, complete and ranged downloads, patch notes/RSS, and public routing are verified.
+- A coordinated encrypted backup completed at `2026-09-17T03:21:25Z`. The PostgreSQL archive was 347,297 bytes, the attachment archive was 358,680 bytes, and the backup manifest confirms that raw coordinates were excluded.
+- Production rebuilt from the reviewed 1.0 source and migrated transactionally from Alembic 0024 to `0025 (head)`. PostgreSQL, API, web, gateway, ClamAV, and Ollama reported healthy after recreation; both workers remained running.
+- Public API liveness and database-backed readiness returned `200`. The homepage, download page, patch notes, RSS feed, status page, and public routing also returned `200` over HTTPS.
+- Immutable release metadata was published at `2026-09-17T03:24:30Z` for phone code 23 and Wear code 18. It requires phone code 23 after `2026-09-17T09:30:00Z`.
+- Complete public phone and Wear downloads reproduced the byte counts and SHA-256 values above. Independent `bytes=0-1023` requests returned `206`, the correct `Content-Range`, `Accept-Ranges: bytes`, and exactly 1,024 bytes.
+- Authenticated-client headers at code 23 produced `410 Gone` for the retired v1/v2 together-time routes. The supported v3 route returned `401` without an account session, confirming that it remains protected.
+- A privacy-safe production aggregate found 309 retained location samples, zero older than 24 hours, and an oldest age of 72,836 seconds at verification time. No coordinates or account identifiers were inspected.
+- The authorized physical Pixel upgraded in place from RC17/code 22 to 1.0/code 23, retained app state, and launched `MainActivity` successfully. The process remained alive and the recent Android runtime buffer contained no Little Orbit fatal exception. The signed APK also completed a cold launch on the API 36 emulator with no recent fatal exception.
 
 ## Open physical evidence
 
-An API 36 phone emulator completed the Room and mobile instrumentation gates. The authorized physical Pixel appeared over wireless ADB after code freeze, but no private-account smoke or real-world proximity inspection was performed. The automated tests prove interval accounting and monotonic deadline behavior with synthetic evidence; they do not prove that two real phones were physically near each other. The two-phone measured interval, OEM battery behavior, tablet layout, and physical Wear update remain follow-up observations and must not be inferred from these results.
+An API 36 phone emulator completed the Room and mobile instrumentation gates, and the authorized physical Pixel completed a non-destructive signed upgrade and launch. No private-account smoke or real-world proximity inspection was performed. The automated tests prove interval accounting and monotonic deadline behavior with synthetic evidence; they do not prove that two real phones were physically near each other. The two-phone measured interval, OEM battery behavior, tablet layout, physical Wear update, SMTP delivery, TLS renewal drill, WSS revocation timing, and administrator MFA re-enrollment remain follow-up observations and must not be inferred from these results.
