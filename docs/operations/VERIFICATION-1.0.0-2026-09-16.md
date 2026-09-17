@@ -20,6 +20,7 @@ This record covers the chronological together-time repair, Android live presenta
 | --- | --- |
 | API Ruff | Passed |
 | API strict mypy | Passed, 141 source files |
+| Repository size and complexity limits | Passed, 403 source files |
 | Full API pytest | Passed, 132 tests; 28 environment-gated tests skipped |
 | Focused live-state/retired-route pytest | Passed, 5 tests |
 | Isolated PostgreSQL together-time and retention suite | Passed, 3 tests |

@@ -62,37 +62,14 @@ async def together_summary_v3(
     couple = await session.get(Couple, member.couple_id)
     if couple is None or couple.ended_at is not None:
         raise relationship_inactive_error()
-    observed = int(await session.scalar(
-        select(
-            func.coalesce(
-                func.sum(func.coalesce(TogetherDay.corrected_seconds, TogetherDay.estimated_seconds)),
-                0,
-            )
-        ).where(TogetherDay.couple_id == couple.id)
-    ) or 0)
+    observed = await _observed_seconds(session, couple.id)
     now = SystemClock().now()
     mutual = await both_members_consent(session, couple.id, "location_enabled")
-    member_ids = list(
-        await session.scalars(
-            select(CoupleMember.account_id)
-            .where(CoupleMember.couple_id == couple.id, CoupleMember.left_at.is_(None))
-            .order_by(CoupleMember.account_id)
-        )
-    )
+    member_ids = await _active_member_ids(session, couple.id)
     projection = await current_live_projection(
         session, couple, member_ids, sharing_enabled=mutual, now=now
     )
-    includes_legacy = bool(
-        await session.scalar(
-            select(func.count())
-            .select_from(TogetherDay)
-            .where(
-                TogetherDay.couple_id == couple.id,
-                TogetherDay.corrected_seconds.is_(None),
-                TogetherDay.estimate_method.in_(("legacy_v2", "mixed")),
-            )
-        )
-    )
+    includes_legacy = await _includes_legacy_estimates(session, couple.id)
     paired_days = max(0, (now - couple.created_at).days)
     return TogetherSummaryV3(
         relationship_id=couple.id,
@@ -114,6 +91,51 @@ async def together_summary_v3(
         location_enabled_by_both=mutual,
         label="estimate",
     )
+
+
+async def _observed_seconds(session: AsyncSession, couple_id: UUID) -> int:
+    """Return the durable corrected-or-estimated total for one couple."""
+
+    value = await session.scalar(
+        select(
+            func.coalesce(
+                func.sum(
+                    func.coalesce(
+                        TogetherDay.corrected_seconds, TogetherDay.estimated_seconds
+                    )
+                ),
+                0,
+            )
+        ).where(TogetherDay.couple_id == couple_id)
+    )
+    return int(value or 0)
+
+
+async def _active_member_ids(session: AsyncSession, couple_id: UUID) -> list[UUID]:
+    """Return active member IDs in the lock order shared by location workflows."""
+
+    return list(
+        await session.scalars(
+            select(CoupleMember.account_id)
+            .where(CoupleMember.couple_id == couple_id, CoupleMember.left_at.is_(None))
+            .order_by(CoupleMember.account_id)
+        )
+    )
+
+
+async def _includes_legacy_estimates(session: AsyncSession, couple_id: UUID) -> bool:
+    """Report whether uncorrected durable totals include pre-v3 estimates."""
+
+    value = await session.scalar(
+        select(func.count())
+        .select_from(TogetherDay)
+        .where(
+            TogetherDay.couple_id == couple_id,
+            TogetherDay.corrected_seconds.is_(None),
+            TogetherDay.estimate_method.in_(("legacy_v2", "mixed")),
+        )
+    )
+    return bool(value)
 
 
 @v3_router.get("/history", response_model=list[TogetherHistoryDay])
@@ -271,48 +293,11 @@ async def upload_locations_v2(
     if not await both_members_consent(session, couple.id, "location_enabled"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Mutual location sharing is disabled")
     now = SystemClock().now()
-    accepted = 0
-    duplicates = 0
-    changed_at: list[datetime] = []
-    for sample in payload.samples:
-        _validate_sample_time(sample.recorded_at, now)
-        existing = await session.scalar(
-            select(LocationSample).where(
-                LocationSample.account_id == actor.id,
-                LocationSample.sample_id == sample.sample_id,
-            )
-        )
-        if existing is not None:
-            if not _same_sample(existing, couple.id, sample):
-                raise HTTPException(
-                    status.HTTP_409_CONFLICT,
-                    {"code": "sample_id_conflict", "message": "Sample identity changed"},
-                )
-            duplicates += 1
-            continue
-        recorded_at = sample.recorded_at.astimezone(UTC)
-        session.add(
-            LocationSample(
-                sample_id=sample.sample_id,
-                account_id=actor.id,
-                couple_id=couple.id,
-                recorded_at=recorded_at,
-                latitude=sample.latitude,
-                longitude=sample.longitude,
-                accuracy_m=sample.accuracy_m,
-                expires_at=raw_location_expires_at(recorded_at),
-            )
-        )
-        accepted += 1
-        changed_at.append(recorded_at)
-    await session.flush()
-    member_ids = list(
-        await session.scalars(
-            select(CoupleMember.account_id)
-            .where(CoupleMember.couple_id == couple.id, CoupleMember.left_at.is_(None))
-            .order_by(CoupleMember.account_id)
-        )
+    accepted, duplicates, changed_at = await _store_location_batch(
+        session, actor.id, couple.id, payload.samples, now
     )
+    await session.flush()
+    member_ids = await _active_member_ids(session, couple.id)
     seconds = await recompute_recent_proximity(
         session, couple, member_ids, changed_at, now
     )
@@ -322,6 +307,69 @@ async def upload_locations_v2(
         duplicates=duplicates,
         nearby_seconds_recomputed=seconds,
     )
+
+
+async def _store_location_batch(
+    session: AsyncSession,
+    account_id: UUID,
+    couple_id: UUID,
+    samples: list[LocationSampleRequest],
+    now: datetime,
+) -> tuple[int, int, list[datetime]]:
+    """Store new samples and classify exact retry-safe duplicates."""
+
+    accepted = 0
+    duplicates = 0
+    changed_at: list[datetime] = []
+    for sample in samples:
+        recorded_at = await _store_location_sample(
+            session, account_id, couple_id, sample, now
+        )
+        if recorded_at is None:
+            duplicates += 1
+        else:
+            accepted += 1
+            changed_at.append(recorded_at)
+    return accepted, duplicates, changed_at
+
+
+async def _store_location_sample(
+    session: AsyncSession,
+    account_id: UUID,
+    couple_id: UUID,
+    sample: LocationSampleRequest,
+    now: datetime,
+) -> datetime | None:
+    """Store one sample or return None for an exact idempotent replay."""
+
+    _validate_sample_time(sample.recorded_at, now)
+    existing = await session.scalar(
+        select(LocationSample).where(
+            LocationSample.account_id == account_id,
+            LocationSample.sample_id == sample.sample_id,
+        )
+    )
+    if existing is not None:
+        if not _same_sample(existing, couple_id, sample):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                {"code": "sample_id_conflict", "message": "Sample identity changed"},
+            )
+        return None
+    recorded_at = sample.recorded_at.astimezone(UTC)
+    session.add(
+        LocationSample(
+            sample_id=sample.sample_id,
+            account_id=account_id,
+            couple_id=couple_id,
+            recorded_at=recorded_at,
+            latitude=sample.latitude,
+            longitude=sample.longitude,
+            accuracy_m=sample.accuracy_m,
+            expires_at=raw_location_expires_at(recorded_at),
+        )
+    )
+    return recorded_at
 
 
 def _validate_sample_time(recorded_at: datetime, now: datetime) -> None:

@@ -178,15 +178,11 @@ def live_projection(
     """Authorize a short projection only after two consecutive nearby states."""
 
     if not timeline.anchors:
-        state: CountingState = (
-            "waiting_for_partner" if sharing_enabled else "sharing_disabled"
-        )
-        return LiveProjection(state, None, None, None, 0)
+        return _unavailable_projection(sharing_enabled, None)
     current = timeline.anchors[-1]
-    if current.left is None or current.right is None:
-        state = "waiting_for_partner" if sharing_enabled else "sharing_disabled"
-        return LiveProjection(state, None, None, None, 0)
-    mutual_at = min(current.left.recorded_at, current.right.recorded_at).astimezone(UTC)
+    mutual_at = _mutual_evidence_at(current)
+    if mutual_at is None:
+        return _unavailable_projection(sharing_enabled, None)
     if not sharing_enabled:
         return LiveProjection("sharing_disabled", None, None, mutual_at, 0)
     live_until = mutual_at + MAX_MUTUAL_EVIDENCE_AGE
@@ -195,17 +191,44 @@ def live_projection(
     if current.state != "nearby":
         return LiveProjection(current.state, None, None, mutual_at, 0)
     previous = timeline.anchors[-2] if len(timeline.anchors) > 1 else None
-    confirmed = (
-        previous is not None
-        and previous.state == "nearby"
-        and current.recorded_at - previous.recorded_at <= MAX_COUNTED_INTERVAL
-    )
-    if not confirmed or current.recorded_at > now:
+    if not _confirmed_for_projection(previous, current, now):
         return LiveProjection("confirming", None, None, mutual_at, 0)
     projected_until = min(now, live_until)
     provisional = max(0, int((projected_until - current.recorded_at).total_seconds()))
     return LiveProjection(
         "nearby", current.recorded_at, live_until, mutual_at, provisional
+    )
+
+
+def _unavailable_projection(
+    sharing_enabled: bool, mutual_at: datetime | None
+) -> LiveProjection:
+    """Return the non-counting state used before both streams are available."""
+
+    state: CountingState = (
+        "waiting_for_partner" if sharing_enabled else "sharing_disabled"
+    )
+    return LiveProjection(state, None, None, mutual_at, 0)
+
+
+def _mutual_evidence_at(anchor: EvidenceAnchor) -> datetime | None:
+    """Return the older timestamp only when both phones supplied evidence."""
+
+    if anchor.left is None or anchor.right is None:
+        return None
+    return min(anchor.left.recorded_at, anchor.right.recorded_at).astimezone(UTC)
+
+
+def _confirmed_for_projection(
+    previous: EvidenceAnchor | None, current: EvidenceAnchor, now: datetime
+) -> bool:
+    """Require two timely nearby decisions before authorizing visual ticking."""
+
+    return bool(
+        previous is not None
+        and previous.state == "nearby"
+        and current.recorded_at - previous.recorded_at <= MAX_COUNTED_INTERVAL
+        and current.recorded_at <= now
     )
 
 
