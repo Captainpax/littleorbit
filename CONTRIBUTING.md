@@ -30,6 +30,8 @@ Protocol changes must add versioned valid and invalid fixtures. Security or priv
 
 Attachment work must exercise both the JSON contract and private bytes. Use synthetic fixtures, preserve the authorization-before-lookup order, bound streams before buffering, and verify that scanner failures leave bytes unavailable. Changes to supported types or storage must update the privacy, security, network, backup, deployment, third-party, release, and roadmap documents in the same pull request.
 
+Together-time work must test unequal phone cadence, intervening apart evidence, duplicate and conflicting sample IDs, reordered uploads, consent loss, raw-coordinate expiry, corrections, restart durability, and concurrent member uploads. PostgreSQL integration tests run only when `LITTLE_ORBIT_TEST_DATABASE_URL` names an explicitly disposable database; never let a test discover production `.env` credentials by fallback.
+
 ## Isolated Android smoke testing
 
 Use the disposable smoke stack for paired-account Android checks. It keeps test users, mail, attachments, and database rows outside the hosted volumes.

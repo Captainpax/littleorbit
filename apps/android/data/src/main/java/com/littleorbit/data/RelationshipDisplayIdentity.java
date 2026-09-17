@@ -3,9 +3,7 @@ package com.littleorbit.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 import dagger.hilt.android.qualifiers.ApplicationContext;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.time.Instant;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -22,8 +20,9 @@ public final class RelationshipDisplayIdentity {
     }
 
     /** Activates the generation for the exact immutable pairing instant. */
-    public synchronized Snapshot activate(String pairedAt) {
-        Snapshot next = activated(read(), relationshipId(pairedAt), System.currentTimeMillis());
+    public synchronized Snapshot activate(String relationshipId) {
+        String canonical = canonicalId(relationshipId);
+        Snapshot next = activated(read(), canonical, System.currentTimeMillis());
         persist(next);
         return next;
     }
@@ -54,20 +53,11 @@ public final class RelationshipDisplayIdentity {
                 current.relationshipId(), nextGeneration(current.generation(), now), false, now);
     }
 
-    static String relationshipId(String pairedAt) {
+    static String canonicalId(String relationshipId) {
         try {
-            String canonical = Instant.parse(pairedAt).toString();
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(("little-orbit-pair-v1|" + canonical)
-                            .getBytes(StandardCharsets.UTF_8));
-            StringBuilder id = new StringBuilder(32);
-            for (int index = 0; index < 16; index++) {
-                id.append(String.format(
-                        java.util.Locale.ROOT, "%02x", digest[index] & 0xff));
-            }
-            return id.toString();
+            return UUID.fromString(relationshipId).toString();
         } catch (Exception invalid) {
-            throw new IllegalArgumentException("Pairing instant is invalid", invalid);
+            throw new IllegalArgumentException("Relationship identity is invalid", invalid);
         }
     }
 

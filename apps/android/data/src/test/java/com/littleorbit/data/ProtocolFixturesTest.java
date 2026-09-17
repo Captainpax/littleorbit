@@ -47,9 +47,11 @@ public final class ProtocolFixturesTest {
     }
 
     @Test
-    public void rc10TogetherTimeUsesServerPairingAndEstimatedNearbyShapes() throws IOException {
+    public void v3TogetherTimeUsesBoundedLiveEstimateShape() throws IOException {
         assertTrue(validTogetherTime(read("v3", "together-time.valid.json")));
         assertFalse(validTogetherTime(read("v3", "together-time.invalid.json")));
+        assertTrue(validLocationV3(read("v3", "location-batch.valid.json")));
+        assertFalse(validLocationV3(read("v3", "location-batch.invalid.json")));
     }
 
     @Test
@@ -229,14 +231,43 @@ public final class ProtocolFixturesTest {
     }
 
     private static boolean validTogetherTime(Map<String, Object> value) {
-        return value.size() == 8
-                && String.valueOf(value.get("paired_at")).matches("^.+T.+(?:Z|[+-].+)$")
-                && numberIn(value.get("paired_days"), 0, Integer.MAX_VALUE)
-                && numberIn(value.get("nearby_estimated_seconds"), 0, Integer.MAX_VALUE)
+        if (value.size() != 18
+                || !isUuid(value.get("relationship_id"))
+                || !String.valueOf(value.get("paired_at")).matches("^.+T.+(?:Z|[+-].+)$")
+                || !numberIn(value.get("paired_days"), 0, Integer.MAX_VALUE)
+                || !numberIn(value.get("nearby_observed_seconds"), 0, Integer.MAX_VALUE)
+                || !numberIn(value.get("nearby_estimated_seconds"), 0, Integer.MAX_VALUE)
+                || !numberIn(value.get("nearby_provisional_seconds"), 0, 300)
+                || !instantOrNull(value.get("counting_anchor_at"))
+                || !instantOrNull(value.get("counting_live_until"))
+                || !instantOrNull(value.get("nearby_last_processed_at"))) return false;
+        return String.valueOf(value.get("server_now")).matches("^.+T.+(?:Z|[+-].+)$")
+                && List.of("sharing_disabled", "waiting_for_partner", "confirming", "nearby",
+                        "apart", "poor_accuracy", "stale").contains(value.get("counting_state"))
+                && List.of("unavailable", "low", "medium", "high")
+                        .contains(value.get("nearby_confidence"))
+                && numberIn(value.get("algorithm_version"), 3, Integer.MAX_VALUE)
+                && value.get("includes_legacy_estimates") instanceof Boolean
                 && numberIn(value.get("proximity_threshold_m"), 10, 1000)
                 && value.get("location_enabled_by_me") instanceof Boolean
                 && value.get("location_enabled_by_both") instanceof Boolean
                 && "estimate".equals(value.get("label"));
+    }
+
+    private static boolean validLocationV3(Map<String, Object> value) {
+        if (value.size() != 2 || !isUuid(value.get("relationship_id"))
+                || !(value.get("samples") instanceof List<?> samples)
+                || samples.isEmpty() || samples.size() > 48) return false;
+        return samples.stream().allMatch(item -> item instanceof Map<?, ?> sample
+                && sample.size() == 5 && isUuid(sample.get("sample_id"))
+                && String.valueOf(sample.get("recorded_at")).matches("^.+T.+(?:Z|[+-].+)$")
+                && numberIn(sample.get("latitude"), -90, 90)
+                && numberIn(sample.get("longitude"), -180, 180)
+                && numberIn(sample.get("accuracy_m"), 1, 1000));
+    }
+
+    private static boolean instantOrNull(Object value) {
+        return value == null || String.valueOf(value).matches("^.+T.+(?:Z|[+-].+)$");
     }
 
     private static boolean validOrbitProfile(Map<String, Object> value) {

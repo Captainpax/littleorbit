@@ -14,8 +14,15 @@ public interface LocationQueueDao {
     void insert(QueuedLocationEntity sample);
 
     /** Reads the oldest bounded upload batch. */
-    @Query("SELECT * FROM queued_locations ORDER BY recordedAtEpochMillis LIMIT 48")
-    List<QueuedLocationEntity> oldestBatch();
+    @Query("SELECT * FROM queued_locations WHERE relationshipId = :relationshipId "
+            + "AND relationshipGeneration = :generation "
+            + "ORDER BY recordedAtEpochMillis LIMIT 48")
+    List<QueuedLocationEntity> oldestBatch(String relationshipId, long generation);
+
+    /** Removes work that belongs to a purged or replaced relationship generation. */
+    @Query("DELETE FROM queued_locations WHERE relationshipId != :relationshipId "
+            + "OR relationshipGeneration != :generation")
+    void deleteOutsideRelationship(String relationshipId, long generation);
 
     /** Deletes acknowledged or policy-expired rows. */
     @Query("DELETE FROM queued_locations WHERE sampleId IN (:sampleIds)")

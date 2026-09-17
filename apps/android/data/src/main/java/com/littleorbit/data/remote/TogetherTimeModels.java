@@ -1,32 +1,67 @@
 package com.littleorbit.data.remote;
 
 import com.squareup.moshi.Json;
+import java.util.List;
 
 /** RC6 relationship-age and coordinate-free nearby-time HTTP DTOs. */
 public final class TogetherTimeModels {
     private TogetherTimeModels() {}
 
+    /** Bounded retry-safe location upload scoped to one exact relationship. */
+    public static final class LocationBatch {
+        @Json(name = "relationship_id") public final String relationshipId;
+        public final List<ApiModels.LocationSample> samples;
+
+        /** Creates an immutable upload batch. */
+        public LocationBatch(String relationshipId, List<ApiModels.LocationSample> samples) {
+            this.relationshipId = relationshipId;
+            this.samples = List.copyOf(samples);
+        }
+    }
+
     /** RC10 pair-age state derived from the immutable server pairing instant. */
     public static final class PairSummary {
+        @Json(name = "relationship_id") public final String relationshipId;
         @Json(name = "paired_at") public final String pairedAt;
         @Json(name = "paired_days") public final long pairedDays;
+        @Json(name = "nearby_observed_seconds") public final long nearbyObservedSeconds;
         @Json(name = "nearby_estimated_seconds") public final long nearbyEstimatedSeconds;
+        @Json(name = "nearby_provisional_seconds") public final long nearbyProvisionalSeconds;
+        @Json(name = "server_now") public final String serverNow;
+        @Json(name = "counting_state") public final String countingState;
+        @Json(name = "counting_anchor_at") public final String countingAnchorAt;
+        @Json(name = "counting_live_until") public final String countingLiveUntil;
         @Json(name = "nearby_last_processed_at") public final String nearbyLastProcessedAt;
         @Json(name = "nearby_confidence") public final String nearbyConfidence;
+        @Json(name = "algorithm_version") public final int algorithmVersion;
+        @Json(name = "includes_legacy_estimates") public final boolean includesLegacyEstimates;
         @Json(name = "proximity_threshold_m") public final double proximityThresholdM;
         @Json(name = "location_enabled_by_me") public final boolean locationByMe;
         @Json(name = "location_enabled_by_both") public final boolean locationByBoth;
         public final String label;
 
         /** Creates one decoded privacy-limited pair and estimate summary. */
-        public PairSummary(String pairedAt, long pairedDays, long nearbyEstimatedSeconds,
-                String nearbyLastProcessedAt, String nearbyConfidence, double proximityThresholdM,
-                boolean locationByMe, boolean locationByBoth, String label) {
+        public PairSummary(String relationshipId, String pairedAt, long pairedDays,
+                long nearbyObservedSeconds, long nearbyEstimatedSeconds,
+                long nearbyProvisionalSeconds, String serverNow, String countingState,
+                String countingAnchorAt, String countingLiveUntil, String nearbyLastProcessedAt,
+                String nearbyConfidence, int algorithmVersion, boolean includesLegacyEstimates,
+                double proximityThresholdM, boolean locationByMe, boolean locationByBoth,
+                String label) {
+            this.relationshipId = relationshipId;
             this.pairedAt = pairedAt;
             this.pairedDays = pairedDays;
+            this.nearbyObservedSeconds = nearbyObservedSeconds;
             this.nearbyEstimatedSeconds = nearbyEstimatedSeconds;
+            this.nearbyProvisionalSeconds = nearbyProvisionalSeconds;
+            this.serverNow = serverNow;
+            this.countingState = countingState;
+            this.countingAnchorAt = countingAnchorAt;
+            this.countingLiveUntil = countingLiveUntil;
             this.nearbyLastProcessedAt = nearbyLastProcessedAt;
             this.nearbyConfidence = nearbyConfidence;
+            this.algorithmVersion = algorithmVersion;
+            this.includesLegacyEstimates = includesLegacyEstimates;
             this.proximityThresholdM = proximityThresholdM;
             this.locationByMe = locationByMe;
             this.locationByBoth = locationByBoth;
@@ -121,16 +156,19 @@ public final class TogetherTimeModels {
         public final String day;
         @Json(name = "estimated_seconds") public final long estimatedSeconds;
         public final boolean corrected;
+        @Json(name = "estimate_method") public final String estimateMethod;
         public final int revision;
         @Json(name = "corrected_by_display_name") public final String correctedByDisplayName;
         @Json(name = "correction_reason") public final String correctionReason;
 
         /** Creates a decoded history day. */
-        public HistoryDay(String day, long estimatedSeconds, boolean corrected, int revision,
-                String correctedByDisplayName, String correctionReason) {
+        public HistoryDay(String day, long estimatedSeconds, boolean corrected,
+                String estimateMethod, int revision, String correctedByDisplayName,
+                String correctionReason) {
             this.day = day;
             this.estimatedSeconds = estimatedSeconds;
             this.corrected = corrected;
+            this.estimateMethod = estimateMethod;
             this.revision = revision;
             this.correctedByDisplayName = correctedByDisplayName;
             this.correctionReason = correctionReason;

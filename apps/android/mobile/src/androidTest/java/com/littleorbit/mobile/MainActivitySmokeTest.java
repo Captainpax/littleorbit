@@ -10,6 +10,7 @@ import android.view.View;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.lifecycle.Lifecycle;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -48,25 +49,30 @@ public final class MainActivitySmokeTest {
     }
 
     @Test
-    public void featureActivitiesCreateTheirNativeViews() {
+    public void publicFeatureActivitiesCreateTheirNativeViews() {
         List<Class<? extends android.app.Activity>> activities = List.of(
                 SignInActivity.class,
-                PairingActivity.class,
-                QuizActivity.class,
-                CountdownActivity.class,
-                NotesActivity.class,
                 PrivacyActivity.class,
-                ArchivesActivity.class,
-                TogetherTimeActivity.class,
                 SettingsActivity.class,
                 AppUpdatesActivity.class,
                 ProfileCropActivity.class);
         for (Class<? extends android.app.Activity> activityType : activities) {
             try (ActivityScenario<? extends android.app.Activity> scenario =
                     ActivityScenario.launch(activityType)) {
+                assertTrue(
+                        activityType.getSimpleName() + " was destroyed during launch",
+                        scenario.getState() != Lifecycle.State.DESTROYED);
                 scenario.onActivity(
                         activity -> assertNotNull(activity.getWindow().getDecorView()));
             }
+        }
+    }
+
+    @Test
+    public void signedOutProtectedActivityClosesBeforeShowingRelationshipContent() {
+        try (ActivityScenario<PairingActivity> scenario =
+                ActivityScenario.launch(PairingActivity.class)) {
+            assertEquals(Lifecycle.State.DESTROYED, scenario.getState());
         }
     }
 

@@ -70,7 +70,7 @@ public final class DisplayCacheSynchronizer {
                 "primary",
                 Instant.parse(summary.pairedAt).atZone(java.time.ZoneOffset.UTC)
                         .toLocalDate().toEpochDay(),
-                summary.nearbyEstimatedSeconds,
+                summary.nearbyObservedSeconds,
                 instantMillis(summary.nearbyLastProcessedAt),
                 next == null ? "No countdown yet" : next.title,
                 next == null ? 0 : Instant.parse(next.occursAt).toEpochMilli(),
@@ -78,13 +78,14 @@ public final class DisplayCacheSynchronizer {
         RelationshipDisplayIdentity.Snapshot previous = relationshipIdentity.read();
         // A sign-out, unpair, or new relationship may finish while requests are in flight.
         if (!previous.equals(requestIdentity)) return;
-        String nextRelationshipId = RelationshipDisplayIdentity.relationshipId(summary.pairedAt);
+        String nextRelationshipId = RelationshipDisplayIdentity.canonicalId(
+                summary.relationshipId);
         if (!previous.active()
                 || !previous.relationshipId().equals(nextRelationshipId)) {
             cacheDao.clear();
         }
         RelationshipDisplayIdentity.Snapshot relationship =
-                relationshipIdentity.activate(summary.pairedAt);
+                relationshipIdentity.activate(summary.relationshipId);
         cacheDao.replace(cache);
         wearPublisher.publish(cache, relationship);
         notifyWidget();

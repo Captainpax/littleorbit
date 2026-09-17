@@ -17,7 +17,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 
-/** Verifies that RC6 preserves legacy display values while splitting their meaning. */
+/** Verifies explicit local migrations without retaining unbound relationship data. */
 @RunWith(AndroidJUnit4.class)
 public final class DatabaseMigrationTest {
     private static final String DATABASE_NAME = "rc6-migration-test";
@@ -48,6 +48,36 @@ public final class DatabaseMigrationTest {
             assertEquals("No countdown yet", text(cursor, "nextCountdownTitle"));
             assertEquals(1234L, value(cursor, "nextCountdownEpochMillis"));
             assertEquals(5678L, value(cursor, "cacheSyncedAtEpochMillis"));
+        }
+        database.close();
+    }
+
+    @Test
+    public void migrateFourToFiveDropsCoordinatesWithoutRelationshipIdentity() throws IOException {
+        String name = "location-generation-migration-test";
+        SupportSQLiteDatabase database = helper.createDatabase(name, 4);
+        database.execSQL(
+                "INSERT INTO queued_locations "
+                        + "(sampleId, encryptedPayload, recordedAtEpochMillis) "
+                        + "VALUES ('sample', 'sealed', 1234)");
+        database.close();
+
+        database = helper.runMigrationsAndValidate(
+                name, 5, true, DatabaseMigrations.MIGRATION_4_5);
+        try (Cursor rows = database.query("SELECT COUNT(*) FROM queued_locations")) {
+            assertTrue(rows.moveToFirst());
+            assertEquals(0L, rows.getLong(0));
+        }
+        try (Cursor columns = database.query("PRAGMA table_info(queued_locations)")) {
+            boolean relationshipId = false;
+            boolean generation = false;
+            while (columns.moveToNext()) {
+                String column = text(columns, "name");
+                relationshipId |= "relationshipId".equals(column);
+                generation |= "relationshipGeneration".equals(column);
+            }
+            assertTrue(relationshipId);
+            assertTrue(generation);
         }
         database.close();
     }

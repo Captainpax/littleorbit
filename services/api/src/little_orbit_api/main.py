@@ -18,7 +18,6 @@ from .routes import (
     couples,
     diagnostics,
     health,
-    locations,
     notes,
     notifications,
     pairing,
@@ -27,6 +26,7 @@ from .routes import (
     quizzes_v2,
     releases,
     smooches,
+    together_time_legacy,
     together_time_v2,
 )
 
@@ -62,8 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(quizzes.router)
     app.include_router(quizzes_v2.router)
     app.include_router(countdowns.router)
-    app.include_router(locations.router)
-    app.include_router(together_time_v2.router)
+    app.include_router(together_time_legacy.router)
     app.include_router(together_time_v2.v3_router)
     app.include_router(account.router)
     app.include_router(activity.router)

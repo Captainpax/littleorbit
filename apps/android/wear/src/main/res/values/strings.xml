@@ -2,7 +2,7 @@
     <string name="app_name">Little Orbit</string>
     <string name="open_phone_to_refresh">Open phone to refresh</string>
     <string name="open_phone_to_sync">Open phone to sync</string>
-    <string name="together_for">Together for</string>
+    <string name="together_for">Nearby together</string>
     <string name="unavailable">Unavailable</string>
     <string name="nearby_unavailable">Nearby estimate unavailable</string>
     <string name="relationship_unavailable">Relationship data unavailable</string>
@@ -17,8 +17,8 @@
     <string name="stale_open_phone">Stale · open phone</string>
     <string name="no_countdown">No countdown yet</string>
     <string name="relationship_summary">%1$s, %2$s</string>
-    <string name="complication_long">%1$s together · %2$s</string>
-    <string name="complication_long_stale">%1$s together · %2$s · stale</string>
+    <string name="complication_long">%1$s · %2$s</string>
+    <string name="complication_long_stale">%1$s · %2$s · stale</string>
     <string name="complication_stale_a11y">Little Orbit data is stale. Open the phone to sync.</string>
     <string name="complication_preview_short">42d</string>
     <string name="complication_preview_a11y">Little Orbit preview</string>
