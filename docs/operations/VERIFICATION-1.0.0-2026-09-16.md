@@ -41,8 +41,8 @@ Both APKs were built from the same source tree, verified with Android `apksigner
 
 | Artifact | Version code | Bytes | SHA-256 |
 | --- | ---: | ---: | --- |
-| `little-orbit-1.0.0.apk` | 23 | 36,246,289 | `741349a13e976e2f9396562a424161bcc857abe65d5948f4f64068dd756ae398` |
-| `little-orbit-wear-1.0.0.apk` | 18 | 14,189,878 | `4fdb58ab94b7912a72910d2a6163be648102992893d515bd4662d3f880c1e159` |
+| `little-orbit-1.0.0.apk` | 23 | 36,246,289 | `6a8d711eda3c662748e62cc3e0391135985ccf58123886c3f80651684ca500c0` |
+| `little-orbit-wear-1.0.0.apk` | 18 | 14,189,878 | `43068ae14877ee0e158f6498a66f5987d56642521a8c4109372434e8c7fe9cd3` |
 
 The compatibility floor is phone code 23 with enforcement scheduled for `2026-09-17T09:30:00Z`, leaving a bounded RC17 update window.
 

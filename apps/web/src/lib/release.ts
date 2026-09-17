@@ -74,7 +74,7 @@ export const currentRelease: ReleaseMetadata = {
   versionCode: 23,
   minimumSupportedVersionCode: 23,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "741349a13e976e2f9396562a424161bcc857abe65d5948f4f64068dd756ae398",
+  sha256: "6a8d711eda3c662748e62cc3e0391135985ccf58123886c3f80651684ca500c0",
   releaseNotes: [
     "Evaluates every chronological observation so unequal phone cadence cannot hide intervening evidence.",
     "Requires fresh evidence from both phones and bounds counted intervals and live projection to five minutes.",
@@ -86,7 +86,7 @@ export const currentRelease: ReleaseMetadata = {
   apkUrl: hostedApkPath("1.0.0"),
   wear: {
     apkUrl: hostedWearApkPath("1.0.0"),
-    sha256: "4fdb58ab94b7912a72910d2a6163be648102992893d515bd4662d3f880c1e159",
+    sha256: "43068ae14877ee0e158f6498a66f5987d56642521a8c4109372434e8c7fe9cd3",
     sizeBytes: 14189878,
     versionCode: 18,
     minimumAndroid: 30,
