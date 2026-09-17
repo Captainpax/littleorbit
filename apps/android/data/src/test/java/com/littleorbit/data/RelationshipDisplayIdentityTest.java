@@ -2,7 +2,6 @@ package com.littleorbit.data;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -10,13 +9,14 @@ import org.junit.Test;
 /** Verifies relationship identity changes and purge-generation ordering. */
 public final class RelationshipDisplayIdentityTest {
     @Test
-    public void canonicalPairInstantProducesStableOpaqueIdentity() {
-        String utc = RelationshipDisplayIdentity.relationshipId("2026-09-14T18:00:00Z");
-        String offset = RelationshipDisplayIdentity.relationshipId("2026-09-14T11:00:00-07:00");
+    public void serverRelationshipIdentityIsCanonicalized() {
+        String upper = RelationshipDisplayIdentity.canonicalId(
+                "AEB31136-E199-4CC5-90AE-A5D07ED22DF4");
+        String lower = RelationshipDisplayIdentity.canonicalId(
+                "aeb31136-e199-4cc5-90ae-a5d07ed22df4");
 
-        assertEquals(utc, offset);
-        assertEquals(32, utc.length());
-        assertNotEquals("2026-09-14T18:00:00Z", utc);
+        assertEquals(lower, upper);
+        assertEquals(36, upper.length());
     }
 
     @Test

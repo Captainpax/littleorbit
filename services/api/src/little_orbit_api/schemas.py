@@ -327,6 +327,7 @@ class LocationSampleRequest(StrictModel):
 class LocationBatchRequest(StrictModel):
     """Bounded offline upload whose sample IDs make retries harmless."""
 
+    relationship_id: UUID
     samples: list[LocationSampleRequest] = Field(min_length=1, max_length=48)
 
 
@@ -363,52 +364,31 @@ class TogetherCorrectionRequest(StrictModel):
     reason: Annotated[StrictText, Field(min_length=3, max_length=240)]
 
 
-class RelationshipStartProposalRequest(StrictModel):
-    """Retry-safe proposal for the couple's shared relationship start date."""
-
-    operation_id: UUID
-    proposed_date: date
-
-
-class RelationshipStartDecisionRequest(StrictModel):
-    """Retry-safe decision whose allowed actions depend on the current actor."""
-
-    operation_id: UUID
-    decision: Literal["accept", "decline", "cancel"]
-
-
-class RelationshipStartProposalResponse(StrictModel):
-    """Content-safe pending or completed relationship-date proposal state."""
-
-    id: UUID
-    proposed_date: date
-    proposed_by_me: bool
-    status: Literal["pending", "accepted", "declined", "cancelled", "expired"]
-    expires_at: datetime
-
-
-class TogetherSummaryV2(StrictModel):
-    """Relationship age and separate location-derived nearby estimate."""
-
-    relationship_start_date: date | None
-    relationship_days: int | None
-    nearby_estimated_seconds: int
-    nearby_last_processed_at: datetime | None
-    proximity_threshold_m: float
-    location_enabled_by_me: bool
-    location_enabled_by_both: bool
-    label: Literal["estimate"]
-    pending_start_date: RelationshipStartProposalResponse | None
-
-
 class TogetherSummaryV3(StrictModel):
-    """Pair-age clock plus a separate, explicitly estimated nearby total."""
+    """Observed nearby time plus a bounded two-phone live projection."""
 
+    relationship_id: UUID
     paired_at: datetime
     paired_days: int
+    nearby_observed_seconds: int
     nearby_estimated_seconds: int
+    nearby_provisional_seconds: int
+    server_now: datetime
+    counting_state: Literal[
+        "sharing_disabled",
+        "waiting_for_partner",
+        "confirming",
+        "nearby",
+        "apart",
+        "poor_accuracy",
+        "stale",
+    ]
+    counting_anchor_at: datetime | None
+    counting_live_until: datetime | None
     nearby_last_processed_at: datetime | None
     nearby_confidence: Literal["unavailable", "low", "medium", "high"]
+    algorithm_version: int
+    includes_legacy_estimates: bool
     proximity_threshold_m: float
     location_enabled_by_me: bool
     location_enabled_by_both: bool
@@ -421,6 +401,7 @@ class TogetherHistoryDay(StrictModel):
     day: date
     estimated_seconds: int
     corrected: bool
+    estimate_method: Literal["legacy_v2", "mixed", "current_v3", "corrected"]
     revision: int = 0
     corrected_by_display_name: str | None = None
     correction_reason: str | None = None

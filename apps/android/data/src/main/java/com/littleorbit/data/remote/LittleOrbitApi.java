@@ -327,7 +327,7 @@ public interface LittleOrbitApi {
     /** Uploads a bounded encrypted-queue batch after consent checks. */
     @POST("api/v3/together-time/location-batches")
     Call<TogetherTimeModels.LocationBatchResult> uploadLocations(
-            @Body ApiModels.LocationBatch request);
+            @Body TogetherTimeModels.LocationBatch request);
 
     /** Applies an optimistic correction to one completed UTC day. */
     @PUT("api/v3/together-time/days/{day}")

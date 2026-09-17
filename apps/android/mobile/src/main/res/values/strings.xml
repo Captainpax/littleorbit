@@ -337,10 +337,10 @@
     <string name="no_archives">No past pairing archives.</string>
     <string name="together_details">Together-time details</string>
     <string name="together_summary_v2">%1$s\nNearby estimate: %2$dh %3$dm\nLast location processed: %4$s</string>
-    <string name="nearby_collection_active">Both partners enabled location. Two matched samples begin an estimate; this phone samples every five minutes while tracking runs, with a 15-minute fallback.</string>
+    <string name="nearby_collection_active">Both partners enabled location. Two nearby observations begin an estimate; this phone samples every two minutes while tracking runs, with a 15-minute fallback.</string>
     <string name="visual_nearby_summary">%1$d h %2$d m together\nNearby estimate · last matched sample %3$s\nWithin %4$.0f m</string>
     <string name="nearby_history_title">Nearby-time history</string>
-    <string name="correct_estimate_title">Correct an estimated minute</string>
+    <string name="correct_estimate_title">Correct a completed day</string>
     <string name="start_date_unset">Relationship start date not set</string>
     <string name="start_date_hint">Start date (YYYY-MM-DD)</string>
     <string name="propose_start_date">Propose start date</string>
@@ -354,9 +354,9 @@
     <string name="correction_hours">Hours together (0–24)</string>
     <string name="correction_minutes">Minutes (0–59)</string>
     <string name="nearby_confidence">Estimate confidence: %1$s</string>
-    <string name="confidence_high">high · updated within 30 minutes</string>
-    <string name="confidence_medium">medium · updated within 2 hours</string>
-    <string name="confidence_low">low · updated within 24 hours</string>
+    <string name="confidence_high">high · evidence from both phones within 2 minutes</string>
+    <string name="confidence_medium">medium · evidence from both phones within 5 minutes</string>
+    <string name="confidence_low">low · retained estimate, current evidence is stale</string>
     <string name="confidence_unavailable">unavailable · waiting for matched samples</string>
     <string name="corrected_suffix"> · corrected by %1$s</string>
     <string name="a_partner">a partner</string>
@@ -487,4 +487,23 @@
     <string name="share_crash_diagnostics_summary">Off by default. When enabled, Little Orbit may send app class, method, line, and version identifiers after a crash. Messages, document text, file paths, account details, and locations are never included.</string>
     <string name="notification_choices_saved">Notification choices saved.</string>
     <string name="open_android_notification_settings">Open Android notification settings</string>
+    <string name="nearby_time_title">Nearby time together</string>
+    <string name="nearby_duration_placeholder">0 h 00 m 00 s</string>
+    <string name="nearby_duration">%1$d h %2$02d m %3$02d s</string>
+    <string name="nearby_duration_days">%1$d d %2$02d h %3$02d m %4$02d s</string>
+    <string name="nearby_duration_spoken">%1$s, %2$s, %3$s, %4$s nearby together</string>
+    <string name="nearby_evidence">Latest shared evidence: %1$s\nConfidence: %2$s · Within %3$.0f m</string>
+    <string name="nearby_state_counting">Likely nearby · estimating live</string>
+    <string name="nearby_state_confirming">Likely nearby · waiting for one more observation</string>
+    <string name="nearby_state_apart">Current evidence suggests you are apart</string>
+    <string name="nearby_state_poor_accuracy">Location accuracy is too broad to decide</string>
+    <string name="nearby_state_stale">Waiting for fresh evidence from both phones</string>
+    <string name="nearby_adjusted">The estimate adjusted after newer evidence arrived.</string>
+    <string name="nearby_legacy_explanation">Some older time used the previous estimate method. New time uses the current method.</string>
+    <string name="legacy_estimate_suffix"> · previous estimate method</string>
+    <string name="mixed_estimate_suffix"> · mixed estimate methods</string>
+    <plurals name="days"><item quantity="one">%d day</item><item quantity="other">%d days</item></plurals>
+    <plurals name="hours"><item quantity="one">%d hour</item><item quantity="other">%d hours</item></plurals>
+    <plurals name="minutes"><item quantity="one">%d minute</item><item quantity="other">%d minutes</item></plurals>
+    <plurals name="seconds"><item quantity="one">%d second</item><item quantity="other">%d seconds</item></plurals>
 </resources>

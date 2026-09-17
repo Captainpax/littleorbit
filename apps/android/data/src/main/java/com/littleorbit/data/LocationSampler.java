@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.SystemClock;
 import androidx.core.content.ContextCompat;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
@@ -32,24 +33,35 @@ public final class LocationSampler {
     /** Sanitized result used to stop immediately when permission or consent disappears. */
     public enum Outcome { COLLECTED, TEMPORARY_FAILURE, DISABLED }
 
+    private enum ConsentStatus { GRANTED, DENIED, UNKNOWN }
+
     private final Context context;
     private final LocationQueueDao queue;
     private final SessionStore cipher;
     private final LittleOrbitApi api;
+    private final RelationshipDisplayIdentity relationshipIdentity;
 
     /** Creates a sampler whose queued coordinates are always Keystore encrypted. */
     @Inject
     public LocationSampler(@ApplicationContext Context context, LocationQueueDao queue,
-            SessionStore cipher, LittleOrbitApi api) {
+            SessionStore cipher, LittleOrbitApi api,
+            RelationshipDisplayIdentity relationshipIdentity) {
         this.context = context;
         this.queue = queue;
         this.cipher = cipher;
         this.api = api;
+        this.relationshipIdentity = relationshipIdentity;
     }
 
     /** Collects one sample at the requested fused-location priority. */
     public Outcome collect(boolean highAccuracy) {
-        if (!hasPermissions() || serverConsentDenied()) {
+        RelationshipDisplayIdentity.Snapshot relationship = relationshipIdentity.read();
+        if (!relationship.active() || !hasPermissions()) {
+            queue.clear();
+            return Outcome.DISABLED;
+        }
+        ConsentStatus consent = serverConsent(relationship);
+        if (consent == ConsentStatus.DENIED) {
             queue.clear();
             return Outcome.DISABLED;
         }
@@ -63,7 +75,7 @@ public final class LocationSampler {
                     25,
                     TimeUnit.SECONDS);
             if (!usable(location)) return Outcome.TEMPORARY_FAILURE;
-            enqueue(location);
+            enqueue(location, relationship);
             WorkManager.getInstance(context).enqueue(
                     new OneTimeWorkRequest.Builder(LocationUploadWorker.class).build());
             return Outcome.COLLECTED;
@@ -75,15 +87,22 @@ public final class LocationSampler {
         }
     }
 
-    private boolean serverConsentDenied() {
+    private ConsentStatus serverConsent(RelationshipDisplayIdentity.Snapshot relationship) {
         try {
             Response<ApiModels.Preferences> response = api.preferences().execute();
             if (response.isSuccessful() && response.body() != null) {
-                return !response.body().locationByBoth;
+                boolean current = relationship.relationshipId().equals(response.body().coupleId);
+                return current && response.body().locationByBoth
+                        ? ConsentStatus.GRANTED : ConsentStatus.DENIED;
             }
-            return response.code() >= 400 && response.code() < 500;
+            int status = response.code();
+            if (status == 401 || status == 403 || status == 409
+                    || status == 410 || status == 426) {
+                return ConsentStatus.DENIED;
+            }
+            return ConsentStatus.UNKNOWN;
         } catch (IOException offline) {
-            return false;
+            return ConsentStatus.UNKNOWN;
         }
     }
 
@@ -95,7 +114,8 @@ public final class LocationSampler {
                         == PackageManager.PERMISSION_GRANTED;
     }
 
-    private void enqueue(Location location) throws Exception {
+    private void enqueue(Location location, RelationshipDisplayIdentity.Snapshot relationship)
+            throws Exception {
         long recordedAt = location.getTime();
         JSONObject payload = new JSONObject()
                 .put("recorded_at", Instant.ofEpochMilli(recordedAt).toString())
@@ -103,7 +123,8 @@ public final class LocationSampler {
                 .put("longitude", location.getLongitude())
                 .put("accuracy_m", location.getAccuracy());
         queue.insert(new QueuedLocationEntity(
-                UUID.randomUUID().toString(), cipher.seal(payload.toString()), recordedAt));
+                UUID.randomUUID().toString(), relationship.relationshipId(),
+                relationship.generation(), cipher.seal(payload.toString()), recordedAt));
         queue.trimToLimit();
     }
 
@@ -111,7 +132,9 @@ public final class LocationSampler {
         if (location == null || !location.hasAccuracy() || location.getAccuracy() > 200) {
             return false;
         }
-        long ageMillis = System.currentTimeMillis() - location.getTime();
-        return ageMillis >= 0 && ageMillis <= TimeUnit.MINUTES.toMillis(2);
+        long fixNanos = location.getElapsedRealtimeNanos();
+        long ageNanos = SystemClock.elapsedRealtimeNanos() - fixNanos;
+        return fixNanos > 0 && ageNanos >= 0
+                && ageNanos <= TimeUnit.MINUTES.toNanos(2);
     }
 }

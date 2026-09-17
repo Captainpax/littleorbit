@@ -13,7 +13,7 @@ const contracts = [
   ["v1", "orbit-profile"], ["v1", "release-history"],
   ["v1", "smooch"],
   ["v2", "question-batch"], ["v2", "quiz-day"],
-  ["v3", "together-time"],
+  ["v3", "location-batch"], ["v3", "together-time"],
 ] as const;
 
 function readJson(file: string): unknown {

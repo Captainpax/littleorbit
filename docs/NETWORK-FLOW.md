@@ -306,32 +306,34 @@ sequenceDiagram
     API->>DB: Atomically create couple(created_at = UTC now)
     A->>API: GET together-time v3
     API->>DB: Authorize current member before couple lookup
-    API-->>A: paired_at metadata + nearby estimate
+    API-->>A: paired_at metadata + observed nearby estimate and bounded live state
     B->>API: GET together-time v3
-    API-->>B: Same immutable paired_at metadata + nearby estimate
+    API-->>B: Same immutable paired_at metadata + observed nearby estimate and bounded live state
 ```
 
-The confirmed pair transaction retains the immutable relationship origin without asking either partner to choose a date. RC17 phone, widget, tile, and complication surfaces do not present that age as time spent together; they lead with the accuracy-aware nearby estimate. Older date-proposal endpoints remain temporarily available for protocol compatibility but current clients do not render or mutate them.
+The confirmed pair transaction retains the immutable relationship origin without asking either partner to choose a date. Phone, widget, tile, and complication surfaces do not present that age as time spent together; they lead with the accuracy-aware nearby estimate. Legacy v1/v2 together-time writers return `410 Gone`; supported clients use the v3 contract.
 
 ## Together-time processing
 
 ```mermaid
 flowchart TD
-    Consent[Both users enable sharing] --> FGS[Visible foreground service<br/>high accuracy about every 5 min]
+    Consent[Both users enable sharing] --> FGS[Visible foreground service<br/>high accuracy about every 2 min]
     SignIn[Sign-in or signed-in process start] --> Fallback[Re-arm WorkManager recovery<br/>about every 15 min]
     Consent --> Fallback
-    FGS --> Samples[Queue bounded encrypted samples<br/>ID, UTC time, accuracy, coordinate]
+    FGS --> Samples[Queue bounded encrypted samples<br/>relationship + generation + ID + UTC + accuracy + coordinate]
     Fallback --> Samples
-    Samples --> Upload[Authenticated idempotent batch]
-    Upload --> Checks{Authorized, consent current,<br/>within time/accuracy bounds, unique}
+    Samples --> Upload[Authenticated v3 idempotent batch]
+    Upload --> Checks{Authorize and lock exact couple,<br/>consent current, bounded values, unique ID}
     Checks -->|reject| Audit[Privacy-safe rejection event]
-    Checks -->|accept| Match[Deterministic one-to-one match<br/>within 16 minutes]
-    Match --> Threshold{Two consecutive confident pairs<br/>within 100 m and at most 20 min apart?}
-    Threshold -->|yes| Bucket[Replace rolling uncorrected<br/>UTC-minute estimates]
+    Checks -->|accept| Timeline[Chronological union of both streams<br/>evaluate every observation]
+    Timeline --> Threshold{Two consecutive nearby decisions?<br/>sample skew and interval each at most 5 min}
+    Threshold -->|yes| Bucket[Replace rolling uncorrected<br/>UTC-minute observed estimates]
     Threshold -->|no| Skip[Do not count the interval]
-    Bucket --> Estimate[Update aggregate estimate + freshness<br/>from both member streams]
+    Bucket --> Estimate[Observed total + mutual freshness<br/>from both member streams]
     Skip --> Estimate
-    Estimate --> Cache[Minimal widget/watch cache]
+    Estimate --> Lease[Optional display-only live lease<br/>expires 5 min after older member evidence]
+    Lease --> Phone[Phone ticks with elapsedRealtime<br/>and polls every 30 s]
+    Estimate --> Cache[Widget/watch cache observed total only]
     Samples --> Expiry[Schedule expiry at 23 h 55 min<br/>Defensive hard delete at 24 h]
     OptOut[Either partner opts out or permission is removed] --> StopLocal[Stop service + clear local queue]
     StopLocal --> Delete[Delete both partners' raw coordinates]
@@ -340,7 +342,9 @@ flowchart TD
     CorrectionAudit --> Estimate
 ```
 
-Collection may continue into the encrypted local queue while the network is offline. Upload and server processing resume later, except that a sample already inside the five-minute cleanup margin is rejected instead of being reintroduced near its hard retention ceiling. Sign-in and signed-in process startup re-arm recovery work after local account cleanup, while a paired foreground screen reconciles current permission and both consent states. Freshness uses the older newest retained sample from the two streams, so one phone cannot make a stalled pair estimate appear current. Two consecutive confident nearby pairs are still required; continuous collection improves the chance of collecting evidence without converting sparse or distant samples into false together-time.
+Collection may continue into the relationship-scoped encrypted queue while the network is offline or temporarily throttled. Upload and server processing resume later, except that a sample already inside the five-minute cleanup margin is rejected instead of being reintroduced near its hard retention ceiling. Sign-in and signed-in process startup re-arm recovery work after local account cleanup, while a paired foreground screen reconciles current permission and both consent states.
+
+The estimator walks the chronological union of both sample streams. An observation from the faster phone can therefore end or weaken an interval instead of disappearing between two greedy matches. Nearby credit requires two consecutive nearby decisions, no more than five minutes between their bounding instants, and no more than five minutes between the two phones' evidence. Freshness and any live deadline use the older member's newest evidence, so one phone cannot make a stalled pair estimate appear current. The server persists only coordinate-free observed seconds. The visible phone screen may animate a provisional value with Android's monotonic clock until the explicit deadline, then freezes; a later authoritative response may retract unconfirmed display-only seconds. Widget and Wear records never extrapolate.
 
 ## Smooch delivery and weekly history
 

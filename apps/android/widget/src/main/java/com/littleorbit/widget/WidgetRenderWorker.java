@@ -69,6 +69,7 @@ public final class WidgetRenderWorker extends Worker {
                 .addMigrations(DatabaseMigrations.MIGRATION_1_2)
                 .addMigrations(DatabaseMigrations.MIGRATION_2_3)
                 .addMigrations(DatabaseMigrations.MIGRATION_3_4)
+                .addMigrations(DatabaseMigrations.MIGRATION_4_5)
                 .build();
             DisplayCacheEntity cache = database.displayCache().read();
             RelationshipDisplayIdentity.Snapshot after = identity.read();

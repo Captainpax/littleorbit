@@ -70,25 +70,25 @@ export function formatReleaseDate(publishedAt: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0-rc.17",
-  versionCode: 22,
-  minimumSupportedVersionCode: 6,
+  version: "1.0.0",
+  versionCode: 23,
+  minimumSupportedVersionCode: 23,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "2f74ffaf7c3ea3b5bf98095bec1f34034cbda33bd8e6fdab0b537a3d7cd6a819",
+  sha256: "6a8d711eda3c662748e62cc3e0391135985ccf58123886c3f80651684ca500c0",
   releaseNotes: [
-    "Stops repeated Save and autosave actions from creating duplicate Our Space documents.",
-    "Restarts consented nearby-time collection after sign-in, app restart, and Android process recovery.",
-    "Requires fresh samples from both phones before the nearby estimate is shown as current.",
-    "Shows estimated nearby duration instead of relationship age across phone, widget, and Wear surfaces.",
-    "Keeps notifications fully self-hosted with no Firebase or hosted push provider.",
+    "Evaluates every chronological observation so unequal phone cadence cannot hide intervening evidence.",
+    "Requires fresh evidence from both phones and bounds counted intervals and live projection to five minutes.",
+    "Shows a monotonic foreground timer with clear nearby, confirming, apart, inaccurate, waiting, and stale states.",
+    "Scopes encrypted offline samples to the exact relationship and retains them through temporary failures.",
+    "Keeps passive widget and Wear displays on authoritative observed nearby time.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.17",
-  apkUrl: hostedApkPath("1.0.0-rc.17"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0",
+  apkUrl: hostedApkPath("1.0.0"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0-rc.17"),
-    sha256: "d594533bebab85921a075d009378c6183015754479acf059c78c646075e33b0a",
-    sizeBytes: 14189898,
-    versionCode: 17,
+    apkUrl: hostedWearApkPath("1.0.0"),
+    sha256: "43068ae14877ee0e158f6498a66f5987d56642521a8c4109372434e8c7fe9cd3",
+    sizeBytes: 14189878,
+    versionCode: 18,
     minimumAndroid: 30,
   },
   published: true,
@@ -175,7 +175,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-15T04:45:08.326115Z",
+    publishedAt: "2026-09-17T03:06:07Z",
   }];
 }
 

@@ -19,7 +19,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 
-/** Visible five-minute location sampler started only from a user-visible activity. */
+/** Visible two-minute location sampler started only from a user-visible activity. */
 @AndroidEntryPoint
 public final class ForegroundLocationService extends Service {
     private static final int NOTIFICATION_ID = 7301;
@@ -56,7 +56,7 @@ public final class ForegroundLocationService extends Service {
             thread.setDaemon(true);
             return thread;
         });
-        scheduler.scheduleWithFixedDelay(this::sample, 0, 5, TimeUnit.MINUTES);
+        scheduler.scheduleWithFixedDelay(this::sample, 0, 2, TimeUnit.MINUTES);
     }
 
     @Override

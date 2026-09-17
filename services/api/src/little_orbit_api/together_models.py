@@ -83,6 +83,9 @@ class TogetherDay(Base):
             "(corrected_seconds >= 0 AND corrected_seconds <= 86400)"
         ),
         CheckConstraint("revision >= 0"),
+        CheckConstraint(
+            "estimate_method IN ('legacy_v2', 'mixed', 'current_v3')"
+        ),
         Index("ix_together_days_couple_day", "couple_id", "day"),
     )
 
@@ -92,6 +95,9 @@ class TogetherDay(Base):
     )
     day: Mapped[date] = mapped_column(Date, nullable=False)
     estimated_seconds: Mapped[int] = mapped_column(nullable=False, default=0)
+    estimate_method: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="current_v3"
+    )
     corrected_seconds: Mapped[int | None] = mapped_column()
     revision: Mapped[int] = mapped_column(nullable=False, default=0)
     corrected_by: Mapped[UUID | None] = mapped_column(

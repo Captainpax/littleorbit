@@ -62,4 +62,19 @@ public final class DatabaseMigrations {
             database.execSQL("ALTER TABLE display_cache_rc6 RENAME TO display_cache");
         }
     };
+
+    /** Clears unbound coordinates and scopes every future row to one relationship generation. */
+    public static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("DROP TABLE queued_locations");
+            database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS queued_locations ("
+                            + "sampleId TEXT NOT NULL PRIMARY KEY,"
+                            + "relationshipId TEXT NOT NULL,"
+                            + "relationshipGeneration INTEGER NOT NULL,"
+                            + "encryptedPayload TEXT NOT NULL,"
+                            + "recordedAtEpochMillis INTEGER NOT NULL)");
+        }
+    };
 }

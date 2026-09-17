@@ -6,7 +6,7 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.0 release candidate. RC17 stops repeated saves from creating duplicate Our Space documents, restores consented nearby collection after sign-in or process recovery, and requires current evidence from both phones before calling the estimate fresh. Phone, widget, and Wear surfaces now show estimated nearby duration instead of pairing age as time together. Partner alerts remain entirely on Little Orbit's authenticated WebSocket and HTTPS paths, with no hosted push provider. The complete two-physical-phone, battery, privacy/permission, DHCP-reservation, and legal review gates remain open, so do not use the public deployment for real relationship data yet.
+> **Project status:** 1.0 stable release. Together Time now evaluates every chronological observation, requires current evidence from both phones, and gives the foreground phone only a five-minute server-bounded live projection. Widget and Wear surfaces stay on authoritative observed nearby time. Partner alerts remain entirely on Little Orbit's authenticated WebSocket and HTTPS paths, with no hosted push provider. Long-term two-phone battery and OEM reliability measurements continue as 1.x work.
 
 ## What 1.0 includes
 
@@ -18,7 +18,7 @@ Little Orbit is a free and open couples platform for staying curious, sharing sm
 - A content-free 30-day activity panel for note, attachment, countdown, quiz, and Smooch events, with a private seen position for each partner.
 - Responsive Android navigation: a hamburger or left-edge swipe opens the drawer on phones, a bounded persistent rail stays visible on wide screens, and the right action panel appears only when the current screen has actions.
 - Independent Home, Settings, and App updates destinations with a visible current-location state and guest-safe navigation filtering.
-- Estimated nearby time from mutually consented, accuracy-aware samples, with freshness supported by both phones. The confirmed pairing instant remains relationship metadata and is not presented as measured time spent together.
+- Estimated nearby time from mutually consented, accuracy-aware chronological evidence, with freshness supported by both phones. The detail screen animates seconds only through a short server deadline; passive surfaces never extrapolate. The confirmed pairing instant remains relationship metadata and is not presented as measured time spent together.
 - A dedicated Smooch tab using nine fixed emoji, a five-per-hour sender limit, orbit-pulse confirmation, per-device notifications, weekly totals, and retained history.
 - Optional account-synced partner alerts for Smooches, the first document edit, countdown changes, daily quiz availability, partner completion, and shared results, with generic lock-screen text, independent delivery to each installation, authenticated first-party foreground hints, immediate opt-out cleanup, and self-hosted background polling. Android may delay background checks under Doze or manufacturer battery rules.
 - Android home widget, Wear OS launcher, tile, and watch complication led by estimated nearby duration with honest fresh, stale, and unavailable states. The widget selects a compact layout when vertically resized. Relationship-scoped generations purge every surface on sign-out, unpair, or inactive pairing; a disconnected watch deletes its cache after 24 hours.
@@ -61,7 +61,7 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.0-rc.17`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0-rc.17) is the current signed release candidate. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.17/apk) is 36,221,117 bytes with SHA-256 `2f74ffaf7c3ea3b5bf98095bec1f34034cbda33bd8e6fdab0b537a3d7cd6a819`. The independently versioned 14,189,898-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0-rc.17/wear-apk) is version code 17 with SHA-256 `d594533bebab85921a075d009378c6183015754479acf059c78c646075e33b0a`. Both artifacts retain the pinned [signing certificate](docs/signing/README.md), and GitHub mirrors the exact files and source history. Notifications are fully self-hosted; a visible app receives authenticated WebSocket hints and background WorkManager polls the same API, subject to Android battery delays. RC10.1 and RC11.1 require one manual update because their already-installed updater abandons its package session; automatic updates work after crossing that boundary. This remains a test release until the complete real-device launch gate passes.
+[`1.0.0`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0) is the current signed stable release. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0/apk) is 36,246,289 bytes with SHA-256 `6a8d711eda3c662748e62cc3e0391135985ccf58123886c3f80651684ca500c0`. The independently versioned 14,189,878-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0/wear-apk) is version code 18 with SHA-256 `43068ae14877ee0e158f6498a66f5987d56642521a8c4109372434e8c7fe9cd3`. Both artifacts retain the pinned [signing certificate](docs/signing/README.md). GitHub remains the canonical source history while APK bytes are served by Little Orbit's first-party API. Notifications are fully self-hosted; a visible app receives authenticated WebSocket hints and background WorkManager polls the same API, subject to Android battery delays. RC10.1 and RC11.1 require one manual update because their already-installed updater abandons its package session; automatic updates work after crossing that boundary.
 
 ## Privacy promise
 
@@ -80,7 +80,7 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Deployment runbook](docs/operations/DEPLOYMENT.md)
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
 - [Documentation map](docs/DOCUMENTATION-MAP.md)
-- [Latest verification record](docs/operations/VERIFICATION-RC17-2026-09-15.md)
+- [Latest verification record](docs/operations/VERIFICATION-1.0.0-2026-09-16.md)
 
 ## License and support
 

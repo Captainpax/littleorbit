@@ -131,11 +131,13 @@ public final class DeviceSetupActivity extends InsetAwareActivity {
         binding.locationStatus.setText(R.string.loading);
         ApiModels.PreferencesMutation mutation =
                 new ApiModels.PreferencesMutation(null, true, null);
-        AsyncUi.observe(this, orbit.updatePreferences(mutation), binding.locationStatus, result ->
-                binding.locationStatus.setText(
-                        result.locationByBoth
-                                ? R.string.location_ready_both
-                                : R.string.location_waiting_partner));
+        AsyncUi.observe(this, orbit.updatePreferences(mutation), binding.locationStatus, result -> {
+            NearbyTrackingReconciler.apply(this, result);
+            binding.locationStatus.setText(
+                    result.locationByBoth
+                            ? R.string.location_ready_both
+                            : R.string.location_waiting_partner);
+        });
     }
 
     private void refreshStatus() {

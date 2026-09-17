@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from little_orbit_api.domain.location import (
+    MAX_MUTUAL_EVIDENCE_AGE,
     PRIVACY_MAINTENANCE_INTERVAL,
     RAW_LOCATION_RETENTION,
     Point,
@@ -64,28 +65,72 @@ def test_raw_location_expiry_requires_an_absolute_instant() -> None:
 
 def test_nearby_estimate_counts_interval_between_confident_samples() -> None:
     start = datetime(2026, 9, 12, 10, 2, 30, tzinfo=UTC)
-    left = [_sample("left-a", start), _sample("left-b", start + timedelta(minutes=15))]
+    left = [_sample("left-a", start), _sample("left-b", start + timedelta(minutes=5))]
     right = [
         _sample("right-a", start + timedelta(seconds=20)),
-        _sample("right-b", start + timedelta(minutes=15, seconds=20)),
+        _sample("right-b", start + timedelta(minutes=5, seconds=20)),
     ]
 
     buckets = estimate_nearby_minutes(left, right)
 
-    assert sum(item.duration_seconds for item in buckets) == 15 * 60
+    assert sum(item.duration_seconds for item in buckets) == 5 * 60
     assert len({item.bucket_start for item in buckets}) == len(buckets)
 
 
 def test_nearby_estimate_breaks_on_uncertainty_and_long_gap() -> None:
     start = datetime(2026, 9, 12, 10, tzinfo=UTC)
-    good = [_sample("a", start), _sample("b", start + timedelta(minutes=21))]
+    good = [_sample("a", start), _sample("b", start + timedelta(minutes=6))]
     poor = [
         _sample("c", start, accuracy=80),
-        _sample("d", start + timedelta(minutes=21), accuracy=80),
+        _sample("d", start + timedelta(minutes=6), accuracy=80),
     ]
 
     assert estimate_nearby_minutes(good, good) == []
     assert estimate_nearby_minutes(good, poor) == []
+
+
+def test_intervening_apart_reading_breaks_asymmetric_stream() -> None:
+    start = datetime(2026, 9, 16, 10, tzinfo=UTC)
+    left = [
+        _sample("left-0", start),
+        TimedPoint("left-5", start + timedelta(minutes=5), Point(45, -121.99, 5)),
+        _sample("left-10", start + timedelta(minutes=10)),
+    ]
+    right = [_sample("right-0", start), _sample("right-10", start + timedelta(minutes=10))]
+
+    assert estimate_nearby_minutes(left, right) == []
+
+
+def test_unequal_cadence_is_symmetric() -> None:
+    start = datetime(2026, 9, 16, 10, tzinfo=UTC)
+    fast = [
+        _sample(f"fast-{minute}", start + timedelta(minutes=minute))
+        for minute in (0, 5, 10)
+    ]
+    slow = [
+        _sample(f"slow-{minute}", start + timedelta(minutes=minute))
+        for minute in (0, 10)
+    ]
+
+    forward = estimate_nearby_minutes(fast, slow)
+    reverse = estimate_nearby_minutes(slow, fast)
+
+    assert sum(item.duration_seconds for item in forward) == 10 * 60
+    assert forward == reverse
+
+
+def test_subsecond_fragment_is_not_inflated() -> None:
+    start = datetime(2026, 9, 16, 10, tzinfo=UTC)
+    end = start + timedelta(milliseconds=500)
+
+    assert estimate_nearby_minutes(
+        [_sample("left-0", start), _sample("left-1", end)],
+        [_sample("right-0", start), _sample("right-1", end)],
+    ) == []
+
+
+def test_evidence_policy_is_explicitly_five_minutes() -> None:
+    assert timedelta(minutes=5) == MAX_MUTUAL_EVIDENCE_AGE
 
 
 def test_location_freshness_requires_current_samples_from_both_members() -> None:

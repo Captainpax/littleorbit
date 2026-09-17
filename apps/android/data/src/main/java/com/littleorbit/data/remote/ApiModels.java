@@ -296,16 +296,6 @@ public final class ApiModels {
         }
     }
 
-    /** Bounded retry-safe location upload. */
-    public static final class LocationBatch {
-        public final List<LocationSample> samples;
-
-        /** Creates an immutable upload batch. */
-        public LocationBatch(List<LocationSample> samples) {
-            this.samples = List.copyOf(samples);
-        }
-    }
-
     /** Coordinate-free ingestion acknowledgement. */
     public static final class LocationBatchResult {
         public final int accepted;

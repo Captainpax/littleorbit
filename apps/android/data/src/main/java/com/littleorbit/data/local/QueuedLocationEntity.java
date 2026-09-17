@@ -8,15 +8,21 @@ import androidx.room.PrimaryKey;
 @Entity(tableName = "queued_locations")
 public final class QueuedLocationEntity {
     @PrimaryKey @NonNull public final String sampleId;
+    @NonNull public final String relationshipId;
+    public final long relationshipGeneration;
     @NonNull public final String encryptedPayload;
     public final long recordedAtEpochMillis;
 
     /** Creates an encrypted queue row; coordinates never occupy database columns. */
     public QueuedLocationEntity(
             @NonNull String sampleId,
+            @NonNull String relationshipId,
+            long relationshipGeneration,
             @NonNull String encryptedPayload,
             long recordedAtEpochMillis) {
         this.sampleId = sampleId;
+        this.relationshipId = relationshipId;
+        this.relationshipGeneration = relationshipGeneration;
         this.encryptedPayload = encryptedPayload;
         this.recordedAtEpochMillis = recordedAtEpochMillis;
     }
