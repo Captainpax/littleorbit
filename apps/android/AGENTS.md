@@ -28,6 +28,8 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 - Derive Home setup readiness from current pairing, permission, consent, widget, and watch state. Hide the checklist when all four core steps are ready, let revoked readiness bring it back, and keep optional watch/setup controls reachable from Settings. Show unpairing only after the server confirms an active relationship, and use the existing archive-and-purge transaction.
 - Queue at most five encrypted Smooch sends for at most 15 minutes. Never manufacture delivery after expiration, and keep lock-screen content private by default.
 - Select exactly one managed Wear node. Target every active record with a monotonic watch generation; switching or removal must advance the durable target purge barrier before old data can return. Watch-originated Smooches carry no account token and require current target plus relationship generations before the phone may accept ownership.
+- Bind each active Wear relationship generation to the source phone node that delivered its first valid managed record. Only that controller may receive watch status/actions or acknowledge/reject queued operations; clear the binding with every relationship purge and 24-hour expiry.
+- Keep destructive installer QA on the fixed `com.littleorbit.mobile.smoke` phone/Wear package and shared debug signer. The smoke phone may embed only the generated smoke Wear APK; production and ordinary debug artifacts must exclude the APK, QA label, endpoint, and signing metadata. No installer source may accept an arbitrary target package or signer.
 - Register only a random per-install UUID for partner alerts. Use the authenticated first-party WSS hint while an activity is visible and WorkManager polling in the background; never add Firebase, another hosted push SDK, or a provider-issued device address. Fetch authorized event metadata before display, coalesce work without cancelling an active fetch, acknowledge only after Android accepts the notification, and always use a generic public lock-screen version. Scrub retired hosted-transport preferences during upgrade.
 - Render the signed-in person's relationship avatar as read-only. Choose, crop, upload, and remove actions always target the current partner, and sign-out or unpair cache cleanup removes both pair-scoped thumbnails.
 - Use Android-compatible Java library calls across minSdk 29. Countdown reminders use only the fixed server offsets, treat all-day events as 9:00 AM in their IANA timezone, and reconcile after sync, reboot, app replacement, clock changes, or timezone changes.
@@ -60,6 +62,8 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 .\infra\scripts\build-signed-android.ps1
 .\infra\scripts\build-signed-android.ps1 -ReuseWearApk data\releases\<prior-wear>.apk
 .\infra\scripts\android-smoke.ps1 -Serial <emulator-serial> -AccountIndex 0 -ResetApp
+./gradlew -PwearTestBuildType=smoke :apps:android:wear:connectedSmokeAndroidTest
+./gradlew -PmobileTestBuildType=smoke :apps:android:mobile:connectedSmokeAndroidTest
 ```
 
 Test DTO/domain separation, Room migrations, retries and duplicate work, stale cache rendering, permission removal, clock/timezone boundaries, updater corruption and restart recovery, process death, reboot, unauthorized responses, widget updates, and Wear disconnection.

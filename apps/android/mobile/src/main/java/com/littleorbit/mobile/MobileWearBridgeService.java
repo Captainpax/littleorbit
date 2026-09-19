@@ -38,7 +38,8 @@ public final class MobileWearBridgeService extends WearableListenerService {
             watches.recordStatus(
                     event.getSourceNodeId(), value.optString("version_name", ""),
                     value.optInt("version_code", 0), value.optInt("protocol", 0),
-                    value.optInt("queued_actions", 0), value.optLong("observed_at", 0));
+                    Math.max(0, Math.min(5, value.optInt("queued_actions", 0))),
+                    System.currentTimeMillis());
         } catch (Exception ignored) {
             // Malformed untrusted messages do not alter local state.
         }

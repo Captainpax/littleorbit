@@ -21,6 +21,16 @@ final class WearRelationshipGuard {
                 read(context), relationshipId, generation, authorizedAt, now));
     }
 
+    static synchronized boolean wouldAcceptActive(
+            Context context,
+            String relationshipId,
+            long generation,
+            long authorizedAt,
+            long now) {
+        return WearRelationshipPolicy.acceptActive(
+                read(context), relationshipId, generation, authorizedAt, now).accepted();
+    }
+
     static synchronized boolean acceptActiveAndRun(
             Context context,
             String relationshipId,
@@ -94,7 +104,10 @@ final class WearRelationshipGuard {
         }
         WearRelationshipPolicy.Transition expiry =
                 WearRelationshipPolicy.expire(current, now);
-        if (expiry.accepted()) apply(context, expiry);
+        if (expiry.accepted()) {
+            apply(context, expiry);
+            WearTargetGuard.clearController(context);
+        }
         WearRelationshipPolicy.State resolved = read(context);
         if (WearRelationshipPolicy.readable(resolved)) {
             WearCacheExpiryReceiver.schedule(
@@ -125,6 +138,7 @@ final class WearRelationshipGuard {
             return false;
         }
         apply(context, expiry);
+        WearTargetGuard.clearController(context);
         WearCacheExpiryReceiver.cancel(context);
         return true;
     }

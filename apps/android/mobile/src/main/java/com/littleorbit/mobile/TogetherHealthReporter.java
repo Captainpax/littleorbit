@@ -17,6 +17,7 @@ import com.littleorbit.data.local.LocationQueueDao;
 import com.littleorbit.data.remote.TogetherTimeModels;
 import com.littleorbit.data.repository.OrbitRepository;
 import dagger.hilt.android.qualifiers.ApplicationContext;
+import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -54,10 +55,18 @@ final class TogetherHealthReporter {
 
     void publish() {
         if (!enabled() || !orbit.isSignedIn()) return;
-        orbit.updateTogetherDeviceHealth(installation.id(), snapshot());
+        snapshotAsync().thenAccept(value -> {
+            if (enabled() && orbit.isSignedIn()) {
+                orbit.updateTogetherDeviceHealth(installation.id(), value);
+            }
+        });
     }
 
-    TogetherTimeModels.DeviceHealthUpdate snapshot() {
+    CompletableFuture<TogetherTimeModels.DeviceHealthUpdate> snapshotAsync() {
+        return CompletableFuture.supplyAsync(this::snapshot);
+    }
+
+    private TogetherTimeModels.DeviceHealthUpdate snapshot() {
         Intent battery = context.registerReceiver(
                 null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         int level = battery == null ? 0 : battery.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);

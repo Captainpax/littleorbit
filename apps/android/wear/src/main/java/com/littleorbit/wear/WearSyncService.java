@@ -28,13 +28,14 @@ public final class WearSyncService extends WearableListenerService {
     @Override
     public void onDataChanged(DataEventBuffer events) {
         List<Incoming> incoming = changedItems(events);
+        String localNodeId = localNodeId();
         boolean changed = false;
         // Data Layer ordering is only guaranteed per path. Apply every durable purge first.
         for (Incoming item : incoming) {
-            if (item.isPurge()) changed |= purge(item.map());
+            if (item.isPurge()) changed |= purge(item, localNodeId);
         }
         for (Incoming item : incoming) {
-            if (!item.isPurge()) changed |= store(item);
+            if (!item.isPurge()) changed |= store(item, localNodeId);
         }
         if (changed) WearSurfaceUpdates.request(this);
     }
@@ -45,31 +46,40 @@ public final class WearSyncService extends WearableListenerService {
             String path = event.getDataItem().getUri().getPath();
             if (event.getType() == DataEvent.TYPE_CHANGED && supported(path)) {
                 result.add(new Incoming(
-                        path, DataMapItem.fromDataItem(event.getDataItem()).getDataMap()));
+                        path,
+                        DataMapItem.fromDataItem(event.getDataItem()).getDataMap(),
+                        event.getDataItem().getUri().getHost()));
             }
         }
         return result;
     }
 
-    private boolean store(Incoming item) {
-        if (MANAGED_DISPLAY_PATH.equals(item.path())) return storeManagedDisplay(item.map());
-        if (MANAGED_PROFILE_PATH.equals(item.path())) return storeManagedProfile(item.map());
-        if (CONFIG_PATH.equals(item.path())) return storeConfiguration(item.map());
+    private boolean store(Incoming item, String localNodeId) {
+        if (MANAGED_DISPLAY_PATH.equals(item.path())) {
+            return storeManagedDisplay(item, localNodeId);
+        }
+        if (MANAGED_PROFILE_PATH.equals(item.path())) {
+            return storeManagedProfile(item, localNodeId);
+        }
+        if (CONFIG_PATH.equals(item.path())) return storeConfiguration(item, localNodeId);
         if (PATH_V2.equals(item.path())) return storeDisplay(item.map());
         if (PATH_V1.equals(item.path())) return storeV1(item.map());
         if (PROFILE_PATH.equals(item.path())) return storeProfile(item.map());
         return false;
     }
 
-    private boolean storeManagedDisplay(DataMap map) {
+    private boolean storeManagedDisplay(Incoming item, String localNodeId) {
+        DataMap map = item.map();
         Target target = target(map);
-        if (target == null || !WearTargetGuard.accept(
-                this, localNodeId(), target.nodeId(), target.generation())) return false;
         String relationshipId = map.getString("relationship_id", "");
         long relationshipGeneration = map.getLong("relationship_generation");
         long authorizedAt = map.getLong("authorized_at");
         long syncedAt = map.getLong("synced_at");
-        if (syncedAt <= 0) return false;
+        if (target == null || syncedAt <= 0 || !WearRelationshipGuard.wouldAcceptActive(
+                this, relationshipId, relationshipGeneration, authorizedAt, now())
+                || !WearTargetGuard.accept(
+                        this, localNodeId, target.nodeId(), target.generation(),
+                        item.sourceNodeId())) return false;
         return WearRelationshipGuard.acceptActiveAndRun(
                 this, relationshipId, relationshipGeneration, authorizedAt, now(), () ->
                         WearDisplayCache.storeV2(
@@ -83,13 +93,17 @@ public final class WearSyncService extends WearableListenerService {
                                 map.getString("countdown_timezone", "UTC"), syncedAt));
     }
 
-    private boolean storeConfiguration(DataMap map) {
+    private boolean storeConfiguration(Incoming item, String localNodeId) {
+        DataMap map = item.map();
         Target target = target(map);
-        if (target == null || !WearTargetGuard.accept(
-                this, localNodeId(), target.nodeId(), target.generation())) return false;
         String relationshipId = map.getString("relationship_id", "");
         long relationshipGeneration = map.getLong("relationship_generation");
         long authorizedAt = map.getLong("authorized_at");
+        if (target == null || !WearRelationshipGuard.wouldAcceptActive(
+                this, relationshipId, relationshipGeneration, authorizedAt, now())
+                || !WearTargetGuard.accept(
+                        this, localNodeId, target.nodeId(), target.generation(),
+                        item.sourceNodeId())) return false;
         return WearRelationshipGuard.acceptActiveAndRun(
                 this, relationshipId, relationshipGeneration, authorizedAt, now(), () ->
                         WearConfiguration.store(this,
@@ -150,11 +164,16 @@ public final class WearSyncService extends WearableListenerService {
         return storeProfile(map, false);
     }
 
-    private boolean storeManagedProfile(DataMap map) {
-        return storeProfile(map, true);
+    private boolean storeManagedProfile(Incoming item, String localNodeId) {
+        return storeProfile(item.map(), true, localNodeId, item.sourceNodeId());
     }
 
     private boolean storeProfile(DataMap map, boolean managed) {
+        return storeProfile(map, managed, "", "");
+    }
+
+    private boolean storeProfile(
+            DataMap map, boolean managed, String localNodeId, String sourceNodeId) {
         int schema = map.getInt("schema_version");
         String relationshipId = map.getString("relationship_id", "");
         long generation = map.getLong("relationship_generation");
@@ -162,8 +181,13 @@ public final class WearSyncService extends WearableListenerService {
         Asset myPhoto = map.getAsset("my_photo");
         Asset partnerPhoto = map.getAsset("partner_photo");
         Target target = managed ? target(map) : null;
-        if (managed && (target == null || !WearTargetGuard.accept(
-                this, localNodeId(), target.nodeId(), target.generation()))) return false;
+        if (managed && (target == null || schema < 2
+                || !WearRelationshipGuard.wouldAcceptActive(
+                        this, relationshipId, generation, authorizedAt, now())
+                || !WearTargetGuard.accept(
+                        this, localNodeId, target.nodeId(), target.generation(), sourceNodeId))) {
+            return false;
+        }
         Runnable storeNames = () -> {
             WearProfileStore.storeNames(
                     this, map.getString("my_name", "You"),
@@ -217,7 +241,14 @@ public final class WearSyncService extends WearableListenerService {
         });
     }
 
-    private boolean purge(DataMap map) {
+    private boolean purge(Incoming item, String localNodeId) {
+        DataMap map = item.map();
+        Target target = target(map);
+        if (!WearTargetGuard.authorizesRelationshipSource(this, item.sourceNodeId())) return false;
+        if (item.isManaged() && (target == null || !WearTargetGuard.authorizesManagedPurge(
+                this, localNodeId, target.nodeId(), target.generation(), item.sourceNodeId()))) {
+            return false;
+        }
         boolean targetPurged = false;
         if (map.getLong("watch_generation") > 0) {
             targetPurged = WearTargetGuard.purge(this, map.getLong("watch_generation"));
@@ -227,6 +258,7 @@ public final class WearSyncService extends WearableListenerService {
                 map.getString("relationship_id", ""),
                 map.getLong("relationship_generation"),
                 now());
+        if (relationshipPurged) WearTargetGuard.clearController(this);
         return targetPurged || relationshipPurged;
     }
 
@@ -259,7 +291,11 @@ public final class WearSyncService extends WearableListenerService {
         return nodeId.isBlank() || generation <= 0 ? null : new Target(nodeId, generation);
     }
 
-    private record Incoming(String path, DataMap map) {
+    private record Incoming(String path, DataMap map, String sourceNodeId) {
+        boolean isManaged() {
+            return MANAGED_PURGE_PATH.equals(path) || MANAGED_PROFILE_PATH.equals(path);
+        }
+
         boolean isPurge() {
             if (PURGE_PATH.equals(path) || MANAGED_PURGE_PATH.equals(path)) return true;
             boolean scopedDisplay = PATH_V2.equals(path) && map.getInt("schema_version") >= 3;

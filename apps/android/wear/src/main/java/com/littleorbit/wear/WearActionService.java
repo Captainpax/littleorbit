@@ -14,6 +14,7 @@ import org.json.JSONObject;
 public final class WearActionService extends WearableListenerService {
     @Override
     public void onMessageReceived(MessageEvent event) {
+        if (!WearTargetGuard.authorizesController(this, event.getSourceNodeId())) return;
         if (WatchProtocol.STATUS_REQUEST.equals(event.getPath())) {
             sendStatus(this, event.getSourceNodeId());
             flushToNode(this, event.getSourceNodeId());
@@ -24,17 +25,18 @@ public final class WearActionService extends WearableListenerService {
 
     @Override
     public void onPeerConnected(Node peer) {
+        if (!WearTargetGuard.authorizesController(this, peer.getId())) return;
         sendStatus(this, peer.getId());
         flushToNode(this, peer.getId());
     }
 
     static void flush(Context context) {
-        Wearable.getNodeClient(context).getConnectedNodes().addOnSuccessListener(nodes -> {
-            for (Node node : nodes) flushToNode(context, node.getId());
-        });
+        String controller = WearTargetGuard.controllerNodeId(context);
+        if (!controller.isBlank()) flushToNode(context, controller);
     }
 
     static void sendStatus(Context context, String nodeId) {
+        if (!WearTargetGuard.authorizesController(context, nodeId)) return;
         try {
             JSONObject status = new JSONObject()
                     .put("protocol", WatchProtocol.VERSION)
@@ -50,6 +52,7 @@ public final class WearActionService extends WearableListenerService {
     }
 
     private static void flushToNode(Context context, String nodeId) {
+        if (!WearTargetGuard.authorizesController(context, nodeId)) return;
         List<WearSmoochQueue.Pending> pending =
                 WearSmoochQueue.pending(context, System.currentTimeMillis());
         for (WearSmoochQueue.Pending item : pending) {
@@ -71,6 +74,7 @@ public final class WearActionService extends WearableListenerService {
     }
 
     private static void acceptResult(Context context, MessageEvent event) {
+        if (!WearTargetGuard.authorizesController(context, event.getSourceNodeId())) return;
         try {
             JSONObject value = new JSONObject(
                     new String(event.getData(), StandardCharsets.UTF_8));

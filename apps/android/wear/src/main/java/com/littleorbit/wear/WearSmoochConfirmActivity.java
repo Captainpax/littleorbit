@@ -9,7 +9,9 @@ import java.util.UUID;
 /** Final confirmation and encrypted offline ownership transfer for one watch Smooch. */
 public final class WearSmoochConfirmActivity extends Activity {
     static final String EXTRA_EMOJI = "emoji";
+    private static final String STATE_OPERATION_ID = "operation_id";
     private String emoji;
+    private String operationId;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -20,6 +22,9 @@ public final class WearSmoochConfirmActivity extends Activity {
             finish();
             return;
         }
+        operationId = state == null
+                ? UUID.randomUUID().toString()
+                : state.getString(STATE_OPERATION_ID, UUID.randomUUID().toString());
         ((TextView) findViewById(R.id.confirmEmoji)).setText(emoji);
         String partner = WearProfileStore.read(this).partnerName();
         ((TextView) findViewById(R.id.confirmPrompt)).setText(getString(
@@ -29,19 +34,26 @@ public final class WearSmoochConfirmActivity extends Activity {
         findViewById(R.id.confirmSmooch).setOnClickListener(view -> send());
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle state) {
+        state.putString(STATE_OPERATION_ID, operationId);
+        super.onSaveInstanceState(state);
+    }
+
     private void send() {
+        findViewById(R.id.confirmSmooch).setEnabled(false);
         WearRelationshipPolicy.State relationship = WearRelationshipGuard.current(this);
         if (!WearConfiguration.read(this).smoochEnabled()
                 || !WearRelationshipPolicy.readable(relationship)) {
             ((TextView) findViewById(R.id.confirmStatus)).setText(R.string.smooch_unavailable);
+            findViewById(R.id.confirmSmooch).setEnabled(true);
             return;
         }
         long now = System.currentTimeMillis();
-        WearSmoochQueue.enqueue(this, UUID.randomUUID().toString(), emoji, now,
+        WearSmoochQueue.enqueue(this, operationId, emoji, now,
                 relationship.relationshipId(), relationship.generation(),
                 WearTargetGuard.generation(this));
         WearActionService.flush(this);
-        findViewById(R.id.confirmSmooch).setEnabled(false);
         ((TextView) findViewById(R.id.confirmStatus)).setText(R.string.smooch_queued);
     }
 }

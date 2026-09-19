@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.hilt.android)
@@ -6,6 +8,7 @@ plugins {
 android {
     namespace = "com.littleorbit.mobile"
     compileSdk = 37
+    testBuildType = providers.gradleProperty("mobileTestBuildType").orElse("debug").get()
     defaultConfig {
         applicationId = "com.littleorbit.mobile"
         minSdk = 29
@@ -27,9 +30,41 @@ android {
         viewBinding = true
         buildConfig = true
     }
+    sourceSets.getByName("smoke").assets.srcDir(
+        layout.buildDirectory.dir("generated/smokeWearAssets").get().asFile,
+    )
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+val prepareSmokeWearAsset by tasks.registering(Copy::class) {
+    dependsOn(":apps:android:wear:assembleSmoke")
+    from(project(":apps:android:wear").layout.buildDirectory.file(
+        "outputs/apk/smoke/wear-smoke.apk",
+    ))
+    into(layout.buildDirectory.dir("generated/smokeWearAssets"))
+    rename { "little-orbit-wear-smoke.apk" }
+}
+
+tasks.configureEach {
+    if (name == "mergeSmokeAssets") dependsOn(prepareSmokeWearAsset)
+}
+
+tasks.register("verifyWearArtifactIsolation") {
+    group = "verification"
+    description = "Proves only the smoke phone APK embeds the generated Wear QA APK."
+    dependsOn("assembleDebug", "assembleSmoke")
+    doLast {
+        val asset = "assets/little-orbit-wear-smoke.apk"
+        fun contains(apk: java.io.File): Boolean = ZipFile(apk).use { zip ->
+            zip.getEntry(asset) != null
+        }
+        val debugApk = layout.buildDirectory.file("outputs/apk/debug/mobile-debug.apk").get().asFile
+        val smokeApk = layout.buildDirectory.file("outputs/apk/smoke/mobile-smoke.apk").get().asFile
+        check(!contains(debugApk)) { "Non-smoke phone APK contains the Wear QA artifact" }
+        check(contains(smokeApk)) { "Smoke phone APK is missing its trusted Wear QA artifact" }
     }
 }
 

@@ -281,3 +281,23 @@ possible and prove that page open, scheduled metadata work, and status refresh
 do not request APK bytes. A later physical pass may close the missing evidence,
 but it must not edit the immutable 1.1.0 release identity or imply the check was
 part of this rollout.
+
+## 1.1.1 watch-hardening release
+
+The verified 1.1.1 release contains phone version code 26 and Wear version code
+20, keeps the compatibility floor at phone code 23, and has no forced-update
+deadline. The exact phone artifact is 37,658,658 bytes with SHA-256
+`a80a06513239b459522b3043083efc0cfce9e96e63cadbaadc5d0f3e3d3f1768`;
+the exact Wear artifact is 14,737,940 bytes with SHA-256
+`b5f2af70402b6c8c5ff6feae91b5f23a32bd7c0ccea91b032ab705f8013d7f2b`.
+Both use signing-certificate SHA-256
+`43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337`.
+
+On 2026-09-19, the owner explicitly waived the remaining physical in-app
+wireless-ADB wizard, second-controller-phone, complete passive-surface and
+large-font, and production in-place upgrade observations as publication gates.
+The missing checks remain documented in the 1.1.1 verification record and are
+not treated as passed evidence. Publication must use the exact generated
+manifest and must verify local and public metadata, complete and ranged phone
+and Wear downloads, hashes, patch notes, RSS, and health after the immutable
+release record is created.

@@ -34,7 +34,8 @@ public final class WearApkVerifier {
             }
             if (info.getLongVersionCode() != release.versionCode()) return "wear_version_mismatch";
             if (!requiresWatch(info)) return "wear_feature_missing";
-            if (!NetworkReleaseRepository.EXPECTED_SIGNER.equals(release.signerSha256())
+            if ((release.productionAuthority()
+                    && !NetworkReleaseRepository.EXPECTED_SIGNER.equals(release.signerSha256()))
                     || !hasSigner(info, release.signerSha256())) return "wear_signer_mismatch";
             return null;
         } catch (Exception invalid) { return "wear_validation_failed"; }

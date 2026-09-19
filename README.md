@@ -6,7 +6,9 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.1.0 is the current signed stable release. It adds a dedicated Watch settings page, one explicitly managed watch, an explicit install/update/repair/removal wizard, Together/Countdown/Smooch watch destinations, and separate Nearby and Countdown complications. Partner alerts remain entirely self-hosted.
+> **Project status:** 1.1.1 is the current signed stable release. It hardens the Watch experience with crash-safe Smooch queueing, lifecycle-safe Together diagnostics, one authorized controller phone per relationship generation, refreshed phone/Wear UI, and isolated side-by-side QA installer artifacts. Partner alerts remain entirely self-hosted.
+
+> **Release policy:** 1.1.1 is optional (phone code 26, Wear code 20), keeps the compatibility floor at phone code 23, and has no forced-update deadline. The owner explicitly waived the remaining physical wizard, second-phone, passive-surface/large-font, and production in-place upgrade observations for publication; the missing evidence remains visible in the verification record.
 
 The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch records are scoped to the selected target and a monotonic purge generation, watch-originated actions contain no account credential, and the phone revalidates the selected watch and active relationship before accepting them. The owner explicitly approved release without the unavailable physical Wear-device gate; that missing evidence remains visible in the verification record.
 
@@ -28,6 +30,7 @@ The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch record
 - Private cropped relationship avatars for the couple planets on the phone and Wear launcher. Each person chooses only their partner's picture; initials remain when a photo is absent.
 - An in-app, phone-hosted wireless-debugging installer for the self-hosted Wear APK, with automatic or explicit manual endpoint selection, transient pairing codes, verified-download retry, and installed-version detection; no computer script or app store is required.
 - In 1.1.0 source, a Watch settings child page selects one managed watch and controls photos, countdown titles, watch Smooches, update alerts, and the default destination. APK bytes are downloaded only after an explicit install, update, or repair action; private removal purges, uninstalls, forgets the local installer key, and guides wireless-debugging revocation.
+- In 1.1.1 source, the first valid managed record binds that Wear relationship generation to one controller phone node. Other connected phones receive no watch payload or queue mutation authority. A side-by-side QA build embeds only the generated `.smoke` Wear APK and can never target the production package.
 - An opt-in update detector that checks metadata every six hours and presents a once-per-launch update prompt; APK download and Android installation still require explicit approval and full verification.
 - Eight-character, single-use pairing with confirmation.
 - A public website for registration, account recovery, APK releases, privacy, and project documentation.
@@ -65,9 +68,11 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.0.1`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.1) is the current signed stable release. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.1/apk) is 37,563,270 bytes with SHA-256 `c5856820ad186be616027c95b008a1d81edbe8c60dc7b2cc7301b13efa369c25`. The independently versioned 14,189,878-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.1/wear-apk) reuses version code 18 byte-for-byte with SHA-256 `43068ae14877ee0e158f6498a66f5987d56642521a8c4109372434e8c7fe9cd3`. Both artifacts use Android application ID `com.littleorbit.mobile` and retain the pinned [signing certificate](docs/signing/README.md). GitHub remains the canonical source history while APK bytes are served by Little Orbit's first-party API. Notifications are fully self-hosted; a visible app receives authenticated WebSocket hints and background WorkManager polls the same API, subject to Android battery delays. RC10.1 and RC11.1 require one manual update because their already-installed updater abandons its package session; automatic updates work after crossing that boundary.
+[`1.1.1`](https://github.com/Captainpax/littleorbit/releases/tag/v1.1.1) is the current signed stable release. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.1.1/apk) is 37,658,658 bytes with SHA-256 `a80a06513239b459522b3043083efc0cfce9e96e63cadbaadc5d0f3e3d3f1768`. The independently versioned 14,737,940-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.1.1/wear-apk) is version code 20 with SHA-256 `b5f2af70402b6c8c5ff6feae91b5f23a32bd7c0ccea91b032ab705f8013d7f2b`. Both artifacts use Android application ID `com.littleorbit.mobile` and retain the pinned [signing certificate](docs/signing/README.md). GitHub remains the canonical source history while APK bytes are served by Little Orbit's first-party API. Notifications are fully self-hosted; a visible app receives authenticated WebSocket hints and background WorkManager polls the same API, subject to Android battery delays. RC10.1 and RC11.1 require one manual update because their already-installed updater abandons its package session; automatic updates work after crossing that boundary.
 
-The checked-in [1.1.0 release note](docs/releases/1.1.0.md) records the current phone code 25 and Wear code 19 artifacts, exact byte counts, hashes, signer, compatibility floor, and waived physical-device gate.
+The checked-in [1.1.0 release note](docs/releases/1.1.0.md) records the prior phone code 25 and Wear code 19 artifacts, exact byte counts, hashes, signer, compatibility floor, and waived physical-device gate.
+
+The [1.1.1 release note](docs/releases/1.1.1.md) and [verification record](docs/operations/VERIFICATION-1.1.1-2026-09-19.md) separate completed source/device QA from the physical observations explicitly waived for publication.
 
 The optional-update compatibility floor remains phone code 23. No forced-update deadline is scheduled.
 

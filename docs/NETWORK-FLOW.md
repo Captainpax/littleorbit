@@ -504,6 +504,8 @@ sequenceDiagram
 
 Data Layer transport is not treated as partner delivery. The watch reports only local queued state and the phone acknowledgement. Switching watches, disabling watch Smooches, private removal, relationship purge, or the 15-minute deadline clears the applicable request. Tile and complication surfaces never originate Smooches.
 
+The first valid managed record for an active Wear relationship generation binds the watch to that source phone node. Status and queued actions return only to the bound controller. Requests and acknowledgements from another connected phone are silently rejected, and no rejection discloses whether relationship state exists. Advancing the relationship purge barrier, sign-out, unpairing, or the 24-hour Wear expiry clears the binding before a future generation can bind again.
+
 ## Partner-assigned avatar processing and synchronization
 
 ```mermaid
@@ -540,12 +542,19 @@ sequenceDiagram
     actor Person
     participant Phone as Little Orbit phone app
     participant API as Public release API
+    participant Embedded as Smoke-only embedded Wear APK
     participant Watch as Wear OS wireless ADB
     Person->>Phone: Settings > Watch settings > Install/update/repair
-    Phone->>API: Fetch current immutable release metadata only
-    Person->>Phone: Explicitly continue with APK action
-    Phone->>API: Download exact versioned Wear APK
-    Phone->>Phone: Verify endpoint, bytes, hash, package, version, watch feature, signer
+    alt Production build
+        Phone->>API: Fetch current immutable release metadata only
+        Person->>Phone: Explicitly continue with APK action
+        Phone->>API: Download exact versioned Wear APK
+        Phone->>Phone: Verify endpoint, bytes, hash, package, version, watch feature, pinned signer
+    else Side-by-side smoke build
+        Person->>Phone: Explicitly continue with APK action
+        Phone->>Embedded: Copy generated `.smoke` Wear APK after explicit action
+        Phone->>Phone: Derive and verify fixed smoke package, size, hash, version, and debug signer
+    end
     Phone->>Phone: Track pairing/connect services and port changes with local DNS-SD
     alt discovery unavailable or incomplete
         Person->>Phone: Enter current host, pairing port, and connection port
@@ -564,6 +573,8 @@ sequenceDiagram
 ```
 
 The phone checks connected nodes and the `little_orbit_display_v2` capability so Watch settings can distinguish no watch, a missing watch app, and a connected Little Orbit watch. Metadata checks may run in the background; APK download, pairing, installation, reinstall, and removal require an explicit action. The five-stage wizard supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. Manual values cannot be overwritten by a late discovery callback; **Scan again** explicitly returns to automatic selection. The pairing-code field disables saved state, autofill, and personalized keyboard learning, clears as soon as installation begins and whenever the screen stops, and never appears in diagnostics. A failed signed-artifact preparation exposes a bounded retry. API 34+ discovery callbacks replace and remove service information continuously; older releases serialize one-shot resolution. Private removal first advances the target purge barrier and clears watch-originated actions, then uninstalls only `com.littleorbit.mobile`, forgets the local ADB key, and tells the person to revoke the phone identity and wireless debugging on the watch. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
+
+The smoke source is build-internal and can target only `com.littleorbit.mobile.smoke`; its APK is generated before the smoke phone is packaged. The production source remains immutable HTTPS metadata plus downloaded bytes and the pinned release certificate. Release and ordinary debug phone artifacts exclude the smoke APK and smoke signing metadata.
 
 ## Patch notes and RSS
 

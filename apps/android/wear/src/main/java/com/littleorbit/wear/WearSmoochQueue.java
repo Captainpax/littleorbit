@@ -21,8 +21,6 @@ final class WearSmoochQueue {
     private static final String KEY_ALIAS = "little-orbit-watch-smooch-v1";
     private static final String PREFERENCES = "little_orbit_watch_smooch_v1";
     private static final String VALUE = "sealed_queue";
-    private static final long LIFETIME_MILLIS = 15L * 60 * 1_000;
-
     private WearSmoochQueue() {}
 
     static synchronized void enqueue(
@@ -33,23 +31,17 @@ final class WearSmoochQueue {
             String relationshipId,
             long relationshipGeneration,
             long watchGeneration) {
-        List<Pending> values = pending(context, createdAt);
-        if (values.stream().noneMatch(item -> item.operationId().equals(operationId))) {
-            values.add(new Pending(operationId, emoji, createdAt, relationshipId,
-                    relationshipGeneration, watchGeneration));
-        }
-        while (values.size() > 5) values.remove(0);
+        long now = System.currentTimeMillis();
+        List<Pending> values = WearSmoochQueuePolicy.enqueue(
+                pending(context, now),
+                new Pending(operationId, emoji, createdAt, relationshipId,
+                        relationshipGeneration, watchGeneration), now);
         write(context, values);
     }
 
     static synchronized List<Pending> pending(Context context, long now) {
         List<Pending> values = read(context);
-        List<Pending> current = new ArrayList<>();
-        for (Pending item : values) {
-            if (item.createdAt() > 0 && item.createdAt() + LIFETIME_MILLIS > now) {
-                current.add(item);
-            }
-        }
+        List<Pending> current = WearSmoochQueuePolicy.current(values, now);
         if (current.size() != values.size()) write(context, current);
         return List.copyOf(current);
     }

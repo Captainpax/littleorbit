@@ -24,6 +24,14 @@ The phone authorizes exactly one managed Data Layer node. Switching watches adva
 
 A 1.1.0 phone retires legacy global payloads, so a 1.0.1 Wear companion becomes unavailable and Watch settings directs the person to install/update. A 1.1.0 companion paired with a 1.0.1 phone may render the legacy passive cache, but watch Smooches remain disabled because no target-scoped configuration has authorized them.
 
+In 1.1.1, a valid managed record binds its relationship generation to the source phone node. Only that controller receives status and queued Smooch data or may acknowledge and reject operations. A second connected phone is ignored without a relationship-state response. Purge, sign-out, unpairing, or the 24-hour Wear expiry clears the binding so a later valid generation can bind deliberately.
+
+## Side-by-side QA flow
+
+The `smoke` phone and Wear variants use `com.littleorbit.mobile.smoke`, the shared debug signer, a visible **Little Orbit QA** label, isolated API configuration, and disposable accounts. Building `:apps:android:mobile:assembleSmoke` first builds the current Wear smoke APK and embeds it as `assets/little-orbit-wear-smoke.apk`; the phone derives package, version, byte count, SHA-256, and signer metadata from those exact bytes. `smokeBaseline` produces code 19 for the lower-version upgrade fixture. Production and ordinary debug artifacts must not contain the embedded APK or any smoke identity.
+
+Use only smoke packages for destructive QA. Exercise a missing package, fresh baseline install, baseline-to-current upgrade, current repair, already-current result, and removal, checking after every step that `com.littleorbit.mobile` is still installed. Invalid-signature, wrong-package, truncated, wrong-size, and wrong-hash fixtures must fail before watch contact. The trusted source owns the fixed target package and certificate; installer fields can never override them.
+
 ## Verification checklist
 
 - Metadata and APK URL use the exact current versioned `lil-orb.pax-kun.com` HTTPS endpoint.
@@ -41,6 +49,8 @@ A 1.1.0 phone retires legacy global payloads, so a 1.0.1 Wear companion becomes 
 - A second update reconnects through the encrypted identity; forgetting it requires pairing again.
 - Repair reinstalls the same verified current version only after an explicit action; normal update reports an already-current version without reinstalling it.
 - Private removal purges with a newer watch generation before uninstall, removes only `com.littleorbit.mobile`, clears watch-originated queue entries, forgets the local key after success, and provides watch-side revocation guidance.
+- In smoke builds, every inspect/install/remove path instead fixes its target to `com.littleorbit.mobile.smoke`; production stays installed side by side.
+- A second phone node cannot receive status/Smooch payloads or acknowledge, reject, or delete queue entries for the bound generation.
 - Android reports a committed package before the success screen; a transfer that never receives commit confirmation remains a failure.
 - The installed Together, Countdown, and Smooch destinations, tile, Nearby complication, Countdown complication, preferences, and profile synchronization work after wireless debugging is disabled.
 - A watch Smooch requires picker plus confirmation, survives a short disconnect under one stable UUID, transfers ownership once, expires at 15 minutes, and cannot cross a target switch, relationship purge, or preference revocation.

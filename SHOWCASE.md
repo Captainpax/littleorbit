@@ -10,6 +10,16 @@ The two linked orbits communicate two independent people choosing a shared path.
 
 ## Android, widget, and Wear OS
 
+### 1.1.1 watch-hardening concepts
+
+![1.1.1 phone Watch settings concept](docs/assets/watch-settings-concept-1.1.1.png)
+
+![1.1.1 five-step Wear installer concept](docs/assets/wear-installer-concept-1.1.1.png)
+
+![1.1.1 round-watch destinations and state concept](docs/assets/wear-destinations-concept-1.1.1.png)
+
+These three generated sheets are design concepts, not production screenshots. They define the 1.1.1 hierarchy, cosmic navy/lavender/coral language, explicit installer progress and recovery, round-screen safe areas, and the separation between passive relationship information and deliberate actions. Device captures remain release-gate evidence rather than being represented by these images.
+
 ![Phone dashboard, quiz, notes, widget and Wear OS concepts](docs/assets/android-wear-concept.png)
 
 The dashboard leads with the relationship rather than system controls. Daily questions, countdowns, and notes use spacious cards. Widgets and watch surfaces show cached together-time and the next countdown, with a visible stale marker when refresh is overdue.

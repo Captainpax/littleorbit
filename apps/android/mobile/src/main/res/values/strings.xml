@@ -596,6 +596,8 @@
     <string name="wear_wizard_step_three">STEP 3 OF 5 · VERIFY APP</string>
     <string name="wear_wizard_step_four">STEP 4 OF 5 · AUTHORIZE</string>
     <string name="wear_wizard_step_five">STEP 5 OF 5 · FINISH</string>
+    <string name="wear_install_stages">CONNECT · VERIFY · TRANSFER · INSTALL · CONFIRM</string>
+    <string name="wear_step_progress">1  ─  2  ─  3  ─  4  ─  5</string>
     <string name="wear_wizard_remove_step">PRIVATE REMOVAL · CONFIRM WATCH</string>
     <string name="wear_ready_to_begin">Ready. The APK is downloaded only after you continue.</string>
     <string name="repair_watch_now">Repair watch app</string>

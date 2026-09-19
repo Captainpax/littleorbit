@@ -17,6 +17,7 @@ public final class TogetherTimeFixActivity extends InsetAwareActivity {
     @Inject TogetherHealthReporter reporter;
     private ActivityTogetherTimeFixBinding binding;
     private boolean rendering;
+    private int loadGeneration;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -43,10 +44,26 @@ public final class TogetherTimeFixActivity extends InsetAwareActivity {
         load();
     }
 
+    @Override protected void onStop() {
+        loadGeneration++;
+        super.onStop();
+    }
+
     private void load() {
-        TogetherTimeModels.DeviceHealthUpdate local = reporter.snapshot();
-        binding.thisPhoneHealth.setText(format(getString(R.string.this_phone), local));
+        int generation = ++loadGeneration;
+        reporter.snapshotAsync().thenAccept(local -> runOnUiThread(() -> {
+            if (!canRender(generation)) return;
+            binding.thisPhoneHealth.setText(format(getString(R.string.this_phone), local));
+            loadPartner(generation);
+        })).exceptionally(failure -> {
+            runOnUiThread(() -> showFailure(generation));
+            return null;
+        });
+    }
+
+    private void loadPartner(int generation) {
         orbit.togetherDeviceHealth().thenAccept(value -> runOnUiThread(() -> {
+            if (!canRender(generation)) return;
             if (value.partner.isEmpty()) {
                 binding.partnerHealth.setText(R.string.partner_diagnostics_private);
             } else {
@@ -54,9 +71,17 @@ public final class TogetherTimeFixActivity extends InsetAwareActivity {
                         getString(R.string.partner_phone), value.partner.get(0)));
             }
         })).exceptionally(failure -> {
-            runOnUiThread(() -> binding.statusText.setText(R.string.request_failed));
+            runOnUiThread(() -> showFailure(generation));
             return null;
         });
+    }
+
+    private boolean canRender(int generation) {
+        return generation == loadGeneration && !isFinishing() && !isDestroyed();
+    }
+
+    private void showFailure(int generation) {
+        if (canRender(generation)) binding.statusText.setText(R.string.request_failed);
     }
 
     private String format(String heading, TogetherTimeModels.DeviceHealthUpdate value) {
