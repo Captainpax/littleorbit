@@ -82,7 +82,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Implement the 1.1.1 watch-hardening source changes: crash-safe bounded Smooch queueing, lifecycle-safe Together diagnostics, one controller phone per Wear relationship generation, concept-led phone/Wear UI, and isolated side-by-side `.smoke` installer artifacts.
 - [x] Exercise the 1.1.1 QA Wear package on the physical Pixel Watch through fresh install, code-19-to-20 upgrade, same-version repair, already-current inspection, removal, and restore without changing the installed production package.
 - [ ] Complete the in-app wireless-ADB wizard observation, second-phone controller rejection observation, large-text/passive-surface matrix, and production 1.1.0-to-1.1.1 replacement. The owner waived these as 1.1.1 publication gates on 2026-09-19; they remain open follow-up work rather than passed evidence.
-- [ ] Publish the exact verified 1.1.1 phone code 26 and Wear code 20 artifacts with compatibility floor 23 and no forced-update deadline, then verify immutable metadata, downloads, ranges, hashes, patch notes, RSS, and health.
+- [x] Publish the exact verified 1.1.1 phone code 26 and Wear code 20 artifacts at `2026-09-19T23:45:53.67375Z` with compatibility floor 23 and no forced-update deadline; verify immutable metadata, complete and ranged local/public downloads, hashes, patch notes, RSS, and health.
 
 ## 1.x — Reliability and reach
 

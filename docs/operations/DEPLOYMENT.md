@@ -301,3 +301,11 @@ not treated as passed evidence. Publication must use the exact generated
 manifest and must verify local and public metadata, complete and ranged phone
 and Wear downloads, hashes, patch notes, RSS, and health after the immutable
 release record is created.
+
+Production 1.1.1 was published at `2026-09-19T23:45:53.67375Z`. Local and
+public metadata matched the generated manifest. Complete phone and Wear
+downloads from both endpoints matched the exact sizes and SHA-256 values, and
+all four 1,024-byte range requests returned HTTP 206 with correct totals.
+Download, patch notes, RSS, status, showcase, and readiness checks returned
+HTTP 200. Release-service logs contained no traceback, unhandled, fatal, or
+error match during the rollout window.

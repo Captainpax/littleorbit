@@ -47,4 +47,6 @@ The verified signed candidate may therefore be published. If the immutable publi
 
 ## Production evidence
 
-Publication metadata, download, hash, range, patch-note, RSS, and health evidence will be recorded here after the immutable release row is created.
+The immutable release row was published at `2026-09-19T23:45:53.67375Z` with phone code 26, Wear code 20, compatibility floor 23, and no `required_after` deadline. Local-gateway and public metadata matched the manifest, package identities, version codes, exact byte counts, SHA-256 values, signer, and GitHub release URL.
+
+Complete local and public phone and Wear downloads independently matched the generated artifacts. Each local and public `bytes=0-1023` request returned 1,024 bytes with HTTP 206 and the correct total size. The local and public download page, patch-notes page, RSS feed, status page, showcase, and readiness endpoint returned HTTP 200; release-bearing pages and RSS exposed 1.1.1. Production containers were running and healthy where health checks apply, and release-service logs contained no traceback, unhandled, fatal, or error match during the rollout window.

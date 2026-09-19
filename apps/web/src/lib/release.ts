@@ -175,7 +175,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-19T23:39:24.3288157Z",
+    publishedAt: "2026-09-19T23:45:53.67375Z",
   }];
 }
 
