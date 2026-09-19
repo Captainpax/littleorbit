@@ -3,6 +3,7 @@
 import asyncio
 import os
 from pathlib import Path
+from typing import cast
 from urllib.parse import quote
 from uuid import UUID, uuid4
 
@@ -148,12 +149,13 @@ def _validated_file_name(payload: AttachmentCreateRequest) -> str:
 async def _prior_upload(
     session: AsyncSession, note_id: UUID, operation_id: UUID
 ) -> NoteAttachment | None:
-    return await session.scalar(
+    result = await session.scalar(
         select(NoteAttachment).where(
             NoteAttachment.note_id == note_id,
             NoteAttachment.operation_id == operation_id,
         )
     )
+    return cast(NoteAttachment | None, result)
 
 
 async def _reserve_upload_capacity(

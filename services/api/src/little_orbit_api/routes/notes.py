@@ -95,7 +95,7 @@ async def _recent_equivalent(
     """Recover a just-saved document when a client lost its local create identity."""
 
     cutoff = SystemClock().now() - CREATE_RECOVERY_WINDOW
-    return await session.scalar(
+    result = await session.scalar(
         select(Note)
         .where(
             Note.couple_id == couple_id,
@@ -107,6 +107,7 @@ async def _recent_equivalent(
         .order_by(Note.updated_at.desc(), Note.id)
         .limit(1)
     )
+    return cast(Note | None, result)
 
 
 @router.get("/v1/notes", response_model=list[NoteResponse])
