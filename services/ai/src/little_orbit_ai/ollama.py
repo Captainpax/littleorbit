@@ -74,6 +74,8 @@ class OllamaClient:
             async with httpx.AsyncClient(
                 base_url=self._settings.base_url, timeout=timeout, transport=self._transport
             ) as client:
+                # Check the immutable digest before inference so a reused mutable tag
+                # cannot silently change the reviewed model behind this configuration.
                 await self._require_pinned_model(client)
                 response = await client.post("/api/generate", json=request)
                 response.raise_for_status()
@@ -81,6 +83,8 @@ class OllamaClient:
                 payload = json.loads(envelope["response"])
                 return _parse_batch(payload)
         except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+            # Collapse untrusted transport and envelope details into one bounded
+            # failure type; the caller can fall back without publishing partial data.
             raise OllamaFailure(
                 "Ollama response failed transport or strict schema validation"
             ) from exc
@@ -109,11 +113,15 @@ def _parse_batch(payload: object) -> ParsedBatch:
         isinstance(item, dict) and item.get("intimacy") is True for item in raw_questions
     )
     if intimacy_count != 2:
+        # Preserve valid individual candidates, but retain batch-level evidence that
+        # the model missed the requested general/intimacy mix.
         quarantined.append(ModelCandidateFailure("batch", ("candidate_mix_invalid",)))
     for index, item in enumerate(raw_questions):
         try:
             questions.append(adapter.validate_python(item))
         except ValidationError:
+            # Quarantine candidates independently so one malformed sibling does not
+            # discard safe candidates that can reduce curated fallback usage.
             quarantined.append(
                 ModelCandidateFailure(_safe_client_id(item, index), ("schema_validation_failed",))
             )
@@ -141,5 +149,7 @@ def _validate_envelope(payload: object) -> tuple[date, list[object]]:
 def _safe_client_id(item: object, index: int) -> str:
     """Return a bounded diagnostic identifier without retaining malformed content."""
 
+    # Never derive a diagnostic label from prompts or options: quarantine metadata
+    # must remain content-free even when the candidate cannot be parsed safely.
     value = item.get("client_id") if isinstance(item, dict) else None
     return value if isinstance(value, str) and 3 <= len(value) <= 48 else f"candidate-{index + 1}"

@@ -8,6 +8,9 @@ PROMPT_VERSION = "question-batch-v2"
 def build_prompt(target_date: date, recent_questions: list[str]) -> str:
     """Build a bounded prompt using only public generation context."""
 
+    # Only recent site-wide public questions cross the model boundary. Bounding both
+    # count and length keeps context predictable and prevents this parameter from
+    # becoming a path for user, couple, or other private data.
     recent = "\n".join(f"- {item[:240]}" for item in recent_questions[-60:]) or "- none"
     return f"""You write warm daily questions for Little Orbit, a private adult couples app.
 Return JSON only for schema version 2 and calendar date {target_date.isoformat()}.

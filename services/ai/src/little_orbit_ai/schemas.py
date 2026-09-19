@@ -102,6 +102,8 @@ class CandidateQuestion(BaseModel):
             raise ValueError("scale anchors must differ")
 
 
+# Separate variants make the decoder's JSON schema express interaction-specific
+# constraints; the shared base remains useful after parsing for later safety gates.
 class GeneratedChoiceQuestion(CandidateQuestion):
     """Generated single, multiple, or partner-guess interaction."""
 

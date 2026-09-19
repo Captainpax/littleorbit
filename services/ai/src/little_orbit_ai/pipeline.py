@@ -46,6 +46,8 @@ def select_pool(
     """Validate candidates and deterministically fill shortages from the curated bank."""
 
     accepted: list[CandidateQuestion] = []
+    # Structural failures from parsing remain quarantined alongside later content
+    # failures, while valid siblings can still contribute to the publishable pool.
     quarantined = [
         QuarantinedCandidate(item.client_id, item.reasons)
         for item in (batch.quarantined if batch else ())
@@ -55,6 +57,8 @@ def select_pool(
         result = validate_candidate(candidate, seen)
         if result.accepted:
             accepted.append(candidate)
+            # Extend the comparison set as candidates pass so one model batch cannot
+            # publish multiple versions of the same idea.
             seen.append(candidate.prompt)
         else:
             quarantined.append(QuarantinedCandidate(candidate.client_id, result.reasons))
@@ -64,12 +68,18 @@ def select_pool(
     used_ids = {item.client_id for item in accepted}
     curated = curated_bank or load_curated_bank()
     bank = [item for item in curated if not item.intimacy]
+    # Calendar-based rotation spreads fallback usage without randomness, preserving
+    # reproducibility for evaluation and incident review.
     start = (target_date.toordinal() * 5) % len(bank)
     ordered_bank = bank[start:] + bank[:start]
     general = list(generated_general)
     for bank_item in ordered_bank:
+        # Selection examines five-item combinations, so cap the validated pool to
+        # keep that search bounded while retaining ample room for variety.
         if len(general) >= 14:
             break
+        # Revalidate the human-reviewed bank at use time so fallback never bypasses
+        # the same current safety and duplicate rules applied to model output.
         validation = validate_candidate(bank_item, recent_questions)
         if (
             validation.accepted
@@ -82,6 +92,8 @@ def select_pool(
         raise RuntimeError("curated bank invariant failed: fewer than five general questions")
     missing_generated_intimacy = not intimacy
     if missing_generated_intimacy:
+        # Intimacy remains a separate optional pool; it never fills one of the five
+        # required general-question positions.
         intimacy_bank = [item for item in curated if item.intimacy]
         intimacy = [intimacy_bank[target_date.toordinal() % len(intimacy_bank)]]
     if (
@@ -92,6 +104,8 @@ def select_pool(
             or missing_generated_intimacy
         )
     ):
+        # A successful model call can still require fallback after deterministic
+        # validation; record that degraded result distinctly from transport failure.
         failure_reason = "insufficient_valid_candidates"
     selected = _balanced_five(general, {item.client_id for item in generated_general})
     pool = PublishedPool(
@@ -112,6 +126,8 @@ def _balanced_five(
     """Choose a warm, varied set deterministically from a small validated pool."""
 
     best: tuple[int, tuple[CandidateQuestion, ...]] | None = None
+    # Exhaustive scoring is deterministic and remains cheap because select_pool
+    # deliberately limits this input to fourteen candidates.
     for group in combinations(candidates[:14], 5):
         kinds = {item.kind for item in group}
         categories = {item.category for item in group}
@@ -128,6 +144,8 @@ def _balanced_five(
         score += 15 if meaningful else 0
         score += 15 if light else 0
         score -= sum(max(count - 2, 0) * 40 for count in kind_counts + category_counts)
+        # Client IDs provide a stable tie-breaker, avoiding process- or hash-order
+        # changes in which equally diverse pool is published.
         key = tuple(item.client_id for item in group)
         candidate = (score, group)
         if best is None or score > best[0] or (score == best[0] and key < tuple(i.client_id for i in best[1])):
@@ -140,6 +158,8 @@ def _balanced_five(
 def _order_for_conversation(items: list[CandidateQuestion]) -> list[CandidateQuestion]:
     """Put lighter taps first and more reflective prompts near the end."""
 
+    # Explicit ranks make the intended emotional progression independent of enum
+    # declaration order or serialized values shared with clients.
     category_rank = {
         Category.PLAYFUL: 0,
         Category.EVERYDAY: 1,
@@ -168,6 +188,8 @@ async def generate_pool(
 ) -> PipelineResult:
     """Generate once within a deadline, then always return five general questions."""
 
+    # Do not retry model generation here: one bounded attempt prevents an outage from
+    # delaying the daily pool, and deterministic fallback guarantees coverage.
     try:
         batch = await client.generate(build_prompt(target_date, recent_questions))
         if batch.date != target_date:
