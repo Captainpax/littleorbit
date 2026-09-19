@@ -1,5 +1,34 @@
 Set-StrictMode -Version Latest
 
+function ConvertTo-NativeCommandLineArgument {
+    param([AllowEmptyString()][string]$Value)
+
+    if ($Value.Length -gt 0 -and $Value -notmatch '[\s"]') {
+        return $Value
+    }
+    $quoted = [Text.StringBuilder]::new()
+    [void]$quoted.Append('"')
+    $backslashes = 0
+    foreach ($character in $Value.ToCharArray()) {
+        if ($character -eq '\') {
+            $backslashes++
+            continue
+        }
+        if ($character -eq '"') {
+            [void]$quoted.Append('\' * (($backslashes * 2) + 1))
+            [void]$quoted.Append('"')
+        }
+        else {
+            [void]$quoted.Append('\' * $backslashes)
+            [void]$quoted.Append($character)
+        }
+        $backslashes = 0
+    }
+    [void]$quoted.Append('\' * ($backslashes * 2))
+    [void]$quoted.Append('"')
+    return $quoted.ToString()
+}
+
 function Invoke-BinaryPipeline {
     <#
     .SYNOPSIS
@@ -18,18 +47,21 @@ function Invoke-BinaryPipeline {
     $sourceInfo.UseShellExecute = $false
     $sourceInfo.RedirectStandardOutput = $true
     $sourceInfo.RedirectStandardError = $true
-    foreach ($argument in $SourceArguments) {
-        [void]$sourceInfo.ArgumentList.Add($argument)
-    }
+    # Windows PowerShell 5.1 runs on .NET Framework, where ProcessStartInfo has
+    # no ArgumentList property. Build a correctly quoted native command line so
+    # the encrypted streaming backup works on the production Windows host too.
+    $sourceInfo.Arguments = ($SourceArguments | ForEach-Object {
+        ConvertTo-NativeCommandLineArgument $_
+    }) -join ' '
 
     $destinationInfo = [Diagnostics.ProcessStartInfo]::new()
     $destinationInfo.FileName = $DestinationFile
     $destinationInfo.UseShellExecute = $false
     $destinationInfo.RedirectStandardInput = $true
     $destinationInfo.RedirectStandardError = $true
-    foreach ($argument in $DestinationArguments) {
-        [void]$destinationInfo.ArgumentList.Add($argument)
-    }
+    $destinationInfo.Arguments = ($DestinationArguments | ForEach-Object {
+        ConvertTo-NativeCommandLineArgument $_
+    }) -join ' '
 
     $source = [Diagnostics.Process]::new()
     $source.StartInfo = $sourceInfo

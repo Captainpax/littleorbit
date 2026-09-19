@@ -65,6 +65,34 @@ Both independently report release signing certificate SHA-256
 The Motorola tablet was not connected during this run. The owner explicitly
 waived that physical two-device soak on 2026-09-19 and authorized production
 promotion while preserving the missing evidence in this report. The
-compatibility floor remains code 23 during optional rollout. Deployment,
-updater, RSS, health, and immutable-download evidence is appended only after
-those checks actually complete.
+compatibility floor remains code 23 during optional rollout.
+
+## Production evidence
+
+- An age-encrypted coordinated production backup completed before data
+  maintenance. Its PostgreSQL and attachment hashes match their sidecars; the
+  PostgreSQL sidecar records both raw locations and device-health rows as
+  excluded.
+- Migration `0026` is the production Alembic head. The API, worker, media
+  worker, and website were recreated from the 1.0.1 source images. API and web
+  health checks pass and the post-deployment error-log scan is clear.
+- Retained coordinate-free history reaggregation rebuilt one eligible couple.
+  The privacy-safe note classifier found two exact safe duplicates and no
+  ambiguous groups, archived those two documents for normal seven-day
+  recovery, and then reported zero remaining groups.
+- Immutable release metadata was published at
+  `2026-09-19T18:19:24.932834Z` with phone code 24, Wear code 18, compatibility
+  floor 23, and no forced-update deadline.
+- Local and public current-release responses agree. Complete phone and Wear
+  downloads match the signed byte counts and SHA-256 digests. Both 1,024-byte
+  range requests returned `206` with the exact total sizes.
+- `/download`, `/patch-notes`, `/patch-notes.xml`, `/status`, `/showcase`, and
+  public readiness returned `200`; RSS lists Little Orbit 1.0.1 first.
+- The public GitHub release is
+  <https://github.com/Captainpax/littleorbit/releases/tag/v1.0.1>.
+
+The production backup initially exposed that the binary streaming helper used
+the newer `.NET` `ProcessStartInfo.ArgumentList` API, which is absent from
+Windows PowerShell 5.1. The helper now builds a correctly quoted native command
+line on that host; the successful encrypted backup and matching hashes verify
+the repair.

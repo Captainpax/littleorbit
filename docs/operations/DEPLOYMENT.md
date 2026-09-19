@@ -246,3 +246,10 @@ docker compose --env-file .env -f infra/compose.yaml run --rm `
 The read-only bind intentionally exposes only the backup directory to the one-shot command. Verify the selected sidecar before use; the examples do not authorize guessing it. Re-run the classifier after archival and require `safe_to_archive: 0`. Ambiguous groups remain untouched for manual review. Check that corrections retain their revisions across local-time reaggregation, that raw coordinates still expire before 24 hours, and that opted-in health rows expire at 24 hours and are absent after unpair.
 
 Before publication, test exactly-20-minute and longer gaps, intervening apart/poor readings, 2-minute/15-minute streams, reordered retries, one-phone-only collection, 23/25-hour days, and opt-in/out authorization. Exercise note create response loss, rotation, process death, continuous typing, a newer partner revision, attachment-safe fork, GIF pause/play and reduced motion. The final gate requires a physical phone/tablet soak through screen-off, Wi-Fi/cellular transition, temporary offline state, battery restriction, and a forced 15-minute gap followed by a confirming anchor.
+
+Production 1.0.1 was published on 2026-09-19 at
+`2026-09-19T18:19:24.932834Z`. Migration `0026`, one retained-history rebuild,
+two reversible safe-duplicate archives, signed full/range downloads, RSS,
+local/public readiness, and the code-23 compatibility floor were verified. The
+owner waived the unavailable physical tablet soak; the missing evidence remains
+recorded in the 1.0.1 verification report.
