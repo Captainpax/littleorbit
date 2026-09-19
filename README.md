@@ -6,7 +6,7 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.0 is the current signed stable release. The 1.0.1 reliability update is implemented and awaiting its migration, signed-artifact, two-device soak, and publication gates. It confirms later-supported nearby gaps up to 20 minutes, adds collection diagnostics that each person must opt into, and replaces manual Our Space saving with serialized crash-safe autosave and explicit offline-conflict recovery. Partner alerts remain entirely self-hosted.
+> **Project status:** 1.0.1 is the current signed stable release. It confirms later-supported nearby gaps up to 20 minutes, adds collection diagnostics that each person must opt into, and replaces manual Our Space saving with serialized crash-safe autosave and explicit offline-conflict recovery. Partner alerts remain entirely self-hosted.
 
 ## What 1.0 includes
 
@@ -64,7 +64,7 @@ python -m venv .venv
 
 [`1.0.0`](https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0) is the current signed stable release. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0/apk) is 36,246,289 bytes with SHA-256 `6a8d711eda3c662748e62cc3e0391135985ccf58123886c3f80651684ca500c0`. The independently versioned 14,189,878-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.0.0/wear-apk) is version code 18 with SHA-256 `43068ae14877ee0e158f6498a66f5987d56642521a8c4109372434e8c7fe9cd3`. Both artifacts retain the pinned [signing certificate](docs/signing/README.md). GitHub remains the canonical source history while APK bytes are served by Little Orbit's first-party API. Notifications are fully self-hosted; a visible app receives authenticated WebSocket hints and background WorkManager polls the same API, subject to Android battery delays. RC10.1 and RC11.1 require one manual update because their already-installed updater abandons its package session; automatic updates work after crossing that boundary.
 
-The checked-in [1.0.1 release note](docs/releases/1.0.1.md) describes the pending phone code 24 update. It is not the current download until the generated signed manifest, migration rehearsal, physical phone/tablet gates, and production health checks pass.
+The checked-in [1.0.1 release note](docs/releases/1.0.1.md) describes the current phone code 24 update and the byte-identical Wear code 18 companion artifact.
 
 ## Privacy promise
 

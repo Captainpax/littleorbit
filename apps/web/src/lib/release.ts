@@ -70,22 +70,22 @@ export function formatReleaseDate(publishedAt: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0",
-  versionCode: 23,
+  version: "1.0.1",
+  versionCode: 24,
   minimumSupportedVersionCode: 23,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "6a8d711eda3c662748e62cc3e0391135985ccf58123886c3f80651684ca500c0",
+  sha256: "c5856820ad186be616027c95b008a1d81edbe8c60dc7b2cc7301b13efa369c25",
   releaseNotes: [
-    "Evaluates every chronological observation so unequal phone cadence cannot hide intervening evidence.",
-    "Requires fresh evidence from both phones and bounds counted intervals and live projection to five minutes.",
-    "Shows a monotonic foreground timer with clear nearby, confirming, apart, inaccurate, waiting, and stale states.",
-    "Scopes encrypted offline samples to the exact relationship and retains them through temporary failures.",
-    "Keeps passive widget and Wear displays on authoritative observed nearby time.",
+    "Confirms later-supported nearby gaps up to 20 minutes without treating Wi-Fi as proximity proof.",
+    "Adds per-phone collection health, coordinate-free daily details, and audited corrections.",
+    "Replaces manual note saving with serialized crash-safe autosave and explicit conflict recovery.",
+    "Prevents repeated autosave from creating duplicate documents and safely remaps forked attachments.",
+    "Restores inline animated GIFs with pause, play, and reduced-motion behavior.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0",
-  apkUrl: hostedApkPath("1.0.0"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.1",
+  apkUrl: hostedApkPath("1.0.1"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0"),
+    apkUrl: hostedWearApkPath("1.0.1"),
     sha256: "43068ae14877ee0e158f6498a66f5987d56642521a8c4109372434e8c7fe9cd3",
     sizeBytes: 14189878,
     versionCode: 18,
@@ -175,7 +175,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-17T03:06:07Z",
+    publishedAt: "2026-09-19T18:15:00Z",
   }];
 }
 

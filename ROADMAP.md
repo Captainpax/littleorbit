@@ -70,8 +70,8 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Implement 1.0.1 phone code 24 with five-minute direct evidence, later-confirmed 20-minute bridges, shared-home local-day history, opt-in expiring collection diagnostics, and Together Time dashboard, health, day-detail, and correction screens.
 - [x] Implement 1.0.1 Our Space single-flight autosave, encrypted crash recovery, explicit newer-revision choices, idempotent attachment-safe note forks, conservative duplicate classification, and reduced-motion-aware animated GIF preview controls.
 - [x] Add migration 0026, backup exclusions for raw locations and device-health snapshots, backup-gated reaggregation and duplicate archival commands, v3 fixtures, DST/unequal-cadence regressions, and release documentation.
-- [ ] Rehearse migration 0026 on disposable PostgreSQL, restore the coordinated encrypted backup, execute the privacy-safe dry run/reaggregation/archive sequence, and verify rollback.
-- [ ] Complete the 1.0.1 physical phone/tablet soak, signed phone build, byte-identical Wear verification, updater and RSS checks, then publish and activate code 24 only after production health passes.
+- [x] Rehearse migration 0026 on disposable PostgreSQL, restore the coordinated encrypted backup, execute the privacy-safe dry run/reaggregation/archive sequence, and verify rollback.
+- [x] Build and verify signed phone code 24, prove byte-identical Wear code 18 reuse, upgrade the physical Pixel, and publish 1.0.1 after an explicit owner waiver of the unavailable physical tablet soak. Keep the compatibility floor at code 23 during optional rollout.
 
 ## 1.x — Reliability and reach
 

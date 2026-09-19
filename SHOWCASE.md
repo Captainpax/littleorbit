@@ -142,7 +142,7 @@ The console exposes service health, delivery and generation status, moderation q
 - [x] RC16 physical Pixel check: an in-place code-21 upgrade preserved the valid session, hid the completed Home setup card, and showed the connected-only unpair action without executing it against the real couple.
 - [x] RC17 isolated data check: four identical visible cards were proved to be distinct create rows without reading their title/body, and a disposable PostgreSQL run proved different immediate create IDs now resolve to one partner-visible document.
 - [ ] RC17 physical pair: install code 22 on both phones, confirm one save remains one document, collect two confident nearby pairs, and capture the nearby-only Home/widget/Wear presentation.
-- [ ] 1.0.1 physical pair: soak foreground and screen-off collection through Wi-Fi/cellular/offline transitions, force and later confirm a 15-minute gap, exercise autosave/process death/offline conflicts, and capture GIF pause/play plus the new Together Time subpages.
+- [ ] 1.0.1 physical pair: the owner waived this unavailable tablet gate for publication. A future paired-device soak should still cover foreground and screen-off collection through Wi-Fi/cellular/offline transitions and a forced 15-minute gap followed by confirmation.
 - [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
 - [ ] Website remaining: patch notes/RSS in a feed reader, recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.

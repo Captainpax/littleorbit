@@ -215,7 +215,7 @@ For together-time, use disposable paired accounts or privacy-safe aggregates onl
 
 ## 1.0.1 Together Time and Our Space reliability
 
-Phone 1.0.1 uses version code 24. Reuse the exact signed 1.0.0 Wear code 18 APK with `-ReuseWearApk`; the generated manifest must independently prove the same Wear bytes, hash, package, code, and signer. Do not change the website fallback, publish release metadata, or enforce code 24 until the signed phone manifest and physical gates pass.
+Phone 1.0.1 uses version code 24. Reuse the exact signed 1.0.0 Wear code 18 APK with `-ReuseWearApk`; the generated manifest must independently prove the same Wear bytes, hash, package, code, and signer. The owner explicitly waived the unavailable physical tablet soak on 2026-09-19. Preserve that missing evidence in the verification report, publish only after the signed phone manifest and production health checks pass, and keep the compatibility floor at code 23 during the optional rollout.
 
 Use this order against an explicitly identified target. The duplicate command prints counts only and never titles or bodies. `--apply` refuses to run unless the supplied sidecar names a checksum-valid encrypted dump that excluded raw locations and device-health snapshots.
 

@@ -62,9 +62,9 @@ SHA-256
 Both independently report release signing certificate SHA-256
 `43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337`.
 
-Production metadata, RSS, and the web fallback continue to advertise 1.0.0
-until the remaining gates pass: a physical phone/tablet collection soak with
-bridge confirmation, updater validation against staged metadata, deployment
-health, and immutable production download verification. The Motorola tablet
-was not connected during this run. No production deployment is claimed in
-this record.
+The Motorola tablet was not connected during this run. The owner explicitly
+waived that physical two-device soak on 2026-09-19 and authorized production
+promotion while preserving the missing evidence in this report. The
+compatibility floor remains code 23 during optional rollout. Deployment,
+updater, RSS, health, and immutable-download evidence is appended only after
+those checks actually complete.
