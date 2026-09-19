@@ -19,6 +19,7 @@ final class NoteEditorView {
         this.binding = binding;
         this.markdown = markdown;
         binding.modeButton.setOnClickListener(ignored -> toggleMode());
+        binding.gifPlaybackButton.setOnClickListener(ignored -> toggleGifPlayback());
     }
 
     boolean isRendering() {
@@ -82,6 +83,7 @@ final class NoteEditorView {
         String body = binding.bodyInput.getText().toString();
         binding.previewTitle.setText(binding.titleInput.getText().toString());
         markdown.render(binding.previewText, body);
+        updateGifPlayback(body);
         binding.remoteImageNotice.setVisibility(hasRemoteImage(body) ? View.VISIBLE : View.GONE);
         binding.rawHtmlNotice.setVisibility(
                 MarkdownPrivacy.containsRawHtml(body) ? View.VISIBLE : View.GONE);
@@ -90,6 +92,7 @@ final class NoteEditorView {
     void showConflict(String serverVersion) {
         boolean visible = serverVersion != null;
         binding.conflictCard.setVisibility(visible ? View.VISIBLE : View.GONE);
+        binding.finishMergeButton.setVisibility(View.GONE);
         if (visible) binding.serverVersionText.setText(serverVersion);
     }
 
@@ -147,8 +150,15 @@ final class NoteEditorView {
         binding.editorRecoveryCard.setVisibility(View.GONE);
     }
 
+    void startMergeReview() {
+        showEdit();
+        binding.finishMergeButton.setVisibility(View.VISIBLE);
+        binding.bodyInput.requestFocus();
+    }
+
     void clearPreview() {
         markdown.clear(binding.previewText);
+        binding.gifPlaybackButton.setVisibility(View.GONE);
     }
 
     private void toggleMode() {
@@ -164,9 +174,9 @@ final class NoteEditorView {
         binding.bodyInput.setVisibility(View.VISIBLE);
         binding.formattingScroll.setVisibility(View.VISIBLE);
         binding.previewText.setVisibility(View.GONE);
+        binding.gifPlaybackButton.setVisibility(View.GONE);
         binding.remoteImageNotice.setVisibility(View.GONE);
         binding.rawHtmlNotice.setVisibility(View.GONE);
-        binding.syncButton.setVisibility(View.VISIBLE);
         binding.modeButton.setText(R.string.space_preview);
         binding.modeButton.setContentDescription(
                 binding.getRoot().getContext().getString(R.string.space_preview));
@@ -181,11 +191,25 @@ final class NoteEditorView {
         binding.bodyInput.setVisibility(View.GONE);
         binding.formattingScroll.setVisibility(View.GONE);
         binding.previewText.setVisibility(View.VISIBLE);
-        binding.syncButton.setVisibility(View.GONE);
         binding.modeButton.setText(R.string.edit_markdown);
         binding.modeButton.setContentDescription(
                 binding.getRoot().getContext().getString(R.string.edit_markdown));
         OrbitMotion.reveal(binding.previewText);
+    }
+
+    private void toggleGifPlayback() {
+        boolean playing = markdown.toggleAnimations();
+        binding.gifPlaybackButton.setText(
+                playing ? R.string.pause_animation : R.string.play_animation);
+    }
+
+    private void updateGifPlayback(String body) {
+        boolean visible = previewing && markdown.hasAnimatedGif(body);
+        binding.gifPlaybackButton.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (visible) {
+            binding.gifPlaybackButton.setText(markdown.animationsPlaying()
+                    ? R.string.pause_animation : R.string.play_animation);
+        }
     }
 
     private static boolean hasRemoteImage(String body) {

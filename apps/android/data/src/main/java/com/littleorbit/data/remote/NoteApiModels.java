@@ -72,6 +72,20 @@ public final class NoteApiModels {
         }
     }
 
+    /** Explicit, retry-safe copy used when an offline draft conflicts. */
+    public static final class ForkRequest {
+        @Json(name = "operation_id") public final String operationId;
+        public final String title;
+        public final String body;
+
+        /** Creates a separate note without mutating the shared source. */
+        public ForkRequest(String operationId, String title, String body) {
+            this.operationId = operationId;
+            this.title = title;
+            this.body = body;
+        }
+    }
+
     /** Attachment metadata that never exposes a server storage path. */
     public static final class Attachment {
         public final String id;

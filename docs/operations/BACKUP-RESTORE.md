@@ -26,7 +26,7 @@ The command creates:
 - `backups/attachments/little-orbit-attachments-YYYYMMDD-HHMMSS.tar.age`
 - JSON sidecars containing encrypted size, SHA-256, and content-free backup facts
 
-PostgreSQL uses the dedicated read-only backup role and explicitly excludes all `location_samples` table data. The attachment archive includes a relative-path, byte-count, and SHA-256 manifest. Both scripts retain 14 days by default and restart the exact mutation containers that were running before the snapshot.
+PostgreSQL uses the dedicated read-only backup role and explicitly excludes all `location_samples` and `together_device_health` table data. The JSON sidecar records both exclusions; 1.0.1 repair commands reject an older or ambiguous sidecar before changing rows. The attachment archive includes a relative-path, byte-count, and SHA-256 manifest. Both scripts retain 14 days by default and restart the exact mutation containers that were running before the snapshot.
 
 Individual scripts remain available for investigation, but a database-only or attachment-only file is not a complete application backup:
 
@@ -55,7 +55,7 @@ powershell -File infra/scripts/restore-postgres.ps1 `
   -ConfirmDestructive
 ```
 
-After restore, run migrations and compare privacy-safe row counts for accounts, couples, questions, countdown reminders, and relationship avatars. Confirm that `location_samples` contains zero restored rows. Never open notes, answers, precise locations, or image bytes as routine validation.
+After restore, run migrations and compare privacy-safe row counts for accounts, couples, questions, countdown reminders, and relationship avatars. Confirm that `location_samples` and `together_device_health` contain zero restored rows. Never open notes, answers, precise locations, diagnostics, or image bytes as routine validation.
 
 ## Restore attachment bytes
 

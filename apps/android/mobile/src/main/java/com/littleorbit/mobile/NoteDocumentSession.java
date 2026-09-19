@@ -7,6 +7,7 @@ import com.littleorbit.data.remote.NoteSocketClient;
 import com.littleorbit.data.repository.NoteDraftStore;
 import com.littleorbit.data.repository.OrbitRepository;
 import com.littleorbit.mobile.databinding.ActivityNotesBinding;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,27 +15,29 @@ import java.util.UUID;
 final class NoteDocumentSession implements NoteEditorEvents.Host {
     private final NotesActivity activity;
     private final OrbitRepository orbit;
-    private final NoteDraftStore drafts;
+    final NoteDraftStore drafts;
     private final NoteSocketClient sockets;
-    private final ActivityNotesBinding binding;
-    private final NoteEditorView screen;
+    final ActivityNotesBinding binding;
+    final NoteEditorView screen;
     private final SpaceLibraryViews library;
-    private final NoteWorkspaceController workspace;
-    private final Runnable reloadDirectory;
+    final NoteWorkspaceController workspace;
+    final Runnable reloadDirectory;
     private final Runnable reloadArchived;
     private final NoteEditorObservers observers;
-    private NoteAttachmentController attachments;
-    private NoteApiModels.Note current;
-    private NoteDraftStore.Workspace pendingRestore;
-    private String serverBody = "";
-    private final NoteCreationCoordinator creation = new NoteCreationCoordinator();
-    private int localBaseRevision;
-    private int localMetadataRevision;
-    private boolean restoringExisting, returnAfterSave, foreground, resumeRequiresReload;
+    private final NoteAutosaveScheduler autosave;
+    private final NoteWorkspaceRestoreCoordinator restore;
+    private final NoteArchiveCoordinator archive;
+    NoteAttachmentController attachments;
+    NoteApiModels.Note current;
+    NoteDraftStore.Workspace pendingRestore;
+    String serverBody = "";
+    final NoteCreationCoordinator creation = new NoteCreationCoordinator();
+    int localBaseRevision;
+    int localMetadataRevision;
+    boolean restoringExisting, returnAfterSave, foreground, resumeRequiresReload;
+    boolean metadataInFlight, bodyInFlight, savePending, needsReview;
     private long editorGeneration;
-    private NoteSocketClient.EditorConnection editor = NoteSocketClient.EditorConnection.closed();
-    private final Runnable bodySave = this::sync;
-    private final Runnable titleSave = this::rename;
+    NoteSocketClient.EditorConnection editor = NoteSocketClient.EditorConnection.closed();
     private final Runnable workspaceSave = this::persistWorkspace;
 
     NoteDocumentSession(
@@ -60,6 +63,11 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         this.reloadArchived = reloadArchived;
         observers = new NoteEditorObservers(
                 binding.bodyInput, binding.titleInput, screen::isRendering);
+        autosave = new NoteAutosaveScheduler(this::requestAutosave);
+        restore = new NoteWorkspaceRestoreCoordinator(this);
+        archive = new NoteArchiveCoordinator(
+                activity, orbit, drafts, binding, library, () -> current,
+                this::leaveWorkspace, reloadArchived);
     }
 
     void attach(NoteAttachmentController controller) {
@@ -73,13 +81,15 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
     void bindEditors() {
         observers.bind(() -> {
             observers.schedule(workspaceSave, 300);
-            if (current == null || restoringExisting) return;
-            drafts.save(current.id, body(), localBaseRevision);
-            observers.schedule(bodySave, 750);
+            if (restoringExisting || needsReview) return;
+            if (current != null) drafts.save(current.id, body(), localBaseRevision);
+            binding.statusText.setText(R.string.note_offline_saved);
+            autosave.edited();
         }, () -> {
             observers.schedule(workspaceSave, 300);
-            if (current == null || restoringExisting) return;
-            observers.schedule(titleSave, 750);
+            if (restoringExisting || needsReview) return;
+            binding.statusText.setText(R.string.note_offline_saved);
+            autosave.edited();
         });
     }
 
@@ -87,6 +97,10 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         closeEditor();
         workspace.begin();
         restoringExisting = false;
+        needsReview = false;
+        metadataInFlight = false;
+        bodyInFlight = false;
+        savePending = false;
         pendingRestore = null;
         creation.clear();
         current = note;
@@ -98,6 +112,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         screen.renderInitial(note.title, initialBody, initialBody.length(), initialBody.length());
         boolean conflict = draft != null && draft.baseRevision() != note.revision;
         screen.showConflict(conflict ? note.body : null);
+        needsReview = conflict;
         screen.hideRecovery();
         binding.statusText.setText(conflict ? R.string.note_reconcile : R.string.note_ready);
         binding.attachButton.setEnabled(true);
@@ -112,93 +127,11 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
     }
 
     void restoreWorkspace(NoteDraftStore.Workspace saved) {
-        workspace.consumeRestore();
-        creation.restore(saved.createOperationId());
-        localBaseRevision = saved.baseRevision();
-        localMetadataRevision = saved.metadataRevision();
-        serverBody = saved.serverBody();
-        screen.renderInitial(
-                saved.title(), saved.body(), saved.selectionStart(), saved.selectionEnd());
-        screen.showConflict(null);
-        attachments.clear();
-        if (saved.noteId() == null) restoreNew(saved);
-        else restoreExisting(saved);
-        screen.showDocument(saved.preview());
-    }
-
-    private void restoreNew(NoteDraftStore.Workspace saved) {
-        current = null;
-        restoringExisting = false;
-        binding.attachButton.setEnabled(false);
-        binding.statusText.setText(R.string.note_new_hint);
-    }
-
-    private void restoreExisting(NoteDraftStore.Workspace saved) {
-        current = NoteWorkspaceSnapshots.storedNote(saved);
-        pendingRestore = saved;
-        restoringExisting = true;
-        binding.attachButton.setEnabled(false);
-        binding.statusText.setText(R.string.space_restoring_document);
-        screen.showRecovery(
-                R.string.space_restoring_document,
-                R.string.space_retry_document,
-                reloadDirectory);
+        restore.restore(saved);
     }
 
     void reconcileRestore(List<NoteApiModels.Note> notes) {
-        NoteDraftStore.Workspace saved = pendingRestore;
-        NoteApiModels.Note remote = notes.stream()
-                .filter(note -> saved.noteId().equals(note.id)).findFirst().orElse(null);
-        if (remote == null) {
-            screen.showRecovery(
-                    R.string.space_document_unavailable,
-                    R.string.space_return_to_library,
-                    this::preserveDraftAndReturn);
-            return;
-        }
-        reconcileBody(saved, remote);
-        reconcileTitle(saved, remote);
-        attachments.reset(remote);
-        persistWorkspace();
-    }
-
-    private void reconcileBody(
-            NoteDraftStore.Workspace saved, NoteApiModels.Note remote) {
-        String local = body();
-        boolean localChanged = !local.equals(saved.serverBody());
-        boolean remoteChanged = saved.baseRevision() != remote.revision;
-        current = remote;
-        serverBody = remote.body;
-        restoringExisting = false;
-        pendingRestore = null;
-        binding.attachButton.setEnabled(true);
-        screen.hideRecovery();
-        closeEditor();
-        editor = openEditor(remote);
-        if (!localChanged) {
-            screen.patchBody(remote.body);
-            drafts.clear(remote.id);
-            localBaseRevision = remote.revision;
-        } else if (remoteChanged) {
-            screen.showConflict(remote.body);
-            binding.statusText.setText(R.string.note_reconcile);
-        } else {
-            editor.update(local);
-            binding.statusText.setText(R.string.syncing_note);
-        }
-    }
-
-    private void reconcileTitle(
-            NoteDraftStore.Workspace saved, NoteApiModels.Note remote) {
-        String localTitle = binding.titleInput.getText().toString();
-        if (localTitle.equals(saved.serverTitle())) {
-            screen.setTitle(remote.title);
-            localMetadataRevision = remote.metadataRevision;
-        } else if (saved.metadataRevision() == remote.metadataRevision) {
-            rename();
-        } else {
-            binding.statusText.setText(R.string.remote_change_conflict);
-        }
+        restore.reconcile(notes);
     }
 
     void showLoadFailure() {
@@ -212,6 +145,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         library.setNotes(List.of());
         current = null; pendingRestore = null; creation.clear();
         restoringExisting = false; returnAfterSave = false;
+        metadataInFlight = false; bodyInFlight = false; savePending = false; needsReview = false;
         serverBody = ""; localBaseRevision = 0; localMetadataRevision = 0;
         screen.showInactiveRelationship(
                 () -> activity.startActivity(new Intent(activity, PairingActivity.class)));
@@ -227,6 +161,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         current = null;
         pendingRestore = null;
         restoringExisting = false;
+        needsReview = false;
         serverBody = "";
         localBaseRevision = 0;
         localMetadataRevision = 0;
@@ -242,20 +177,34 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         persistWorkspace();
     }
 
-    void sync() {
-        if (screen.isRendering() || restoringExisting) return;
+    private void requestAutosave() {
+        if (screen.isRendering() || restoringExisting || needsReview) return;
+        savePending = true;
+        drainAutosave();
+    }
+
+    private void drainAutosave() {
+        if (!savePending || creation.inFlight() || metadataInFlight || bodyInFlight) return;
+        savePending = false;
         if (current == null) {
             if (!title().isEmpty()) create();
             return;
         }
-        if (body().equals(serverBody)) {
-            binding.statusText.setText(R.string.note_synced);
+        if (!title().isEmpty() && !title().equals(current.title)) {
+            startRename();
+        } else if (!body().equals(serverBody)) {
+            startBodySave();
+        } else {
+            binding.statusText.setText(R.string.note_saved_now);
             finishReturn();
-            return;
         }
+    }
+
+    private void startBodySave() {
         drafts.save(current.id, body(), localBaseRevision);
+        bodyInFlight = true;
         editor.update(body());
-        binding.statusText.setText(R.string.syncing_note);
+        binding.statusText.setText(R.string.note_saving);
     }
 
     private void create() {
@@ -263,59 +212,62 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
             binding.statusText.setText(R.string.complete_required_fields);
             return;
         }
-        creation.submit(activity, orbit, binding, title(), body(), note -> {
-            drafts.clear(note.id);
-            library.upsert(note);
-            boolean returning = returnAfterSave;
-            select(note);
-            returnAfterSave = returning;
-            finishReturn();
-        });
+        workspace.persistNow(snapshot());
+        binding.statusText.setText(R.string.note_saving);
+        creation.submit(
+                activity, orbit, binding.statusText, title(), body(), () -> {},
+                this::adoptCreatedNote);
     }
 
     void rename() {
-        if (current == null || restoringExisting) return;
-        if (title().isEmpty() || title().equals(current.title)) {
-            finishReturn();
-            return;
-        }
+        requestAutosave();
+    }
+
+    private void startRename() {
+        metadataInFlight = true;
+        binding.statusText.setText(R.string.note_saving);
         NoteApiModels.TitleRequest request = new NoteApiModels.TitleRequest(
                 UUID.randomUUID().toString(), localMetadataRevision, title());
         orbit.renameNote(current.id, request).thenAccept(note -> activity.runOnUiThread(() -> {
+            metadataInFlight = false;
             current = note;
             localMetadataRevision = note.metadataRevision;
             library.upsert(note);
             persistWorkspace();
-            finishReturn();
+            binding.statusText.setText(R.string.note_saved_now);
+            savePending = true;
+            drainAutosave();
         })).exceptionally(failure -> {
-            activity.runOnUiThread(() -> showRenameFailure());
+            activity.runOnUiThread(() -> {
+                metadataInFlight = false;
+                binding.statusText.setText(R.string.note_offline_saved);
+                screen.showRenameFailure(reloadDirectory);
+            });
             return null;
         });
     }
 
-    private void showRenameFailure() {
-        screen.showRenameFailure(reloadDirectory);
+    private void adoptCreatedNote(NoteApiModels.Note note) {
+        current = note;
+        serverBody = note.body;
+        localBaseRevision = note.revision;
+        localMetadataRevision = note.metadataRevision;
+        drafts.clear(note.id);
+        library.upsert(note);
+        binding.attachButton.setEnabled(true);
+        attachments.reset(note);
+        editor = openEditor(note);
+        workspace.persistNow(snapshot());
+        creation.clear();
+        persistWorkspace();
+        binding.statusText.setText(R.string.note_saved_now);
+        savePending = !body().equals(serverBody) || !title().equals(note.title);
+        drainAutosave();
+        finishReturn();
     }
 
     void confirmArchive() {
-        if (current == null) return;
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
-                .setTitle(R.string.archive_note)
-                .setMessage(R.string.archive_note_explanation)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.archive_action, (dialog, which) -> archive())
-                .show();
-    }
-
-    private void archive() {
-        NoteApiModels.ArchiveRequest request = new NoteApiModels.ArchiveRequest(
-                UUID.randomUUID().toString(), current.metadataRevision);
-        AsyncUi.observe(activity, orbit.archiveNote(current.id, request), binding.statusText, note -> {
-            drafts.clear(note.id);
-            library.remove(note.id);
-            leaveWorkspace();
-            reloadArchived.run();
-        });
+        archive.confirm();
     }
 
     void returnToLibrary() {
@@ -324,8 +276,8 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
             return;
         }
         returnAfterSave = true;
-        rename();
-        sync();
+        autosave.flush();
+        requestAutosave();
         finishReturn();
     }
 
@@ -336,21 +288,13 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
             returnAfterSave = true;
             create();
         } else {
-            showUntitledDialog();
+            NoteDialogs.showUntitled(activity, this::leaveWorkspace);
         }
-    }
-
-    private void showUntitledDialog() {
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
-                .setTitle(R.string.space_untitled_draft)
-                .setMessage(R.string.space_untitled_draft_message)
-                .setNegativeButton(R.string.keep_editing, null)
-                .setPositiveButton(R.string.discard_draft, (dialog, which) -> leaveWorkspace())
-                .show();
     }
 
     private void finishReturn() {
         if (!returnAfterSave || current == null) return;
+        if (creation.inFlight() || metadataInFlight || bodyInFlight || needsReview) return;
         if (!body().equals(serverBody) || !title().equals(current.title)) return;
         returnAfterSave = false;
         leaveWorkspace();
@@ -366,15 +310,21 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         pendingRestore = null;
         restoringExisting = false;
         creation.clear();
+        autosave.cancel();
+        metadataInFlight = false;
+        bodyInFlight = false;
+        savePending = false;
+        needsReview = false;
         serverBody = "";
     }
 
-    private void preserveDraftAndReturn() {
+    void preserveDraftAndReturn() {
         if (current != null) drafts.save(current.id, body(), localBaseRevision);
         leaveWorkspace();
     }
 
     void abandon() {
+        autosave.cancel();
         workspace.finish();
         closeEditor();
         attachments.clear();
@@ -382,29 +332,65 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
         pendingRestore = null;
         restoringExisting = false;
         creation.clear();
+        metadataInFlight = false;
+        bodyInFlight = false;
+        savePending = false;
+        needsReview = false;
     }
 
     void useServerVersion() {
         if (current == null) return;
+        needsReview = false;
         editor.acceptServer();
         screen.patchBody(serverBody);
         localBaseRevision = current.revision;
         drafts.clear(current.id);
         screen.showConflict(null);
-        binding.statusText.setText(R.string.note_ready);
+        binding.statusText.setText(R.string.note_saved_now);
         persistWorkspace();
     }
 
     void keepMyVersion() {
         if (current == null) return;
-        screen.showConflict(null);
-        localBaseRevision = current.revision;
-        editor.keepLocal(body());
-        binding.statusText.setText(R.string.syncing_note);
-        persistWorkspace();
+        String sourceId = current.id;
+        String operationId = UUID.nameUUIDFromBytes(
+                ("fork:" + current.id + ":" + title() + ":" + body())
+                        .getBytes(StandardCharsets.UTF_8)).toString();
+        NoteApiModels.ForkRequest request =
+                new NoteApiModels.ForkRequest(operationId, title(), body());
+        binding.statusText.setText(R.string.note_saving);
+        orbit.forkNote(sourceId, request).thenAccept(note -> activity.runOnUiThread(() -> {
+            drafts.clear(sourceId);
+            select(note);
+            binding.statusText.setText(R.string.note_saved_now);
+        })).exceptionally(failure -> {
+            activity.runOnUiThread(() -> binding.statusText.setText(R.string.note_offline_saved));
+            return null;
+        });
     }
 
-    private NoteSocketClient.EditorConnection openEditor(NoteApiModels.Note note) {
+    void reviewAndMerge() {
+        if (current == null || !needsReview) return;
+        binding.statusText.setText(R.string.note_needs_review);
+        screen.startMergeReview();
+    }
+
+    void finishMerge() {
+        if (current == null || !needsReview) return;
+        if (body().equals(serverBody)) {
+            useServerVersion();
+            return;
+        }
+        needsReview = false;
+        localBaseRevision = current.revision;
+        screen.showConflict(null);
+        bodyInFlight = true;
+        drafts.save(current.id, body(), localBaseRevision);
+        editor.keepLocal(body());
+        binding.statusText.setText(R.string.note_saving);
+    }
+
+    NoteSocketClient.EditorConnection openEditor(NoteApiModels.Note note) {
         if (!foreground) {
             resumeRequiresReload = true;
             return NoteSocketClient.EditorConnection.closed();
@@ -415,13 +401,13 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
                 new NoteEditorEvents(activity, note.id, generation, this));
     }
 
-    private void closeEditor() {
+    void closeEditor() {
         editorGeneration++;
         editor.close();
         editor = NoteSocketClient.EditorConnection.closed();
     }
 
-    private void persistWorkspace() {
+    void persistWorkspace() {
         if (!screen.isEditorVisible()) return;
         workspace.persist(snapshot());
     }
@@ -437,11 +423,14 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
 
     void pause() {
         foreground = false;
-        observers.cancel(bodySave, titleSave, workspaceSave);
+        autosave.flush();
+        observers.cancel(workspaceSave);
         if (current != null && !body().equals(serverBody)) {
             drafts.save(current.id, body(), localBaseRevision);
         }
         if (screen.isEditorVisible()) workspace.persistNow(snapshot());
+        bodyInFlight = false;
+        metadataInFlight = false;
         resumeRequiresReload = current != null && !restoringExisting;
         closeEditor();
     }
@@ -454,6 +443,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
     }
 
     void destroy() {
+        autosave.cancel();
         foreground = false;
         resumeRequiresReload = false;
         closeEditor();
@@ -468,7 +458,7 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
 
     private String title() { return binding.titleInput.getText().toString().trim(); }
 
-    private String body() { return binding.bodyInput.getText().toString(); }
+    String body() { return binding.bodyInput.getText().toString(); }
 
     private void reloadCurrent() {
         if (current == null) return;
@@ -494,15 +484,18 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
             localBaseRevision = revision;
             drafts.clear(current.id);
             screen.hideRecovery();
-            binding.statusText.setText(R.string.note_synced);
+            needsReview = false;
+            binding.statusText.setText(R.string.note_saved_now);
         } else {
             screen.showConflict(body);
-            binding.statusText.setText(R.string.note_reconcile);
+            needsReview = true;
+            binding.statusText.setText(R.string.note_needs_review);
         }
         persistWorkspace();
     }
 
     @Override public void applySaved(String body, int revision) {
+        bodyInFlight = false;
         serverBody = body;
         current = NoteWorkspaceSnapshots.withBody(current, body, revision);
         localBaseRevision = revision;
@@ -511,26 +504,32 @@ final class NoteDocumentSession implements NoteEditorEvents.Host {
             drafts.clear(current.id);
             screen.showConflict(null);
             screen.hideRecovery();
-            binding.statusText.setText(R.string.note_synced);
+            needsReview = false;
+            binding.statusText.setText(R.string.note_saved_now);
             library.upsert(current);
             finishReturn();
         } else {
             drafts.save(current.id, local, revision);
-            binding.statusText.setText(R.string.syncing_note);
+            savePending = true;
+            binding.statusText.setText(R.string.note_saving);
         }
         persistWorkspace();
+        drainAutosave();
     }
 
     @Override public void applyConflict(String body, int revision) {
+        bodyInFlight = false;
         serverBody = body;
         current = NoteWorkspaceSnapshots.withBody(current, body, revision);
         screen.showConflict(body);
-        binding.statusText.setText(R.string.note_reconcile);
+        needsReview = true;
+        binding.statusText.setText(R.string.note_needs_review);
         persistWorkspace();
     }
 
     @Override public void applyFailure() {
-        binding.statusText.setText(R.string.note_draft_preserved);
+        bodyInFlight = false;
+        binding.statusText.setText(R.string.note_offline_saved);
         screen.showRecovery(
                 R.string.note_draft_preserved,
                 R.string.space_retry_document,

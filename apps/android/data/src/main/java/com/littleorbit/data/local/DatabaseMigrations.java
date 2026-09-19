@@ -77,4 +77,20 @@ public final class DatabaseMigrations {
                             + "recordedAtEpochMillis INTEGER NOT NULL)");
         }
     };
+
+    /** Adds exact timed/all-day semantics to the passive countdown cache. */
+    public static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "ALTER TABLE display_cache ADD COLUMN "
+                            + "nextCountdownTimingKind TEXT NOT NULL DEFAULT 'timed'");
+            database.execSQL(
+                    "ALTER TABLE display_cache ADD COLUMN "
+                            + "nextCountdownOccursOn TEXT NOT NULL DEFAULT ''");
+            database.execSQL(
+                    "ALTER TABLE display_cache ADD COLUMN "
+                            + "nextCountdownTimezone TEXT NOT NULL DEFAULT 'UTC'");
+        }
+    };
 }

@@ -14,6 +14,7 @@ from .countdown_models import Countdown, CountdownReminder
 from .models import Account, Couple, CoupleMember, LocationSample
 from .notification_models import NotificationDevice, NotificationEvent
 from .profile_models import RelationshipAvatar
+from .together_models import TogetherDeviceHealth
 
 
 @dataclass(frozen=True)
@@ -131,6 +132,9 @@ async def _delete_ephemeral_relationship_state(
         )
     )
     await session.execute(delete(LocationSample).where(LocationSample.couple_id == couple_id))
+    await session.execute(
+        delete(TogetherDeviceHealth).where(TogetherDeviceHealth.couple_id == couple_id)
+    )
     await session.execute(
         delete(RelationshipAvatar).where(RelationshipAvatar.couple_id == couple_id)
     )

@@ -310,6 +310,29 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     @Override
+    public CompletableFuture<TogetherTimeModels.DayDetails> togetherDayDetails(String day) {
+        return async(api.togetherDayDetails(day));
+    }
+
+    @Override
+    public CompletableFuture<TogetherTimeModels.DeviceHealthResponse> togetherDeviceHealth() {
+        return async(api.togetherDeviceHealth());
+    }
+
+    @Override
+    public CompletableFuture<TogetherTimeModels.DeviceHealthView> updateTogetherDeviceHealth(
+            String installationId, TogetherTimeModels.DeviceHealthUpdate request) {
+        return async(api.updateTogetherDeviceHealth(installationId, request));
+    }
+
+    @Override
+    public CompletableFuture<Void> deleteTogetherDeviceHealth(String installationId) {
+        return purge(CompletableFuture.runAsync(
+                () -> RetrofitCalls.executeVoid(api.deleteTogetherDeviceHealth(installationId)),
+                executor));
+    }
+
+    @Override
     public CompletableFuture<TogetherTimeModels.StartDateProposal> proposeStartDate(
             TogetherTimeModels.ProposalRequest request) {
         return async(api.proposeStartDate(request)).thenApply(result -> {
@@ -366,6 +389,12 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     public CompletableFuture<NoteApiModels.Note> restoreNote(
             String noteId, NoteApiModels.ArchiveRequest request) {
         return async(api.restoreNote(noteId, request));
+    }
+
+    @Override
+    public CompletableFuture<NoteApiModels.Note> forkNote(
+            String noteId, NoteApiModels.ForkRequest request) {
+        return async(api.forkNote(noteId, request));
     }
 
     @Override

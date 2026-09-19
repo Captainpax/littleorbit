@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from little_orbit_api.domain.location import (
+    MAX_BRIDGED_INTERVAL,
     MAX_MUTUAL_EVIDENCE_AGE,
     PRIVACY_MAINTENANCE_INTERVAL,
     RAW_LOCATION_RETENTION,
@@ -77,16 +78,40 @@ def test_nearby_estimate_counts_interval_between_confident_samples() -> None:
     assert len({item.bucket_start for item in buckets}) == len(buckets)
 
 
-def test_nearby_estimate_breaks_on_uncertainty_and_long_gap() -> None:
+def test_nearby_estimate_bridges_short_gap_but_not_poor_or_long_gap() -> None:
     start = datetime(2026, 9, 12, 10, tzinfo=UTC)
     good = [_sample("a", start), _sample("b", start + timedelta(minutes=6))]
+    too_long = [_sample("e", start), _sample("f", start + timedelta(minutes=21))]
     poor = [
-        _sample("c", start, accuracy=80),
-        _sample("d", start + timedelta(minutes=6), accuracy=80),
+        _sample("c", start, accuracy=150),
+        _sample("d", start + timedelta(minutes=6), accuracy=150),
     ]
 
-    assert estimate_nearby_minutes(good, good) == []
+    bridged = estimate_nearby_minutes(good, good)
+    assert sum(item.bridged_seconds for item in bridged) == 6 * 60
+    assert estimate_nearby_minutes(too_long, too_long) == []
     assert estimate_nearby_minutes(good, poor) == []
+
+
+def test_nearby_estimate_bridges_exact_twenty_minute_boundary() -> None:
+    start = datetime(2026, 9, 12, 10, tzinfo=UTC)
+    good = [_sample("a", start), _sample("b", start + MAX_BRIDGED_INTERVAL)]
+
+    buckets = estimate_nearby_minutes(good, good)
+
+    assert sum(item.bridged_seconds for item in buckets) == 20 * 60
+    assert sum(item.duration_seconds for item in buckets) == 20 * 60
+
+
+def test_nearby_estimate_does_not_bridge_intervening_poor_accuracy() -> None:
+    start = datetime(2026, 9, 12, 10, tzinfo=UTC)
+    samples = [
+        _sample("a", start),
+        _sample("poor", start + timedelta(minutes=10), accuracy=150),
+        _sample("b", start + timedelta(minutes=20)),
+    ]
+
+    assert estimate_nearby_minutes(samples, samples) == []
 
 
 def test_intervening_apart_reading_breaks_asymmetric_stream() -> None:
@@ -116,6 +141,21 @@ def test_unequal_cadence_is_symmetric() -> None:
     reverse = estimate_nearby_minutes(slow, fast)
 
     assert sum(item.duration_seconds for item in forward) == 10 * 60
+    assert forward == reverse
+
+
+def test_two_minute_and_fifteen_minute_streams_bridge_deterministically() -> None:
+    start = datetime(2026, 9, 16, 10, tzinfo=UTC)
+    fast = [
+        _sample(f"fast-{minute}", start + timedelta(minutes=minute))
+        for minute in range(0, 16, 2)
+    ]
+    slow = [_sample("slow-0", start), _sample("slow-15", start + timedelta(minutes=15))]
+
+    forward = estimate_nearby_minutes(fast, slow)
+    reverse = estimate_nearby_minutes(slow, fast)
+
+    assert sum(item.duration_seconds for item in forward) == 15 * 60
     assert forward == reverse
 
 

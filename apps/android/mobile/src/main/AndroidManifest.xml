@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
@@ -47,6 +48,14 @@
                 <action android:name="android.intent.action.TIME_SET" />
             </intent-filter>
         </receiver>
+        <receiver
+            android:name=".NearbyRecoveryReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
@@ -83,6 +92,9 @@
         <activity android:name=".DeviceSetupActivity" android:exported="false" />
         <activity android:name=".ArchivesActivity" android:exported="false" />
         <activity android:name=".TogetherTimeActivity" android:exported="false" />
+        <activity android:name=".TogetherTimeFixActivity" android:exported="false" />
+        <activity android:name=".TogetherTimeDayActivity" android:exported="false" />
+        <activity android:name=".TogetherTimeCorrectionActivity" android:exported="false" />
         <activity android:name=".SmoochActivity" android:exported="false" />
         <activity android:name=".NotesActivity" android:exported="false" />
         <activity android:name=".CountdownActivity" android:exported="false" />

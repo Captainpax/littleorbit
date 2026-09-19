@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 import pytest
 import pytest_asyncio
 from fastapi import HTTPException
-from sqlalchemy import func, inspect, select, text
+from sqlalchemy import func, inspect, select, text, update
 
 pytestmark = [
     pytest.mark.skipif(
@@ -20,6 +20,7 @@ pytestmark = [
 
 from little_orbit_api.clock import SystemClock  # noqa: E402
 from little_orbit_api.database import Base, SessionFactory, engine  # noqa: E402
+from little_orbit_api.maintenance import purge_expired_records  # noqa: E402
 from little_orbit_api.models import (  # noqa: E402
     Account,
     Couple,
@@ -27,13 +28,19 @@ from little_orbit_api.models import (  # noqa: E402
     LocationSample,
     TogetherBucket,
 )
+from little_orbit_api.relationship_service import end_active_relationship  # noqa: E402
+from little_orbit_api.routes.together_time_details import (  # noqa: E402
+    read_device_health,
+    update_device_health,
+)
 from little_orbit_api.routes.together_time_v2 import upload_locations_v2  # noqa: E402
 from little_orbit_api.schemas import (  # noqa: E402
     LocationBatchRequest,
     LocationBatchV2Response,
     LocationSampleRequest,
 )
-from little_orbit_api.together_models import TogetherDay  # noqa: E402
+from little_orbit_api.together_models import TogetherDay, TogetherDeviceHealth  # noqa: E402
+from little_orbit_api.together_schemas import TogetherDeviceHealthUpdate  # noqa: E402
 
 
 @pytest_asyncio.fixture(autouse=True, loop_scope="session")
@@ -90,7 +97,7 @@ async def test_concurrent_upload_retry_and_restart_are_deterministic() -> None:
     assert total == 120
     assert samples == 4
     assert day is not None and day.estimated_seconds == 120
-    assert day.estimate_method == "current_v3"
+    assert day.estimate_method == "current_v4"
 
 
 async def test_same_sample_identity_with_changed_payload_is_rejected() -> None:
@@ -109,6 +116,39 @@ async def test_same_sample_identity_with_changed_payload_is_rejected() -> None:
         await _upload(left, pair.id, changed)
 
     assert failure.value.status_code == 409
+
+
+async def test_device_health_is_opt_in_expiring_and_relationship_scoped() -> None:
+    pair, left, right = await _pair()
+    left_installation = uuid4()
+    right_installation = uuid4()
+    async with SessionFactory() as session:
+        await update_device_health(left_installation, _health("Left phone"), left, session)
+    async with SessionFactory() as session:
+        await update_device_health(right_installation, _health("Right phone"), right, session)
+    async with SessionFactory() as session:
+        visible = await read_device_health(left, session)
+    assert len(visible.mine) == 1
+    assert len(visible.partner) == 1
+    assert "installation_id" not in visible.model_dump_json()
+
+    expired_at = SystemClock().now().astimezone(UTC) - timedelta(seconds=1)
+    async with SessionFactory() as session:
+        await session.execute(
+            update(TogetherDeviceHealth)
+            .where(TogetherDeviceHealth.installation_id == right_installation)
+            .values(expires_at=expired_at)
+        )
+        await purge_expired_records(session, SystemClock().now().astimezone(UTC))
+        await session.commit()
+    async with SessionFactory() as session:
+        visible = await read_device_health(left, session)
+        assert visible.partner == []
+        assert await session.scalar(select(func.count()).select_from(TogetherDeviceHealth)) == 1
+        assert await end_active_relationship(session, left.id, SystemClock().now()) == pair.id
+        await session.commit()
+    async with SessionFactory() as session:
+        assert await session.scalar(select(func.count()).select_from(TogetherDeviceHealth)) == 0
 
 
 async def _upload(
@@ -169,4 +209,18 @@ def _sample(recorded_at: datetime, latitude: float) -> LocationSampleRequest:
         latitude=latitude,
         longitude=-122.6,
         accuracy_m=8,
+    )
+
+
+def _health(model: str) -> TogetherDeviceHealthUpdate:
+    return TogetherDeviceHealthUpdate(
+        device_model=model,
+        battery_percent=75,
+        charging=True,
+        network_transport="wifi",
+        background_location=True,
+        battery_unrestricted=True,
+        tracking_notification=True,
+        upload_state="working",
+        queue_size=0,
     )

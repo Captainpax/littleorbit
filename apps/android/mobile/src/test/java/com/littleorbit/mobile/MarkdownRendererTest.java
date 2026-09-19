@@ -1,8 +1,11 @@
 package com.littleorbit.mobile;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.littleorbit.data.remote.NoteApiModels;
+import java.util.List;
 import java.util.Set;
 import org.junit.Test;
 
@@ -31,5 +34,21 @@ public final class MarkdownRendererTest {
         assertEquals(
                 "tap bad",
                 MarkdownRenderer.clickableAvailableImages(source, Set.of()));
+    }
+
+    @Test
+    public void visiblePlaybackControlRequiresAnAvailableReferencedGif() {
+        NoteApiModels.Attachment gif = attachment(ALLOWED, "image/gif", "available");
+        NoteApiModels.Attachment pending = attachment(OTHER, "image/gif", "scanning");
+        assertTrue(MarkdownRenderer.referencesAnimatedGif(
+                "![memory](attachment://" + ALLOWED + ")", List.of(gif, pending)));
+        assertFalse(MarkdownRenderer.referencesAnimatedGif(
+                "![waiting](attachment://" + OTHER + ")", List.of(gif, pending)));
+    }
+
+    private static NoteApiModels.Attachment attachment(
+            String id, String mediaType, String status) {
+        return new NoteApiModels.Attachment(
+                id, "note", "memory.gif", mediaType, 1L, 1L, "digest", status, null, null);
     }
 }

@@ -1,5 +1,6 @@
 {
   "relationship_id": "not-a-uuid",
+  "home_timezone": "",
   "paired_at": "a date someone selected",
   "paired_days": -1,
   "nearby_observed_seconds": 50,

@@ -10,6 +10,7 @@ EARTH_RADIUS_M = 6_371_000.0
 MAX_MUTUAL_EVIDENCE_AGE = timedelta(minutes=5)
 MAX_SAMPLE_SKEW = timedelta(minutes=5)
 MAX_COUNTED_INTERVAL = timedelta(minutes=5)
+MAX_BRIDGED_INTERVAL = timedelta(minutes=20)
 RECOMPUTE_HORIZON = timedelta(hours=23, minutes=45)
 RAW_LOCATION_RETENTION = timedelta(hours=24)
 PRIVACY_MAINTENANCE_INTERVAL = timedelta(minutes=5)
@@ -29,6 +30,14 @@ CountingState = Literal[
     "apart",
     "poor_accuracy",
     "stale",
+]
+EvidenceKind = Literal[
+    "observed",
+    "bridged",
+    "mixed",
+    "apart",
+    "poor_accuracy",
+    "unverified",
 ]
 
 
@@ -74,11 +83,17 @@ class EvidenceAnchor:
 
 @dataclass(frozen=True)
 class MinuteEstimate:
-    """Coordinate-free overlap within one UTC minute."""
+    """Coordinate-free evidence within one UTC minute."""
 
     bucket_start: datetime
     duration_seconds: int
-    estimated_distance_m: float
+    estimated_distance_m: float | None
+    evidence_kind: EvidenceKind = "observed"
+    observed_seconds: int = 0
+    bridged_seconds: int = 0
+    unverified_seconds: int = 0
+    apart_seconds: int = 0
+    poor_accuracy_seconds: int = 0
 
 
 @dataclass(frozen=True)
@@ -156,7 +171,8 @@ def build_proximity_timeline(
         anchors.append(_anchor(recorded_at, latest_left, latest_right, threshold_m))
     estimates: dict[datetime, MinuteEstimate] = {}
     for previous, current in pairwise(anchors):
-        _add_nearby_interval(estimates, previous, current, clip_start, clip_end)
+        _add_pair_interval(estimates, previous, current, clip_start, clip_end)
+    _add_confirmed_bridges(estimates, anchors, clip_start, clip_end)
     return ProximityTimeline(
         tuple(anchors), tuple(estimates[key] for key in sorted(estimates))
     )
@@ -169,7 +185,11 @@ def estimate_nearby_minutes(
 ) -> list[MinuteEstimate]:
     """Return deterministic minute estimates from chronological two-stream evidence."""
 
-    return list(build_proximity_timeline(left, right, threshold_m).estimates)
+    return [
+        item
+        for item in build_proximity_timeline(left, right, threshold_m).estimates
+        if item.duration_seconds > 0
+    ]
 
 
 def live_projection(
@@ -290,46 +310,186 @@ def _anchor(
     return EvidenceAnchor(recorded_at, state, decision.measured_distance_m, left, right)
 
 
-def _add_nearby_interval(
+def _add_pair_interval(
     estimates: dict[datetime, MinuteEstimate],
     previous: EvidenceAnchor,
     current: EvidenceAnchor,
     clip_start: datetime | None,
     clip_end: datetime | None,
 ) -> None:
-    """Count only a bounded interval whose two chronological states are nearby."""
+    """Record direct evidence or an unverified gap between observations."""
 
-    if previous.state != "nearby" or current.state != "nearby":
-        return
     if current.recorded_at <= previous.recorded_at:
-        return
-    if current.recorded_at - previous.recorded_at > MAX_COUNTED_INTERVAL:
         return
     start = max(previous.recorded_at, clip_start) if clip_start else previous.recorded_at
     end = min(current.recorded_at, clip_end) if clip_end else current.recorded_at
     if end <= start:
         return
-    distance = max(
-        previous.measured_distance_m or 0.0, current.measured_distance_m or 0.0
+    kind = _pair_kind(previous, current)
+    distance = _interval_distance(previous, current)
+    _split_minutes(estimates, start, end, distance, kind)
+
+
+def _pair_kind(previous: EvidenceAnchor, current: EvidenceAnchor) -> EvidenceKind:
+    """Classify one chronological interval without assuming missing evidence."""
+
+    gap = current.recorded_at - previous.recorded_at
+    if (
+        previous.state == "nearby"
+        and current.state == "nearby"
+        and gap <= MAX_COUNTED_INTERVAL
+    ):
+        return "observed"
+    if "apart" in {previous.state, current.state}:
+        return "apart"
+    if "poor_accuracy" in {previous.state, current.state}:
+        return "poor_accuracy"
+    return "unverified"
+
+
+def _add_confirmed_bridges(
+    estimates: dict[datetime, MinuteEstimate],
+    anchors: list[EvidenceAnchor],
+    clip_start: datetime | None,
+    clip_end: datetime | None,
+) -> None:
+    """Fill a short unknown gap only after a later strong nearby observation."""
+
+    last_nearby: EvidenceAnchor | None = None
+    blocked = False
+    for current in anchors:
+        if current.state in {"apart", "poor_accuracy"}:
+            last_nearby, blocked = None, True
+            continue
+        if current.state != "nearby":
+            continue
+        if last_nearby is not None and not blocked:
+            gap = current.recorded_at - last_nearby.recorded_at
+            if MAX_COUNTED_INTERVAL < gap <= MAX_BRIDGED_INTERVAL:
+                _add_bridge(estimates, last_nearby, current, clip_start, clip_end)
+        last_nearby, blocked = current, False
+
+
+def _add_bridge(
+    estimates: dict[datetime, MinuteEstimate],
+    previous: EvidenceAnchor,
+    current: EvidenceAnchor,
+    clip_start: datetime | None,
+    clip_end: datetime | None,
+) -> None:
+    """Overlay confirmed estimated time while retaining observed provenance."""
+
+    start = max(previous.recorded_at, clip_start) if clip_start else previous.recorded_at
+    end = min(current.recorded_at, clip_end) if clip_end else current.recorded_at
+    if end <= start:
+        return
+    _split_minutes(
+        estimates,
+        start,
+        end,
+        _interval_distance(previous, current),
+        "bridged",
     )
-    _split_minutes(estimates, start, end, distance)
+
+
+def _interval_distance(
+    previous: EvidenceAnchor, current: EvidenceAnchor
+) -> float | None:
+    values = [
+        value
+        for value in (previous.measured_distance_m, current.measured_distance_m)
+        if value is not None
+    ]
+    return max(values) if values else None
 
 
 def _split_minutes(
     estimates: dict[datetime, MinuteEstimate],
     start: datetime,
     end: datetime,
-    distance: float,
+    distance: float | None,
+    kind: EvidenceKind,
 ) -> None:
-    """Split an interval without inflating fractional fragments."""
+    """Split evidence without inflating fragments or hiding mixed provenance."""
 
     cursor = start
     while cursor < end:
         minute = cursor.replace(second=0, microsecond=0)
         segment_end = min(end, minute + timedelta(minutes=1))
-        seconds = int((segment_end - cursor).total_seconds())
-        if seconds > 0:
+        span_seconds = int((segment_end - cursor).total_seconds())
+        if span_seconds > 0:
             existing = estimates.get(minute)
-            total = min(60, seconds + (existing.duration_seconds if existing else 0))
-            estimates[minute] = MinuteEstimate(minute, total, distance)
+            components = _merged_components(existing, kind, span_seconds)
+            total = min(60, components[0] + components[1])
+            merged_kind = _component_kind(components)
+            merged_distance = _merged_distance(existing, distance)
+            estimates[minute] = MinuteEstimate(
+                minute,
+                total,
+                merged_distance,
+                merged_kind,
+                *components,
+            )
         cursor = segment_end
+
+
+def _merged_components(
+    existing: MinuteEstimate | None,
+    kind: EvidenceKind,
+    span_seconds: int,
+) -> tuple[int, int, int, int, int]:
+    """Merge one non-overlapping segment or replace an unverified bridge span."""
+
+    values = list(_components(existing))
+    index = {
+        "observed": 0,
+        "bridged": 1,
+        "unverified": 2,
+        "apart": 3,
+        "poor_accuracy": 4,
+    }.get(kind)
+    if index is None:
+        return tuple(values)  # type: ignore[return-value]
+    if kind == "bridged":
+        replaced = min(values[2], span_seconds)
+        values[2] -= replaced
+    values[index] = min(60, values[index] + span_seconds)
+    return tuple(values)  # type: ignore[return-value]
+
+
+def _components(item: MinuteEstimate | None) -> tuple[int, int, int, int, int]:
+    if item is None:
+        return (0, 0, 0, 0, 0)
+    return (
+        item.observed_seconds,
+        item.bridged_seconds,
+        item.unverified_seconds,
+        item.apart_seconds,
+        item.poor_accuracy_seconds,
+    )
+
+
+def _component_kind(values: tuple[int, int, int, int, int]) -> EvidenceKind:
+    names: tuple[EvidenceKind, ...] = (
+        "observed",
+        "bridged",
+        "unverified",
+        "apart",
+        "poor_accuracy",
+    )
+    present = [name for name, seconds in zip(names, values, strict=True) if seconds]
+    return present[0] if len(present) == 1 else "mixed"
+
+
+def _merged_distance(
+    existing: MinuteEstimate | None, incoming: float | None
+) -> float | None:
+    values = [
+        value
+        for value in (
+            existing.estimated_distance_m if existing else None,
+            incoming,
+        )
+        if value is not None
+    ]
+    return max(values) if values else None

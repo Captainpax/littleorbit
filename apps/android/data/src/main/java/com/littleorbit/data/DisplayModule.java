@@ -57,6 +57,7 @@ public abstract class DisplayModule {
                 .addMigrations(DatabaseMigrations.MIGRATION_2_3)
                 .addMigrations(DatabaseMigrations.MIGRATION_3_4)
                 .addMigrations(DatabaseMigrations.MIGRATION_4_5)
+                .addMigrations(DatabaseMigrations.MIGRATION_5_6)
                 .build();
     }
 

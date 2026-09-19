@@ -212,3 +212,37 @@ Build phone code 23 and Wear code 18 as `1.0.0` with `infra/scripts/build-signed
 Publish with a future `required_after` instant long enough to verify an installed RC17 client's metadata check, explicit download, byte count, hash, certificate, Android confirmation, and in-place replacement before the version floor activates. Then verify current metadata, complete and 1,024-byte ranged phone/Wear downloads, patch notes, RSS, `/status`, and local and public health. Once the floor is active, phone versions below code 23 must receive `426 client_upgrade_required` on protected versioned routes while public release metadata and APK bytes remain reachable.
 
 For together-time, use disposable paired accounts or privacy-safe aggregates only. Verify unequal phone cadence, a nearby-apart-nearby sequence, a lone-phone stale transition, queue retry after temporary throttling, exact duplicate acceptance, conflicting sample rejection, correction preservation, process restart, and raw-coordinate expiry. On Android, keep the detail screen open: observed seconds may project only through the server deadline using elapsed realtime, then must freeze. Widget and Wear must show the authoritative observed value and stale state rather than continuing the projection. A synthetic/emulator pass does not establish real-world physical proximity; record that gate separately.
+
+## 1.0.1 Together Time and Our Space reliability
+
+Phone 1.0.1 uses version code 24. Reuse the exact signed 1.0.0 Wear code 18 APK with `-ReuseWearApk`; the generated manifest must independently prove the same Wear bytes, hash, package, code, and signer. Do not change the website fallback, publish release metadata, or enforce code 24 until the signed phone manifest and physical gates pass.
+
+Use this order against an explicitly identified target. The duplicate command prints counts only and never titles or bodies. `--apply` refuses to run unless the supplied sidecar names a checksum-valid encrypted dump that excluded raw locations and device-health snapshots.
+
+```powershell
+# 1. New image against the existing schema: classification only.
+docker compose --env-file .env -f infra/compose.yaml run --rm api `
+  python -m little_orbit_api.cli deduplicate-notes
+
+# 2. Stop mutation services at one consistency point and create the coordinated age backup.
+powershell -File infra/scripts/backup-all.ps1
+
+# 3. Rehearse migration 0026 on disposable PostgreSQL, then migrate production API-first.
+docker compose --env-file .env -f infra/compose.yaml run --rm migrate
+
+# 4. Repartition retained coordinate-free buckets and recompute only retained raw evidence.
+docker compose --env-file .env -f infra/compose.yaml run --rm `
+  -v "${PWD}/backups:/backups:ro" api `
+  python -m little_orbit_api.cli reaggregate-together-time --apply `
+  --backup-manifest /backups/postgres/<verified>.dump.age.json
+
+# 5. Reversibly archive only safe exact untouched duplicates for the normal seven-day window.
+docker compose --env-file .env -f infra/compose.yaml run --rm `
+  -v "${PWD}/backups:/backups:ro" api `
+  python -m little_orbit_api.cli deduplicate-notes --apply `
+  --backup-manifest /backups/postgres/<verified>.dump.age.json
+```
+
+The read-only bind intentionally exposes only the backup directory to the one-shot command. Verify the selected sidecar before use; the examples do not authorize guessing it. Re-run the classifier after archival and require `safe_to_archive: 0`. Ambiguous groups remain untouched for manual review. Check that corrections retain their revisions across local-time reaggregation, that raw coordinates still expire before 24 hours, and that opted-in health rows expire at 24 hours and are absent after unpair.
+
+Before publication, test exactly-20-minute and longer gaps, intervening apart/poor readings, 2-minute/15-minute streams, reordered retries, one-phone-only collection, 23/25-hour days, and opt-in/out authorization. Exercise note create response loss, rotation, process death, continuous typing, a newer partner revision, attachment-safe fork, GIF pause/play and reduced motion. The final gate requires a physical phone/tablet soak through screen-off, Wi-Fi/cellular transition, temporary offline state, battery restriction, and a forced 15-minute gap followed by a confirming anchor.

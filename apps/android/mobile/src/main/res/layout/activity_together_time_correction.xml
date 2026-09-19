@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/background_cosmic">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/correct_completed_day"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.ScreenTitle" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/correction_audit_explanation"
+            android:textColor="@color/muted" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/chooseDayButton"
+            style="@style/Widget.LittleOrbit.Button.Outline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/choose_completed_day" />
+        <TextView
+            android:id="@+id/comparisonText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/card_background"
+            android:padding="18dp"
+            android:textColor="@color/cloud" />
+        <EditText
+            android:id="@+id/hoursInput"
+            style="@style/Widget.LittleOrbit.Input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/correction_hours"
+            android:importantForAutofill="no"
+            android:inputType="number" />
+        <EditText
+            android:id="@+id/minutesInput"
+            style="@style/Widget.LittleOrbit.Input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/correction_minutes"
+            android:importantForAutofill="no"
+            android:inputType="number" />
+        <EditText
+            android:id="@+id/reasonInput"
+            style="@style/Widget.LittleOrbit.Input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/correction_reason"
+            android:importantForAutofill="no"
+            android:inputType="textCapSentences" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/applyButton"
+            style="@style/Widget.LittleOrbit.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/apply_correction" />
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:accessibilityLiveRegion="polite"
+            android:textColor="@color/lavender" />
+    </LinearLayout>
+</ScrollView>

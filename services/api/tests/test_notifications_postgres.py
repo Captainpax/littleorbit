@@ -401,23 +401,26 @@ async def test_ended_relationship_routes_return_the_android_purge_contract() -> 
         current.ended_at = datetime.now(UTC)
         await session.commit()
 
-    routes = (
+    active_routes = (
         "/v1/couple/preferences",
         "/v1/smooches/status",
-        "/v1/together-time",
-        "/v2/together-time",
         "/v3/together-time",
         f"/v1/notifications/pending?device_id={uuid4()}",
     )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=create_app()), base_url="http://localhost"
     ) as client:
-        for path in routes:
+        for path in active_routes:
             response = await client.get(
                 path, headers={"Authorization": f"Bearer {bearer}"}
             )
             assert response.status_code == 409, path
             assert response.json()["detail"]["code"] == "relationship_inactive", path
+        for path in ("/v1/together-time", "/v2/together-time"):
+            response = await client.get(
+                path, headers={"Authorization": f"Bearer {bearer}"}
+            )
+            assert response.status_code == 410, path
 
 
 async def test_repeated_unpair_returns_the_android_purge_contract() -> None:

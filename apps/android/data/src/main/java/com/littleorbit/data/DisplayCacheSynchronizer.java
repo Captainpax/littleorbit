@@ -74,6 +74,9 @@ public final class DisplayCacheSynchronizer {
                 instantMillis(summary.nearbyLastProcessedAt),
                 next == null ? "No countdown yet" : next.title,
                 next == null ? 0 : Instant.parse(next.occursAt).toEpochMilli(),
+                next == null || next.timingKind == null ? "timed" : next.timingKind,
+                next == null || next.occursOn == null ? "" : next.occursOn,
+                next == null || next.timezone == null ? "UTC" : next.timezone,
                 Instant.now().toEpochMilli());
         RelationshipDisplayIdentity.Snapshot previous = relationshipIdentity.read();
         // A sign-out, unpair, or new relationship may finish while requests are in flight.

@@ -1,8 +1,8 @@
 package com.littleorbit.mobile;
 
+import android.widget.TextView;
 import com.littleorbit.data.remote.NoteApiModels;
 import com.littleorbit.data.repository.OrbitRepository;
-import com.littleorbit.mobile.databinding.ActivityNotesBinding;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -30,22 +30,26 @@ final class NoteCreationCoordinator {
         return operationId;
     }
 
+    boolean inFlight() {
+        return inFlight;
+    }
+
     void submit(
             NotesActivity activity,
             OrbitRepository orbit,
-            ActivityNotesBinding binding,
+            TextView status,
             String title,
             String body,
+            Runnable finished,
             Consumer<NoteApiModels.Note> success) {
         if (inFlight) return;
         if (operationId == null) begin();
         inFlight = true;
-        binding.syncButton.setEnabled(false);
         NoteApiModels.CreateRequest request =
                 new NoteApiModels.CreateRequest(operationId, title, body);
-        AsyncUi.observe(activity, orbit.createNote(request), binding.statusText, () -> {
+        AsyncUi.observe(activity, orbit.createNote(request), status, () -> {
             inFlight = false;
-            binding.syncButton.setEnabled(true);
+            finished.run();
         }, success);
     }
 }

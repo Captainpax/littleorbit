@@ -1,8 +1,12 @@
 package com.littleorbit.mobile;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.drawable.Animatable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.text.Spanned;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import com.littleorbit.data.remote.NoteApiModels;
@@ -15,6 +19,7 @@ import io.noties.markwon.MarkwonConfiguration;
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin;
 import io.noties.markwon.ext.tables.TablePlugin;
 import io.noties.markwon.ext.tasklist.TaskListPlugin;
+import io.noties.markwon.image.AsyncDrawableSpan;
 import io.noties.markwon.image.DefaultDownScalingMediaDecoder;
 import io.noties.markwon.image.ImageItem;
 import io.noties.markwon.image.ImagesPlugin;
@@ -26,14 +31,17 @@ import java.io.FileInputStream;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import pl.droidsonroids.gif.GifDrawable;
 
 /** Native Markdown renderer that resolves only verified private note attachments. */
 public final class MarkdownRenderer {
@@ -51,6 +59,7 @@ public final class MarkdownRenderer {
     private final OrbitRepository orbit;
     private final Consumer<NoteApiModels.Attachment> attachmentOpened;
     private final Markwon markwon;
+    private boolean animationsPlaying = ValueAnimator.areAnimatorsEnabled();
     private volatile State state = State.empty();
     private TextView renderedTarget;
 
@@ -68,7 +77,7 @@ public final class MarkdownRenderer {
                 .removeSchemeHandler("https")
                 .removeSchemeHandler("data")
                 .addSchemeHandler(new AttachmentScheme())
-                .addMediaDecoder(GifMediaDecoder.create(true))
+                .addMediaDecoder(GifMediaDecoder.create(animationsPlaying))
                 .defaultMediaDecoder(DefaultDownScalingMediaDecoder.create(
                         context.getResources(), maxWidth(context), maxHeight(context))));
         markwon = Markwon.builder(context)
@@ -115,6 +124,26 @@ public final class MarkdownRenderer {
         String privateMarkdown = MarkdownPrivacy.forPreview(markdown);
         renderedTarget = target;
         markwon.setMarkdown(target, clickableAvailableImages(privateMarkdown));
+        target.post(() -> applyPlaybackState(target));
+        target.postDelayed(() -> applyPlaybackState(target), 750L);
+    }
+
+    /** Returns whether the current note contains an available animated attachment. */
+    public boolean hasAnimatedGif(String markdown) {
+        return referencesAnimatedGif(markdown, state.attachments.values());
+    }
+
+    /** Toggles all inline GIFs without changing the document or attachment state. */
+    public boolean toggleAnimations() {
+        animationsPlaying = !animationsPlaying;
+        TextView target = renderedTarget;
+        if (target != null) applyPlaybackState(target);
+        return animationsPlaying;
+    }
+
+    /** Reports the playback state used for newly decoded and currently visible GIFs. */
+    public boolean animationsPlaying() {
+        return animationsPlaying;
     }
 
     /** Unschedules animated drawables when preview leaves the visible mode. */
@@ -139,6 +168,38 @@ public final class MarkdownRenderer {
         }
         matcher.appendTail(result);
         return result.toString();
+    }
+
+    static boolean referencesAnimatedGif(
+            String markdown, Collection<NoteApiModels.Attachment> attachments) {
+        Set<String> gifIds = new HashSet<>();
+        for (NoteApiModels.Attachment item : attachments) {
+            if ("available".equals(item.status) && "image/gif".equals(item.mediaType)) {
+                gifIds.add(item.id);
+            }
+        }
+        Matcher matcher = ATTACHMENT_IMAGE.matcher(markdown);
+        while (matcher.find()) {
+            if (gifIds.contains(matcher.group(2))) return true;
+        }
+        return false;
+    }
+
+    private void applyPlaybackState(TextView target) {
+        if (target != renderedTarget || !(target.getText() instanceof Spanned content)) return;
+        AsyncDrawableSpan[] spans = content.getSpans(0, content.length(), AsyncDrawableSpan.class);
+        for (AsyncDrawableSpan span : spans) {
+            Drawable drawable = span.getDrawable().getResult();
+            if (drawable instanceof GifDrawable gif) {
+                if (animationsPlaying) gif.start();
+                else gif.pause();
+                continue;
+            }
+            if (!(drawable instanceof Animatable animated)) continue;
+            if (animationsPlaying) animated.start();
+            else animated.stop();
+        }
+        target.invalidate();
     }
 
     private void cancelRenderedImages() {

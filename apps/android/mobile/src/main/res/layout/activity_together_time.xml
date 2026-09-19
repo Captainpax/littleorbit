@@ -11,72 +11,112 @@
         android:orientation="vertical"
         android:padding="24dp">
 
-        <LinearLayout
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.LittleOrbit.Card"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/card_background_feature"
-            android:orientation="vertical"
-            android:padding="20dp">
+            android:layout_height="wrap_content">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/nearby_time_title"
-                android:textAllCaps="true"
-                android:textColor="@color/lavender_soft"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/summaryText"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/nearby_duration_placeholder"
-                android:textColor="@color/cloud"
-                android:textSize="32sp"
-                android:textStyle="bold" />
+                android:orientation="vertical"
+                android:padding="20dp">
 
-            <TextView
-                android:id="@+id/collectionState"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/loading"
-                android:textColor="@color/mint" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/time_together"
+                    android:textAllCaps="true"
+                    android:textColor="@color/lavender_soft"
+                    android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/evidenceText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:textColor="@color/muted" />
+                <TextView
+                    android:id="@+id/summaryText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/nearby_duration_placeholder"
+                    android:textColor="@color/cloud"
+                    android:textSize="40sp"
+                    android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/adjustmentText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:accessibilityLiveRegion="polite"
-                android:text="@string/nearby_adjusted"
-                android:textColor="@color/amber"
-                android:visibility="gone" />
+                <TextView
+                    android:id="@+id/collectionState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/status_pill_background"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="8dp"
+                    android:text="@string/loading"
+                    android:textColor="@color/amber"
+                    android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/legacyText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="@string/nearby_legacy_explanation"
-                android:textColor="@color/muted"
-                android:visibility="gone" />
-        </LinearLayout>
+                <TextView
+                    android:id="@+id/evidenceText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:textColor="@color/muted" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/fixCountingButton"
+                    style="@style/Widget.LittleOrbit.Button.Outline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/fix_counting" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/same_wifi_explanation"
+                    android:textColor="@color/muted" />
+
+                <TextView
+                    android:id="@+id/adjustmentText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:accessibilityLiveRegion="polite"
+                    android:text="@string/nearby_adjusted"
+                    android:textColor="@color/amber"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/legacyText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/nearby_legacy_explanation"
+                    android:textColor="@color/muted"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="26dp"
-            android:text="@string/nearby_history_title"
+            android:text="@string/both_phones"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+        <TextView
+            android:id="@+id/deviceHealthText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/card_background"
+            android:padding="18dp"
+            android:text="@string/diagnostics_private_default"
+            android:textColor="@color/muted" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="26dp"
+            android:text="@string/this_week"
             android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
 
         <TextView
@@ -84,56 +124,25 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
+            android:background="@drawable/card_background"
+            android:padding="18dp"
             android:textColor="@color/muted" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="26dp"
-            android:text="@string/correct_estimate_title"
-            android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
-
-        <Spinner
-            android:id="@+id/dayPicker"
-            style="@style/Widget.LittleOrbit.Spinner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" />
-
-        <EditText
-            android:id="@+id/hoursInput"
-            style="@style/Widget.LittleOrbit.Input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/correction_hours"
-            android:importantForAutofill="no"
-            android:inputType="number" />
-
-        <EditText
-            android:id="@+id/minutesInput"
-            style="@style/Widget.LittleOrbit.Input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/correction_minutes"
-            android:importantForAutofill="no"
-            android:inputType="number" />
-
-        <EditText
-            android:id="@+id/reasonInput"
-            style="@style/Widget.LittleOrbit.Input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/correction_reason"
-            android:importantForAutofill="no"
-            android:inputType="textCapSentences" />
-
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/correctButton"
+            android:id="@+id/dailyDetailsButton"
             style="@style/Widget.LittleOrbit.Button.Outline"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/apply_correction" />
+            android:layout_marginTop="18dp"
+            android:text="@string/see_daily_details" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/correctDayButton"
+            style="@style/Widget.LittleOrbit.Button.Outline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/correct_completed_day" />
 
         <TextView
             android:id="@+id/statusText"

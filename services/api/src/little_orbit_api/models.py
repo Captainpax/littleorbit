@@ -426,6 +426,18 @@ class TogetherBucket(Base):
     __table_args__ = (
         UniqueConstraint("couple_id", "bucket_start"),
         CheckConstraint("duration_seconds >= 0 AND duration_seconds <= 60"),
+        CheckConstraint(
+            "observed_seconds >= 0 AND observed_seconds <= 60 "
+            "AND bridged_seconds >= 0 AND bridged_seconds <= 60 "
+            "AND unverified_seconds >= 0 AND unverified_seconds <= 60 "
+            "AND apart_seconds >= 0 AND apart_seconds <= 60 "
+            "AND poor_accuracy_seconds >= 0 AND poor_accuracy_seconds <= 60"
+        ),
+        CheckConstraint("duration_seconds = observed_seconds + bridged_seconds"),
+        CheckConstraint(
+            "observed_seconds + bridged_seconds + unverified_seconds + "
+            "apart_seconds + poor_accuracy_seconds <= 60"
+        ),
         Index("ix_together_buckets_couple_start", "couple_id", "bucket_start"),
     )
 
@@ -435,7 +447,15 @@ class TogetherBucket(Base):
     )
     bucket_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
-    estimated_distance_m: Mapped[float] = mapped_column(Float, nullable=False)
+    estimated_distance_m: Mapped[float | None] = mapped_column(Float)
+    evidence_kind: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="observed"
+    )
+    observed_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    bridged_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unverified_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    apart_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    poor_accuracy_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     algorithm_version: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
     corrected_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("accounts.id", ondelete="SET NULL")

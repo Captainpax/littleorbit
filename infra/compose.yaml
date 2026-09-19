@@ -177,6 +177,7 @@ services:
       - --format=custom
       - --no-owner
       - --exclude-table-data=public.location_samples
+      - --exclude-table-data=public.together_device_health
       - --username=little_orbit_backup
       - ${POSTGRES_DB:-little_orbit}
     environment:

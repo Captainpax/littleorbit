@@ -67,6 +67,11 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [ ] Complete the remaining production observations for the published updater, TLS renewal/recovery, SMTP, WSS revocation, and administrator MFA re-enrollment.
 - [ ] Complete the two-phone, tablet, and Wear OS 1.0 end-to-end gate, including a measured nearby interval, self-hosted notification latency, session and relationship purge, accessibility, large text, navigation modes, offline recovery, and smoke-account deletion.
 - [x] Build, sign, self-host, and publish 1.0 phone code 23 and Wear code 18; verify immutable metadata, complete and ranged downloads, updater discovery, RSS notes, migration 0025, production health, and a non-destructive Pixel upgrade.
+- [x] Implement 1.0.1 phone code 24 with five-minute direct evidence, later-confirmed 20-minute bridges, shared-home local-day history, opt-in expiring collection diagnostics, and Together Time dashboard, health, day-detail, and correction screens.
+- [x] Implement 1.0.1 Our Space single-flight autosave, encrypted crash recovery, explicit newer-revision choices, idempotent attachment-safe note forks, conservative duplicate classification, and reduced-motion-aware animated GIF preview controls.
+- [x] Add migration 0026, backup exclusions for raw locations and device-health snapshots, backup-gated reaggregation and duplicate archival commands, v3 fixtures, DST/unequal-cadence regressions, and release documentation.
+- [ ] Rehearse migration 0026 on disposable PostgreSQL, restore the coordinated encrypted backup, execute the privacy-safe dry run/reaggregation/archive sequence, and verify rollback.
+- [ ] Complete the 1.0.1 physical phone/tablet soak, signed phone build, byte-identical Wear verification, updater and RSS checks, then publish and activate code 24 only after production health passes.
 
 ## 1.x — Reliability and reach
 

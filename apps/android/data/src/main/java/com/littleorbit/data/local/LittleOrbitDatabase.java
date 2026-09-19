@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase;
             CountdownCacheEntity.class,
             QueuedCountdownEntity.class
         },
-        version = 5,
+        version = 6,
         exportSchema = true)
 public abstract class LittleOrbitDatabase extends RoomDatabase {
     /** Returns display cache operations. */

@@ -42,6 +42,7 @@ Use the RC smoke project when Android needs real paired accounts, attachment pro
 .\.venv313\Scripts\python.exe infra\scripts\create_smoke_couple.py
 .\.venv313\Scripts\python.exe infra\scripts\note-sync-smoke.py
 .\.venv313\Scripts\python.exe infra\scripts\create_attachment_smoke.py
+.\.venv313\Scripts\python.exe infra\scripts\note-fork-smoke.py
 .\.venv313\Scripts\python.exe infra\scripts\notification-smoke.py
 .\gradlew.bat :apps:android:mobile:assembleSmoke
 .\infra\scripts\android-smoke.ps1 -Serial emulator-5554 -AccountIndex 0 -ResetApp
@@ -99,6 +100,24 @@ When reproducing pairing failures, keep the watch's wireless-debug page visible 
 Use two disposable verified accounts for delivery tests. Cover the sixth send inside a rolling hour, exact hour expiry, duplicate operation IDs, a queued send older than 15 minutes, notification privacy, DST week boundaries, unpair archives, repairing isolation, and either account's deletion. Do not place message content in admin fixtures.
 
 Location testing requires both the Android runtime permission and both accounts' in-app consent. Confirm the foreground-service notification remains visible, the first fix is requested promptly, WorkManager can queue while offline, and either consent or permission removal stops the service and clears local samples. Server acceptance proves only that a sample arrived; only two consecutive accurate, nearby matched pairs can establish estimated nearby time.
+
+For 1.0.1, also test asymmetric two-minute and 15-minute streams. A second
+strong nearby anchor may confirm at most a 20-minute gap when no intervening
+observation reports apart or poor accuracy. The open gap remains uncounted, a
+lone phone cannot extend the five-minute live lease, and a network transition
+only triggers recovery. Verify that no SSID, BSSID, IP address, or network
+fingerprint enters requests, logs, diagnostics, or storage. Collection-health
+sharing is separately opted in per installation, is visible only to the active
+partner, exposes no installation ID, and disappears after opt-out, unpair, or
+24 hours.
+
+Use `deduplicate-notes` without `--apply` before any duplicate cleanup. Applying
+duplicate archival or retained-history reaggregation requires the checksum-valid
+encrypted backup sidecar described in `BACKUP-RESTORE.md`; never supply a
+fabricated or production-unrelated manifest. Test Our Space create-response
+loss, repeated autosave, pause/back flushes, process death, a newer partner
+revision, each explicit conflict choice, attachment reference rewriting, and
+animated GIF pause/play with reduced motion enabled.
 
 ## Profile photo development
 

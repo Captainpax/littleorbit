@@ -74,6 +74,14 @@ The RC12 captures verify the paired Home hierarchy, complete left navigation, ab
 
 The 1.0 Together Time detail is deliberately different from relationship age. A large timer shows observed nearby hours, minutes, and seconds, while a separate state explains whether both phones currently provide nearby, confirming, apart, inaccurate, waiting, or stale evidence. Only the foreground phone detail may animate a bounded provisional value, and it stops at the server deadline. Home, widget, tile, and complication remain on the authoritative observed value with a freshness label. A paired physical 1.0 capture remains open.
 
+![1.0.1 Together Time dashboard concept with collection health and evidence timeline](docs/assets/together-time-1.0.1-concept.png)
+
+The approved 1.0.1 concept separates the durable total, current counting state, per-phone collection health, and coordinate-free weekly evidence. **Fix counting** exposes direct Android settings without pretending same Wi-Fi proves proximity. Daily details distinguish observed time, later-confirmed bridges, gaps, apart readings, poor accuracy, and disabled collection. This image is concept art; implemented-device captures remain part of the release gate.
+
+![1.0.1 Our Space autosave and offline-conflict concept](docs/assets/our-space-1.0.1-concept.png)
+
+The 1.0.1 Our Space concept removes the ordinary Save action. A small status communicates saving, recent success, device-only offline storage, or review required. When a newer shared revision meets an offline draft, the editor stops and offers review/merge, an idempotent copy with remapped attachments, or the shared version. This image is concept art pending the physical paired-device capture.
+
 ![Signed RC7 Wear OS fallback state on a round Wear OS 5 emulator](docs/assets/wear-rc7-signed-emulator.png)
 
 ![RC12 Wear fallback state on a round API 34 emulator](docs/assets/wear-rc12-emulator.png)
@@ -134,6 +142,7 @@ The console exposes service health, delivery and generation status, moderation q
 - [x] RC16 physical Pixel check: an in-place code-21 upgrade preserved the valid session, hid the completed Home setup card, and showed the connected-only unpair action without executing it against the real couple.
 - [x] RC17 isolated data check: four identical visible cards were proved to be distinct create rows without reading their title/body, and a disposable PostgreSQL run proved different immediate create IDs now resolve to one partner-visible document.
 - [ ] RC17 physical pair: install code 22 on both phones, confirm one save remains one document, collect two confident nearby pairs, and capture the nearby-only Home/widget/Wear presentation.
+- [ ] 1.0.1 physical pair: soak foreground and screen-off collection through Wi-Fi/cellular/offline transitions, force and later confirm a 15-minute gap, exercise autosave/process death/offline conflicts, and capture GIF pause/play plus the new Together Time subpages.
 - [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
 - [ ] Website remaining: patch notes/RSS in a feed reader, recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.

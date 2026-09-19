@@ -127,7 +127,9 @@ public final class SettingsActivity extends OrbitShellActivity {
 
     private void signOut() {
         binding.signOutButton.setEnabled(false);
-        orbit.disableNotificationDevice(notificationDevice.id())
+        orbit.deleteTogetherDeviceHealth(notificationDevice.id())
+                .handle((ignored, failure) -> null)
+                .thenCompose(ignored -> orbit.disableNotificationDevice(notificationDevice.id()))
                 .handle((ignored, failure) -> null)
                 .thenCompose(ignored -> orbit.signOut())
                 .thenRun(() -> runOnUiThread(this::finishSignedOut));

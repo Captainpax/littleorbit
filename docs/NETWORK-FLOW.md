@@ -151,7 +151,7 @@ sequenceDiagram
     end
 ```
 
-Session expiry, revocation, suspension, deletion, unpairing, or note archival closes the socket. The server retains only the keyed session digest needed for revalidation; the raw bearer token is not kept in connection state. A new Android workspace keeps one stable create ID and one request in flight. The bounded exact-match fallback runs only after current-couple authorization and protects clients that lose that identity immediately after a save. Android does not rebuild the library for an identical snapshot, and leaving the library stops its directory refresh.
+Session expiry, revocation, suspension, deletion, unpairing, or note archival closes the socket. The server retains only the keyed session digest needed for revalidation; the raw bearer token is not kept in connection state. A new Android workspace persists one stable create ID before its first request and serializes create, title, and body mutations. Autosave runs after 800 milliseconds idle and at least every five seconds while typing. A newer server revision stops synchronization; an explicit fork request copies only authorized clean attachments, rewrites their IDs, and leaves the shared source untouched. Android does not rebuild the library for an identical snapshot, and leaving the library stops its directory refresh.
 
 ## Private note attachments
 
@@ -344,7 +344,21 @@ flowchart TD
 
 Collection may continue into the relationship-scoped encrypted queue while the network is offline or temporarily throttled. Upload and server processing resume later, except that a sample already inside the five-minute cleanup margin is rejected instead of being reintroduced near its hard retention ceiling. Sign-in and signed-in process startup re-arm recovery work after local account cleanup, while a paired foreground screen reconciles current permission and both consent states.
 
-The estimator walks the chronological union of both sample streams. An observation from the faster phone can therefore end or weaken an interval instead of disappearing between two greedy matches. Nearby credit requires two consecutive nearby decisions, no more than five minutes between their bounding instants, and no more than five minutes between the two phones' evidence. Freshness and any live deadline use the older member's newest evidence, so one phone cannot make a stalled pair estimate appear current. The server persists only coordinate-free observed seconds. The visible phone screen may animate a provisional value with Android's monotonic clock until the explicit deadline, then freezes; a later authoritative response may retract unconfirmed display-only seconds. Widget and Wear records never extrapolate.
+The estimator walks the chronological union of both sample streams. Direct credit requires nearby decisions and two-phone evidence bounded to five minutes. A later strong nearby anchor may confirm an unknown gap up to 20 minutes only when no intervening observation reports apart or poor accuracy; the stored minute records label that duration as a bridge. Open gaps stay unverified and excluded from the durable total. Freshness and the five-minute live deadline use the older member's newest evidence, so one phone cannot make a stalled pair estimate appear current. Network restoration or a Wi-Fi/cellular transition may request a fresh sample, but network identity never leaves Android and never proves proximity. Widget and Wear records never extrapolate.
+
+```mermaid
+sequenceDiagram
+    participant Phone as Opted-in phone
+    participant API
+    participant DB as PostgreSQL
+    participant Partner as Active partner
+    Phone->>API: PUT installation health (random installation UUID)
+    API->>DB: Authorize current couple; replace 24-hour snapshot
+    Partner->>API: GET current couple health
+    API-->>Partner: Health fields only; no installation IDs
+    Phone->>API: DELETE health on opt-out/sign-out
+    Note over DB: Unpair deletes snapshots; backups exclude their rows
+```
 
 ## Smooch delivery and weekly history
 

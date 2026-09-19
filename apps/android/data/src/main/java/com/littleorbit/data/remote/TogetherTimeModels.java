@@ -22,6 +22,7 @@ public final class TogetherTimeModels {
     /** RC10 pair-age state derived from the immutable server pairing instant. */
     public static final class PairSummary {
         @Json(name = "relationship_id") public final String relationshipId;
+        @Json(name = "home_timezone") public final String homeTimezone;
         @Json(name = "paired_at") public final String pairedAt;
         @Json(name = "paired_days") public final long pairedDays;
         @Json(name = "nearby_observed_seconds") public final long nearbyObservedSeconds;
@@ -41,7 +42,7 @@ public final class TogetherTimeModels {
         public final String label;
 
         /** Creates one decoded privacy-limited pair and estimate summary. */
-        public PairSummary(String relationshipId, String pairedAt, long pairedDays,
+        public PairSummary(String relationshipId, String homeTimezone, String pairedAt, long pairedDays,
                 long nearbyObservedSeconds, long nearbyEstimatedSeconds,
                 long nearbyProvisionalSeconds, String serverNow, String countingState,
                 String countingAnchorAt, String countingLiveUntil, String nearbyLastProcessedAt,
@@ -49,6 +50,7 @@ public final class TogetherTimeModels {
                 double proximityThresholdM, boolean locationByMe, boolean locationByBoth,
                 String label) {
             this.relationshipId = relationshipId;
+            this.homeTimezone = homeTimezone;
             this.pairedAt = pairedAt;
             this.pairedDays = pairedDays;
             this.nearbyObservedSeconds = nearbyObservedSeconds;
@@ -154,7 +156,14 @@ public final class TogetherTimeModels {
     /** One coordinate-free UTC history day. */
     public static final class HistoryDay {
         public final String day;
+        @Json(name = "day_timezone") public final String dayTimezone;
+        @Json(name = "day_length_seconds") public final long dayLengthSeconds;
         @Json(name = "estimated_seconds") public final long estimatedSeconds;
+        @Json(name = "observed_seconds") public final long observedSeconds;
+        @Json(name = "bridged_seconds") public final long bridgedSeconds;
+        @Json(name = "unverified_seconds") public final long unverifiedSeconds;
+        @Json(name = "apart_seconds") public final long apartSeconds;
+        @Json(name = "poor_accuracy_seconds") public final long poorAccuracySeconds;
         public final boolean corrected;
         @Json(name = "estimate_method") public final String estimateMethod;
         public final int revision;
@@ -162,16 +171,128 @@ public final class TogetherTimeModels {
         @Json(name = "correction_reason") public final String correctionReason;
 
         /** Creates a decoded history day. */
-        public HistoryDay(String day, long estimatedSeconds, boolean corrected,
+        public HistoryDay(String day, String dayTimezone, long dayLengthSeconds,
+                long estimatedSeconds, long observedSeconds, long bridgedSeconds,
+                long unverifiedSeconds, long apartSeconds, long poorAccuracySeconds,
+                boolean corrected,
                 String estimateMethod, int revision, String correctedByDisplayName,
                 String correctionReason) {
             this.day = day;
+            this.dayTimezone = dayTimezone;
+            this.dayLengthSeconds = dayLengthSeconds;
             this.estimatedSeconds = estimatedSeconds;
+            this.observedSeconds = observedSeconds;
+            this.bridgedSeconds = bridgedSeconds;
+            this.unverifiedSeconds = unverifiedSeconds;
+            this.apartSeconds = apartSeconds;
+            this.poorAccuracySeconds = poorAccuracySeconds;
             this.corrected = corrected;
             this.estimateMethod = estimateMethod;
             this.revision = revision;
             this.correctedByDisplayName = correctedByDisplayName;
             this.correctionReason = correctionReason;
+        }
+    }
+
+    /** One coordinate-free timeline minute. */
+    public static final class DaySegment {
+        @Json(name = "starts_at") public final String startsAt;
+        @Json(name = "ends_at") public final String endsAt;
+        @Json(name = "evidence_state") public final String evidenceState;
+        @Json(name = "observed_seconds") public final int observedSeconds;
+        @Json(name = "bridged_seconds") public final int bridgedSeconds;
+        @Json(name = "unverified_seconds") public final int unverifiedSeconds;
+        @Json(name = "apart_seconds") public final int apartSeconds;
+        @Json(name = "poor_accuracy_seconds") public final int poorAccuracySeconds;
+
+        /** Creates one private coordinate-free display segment. */
+        public DaySegment(String startsAt, String endsAt, String evidenceState,
+                int observedSeconds, int bridgedSeconds, int unverifiedSeconds,
+                int apartSeconds, int poorAccuracySeconds) {
+            this.startsAt = startsAt;
+            this.endsAt = endsAt;
+            this.evidenceState = evidenceState;
+            this.observedSeconds = observedSeconds;
+            this.bridgedSeconds = bridgedSeconds;
+            this.unverifiedSeconds = unverifiedSeconds;
+            this.apartSeconds = apartSeconds;
+            this.poorAccuracySeconds = poorAccuracySeconds;
+        }
+    }
+
+    /** One shared-home day timeline. */
+    public static final class DayDetails {
+        public final String day;
+        public final String timezone;
+        @Json(name = "day_length_seconds") public final long dayLengthSeconds;
+        public final List<DaySegment> segments;
+
+        /** Creates a day detail response. */
+        public DayDetails(String day, String timezone, long dayLengthSeconds,
+                List<DaySegment> segments) {
+            this.day = day;
+            this.timezone = timezone;
+            this.dayLengthSeconds = dayLengthSeconds;
+            this.segments = List.copyOf(segments);
+        }
+    }
+
+    /** Opt-in content-free health sent by one installation. */
+    public static class DeviceHealthUpdate {
+        @Json(name = "device_model") public final String deviceModel;
+        @Json(name = "battery_percent") public final int batteryPercent;
+        public final boolean charging;
+        @Json(name = "network_transport") public final String networkTransport;
+        @Json(name = "background_location") public final boolean backgroundLocation;
+        @Json(name = "battery_unrestricted") public final boolean batteryUnrestricted;
+        @Json(name = "tracking_notification") public final boolean trackingNotification;
+        @Json(name = "upload_state") public final String uploadState;
+        @Json(name = "queue_size") public final int queueSize;
+
+        /** Creates one explicitly shared snapshot without network identifiers. */
+        public DeviceHealthUpdate(String deviceModel, int batteryPercent, boolean charging,
+                String networkTransport, boolean backgroundLocation,
+                boolean batteryUnrestricted, boolean trackingNotification,
+                String uploadState, int queueSize) {
+            this.deviceModel = deviceModel;
+            this.batteryPercent = batteryPercent;
+            this.charging = charging;
+            this.networkTransport = networkTransport;
+            this.backgroundLocation = backgroundLocation;
+            this.batteryUnrestricted = batteryUnrestricted;
+            this.trackingNotification = trackingNotification;
+            this.uploadState = uploadState;
+            this.queueSize = queueSize;
+        }
+    }
+
+    /** Partner-readable health view with no installation identifier. */
+    public static final class DeviceHealthView extends DeviceHealthUpdate {
+        @Json(name = "updated_at") public final String updatedAt;
+        @Json(name = "last_location_at") public final String lastLocationAt;
+
+        /** Creates a decoded health view. */
+        public DeviceHealthView(String deviceModel, int batteryPercent, boolean charging,
+                String networkTransport, boolean backgroundLocation,
+                boolean batteryUnrestricted, boolean trackingNotification,
+                String uploadState, int queueSize, String updatedAt, String lastLocationAt) {
+            super(deviceModel, batteryPercent, charging, networkTransport,
+                    backgroundLocation, batteryUnrestricted, trackingNotification,
+                    uploadState, queueSize);
+            this.updatedAt = updatedAt;
+            this.lastLocationAt = lastLocationAt;
+        }
+    }
+
+    /** Current-couple opted-in installation health. */
+    public static final class DeviceHealthResponse {
+        public final List<DeviceHealthView> mine;
+        public final List<DeviceHealthView> partner;
+
+        /** Creates grouped health without stable remote installation IDs. */
+        public DeviceHealthResponse(List<DeviceHealthView> mine, List<DeviceHealthView> partner) {
+            this.mine = List.copyOf(mine);
+            this.partner = List.copyOf(partner);
         }
     }
 

@@ -45,6 +45,14 @@ class NoteArchiveRequest(StrictModel):
     expected_metadata_revision: int = Field(ge=0)
 
 
+class NoteForkRequest(StrictModel):
+    """Idempotent explicit recovery of an offline version as a separate note."""
+
+    operation_id: UUID
+    title: Annotated[StrictText, Field(min_length=1, max_length=120)]
+    body: Annotated[str, Field(max_length=100_000)]
+
+
 class SmoochCreateRequest(StrictModel):
     """Retry-safe selection from the fixed RC10 emoji vocabulary."""
 

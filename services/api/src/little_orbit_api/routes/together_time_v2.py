@@ -29,6 +29,12 @@ from ..schemas import (
     TogetherHistoryDay,
     TogetherSummaryV3,
 )
+from ..together_history_service import (
+    DayBreakdown,
+    day_bounds,
+    day_breakdown,
+    timezone_or_utc,
+)
 from ..together_models import TogetherDay
 from ..together_time_service import (
     ALGORITHM_VERSION,
@@ -73,6 +79,7 @@ async def together_summary_v3(
     paired_days = max(0, (now - couple.created_at).days)
     return TogetherSummaryV3(
         relationship_id=couple.id,
+        home_timezone=couple.home_timezone,
         paired_at=couple.created_at,
         paired_days=paired_days,
         nearby_observed_seconds=observed,
@@ -144,10 +151,11 @@ async def together_history(
     actor: Account = Depends(current_account),
     session: AsyncSession = Depends(session_scope),
 ) -> list[TogetherHistoryDay]:
-    """Return up to thirty complete UTC calendar days without coordinates."""
+    """Return up to thirty shared-home calendar days without coordinates."""
 
     member = await active_member(session, actor.id)
-    today = SystemClock().now().astimezone(UTC).date()
+    couple = await _locked_couple(session, member.couple_id)
+    today = SystemClock().now().astimezone(timezone_or_utc(couple.home_timezone)).date()
     cutoff = today - timedelta(days=days - 1)
     records = list(
         await session.scalars(
@@ -164,25 +172,48 @@ async def together_history(
         for account_id in {item.corrected_by for item in records if item.corrected_by}
     }
     by_day = {item.day: item for item in records}
+    breakdowns = {
+        target: await day_breakdown(session, couple.id, target, couple.home_timezone)
+        for target in (today - timedelta(days=offset) for offset in range(days))
+    }
     return [
-        _history_response(today - timedelta(days=offset), by_day, names)
+        _history_response(
+            today - timedelta(days=offset),
+            by_day,
+            names,
+            breakdowns[today - timedelta(days=offset)],
+            couple.home_timezone,
+        )
         for offset in range(days - 1, -1, -1)
     ]
 
 
 def _history_response(
-    day: date, records: dict[date, TogetherDay], names: dict[UUID, str | None]
+    day: date,
+    records: dict[date, TogetherDay],
+    names: dict[UUID, str | None],
+    breakdown: DayBreakdown,
+    timezone_name: str,
 ) -> TogetherHistoryDay:
+    start, end = day_bounds(day, timezone_name)
+    day_length = int((end - start).total_seconds())
     item = records.get(day)
     if item is None:
         return TogetherHistoryDay(
             day=day,
             estimated_seconds=0,
             corrected=False,
-            estimate_method="current_v3",
+            estimate_method="current_v4",
+            day_timezone=timezone_name,
+            day_length_seconds=day_length,
+            observed_seconds=breakdown.observed,
+            bridged_seconds=breakdown.bridged,
+            unverified_seconds=breakdown.unverified,
+            apart_seconds=breakdown.apart,
+            poor_accuracy_seconds=breakdown.poor_accuracy,
         )
     method = cast(
-        Literal["legacy_v2", "mixed", "current_v3", "corrected"],
+        Literal["legacy_v2", "mixed", "current_v3", "current_v4", "corrected"],
         "corrected" if item.corrected_seconds is not None else item.estimate_method,
     )
     return TogetherHistoryDay(
@@ -193,6 +224,13 @@ def _history_response(
         revision=item.revision,
         corrected_by_display_name=names.get(item.corrected_by) if item.corrected_by else None,
         correction_reason=item.correction_reason,
+        day_timezone=timezone_name,
+        day_length_seconds=day_length,
+        observed_seconds=breakdown.observed,
+        bridged_seconds=breakdown.bridged,
+        unverified_seconds=breakdown.unverified,
+        apart_seconds=breakdown.apart,
+        poor_accuracy_seconds=breakdown.poor_accuracy,
     )
 
 
@@ -217,29 +255,18 @@ async def correct_together_day(
     actor: Account = Depends(current_account),
     session: AsyncSession = Depends(session_scope),
 ) -> TogetherHistoryDay:
-    """Apply an optimistic correction to one completed UTC day and notify the partner."""
+    """Apply an optimistic correction to one completed local day and notify the partner."""
 
     member = await active_member(session, actor.id)
     couple = await _locked_couple(session, member.couple_id)
-    today = SystemClock().now().astimezone(UTC).date()
-    if target_day >= today or target_day < couple.created_at.astimezone(UTC).date():
+    timezone = timezone_or_utc(couple.home_timezone)
+    today = SystemClock().now().astimezone(timezone).date()
+    if target_day >= today or target_day < couple.created_at.astimezone(timezone).date():
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Choose a completed paired day")
-    item = await session.scalar(
-        select(TogetherDay)
-        .where(TogetherDay.couple_id == couple.id, TogetherDay.day == target_day)
-        .with_for_update()
-    )
-    if item is None:
-        item = TogetherDay(
-            couple_id=couple.id,
-            day=target_day,
-            estimated_seconds=await _bucket_total(session, couple.id, target_day),
-            estimate_method="current_v3",
-            revision=0,
-            updated_at=SystemClock().now(),
-        )
-        session.add(item)
-        await session.flush()
+    start, end = day_bounds(target_day, couple.home_timezone)
+    if payload.estimated_seconds > int((end - start).total_seconds()):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Time exceeds this local day")
+    item = await _correctable_day(session, couple, target_day)
     if item.revision != payload.expected_revision:
         raise HTTPException(status.HTTP_409_CONFLICT, "Together-time day changed; refresh")
     now = SystemClock().now()
@@ -255,27 +282,81 @@ async def correct_together_day(
     await session.commit()
     if recipient is not None:
         await request.app.state.notification_connections.available(recipient)
+    return await _corrected_response(session, couple, actor, item, target_day, start, end)
+
+
+async def _correctable_day(
+    session: AsyncSession, couple: Couple, target_day: date
+) -> TogetherDay:
+    item = await session.scalar(
+        select(TogetherDay)
+        .where(TogetherDay.couple_id == couple.id, TogetherDay.day == target_day)
+        .with_for_update()
+    )
+    if item is None:
+        item = TogetherDay(
+            couple_id=couple.id,
+            day=target_day,
+            day_timezone=couple.home_timezone,
+            estimated_seconds=await _bucket_total(
+                session, couple.id, target_day, couple.home_timezone
+            ),
+            estimate_method="current_v4",
+            revision=0,
+            updated_at=SystemClock().now(),
+        )
+        session.add(item)
+        await session.flush()
+    return item
+
+
+async def _corrected_response(
+    session: AsyncSession,
+    couple: Couple,
+    actor: Account,
+    item: TogetherDay,
+    target_day: date,
+    start: datetime,
+    end: datetime,
+) -> TogetherHistoryDay:
     return TogetherHistoryDay(
         day=target_day,
+        day_timezone=couple.home_timezone,
+        day_length_seconds=int((end - start).total_seconds()),
         estimated_seconds=item.effective_seconds,
         corrected=True,
         estimate_method="corrected",
         revision=item.revision,
         corrected_by_display_name=actor.display_name,
         correction_reason=item.correction_reason,
+        **_breakdown_fields(
+            await day_breakdown(session, couple.id, target_day, couple.home_timezone)
+        ),
     )
 
 
-async def _bucket_total(session: AsyncSession, couple_id: UUID, target_day: date) -> int:
-    start = datetime.combine(target_day, datetime.min.time(), UTC)
+async def _bucket_total(
+    session: AsyncSession, couple_id: UUID, target_day: date, timezone_name: str
+) -> int:
+    start, end = day_bounds(target_day, timezone_name)
     value = await session.scalar(
         select(func.coalesce(func.sum(TogetherBucket.duration_seconds), 0)).where(
             TogetherBucket.couple_id == couple_id,
             TogetherBucket.bucket_start >= start,
-            TogetherBucket.bucket_start < start + timedelta(days=1),
+            TogetherBucket.bucket_start < end,
         )
     )
-    return min(int(value or 0), 86_400)
+    return min(int(value or 0), int((end - start).total_seconds()))
+
+
+def _breakdown_fields(breakdown: DayBreakdown) -> dict[str, int]:
+    return {
+        "observed_seconds": breakdown.observed,
+        "bridged_seconds": breakdown.bridged,
+        "unverified_seconds": breakdown.unverified,
+        "apart_seconds": breakdown.apart,
+        "poor_accuracy_seconds": breakdown.poor_accuracy,
+    }
 
 
 @v3_router.post("/location-batches", response_model=LocationBatchV2Response)

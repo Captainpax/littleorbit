@@ -231,8 +231,10 @@ public final class ProtocolFixturesTest {
     }
 
     private static boolean validTogetherTime(Map<String, Object> value) {
-        if (value.size() != 18
+        if (value.size() != 19
                 || !isUuid(value.get("relationship_id"))
+                || !(value.get("home_timezone") instanceof String zone)
+                || zone.isBlank() || zone.length() > 64
                 || !String.valueOf(value.get("paired_at")).matches("^.+T.+(?:Z|[+-].+)$")
                 || !numberIn(value.get("paired_days"), 0, Integer.MAX_VALUE)
                 || !numberIn(value.get("nearby_observed_seconds"), 0, Integer.MAX_VALUE)
@@ -246,7 +248,7 @@ public final class ProtocolFixturesTest {
                         "apart", "poor_accuracy", "stale").contains(value.get("counting_state"))
                 && List.of("unavailable", "low", "medium", "high")
                         .contains(value.get("nearby_confidence"))
-                && numberIn(value.get("algorithm_version"), 3, Integer.MAX_VALUE)
+                && numberIn(value.get("algorithm_version"), 4, Integer.MAX_VALUE)
                 && value.get("includes_legacy_estimates") instanceof Boolean
                 && numberIn(value.get("proximity_threshold_m"), 10, 1000)
                 && value.get("location_enabled_by_me") instanceof Boolean

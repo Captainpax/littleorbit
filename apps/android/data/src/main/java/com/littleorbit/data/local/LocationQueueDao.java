@@ -40,4 +40,8 @@ public interface LocationQueueDao {
     @Query("DELETE FROM queued_locations WHERE sampleId NOT IN ("
             + "SELECT sampleId FROM queued_locations ORDER BY recordedAtEpochMillis DESC LIMIT 96)")
     void trimToLimit();
+
+    /** Returns a content-free queue count for explicit collection diagnostics. */
+    @Query("SELECT COUNT(*) FROM queued_locations")
+    int count();
 }

@@ -12,6 +12,13 @@ Until 1.0, only the current default branch receives security fixes. After 1.0, t
 
 The public gateway is the only exposed container port. Authentication does not imply authorization to a couple resource. AI is isolated from relationship data. Admin views exclude relationship content, attachment names and bytes, and profile images. Tokens and recovery codes are stored only as hashes; TOTP secrets, Android profile thumbnails, queued Smooches, kept-offline note attachments, and the phone's reusable wireless-ADB private key stay in protected or app-private storage. Smooch creation is transactionally rate-limited to five sends per account in a rolling hour, and account deletion erases the old relationship history. Server relationship avatars are normalized to bounded metadata-free WebP variants and are available only to the active couple. Precise coordinates are scheduled for deletion five minutes early and have a separate absolute 24-hour purge predicate.
 
+Together-time collection health is a separate, opt-in, latest-only diagnostic
+record. It contains bounded device and collection state without coordinates,
+network identifiers, or an installation identifier in partner responses. Only
+the active partner can read an opted-in snapshot. Opt-out, unpairing, or 24-hour
+expiry removes it. Administration and notification paths never expose it, and
+coordinated database backups exclude its table alongside raw coordinates.
+
 Login, verification resend, password recovery, reset, pair redemption, and administrator proof routes use PostgreSQL-backed fixed-window limits. The service hashes IP addresses, normalized emails, reset tokens, or account IDs with a scope-specific keyed digest before persistence, applies the IP bucket before attacker-controlled subjects, caps each counter, and removes inactive buckets after 24 hours. Counters commit outside the protected application transaction so an invalid request or rollback cannot erase the attempt.
 
 FastAPI accepts the gateway's single-address client header only when the socket peer matches the configured immediate proxy. Invalid, comma-separated, or untrusted values fall back to the direct peer. Production must configure that value for the immediate gateway-to-API hop and verify it after container recreation; the upstream Nginx Proxy Manager address is not the API's direct peer when Caddy sits between them. Registration always performs Argon2id work and uses an atomic conflict-safe insert. Verification resend and password recovery also perform the same dominant password work for known and unknown addresses, then serialize token creation under the account lock with a five-minute cooldown.
@@ -23,6 +30,14 @@ Replacing enabled administrator MFA requires the current password and either a c
 Pairing transitions lock both account rows in stable UUID order and recheck verification, suspension, deletion, active membership, code expiry, and creator confirmation inside the transaction. Unpairing and deletion use the same lock order and immediately remove ephemeral relationship state. Legacy quiz answers appear in exports and former-pair archives only for questions answered by both original participants.
 
 Note attachments require current couple authorization before note or file lookup. Server-generated storage keys prevent path selection, request streams and chunks are bounded, exact offsets prevent gaps and overwrite races, and an operation ID can resume only the same declared bytes. Unscanned content is never downloadable. ClamAV runs on an internal-only network and scanner outages fail closed; images, PDFs, audio, and video are re-encoded or remuxed without source metadata before availability. The Android client verifies the sanitized SHA-256 digest before previewing or retaining an offline copy. File deletion and expired-note cleanup remove private volume bytes.
+
+An explicit offline-conflict fork locks and reauthorizes the active couple,
+accepts only clean attachments owned by the source note, reserves quota before
+copying, verifies every copied digest, and rewrites all attachment references.
+Missing or foreign mappings fail closed. Automated duplicate archival is
+limited to exact, untouched, attachment-free copies and requires a verified
+encrypted backup manifest before applying any change. Ambiguous groups remain
+untouched and archived notes retain the normal seven-day recovery window.
 
 Partner notification endpoints authenticate the account before installation or event lookup. Installations use random app-generated UUIDs, and event delivery is scoped to one installation. Little Orbit does not use Firebase, another hosted push broker, or provider-issued device addresses. A visible app receives a content-free `notification.available` hint through the authenticated first-party WebSocket; background WorkManager jobs poll the same self-hosted API and may be delayed by Android power management. The client fetches current authorized metadata before display and acknowledges only after Android accepts the post. A legacy account-wide Smooch acknowledgement cannot consume modern per-installation delivery. Public lock-screen versions remain generic. A note alert never contains its body or attachment metadata, repeated edit alerts are cooled down, and active partner presence suppresses the alert.
 

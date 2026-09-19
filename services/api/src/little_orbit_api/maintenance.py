@@ -28,7 +28,11 @@ from .models import (
 )
 from .notification_service import purge_notification_state
 from .rate_limit import purge_rate_limit_state
-from .together_models import RelationshipStartProposal, TogetherOperation
+from .together_models import (
+    RelationshipStartProposal,
+    TogetherDeviceHealth,
+    TogetherOperation,
+)
 
 
 async def run_maintenance_once() -> None:
@@ -72,6 +76,9 @@ async def purge_expired_records(session: AsyncSession, now: datetime) -> None:
     """Apply bounded privacy retention and proposal expiration policies."""
 
     await purge_expired_location_samples(session, now)
+    await session.execute(
+        delete(TogetherDeviceHealth).where(TogetherDeviceHealth.expires_at <= now)
+    )
     await session.execute(
         delete(TogetherBucket).where(TogetherBucket.bucket_start < now - timedelta(days=30))
     )

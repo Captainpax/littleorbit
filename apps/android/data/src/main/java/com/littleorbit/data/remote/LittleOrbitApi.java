@@ -209,6 +209,11 @@ public interface LittleOrbitApi {
     Call<NoteApiModels.Note> restoreNote(
             @Path("noteId") String noteId, @Body NoteApiModels.ArchiveRequest request);
 
+    /** Copies an explicit offline conflict and its valid clean attachments. */
+    @POST("api/v1/notes/{noteId}/fork")
+    Call<NoteApiModels.Note> forkNote(
+            @Path("noteId") String noteId, @Body NoteApiModels.ForkRequest request);
+
     /** Lists private attachment metadata for one current note. */
     @GET("api/v1/notes/{noteId}/attachments")
     Call<java.util.List<NoteApiModels.Attachment>> noteAttachments(
@@ -333,6 +338,24 @@ public interface LittleOrbitApi {
     @PUT("api/v3/together-time/days/{day}")
     Call<TogetherTimeModels.HistoryDay> correctTogetherDay(
             @Path("day") String day, @Body TogetherTimeModels.DayCorrection request);
+
+    /** Loads one coordinate-free shared-home day timeline. */
+    @GET("api/v3/together-time/days/{day}")
+    Call<TogetherTimeModels.DayDetails> togetherDayDetails(@Path("day") String day);
+
+    /** Loads current opted-in collection health without installation identifiers. */
+    @GET("api/v3/together-time/device-health")
+    Call<TogetherTimeModels.DeviceHealthResponse> togetherDeviceHealth();
+
+    /** Opts this random installation into a content-free health snapshot. */
+    @PUT("api/v3/together-time/device-health/{installationId}")
+    Call<TogetherTimeModels.DeviceHealthView> updateTogetherDeviceHealth(
+            @Path("installationId") String installationId,
+            @Body TogetherTimeModels.DeviceHealthUpdate request);
+
+    /** Withdraws this installation's collection-health sharing. */
+    @DELETE("api/v3/together-time/device-health/{installationId}")
+    Call<Void> deleteTogetherDeviceHealth(@Path("installationId") String installationId);
 
     /** Loads member and mutual privacy settings. */
     @GET("api/v1/couple/preferences")

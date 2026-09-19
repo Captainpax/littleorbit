@@ -7,6 +7,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.IBinder;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -24,10 +27,26 @@ import javax.inject.Inject;
 public final class ForegroundLocationService extends Service {
     private static final int NOTIFICATION_ID = 7301;
     private ScheduledExecutorService scheduler;
+    private ConnectivityManager connectivity;
+    private int lastTransport = -1;
+    private long lastRecoveryAt;
+    private final ConnectivityManager.NetworkCallback networkChanges =
+            new ConnectivityManager.NetworkCallback() {
+                @Override public void onAvailable(Network network) { recover(); }
+                @Override public void onCapabilitiesChanged(
+                        Network network, NetworkCapabilities capabilities) {
+                    int transport = transport(capabilities);
+                    if (transport != lastTransport) {
+                        lastTransport = transport;
+                        recover();
+                    }
+                }
+            };
     private final BroadcastReceiver consentRevoked = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) { stopSelf(); }
     };
     @Inject LocationSampler sampler;
+    @Inject TogetherHealthReporter healthReporter;
 
     /** Starts tracking while Android permits a visible-app foreground-service launch. */
     public static void start(Context context) {
@@ -56,6 +75,8 @@ public final class ForegroundLocationService extends Service {
             thread.setDaemon(true);
             return thread;
         });
+        connectivity = getSystemService(ConnectivityManager.class);
+        connectivity.registerDefaultNetworkCallback(networkChanges);
         scheduler.scheduleWithFixedDelay(this::sample, 0, 2, TimeUnit.MINUTES);
     }
 
@@ -70,6 +91,21 @@ public final class ForegroundLocationService extends Service {
             return;
         }
         PartnerNotificationWorker.enqueue(this);
+        healthReporter.publish();
+    }
+
+    private void recover() {
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (scheduler == null || now - lastRecoveryAt < 30_000) return;
+        lastRecoveryAt = now;
+        scheduler.execute(this::sample);
+    }
+
+    private static int transport(NetworkCapabilities capabilities) {
+        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return 1;
+        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) return 2;
+        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) return 3;
+        return 0;
     }
 
     private Notification notification() {
@@ -91,6 +127,7 @@ public final class ForegroundLocationService extends Service {
     @Override
     public void onDestroy() {
         if (scheduler != null) scheduler.shutdownNow();
+        if (connectivity != null) connectivity.unregisterNetworkCallback(networkChanges);
         unregisterReceiver(consentRevoked);
         super.onDestroy();
     }

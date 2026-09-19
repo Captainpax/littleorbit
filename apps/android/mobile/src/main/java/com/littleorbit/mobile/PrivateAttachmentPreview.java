@@ -1,5 +1,6 @@
 package com.littleorbit.mobile;
 
+import android.animation.ValueAnimator;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -14,12 +15,15 @@ import android.widget.TextView;
 import android.widget.VideoView;
 import androidx.appcompat.app.AlertDialog;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.button.MaterialButton;
 import com.littleorbit.data.remote.NoteApiModels;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import pl.droidsonroids.gif.GifDrawable;
+import pl.droidsonroids.gif.GifImageView;
 
 /** Shows verified private attachments without granting their URI to another app. */
 public final class PrivateAttachmentPreview {
@@ -35,7 +39,8 @@ public final class PrivateAttachmentPreview {
     /** Opens the best bounded preview supported for one sanitized local file. */
     public void show(File file, NoteApiModels.Attachment attachment) {
         VideoView[] playback = new VideoView[1];
-        View content = content(file, attachment, playback);
+        GifDrawable[] gif = new GifDrawable[1];
+        View content = content(file, attachment, playback, gif);
         AlertDialog dialog = new MaterialAlertDialogBuilder(activity)
                 .setTitle(attachment.fileName)
                 .setView(content)
@@ -43,13 +48,18 @@ public final class PrivateAttachmentPreview {
                 .create();
         dialog.setOnDismissListener(ignored -> {
             if (playback[0] != null) playback[0].stopPlayback();
+            if (gif[0] != null) gif[0].recycle();
         });
         dialog.show();
     }
 
     private View content(
-            File file, NoteApiModels.Attachment attachment, VideoView[] playback) {
+            File file, NoteApiModels.Attachment attachment,
+            VideoView[] playback, GifDrawable[] gif) {
         try {
+            if ("image/gif".equals(attachment.mediaType)) {
+                return gif(file, attachment.fileName, gif);
+            }
             if (attachment.mediaType.startsWith("image/")) return image(file, attachment.fileName);
             if ("application/pdf".equals(attachment.mediaType)) return pdf(file);
             if (attachment.mediaType.startsWith("text/")) return text(file);
@@ -61,6 +71,35 @@ public final class PrivateAttachmentPreview {
             return failure();
         }
         return failure();
+    }
+
+    private View gif(File file, String description, GifDrawable[] playback) throws IOException {
+        LinearLayout content = new LinearLayout(activity);
+        content.setOrientation(LinearLayout.VERTICAL);
+        GifImageView image = new GifImageView(activity);
+        image.setAdjustViewBounds(true);
+        image.setContentDescription(description);
+        GifDrawable drawable = new GifDrawable(file);
+        playback[0] = drawable;
+        image.setImageDrawable(drawable);
+        MaterialButton control = new MaterialButton(activity);
+        boolean starts = ValueAnimator.areAnimatorsEnabled();
+        if (!starts) drawable.stop();
+        control.setText(starts ? R.string.pause_animation : R.string.play_animation);
+        control.setOnClickListener(view -> {
+            if (drawable.isPlaying()) {
+                drawable.stop();
+                control.setText(R.string.play_animation);
+            } else {
+                drawable.start();
+                control.setText(R.string.pause_animation);
+            }
+        });
+        content.addView(image, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        content.addView(control);
+        return content;
     }
 
     private View image(File file, String description) {
