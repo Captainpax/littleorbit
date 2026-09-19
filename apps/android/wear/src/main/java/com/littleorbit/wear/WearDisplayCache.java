@@ -22,6 +22,9 @@ final class WearDisplayCache {
             long nearbyProcessedAt,
             String countdownTitle,
             long countdownAt,
+            String countdownTimingKind,
+            String countdownOccursOn,
+            String countdownTimezone,
             long syncedAt) {
         preferences(context).edit()
                 .putLong("relationship_start_epoch_day", relationshipStartEpochDay)
@@ -29,6 +32,9 @@ final class WearDisplayCache {
                 .putLong("nearby_processed_at", nearbyProcessedAt)
                 .putString("countdown_title", countdownTitle)
                 .putLong("countdown_at", countdownAt)
+                .putString("countdown_timing_kind", countdownTimingKind)
+                .putString("countdown_occurs_on", countdownOccursOn)
+                .putString("countdown_timezone", countdownTimezone)
                 .putLong("synced_at", syncedAt)
                 .apply();
     }
@@ -47,6 +53,9 @@ final class WearDisplayCache {
                 0,
                 countdownTitle,
                 countdownAt,
+                "timed",
+                "",
+                "UTC",
                 updatedAt);
     }
 
@@ -62,6 +71,9 @@ final class WearDisplayCache {
                 values.getLong("nearby_processed_at", 0),
                 values.getString("countdown_title", ""),
                 values.getLong("countdown_at", 0),
+                values.getString("countdown_timing_kind", "timed"),
+                values.getString("countdown_occurs_on", ""),
+                values.getString("countdown_timezone", "UTC"),
                 values.getLong("synced_at", 0));
     }
 
@@ -82,6 +94,9 @@ final class WearDisplayCache {
         final long nearbyProcessedAt;
         final String countdownTitle;
         final long countdownAt;
+        final String countdownTimingKind;
+        final String countdownOccursOn;
+        final String countdownTimezone;
         final long syncedAt;
 
         State(
@@ -90,17 +105,34 @@ final class WearDisplayCache {
                 long nearbyProcessedAt,
                 String countdownTitle,
                 long countdownAt,
+                String countdownTimingKind,
+                String countdownOccursOn,
+                String countdownTimezone,
                 long syncedAt) {
             this.relationshipStartEpochDay = relationshipStartEpochDay;
             this.nearbySeconds = nearbySeconds;
             this.nearbyProcessedAt = nearbyProcessedAt;
             this.countdownTitle = countdownTitle;
             this.countdownAt = countdownAt;
+            this.countdownTimingKind = countdownTimingKind;
+            this.countdownOccursOn = countdownOccursOn;
+            this.countdownTimezone = countdownTimezone;
             this.syncedAt = syncedAt;
         }
 
+        State(
+                long relationshipStartEpochDay,
+                long nearbySeconds,
+                long nearbyProcessedAt,
+                String countdownTitle,
+                long countdownAt,
+                long syncedAt) {
+            this(relationshipStartEpochDay, nearbySeconds, nearbyProcessedAt,
+                    countdownTitle, countdownAt, "timed", "", "UTC", syncedAt);
+        }
+
         static State unavailable() {
-            return new State(-1, 0, 0, "", 0, 0);
+            return new State(-1, 0, 0, "", 0, "timed", "", "UTC", 0);
         }
 
         boolean available() {

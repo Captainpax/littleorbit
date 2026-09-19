@@ -70,25 +70,25 @@ export function formatReleaseDate(publishedAt: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.1",
-  versionCode: 24,
+  version: "1.1.0",
+  versionCode: 25,
   minimumSupportedVersionCode: 23,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "c5856820ad186be616027c95b008a1d81edbe8c60dc7b2cc7301b13efa369c25",
+  sha256: "9b205633c004d4681413cc10592bb1ebc628dde8f3822754387552b2a09b101f",
   releaseNotes: [
-    "Confirms later-supported nearby gaps up to 20 minutes without treating Wi-Fi as proximity proof.",
-    "Adds per-phone collection health, coordinate-free daily details, and audited corrections.",
-    "Replaces manual note saving with serialized crash-safe autosave and explicit conflict recovery.",
-    "Prevents repeated autosave from creating duplicate documents and safely remaps forked attachments.",
-    "Restores inline animated GIFs with pause, play, and reduced-motion behavior.",
+    "Adds a dedicated Watch settings page with one explicitly managed watch and private content controls.",
+    "Adds an explicit five-step install, update, repair, and private-removal wizard.",
+    "Adds vertically scrolling Together, Countdown, and confirmed Smooch destinations on Wear OS.",
+    "Protects watch actions with target and relationship generations plus a five-item, 15-minute encrypted queue.",
+    "Adds an improved tile and separate Nearby and Countdown watch-face complications.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.1",
-  apkUrl: hostedApkPath("1.0.1"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.1.0",
+  apkUrl: hostedApkPath("1.1.0"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.1"),
-    sha256: "43068ae14877ee0e158f6498a66f5987d56642521a8c4109372434e8c7fe9cd3",
-    sizeBytes: 14189878,
-    versionCode: 18,
+    apkUrl: hostedWearApkPath("1.1.0"),
+    sha256: "357b176ba4d6d07b7eae40601aa8595806a1c0aad32b6a1dcbed41271e000950",
+    sizeBytes: 14730416,
+    versionCode: 19,
     minimumAndroid: 30,
   },
   published: true,
@@ -175,7 +175,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-19T18:19:24.932834Z",
+    publishedAt: "2026-09-19T20:27:09.9055481Z",
   }];
 }
 

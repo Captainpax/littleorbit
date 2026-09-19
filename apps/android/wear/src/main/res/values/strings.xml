@@ -29,4 +29,24 @@
     <string name="tile_name">Together time</string>
     <string name="tile_description">Nearby-time estimate and next countdown</string>
     <string name="tile_eyebrow">LITTLE ORBIT</string>
+    <string name="open_together">Together</string>
+    <string name="open_countdown">Countdown</string>
+    <string name="open_smooch">Smooch</string>
+    <string name="countdown_eyebrow">NEXT COUNTDOWN</string>
+    <string name="next_countdown">Next countdown</string>
+    <string name="countdown_arrived">It’s here</string>
+    <string name="countdown_hours_minutes">%1$dh %2$dm</string>
+    <string name="synced_from_phone">Synced from phone</string>
+    <string name="smooch_title">Send a Smooch</string>
+    <string name="smooch_pick">Pick one · confirm next</string>
+    <string name="smooch_unavailable">Enable watch Smooches on your phone and sync again.</string>
+    <string name="send_smooch_to">Send this to %1$s?</string>
+    <string name="your_partner">your partner</string>
+    <string name="smooch_expiry">Offline sends expire after 15 minutes.</string>
+    <string name="smooch_queued">Queued for your phone · expires in 15 minutes</string>
+    <string name="send_smooch">Send Smooch</string>
+    <string name="cancel">Cancel</string>
+    <string name="countdown_preview_a11y">Little Orbit countdown preview</string>
+    <string name="countdown_complication_a11y">%1$s, %2$s remaining</string>
+    <string name="countdown_complication_long">%1$s · %2$s</string>
 </resources>

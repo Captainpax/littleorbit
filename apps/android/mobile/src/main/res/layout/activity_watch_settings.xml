@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/background_cosmic"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/watchBack"
+            style="@style/Widget.LittleOrbit.Button.Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/back_to_settings" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/watch_settings_title"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/watch_settings_intro"
+            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/card_background_feature"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/managed_watch"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Eyebrow" />
+
+            <TextView
+                android:id="@+id/watchName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/no_managed_watch"
+                android:textColor="@color/cloud"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/watchConnectionStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:accessibilityLiveRegion="polite"
+                android:text="@string/wear_searching"
+                android:textColor="@color/muted" />
+
+            <TextView
+                android:id="@+id/watchVersionStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/muted" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/selectWatch"
+                style="@style/Widget.LittleOrbit.Button.Outline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/choose_managed_watch" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/watchPreferences"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/watch_content_section"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Eyebrow" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/watchPhotos"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/watch_show_photos"
+                android:textColor="@color/cloud" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/watchCountdownTitles"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/watch_show_countdown_titles"
+                android:textColor="@color/cloud" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/watchSmooches"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/watch_allow_smooches"
+                android:textColor="@color/cloud" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/watchUpdateAlerts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/watch_update_alerts"
+                android:textColor="@color/cloud" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/watch_default_destination"
+                android:textColor="@color/muted" />
+
+            <Spinner
+                android:id="@+id/watchDestination"
+                style="@style/Widget.LittleOrbit.Spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/watch_app_section"
+                android:textAppearance="@style/TextAppearance.LittleOrbit.Eyebrow" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/installOrUpdateWatch"
+                style="@style/Widget.LittleOrbit.Button.Primary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/check_watch_update" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/repairWatch"
+                style="@style/Widget.LittleOrbit.Button.Outline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/repair_watch_app" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/watchDiagnostics"
+                style="@style/Widget.LittleOrbit.Button.Text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/watch_diagnostics" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/removeWatch"
+                style="@style/Widget.LittleOrbit.Button.Text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/remove_watch_privately"
+                android:textColor="@color/coral" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

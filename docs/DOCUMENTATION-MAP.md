@@ -65,6 +65,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0036-chronological-together-time-and-bounded-live-projection.md` — every-observation proximity accounting, exact relationship scoping, and a two-phone bounded live display lease.
 - `docs/adr/0037-confirmed-proximity-bridges-and-opt-in-health.md` — later-confirmed bounded gaps, shared-home history, and private opt-in collection health.
 - `docs/adr/0038-single-flight-note-autosave-and-explicit-forks.md` — crash-safe serialized autosave, explicit conflicts, attachment-safe forks, and backup-gated duplicate archival.
+- `docs/adr/0039-managed-watch-target-and-actions.md` — one explicit Wear target, monotonic target purges, and credential-free bounded watch actions.
 - `docs/adr/0028-isolated-attachment-media-worker.md` — least-privilege scanning, sanitization, atomic publication, and private archive access.
 - `docs/adr/0029-relationship-invalidation-purge-protocol.md` — structured invalidation and generation-ordered phone, widget, and Wear cleanup.
 - `docs/adr/0030-together-time-retention-and-corrections.md` — short raw-coordinate retention, 30-day minute detail, durable totals, and audited corrections.
@@ -97,6 +98,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-RC17-2026-09-15.md` — duplicate-create and one-sided-location diagnosis, recovery invariants, isolated database proof, signed artifacts, and publication evidence.
 - `docs/operations/VERIFICATION-1.0.0-2026-09-16.md` — chronological proximity, bounded live projection, signed stable artifacts, migration, publication, and honest physical-gate evidence.
 - `docs/operations/VERIFICATION-1.0.1-2026-09-19.md` — confirmed-gap, diagnostic, autosave, fork, migration, artifact, device, and rollout gate evidence.
+- `docs/operations/VERIFICATION-1.1.0-2026-09-19.md` — managed-watch implementation, automated, signed-artifact, waived-device, and rollout evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -125,6 +127,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.0-rc.17.md` — single-flight shared-document creation, resilient nearby collection, mutual freshness, and nearby-first phone/widget/Wear surfaces.
 - `docs/releases/1.0.0.md` — chronological nearby-time repair and the first stable free, open, self-hosted release.
 - `docs/releases/1.0.1.md` — pending nearby-time reliability, collection-health, autosave, conflict, duplicate, and GIF correction release.
+- `docs/releases/1.1.0.md` — managed-watch settings, installer, Together/Countdown/Smooch destinations, target privacy, and complications.
 <!-- documentation-inventory:end -->
 
 ## Review routing

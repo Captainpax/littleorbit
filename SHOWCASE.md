@@ -96,6 +96,10 @@ The RC14 implementation scopes passive records to an opaque relationship generat
 
 The RC14 visual pass keeps each shell destination to one title, lets Home cards grow under large text, and uses the same lavender, coral, amber, deep-navy, 24 dp card language across Home, Quiz, Countdowns, and private archives. Form fields now declare meaningful keyboard and autofill behavior, archive and quiz-history dates follow the device locale, passive widget labels remain readable at Android's minimum text guidance, and Android 13 launchers receive a purpose-built monochrome orbit mark. The Wear tile picker now shows representative square and round previews, while launcher, tile, and complication wording comes from localized resources.
 
+The signed 1.1.0 implementation adds a dedicated phone Watch settings page rather than overloading the main Settings list. One explicitly selected watch receives target-scoped content. The page controls profile photos, countdown titles, watch Smooches, update alerts, and the default watch destination, and it exposes install/update, repair, diagnostics, and private removal. All switches default on only after explicit watch selection.
+
+Wear code 19 uses vertically scrolling Together, Countdown, and Smooch activities instead of a horizontal carousel. Countdown preserves timed versus all-day timezone semantics. Smooch uses only the nine approved choices, requires a confirmation screen, and queues at most five encrypted actions for 15 minutes without holding a phone account token. Tile and watch-face surfaces remain passive; Nearby and Countdown are separate complications and Smooch is never offered as a passive action. These remain implementation descriptions rather than physical-device captures; the owner approved release with the 1.1.0 round-watch capture checklist still open.
+
 ## Public website
 
 ![Website landing page concept](docs/assets/web-landing-concept.png)

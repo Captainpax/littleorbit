@@ -253,3 +253,13 @@ two reversible safe-duplicate archives, signed full/range downloads, RSS,
 local/public readiness, and the code-23 compatibility floor were verified. The
 owner waived the unavailable physical tablet soak; the missing evidence remains
 recorded in the 1.0.1 verification report.
+
+## 1.1.0 managed-watch release
+
+1.0.1 remains production until this gate is complete. Source metadata for 1.1.0 is phone version code 25 and Wear version code 19; do not create a release note, tag, immutable API row, size, or checksum claim until `build-signed-android.ps1` produces and independently verifies both artifacts. Keep the compatibility floor at phone code 23 unless a separate reviewed deployment decision changes it.
+
+Before signing, run the complete Android unit/lint matrix and the physical phone/round-watch checklist in [`WEAR-INSTALLER.md`](WEAR-INSTALLER.md). Begin from the installed production pair where possible. Verify a 1.0.1 phone/code-18 companion baseline, then update the phone to code 25: the old global watch cache must purge and Watch settings must require the code-19 companion. Verify first selection, target switching, remembered update, same-version repair, private removal, and watch-side wireless-debugging revocation. APK bytes must not be requested by page open, periodic metadata work, or a status refresh.
+
+Exercise Together, timed and all-day Countdown values across a timezone boundary, Smooch picker plus confirmation, offline retry under one operation ID, 15-minute expiry, five-item bound, preference revocation, unpair, six-hour stale display, and 24-hour deletion. Inspect the merged manifests to confirm the phone/wear message listeners expose only fixed Data Layer paths and that neither APK embeds an account token, local endpoint, or pairing code. Capture round-watch launcher, tile, Nearby complication, and Countdown complication evidence without relationship content.
+
+After the signed manifest exists, add the immutable `docs/releases/1.1.0.md` record with phone/Wear codes, exact byte sizes and SHA-256 values, pinned signer identity, Android floors, compatibility floor, and enforcement state. Stage and publish the exact generated artifacts, then verify current metadata, full and ranged downloads, update discovery, patch notes/RSS, public/local health, and a non-destructive installed 1.0.1-to-1.1.0 phone/watch upgrade before marking the roadmap release item complete.

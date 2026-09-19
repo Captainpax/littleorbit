@@ -9,6 +9,7 @@ import android.view.View;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.littleorbit.data.ManagedWatchCoordinator;
 import com.littleorbit.mobile.databinding.ActivityWearInstallerBinding;
 import dagger.hilt.android.AndroidEntryPoint;
 import java.io.File;
@@ -22,6 +23,10 @@ import javax.inject.Inject;
 /** Phone-hosted wireless-ADB wizard for the verified self-hosted Wear APK. */
 @AndroidEntryPoint
 public final class WearInstallerActivity extends InsetAwareActivity {
+    public static final String EXTRA_MODE = "wear_installer_mode";
+    private static final String MODE_INSTALL = "install";
+    private static final String MODE_REPAIR = "repair";
+    private static final String MODE_REMOVE = "remove";
     private static final long TLS_READY_TIMEOUT_MS = 30_000;
     private ActivityWearInstallerBinding binding;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -31,11 +36,13 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     private volatile File verifiedApk;
     private volatile boolean manualOverride;
     private volatile boolean artifactPreparing;
+    private String mode = MODE_INSTALL;
     @Inject WearReleaseClient releases;
     @Inject WearApkVerifier verifier;
     @Inject NsdWatchDiscovery nsd;
     @Inject KadbWatchClient adb;
     @Inject EncryptedKadbPrivateKeyStore keys;
+    @Inject ManagedWatchCoordinator coordinator;
 
     private final ActivityResultLauncher<String> nearbyPermission = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
@@ -47,13 +54,14 @@ public final class WearInstallerActivity extends InsetAwareActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityWearInstallerBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        mode = resolvedMode(getIntent().getStringExtra(EXTRA_MODE));
         binding.showManualWear.setOnClickListener(view -> showManualFields());
         binding.restartWearDiscovery.setOnClickListener(view -> requestDiscoveryPermission());
-        binding.retryWearArtifact.setOnClickListener(view -> prepareArtifact());
-        binding.installWearNow.setOnClickListener(view -> beginInstall());
+        binding.retryWearArtifact.setOnClickListener(view -> prepareArtifact(true));
+        binding.installWearNow.setOnClickListener(view -> beginRequestedAction());
         binding.forgetWearKey.setOnClickListener(view -> forgetIdentity());
         syncIdentityButton();
-        prepareArtifact();
+        configureMode();
         requestDiscoveryPermission();
     }
 
@@ -118,6 +126,9 @@ public final class WearInstallerActivity extends InsetAwareActivity {
         }
         int message = discoveryMessage(value);
         binding.wearDiscoveryStatus.setText(message);
+        if (value.pairing() != null || keys.isRemembered()) {
+            setWizardStep(R.string.wear_wizard_step_two);
+        }
     }
 
     private int discoveryMessage(WearEndpointRegistry.Snapshot value) {
@@ -133,12 +144,34 @@ public final class WearInstallerActivity extends InsetAwareActivity {
         binding.wearDiscoveryStatus.setText(R.string.wear_discovery_failed);
     }
 
-    private void prepareArtifact() {
+    private void configureMode() {
+        binding.wearInstallProgress.setVisibility(View.GONE);
+        binding.wearInstallStatus.setText(R.string.wear_ready_to_begin);
+        binding.installWearNow.setEnabled(true);
+        if (MODE_REMOVE.equals(mode)) {
+            binding.wizardStep.setText(R.string.wear_wizard_remove_step);
+            binding.installWearNow.setText(R.string.remove_watch_now);
+        } else if (MODE_REPAIR.equals(mode)) {
+            binding.wizardStep.setText(R.string.wear_wizard_step_one);
+            binding.installWearNow.setText(R.string.repair_watch_now);
+        }
+    }
+
+    private void beginRequestedAction() {
+        if (MODE_REMOVE.equals(mode)) {
+            beginInstall();
+        } else if (release == null || verifiedApk == null) {
+            prepareArtifact(true);
+        } else beginInstall();
+    }
+
+    private void prepareArtifact(boolean continueAfterVerification) {
         if (artifactPreparing) return;
         artifactPreparing = true;
         release = null;
         verifiedApk = null;
         binding.retryWearArtifact.setVisibility(View.GONE);
+        setWizardStep(R.string.wear_wizard_step_three);
         status(R.string.wear_preparing, true, false);
         executor.execute(() -> {
             try {
@@ -149,7 +182,8 @@ public final class WearInstallerActivity extends InsetAwareActivity {
                 release = metadata;
                 verifiedApk = apk;
                 artifactPreparing = false;
-                status(R.string.wear_ready, false, true);
+                if (continueAfterVerification) runOnUiThread(this::beginInstall);
+                else status(R.string.wear_ready, false, true);
             } catch (Exception failure) {
                 artifactPreparing = false;
                 status(R.string.wear_prepare_failed, false, false);
@@ -159,7 +193,7 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     }
 
     private void beginInstall() {
-        if (release == null || verifiedApk == null) return;
+        if (!MODE_REMOVE.equals(mode) && (release == null || verifiedApk == null)) return;
         WearInstallRequest request = installRequest();
         if (!request.canStart(keys.isRemembered())) {
             showManualFields();
@@ -167,6 +201,7 @@ public final class WearInstallerActivity extends InsetAwareActivity {
             return;
         }
         binding.wearPairingCode.setText("");
+        setWizardStep(R.string.wear_wizard_step_four);
         setBusy(keys.isRemembered() ? R.string.wear_connecting : R.string.wear_pairing);
         executor.execute(() -> connectInspectAndInstall(request));
     }
@@ -240,10 +275,17 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     }
 
     private void applyPolicy(Selected selected) {
+        if (MODE_REMOVE.equals(mode)) {
+            remove(selected);
+            return;
+        }
         WearInstallPolicy.Decision decision = WearInstallPolicy.decide(release, selected.device);
         if (decision == WearInstallPolicy.Decision.WARN_OLD_PATCH) {
             warnOldPatch(selected);
         } else if (decision == WearInstallPolicy.Decision.INSTALL) {
+            install(selected);
+        } else if (decision == WearInstallPolicy.Decision.ALREADY_CURRENT
+                && MODE_REPAIR.equals(mode)) {
             install(selected);
         } else if (decision == WearInstallPolicy.Decision.ALREADY_CURRENT) {
             status(R.string.wear_already_current, false, true);
@@ -265,10 +307,28 @@ public final class WearInstallerActivity extends InsetAwareActivity {
 
     private void install(Selected selected) {
         try {
+            setWizardStep(R.string.wear_wizard_step_five);
             status(R.string.wear_installing, true, false);
             adb.install(selected.endpoint.host(), selected.endpoint.port(), verifiedApk);
             status(R.string.wear_install_complete, false, true);
         } catch (WatchAdbException failure) { retryInstallAfterRotation(selected, failure); }
+    }
+
+    private void remove(Selected selected) {
+        try {
+            setWizardStep(R.string.wear_wizard_step_five);
+            status(R.string.wear_removing, true, false);
+            coordinator.prepareRemoval();
+            adb.uninstall(selected.endpoint.host(), selected.endpoint.port());
+            if (!adb.forget()) {
+                status(R.string.wear_remove_key_failed, false, false);
+                return;
+            }
+            status(R.string.wear_remove_complete, false, false);
+        } catch (WatchAdbException failure) { showFailure(failure); }
+        catch (RuntimeException localFailure) {
+            status(getString(R.string.wear_remove_failed_diagnostic, "WREMV-LOCAL"), false, true);
+        }
     }
 
     private void retryInstallAfterRotation(Selected selected, WatchAdbException failure) {
@@ -316,6 +376,7 @@ public final class WearInstallerActivity extends InsetAwareActivity {
             case CONNECT -> R.string.wear_connect_failed_diagnostic;
             case INSPECT -> R.string.wear_inspect_failed_diagnostic;
             case INSTALL -> R.string.wear_install_failed_diagnostic;
+            case REMOVE -> R.string.wear_remove_failed_diagnostic;
         };
     }
 
@@ -347,6 +408,10 @@ public final class WearInstallerActivity extends InsetAwareActivity {
 
     private void setReady() { status(R.string.wear_ready, false, true); }
 
+    private void setWizardStep(int message) {
+        runOnUiThread(() -> binding.wizardStep.setText(message));
+    }
+
     private void status(int message, boolean busy, boolean enabled) {
         runOnUiThread(() -> status(getString(message), busy, enabled));
     }
@@ -374,6 +439,11 @@ public final class WearInstallerActivity extends InsetAwareActivity {
     private static int number(String value) {
         try { return Integer.parseInt(value.trim()); }
         catch (NumberFormatException invalid) { return 0; }
+    }
+
+    private static String resolvedMode(String value) {
+        if (MODE_REMOVE.equals(value) || MODE_REPAIR.equals(value)) return value;
+        return MODE_INSTALL;
     }
 
     private record Selected(WearEndpointRegistry.Endpoint endpoint,

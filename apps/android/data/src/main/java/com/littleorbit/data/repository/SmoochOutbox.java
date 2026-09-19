@@ -28,9 +28,18 @@ public final class SmoochOutbox {
 
     /** Adds one retry-safe send without extending its expiry on later retries. */
     public synchronized void enqueue(String operationId, String emoji, long createdAt) {
+        enqueue(operationId, emoji, createdAt, Origin.PHONE);
+    }
+
+    /** Accepts ownership of one idempotent watch send. */
+    public synchronized void enqueueWatch(String operationId, String emoji, long createdAt) {
+        enqueue(operationId, emoji, createdAt, Origin.WATCH);
+    }
+
+    private void enqueue(String operationId, String emoji, long createdAt, Origin origin) {
         List<Pending> values = pending(createdAt);
         if (values.stream().noneMatch(item -> item.operationId.equals(operationId))) {
-            values.add(new Pending(operationId, emoji, createdAt));
+            values.add(new Pending(operationId, emoji, createdAt, origin));
         }
         while (values.size() > 5) values.remove(0);
         write(values);
@@ -54,6 +63,13 @@ public final class SmoochOutbox {
         write(values);
     }
 
+    /** Cancels only actions accepted from the managed watch during a private reset. */
+    public synchronized void clearWatchOrigin() {
+        List<Pending> values = read();
+        values.removeIf(item -> item.origin() == Origin.WATCH);
+        write(values);
+    }
+
     /** Clears queued affection immediately when sign-out or unpair removes authority. */
     public synchronized void clear() { preferences.edit().remove(KEY).apply(); }
 
@@ -67,7 +83,7 @@ public final class SmoochOutbox {
             for (int index = 0; index < array.length(); index++) {
                 JSONObject item = array.getJSONObject(index);
                 result.add(new Pending(item.getString("id"), item.getString("emoji"),
-                        item.getLong("created")));
+                        item.getLong("created"), parseOrigin(item.optString("origin", "PHONE"))));
             }
             return result;
         } catch (Exception invalid) {
@@ -83,7 +99,8 @@ public final class SmoochOutbox {
                 array.put(new JSONObject()
                         .put("id", item.operationId)
                         .put("emoji", item.emoji)
-                        .put("created", item.createdAt));
+                        .put("created", item.createdAt)
+                        .put("origin", item.origin.name()));
             }
             preferences.edit().putString(KEY, cipher.seal(array.toString())).apply();
         } catch (Exception invalid) {
@@ -92,5 +109,13 @@ public final class SmoochOutbox {
     }
 
     /** One immutable pending send with its original creation time. */
-    public record Pending(String operationId, String emoji, long createdAt) {}
+    public record Pending(String operationId, String emoji, long createdAt, Origin origin) {}
+
+    /** Local source used only for scoped cancellation; it is never sent to the server. */
+    public enum Origin { PHONE, WATCH }
+
+    private static Origin parseOrigin(String value) {
+        try { return Origin.valueOf(value); }
+        catch (IllegalArgumentException invalid) { return Origin.PHONE; }
+    }
 }

@@ -453,10 +453,12 @@ flowchart LR
     Work -->|idempotency key + base revision| API[FastAPI]
     API -->|accepted state| Room
     API -->|stale revision| Conflict[Explicit local/server reconciliation]
-    Phone[Phone cache publisher] -->|Scoped generation over Wearable Data Layer| Guard[Wear generation guard]
+    Select[Explicit managed-watch selection] --> Target[Monotonic watch target generation]
+    Phone[Phone cache publisher] -->|Relationship + target generations over Wearable Data Layer| Guard[Wear relationship and target guards]
+    Target --> Guard
     Purge[Sign-out / unpair / inactive response] -->|Urgent inactive generation| Guard
     Guard -->|Accept current generation| Watch[Wear OS cache]
-    Guard -->|Reject legacy, older, or post-purge payload| Drop[Discard]
+    Guard -->|Reject non-target, older, or post-purge payload| Drop[Discard]
     Watch -->|24 h without authorization| Delete[Delete display, names, thumbnails, partial files]
     Room --> Sync[Bounded display-cache sync worker]
     Sync --> Render[Unique widget-render worker]
@@ -464,15 +466,43 @@ flowchart LR
     Widget -->|User refresh| Sync
     Render -->|Cache unavailable| Unavailable[Unavailable state]
     Watch --> Tile[Wear OS tile]
-    Watch --> Complication[Watch-face complication]
+    Watch --> NearbyComplication[Nearby complication]
+    Watch --> CountdownComplication[Countdown complication]
     Room -->|age threshold| Stale[Stale-data indicator]
     Watch -->|6 h age threshold| Stale
     Delete --> Unavailable
 ```
 
-Tokens stay in Android Keystore-backed storage. Offline queues contain encrypted countdown mutations, note drafts, location samples, and at most five unexpired Smooch sends. An interrupted Our Space editor stores its content and selection in encrypted app storage while Android saved state carries only an opaque workspace key. An exact structured `relationship_inactive` response, sign-out, unpair, or account change clears note workspaces, preview cache, retained media, and transient uploads; an ordinary revision-conflict 409 does not. Widget, tile, and complication caches contain only the confirmed pairing instant, coordinate-free nearby seconds and process time, next countdown, cache-sync time, and an opaque local relationship fingerprint/generation. The separate Wear launcher profile cache contains only display names and server-normalized 128-pixel thumbnails received through the Wearable Data Layer.
+Tokens stay in Android Keystore-backed storage and are never copied to Wear. Offline queues contain encrypted countdown mutations, note drafts, location samples, and at most five unexpired Smooch sends. The watch has its own five-item, 15-minute AES-GCM queue whose operation IDs transfer idempotent ownership to the phone only after target and relationship authorization. An interrupted Our Space editor stores its content and selection in encrypted app storage while Android saved state carries only an opaque workspace key. An exact structured `relationship_inactive` response, sign-out, unpair, or account change clears note workspaces, preview cache, retained media, and transient uploads; an ordinary revision-conflict 409 does not. Widget, tile, and complication caches contain only the confirmed pairing instant, coordinate-free nearby seconds and process time, next countdown, cache-sync time, and opaque local relationship/target generations. The separate Wear launcher profile cache contains only display names and optional server-normalized 128-pixel thumbnails received through the Wearable Data Layer.
 
-The phone advances the generation on sign-out, unpair, account deletion, or `relationship_inactive`, then publishes a durable urgent purge path and inactive display/profile replacements. The watch handles purge records before active records in each batch, clears old and partial files before a new relationship, and rejects an older or same-generation post-purge record. An asynchronous asset checks the generation again before replacing a thumbnail. Fresh values become visibly stale after six hours. At 24 hours without an accepted phone authorization, a best-effort alarm and every passive-surface read delete Wear relationship state and show unavailable. Boot restores the deadline check. The home widget also checks the active phone relationship identity around its Room read and stops rendering data after 24 hours. RC9 coalesces widget rendering through WorkManager so receiver callbacks only enqueue bounded work.
+The phone advances the relationship generation on sign-out, unpair, account deletion, or `relationship_inactive`. Selecting, switching, or removing a managed watch also advances a separate target generation. The watch handles target and relationship purges before active records, clears old and partial files before a new authority, and rejects records older than either barrier. A non-target watch that observes a newer target generation clears itself. An asynchronous asset checks both current target and relationship authority again before replacing a thumbnail. Fresh values become visibly stale after six hours. At 24 hours without an accepted phone authorization, a best-effort alarm and every passive-surface read delete Wear relationship state and show unavailable. Boot restores the deadline check. The home widget also checks the active phone relationship identity around its Room read and stops rendering data after 24 hours. RC9 coalesces widget rendering through WorkManager so receiver callbacks only enqueue bounded work.
+
+### Watch-originated Smooch ownership
+
+```mermaid
+sequenceDiagram
+    actor Person
+    participant Watch as Selected Wear node
+    participant Queue as Encrypted 15-minute queue
+    participant Phone as Phone Data Layer service
+    participant Outbox as Encrypted phone outbox
+    participant API as Authenticated API
+    Person->>Watch: Pick approved emoji, then confirm
+    Watch->>Queue: Store UUID + emoji + relationship/target generations
+    Watch->>Phone: Credential-free idempotent request
+    Phone->>Phone: Require selected source node, protocol, current generations, preference, emoji, UUID, and age
+    alt accepted
+        Phone->>Outbox: Take ownership under same operation ID
+        Phone-->>Watch: accepted_queued
+        Watch->>Queue: Delete local copy
+        Outbox->>API: Send through normal authenticated phone session
+    else rejected or expired
+        Phone-->>Watch: rejected
+        Watch->>Queue: Delete terminal request or let it expire
+    end
+```
+
+Data Layer transport is not treated as partner delivery. The watch reports only local queued state and the phone acknowledgement. Switching watches, disabling watch Smooches, private removal, relationship purge, or the 15-minute deadline clears the applicable request. Tile and complication surfaces never originate Smooches.
 
 ## Partner-assigned avatar processing and synchronization
 
@@ -511,8 +541,9 @@ sequenceDiagram
     participant Phone as Little Orbit phone app
     participant API as Public release API
     participant Watch as Wear OS wireless ADB
-    Person->>Phone: Settings > Install on watch
-    Phone->>API: Fetch current immutable release metadata
+    Person->>Phone: Settings > Watch settings > Install/update/repair
+    Phone->>API: Fetch current immutable release metadata only
+    Person->>Phone: Explicitly continue with APK action
     Phone->>API: Download exact versioned Wear APK
     Phone->>Phone: Verify endpoint, bytes, hash, package, version, watch feature, signer
     Phone->>Phone: Track pairing/connect services and port changes with local DNS-SD
@@ -529,10 +560,10 @@ sequenceDiagram
         Phone-->>Person: Warn, then cancel or explicitly install anyway
     end
     Phone->>Watch: Create package session, write verified APK, and commit with -r
-    Watch-->>Person: Little Orbit app, tile, and complication available
+    Watch-->>Person: Little Orbit app, tile, and two complications available
 ```
 
-The phone checks connected nodes and the `little_orbit_display_v2` capability so Settings can distinguish no watch, a missing watch app, and a connected Little Orbit watch. The installer starts only after a person opens it, supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. Manual values cannot be overwritten by a late discovery callback; **Scan again** explicitly returns to automatic selection. The pairing-code field disables saved state, autofill, and personalized keyboard learning, clears as soon as installation begins and whenever the screen stops, and never appears in diagnostics. A failed signed-artifact preparation exposes a bounded retry. API 34+ discovery callbacks replace and remove service information continuously; older releases serialize one-shot resolution. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
+The phone checks connected nodes and the `little_orbit_display_v2` capability so Watch settings can distinguish no watch, a missing watch app, and a connected Little Orbit watch. Metadata checks may run in the background; APK download, pairing, installation, reinstall, and removal require an explicit action. The five-stage wizard supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. Manual values cannot be overwritten by a late discovery callback; **Scan again** explicitly returns to automatic selection. The pairing-code field disables saved state, autofill, and personalized keyboard learning, clears as soon as installation begins and whenever the screen stops, and never appears in diagnostics. A failed signed-artifact preparation exposes a bounded retry. API 34+ discovery callbacks replace and remove service information continuously; older releases serialize one-shot resolution. Private removal first advances the target purge barrier and clears watch-originated actions, then uninstalls only `com.littleorbit.mobile`, forgets the local ADB key, and tells the person to revoke the phone identity and wireless debugging on the watch. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
 
 ## Patch notes and RSS
 

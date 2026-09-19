@@ -28,6 +28,12 @@
             android:name=".ForegroundLocationService"
             android:exported="false"
             android:foregroundServiceType="location" />
+        <service android:name=".MobileWearBridgeService" android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/little-orbit/watch/" />
+            </intent-filter>
+        </service>
         <receiver
             android:name=".UpdateInstallReceiver"
             android:exported="false" />
@@ -77,6 +83,7 @@
         </provider>
         <activity android:name=".PrivacyActivity" android:exported="false" />
         <activity android:name=".SettingsActivity" android:exported="false" />
+        <activity android:name=".WatchSettingsActivity" android:exported="false" />
         <activity android:name=".AppUpdatesActivity" android:exported="false" />
         <activity android:name=".ProfilePhotoActivity" android:exported="false" />
         <activity android:name=".ProfileCropActivity" android:exported="false" />

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.wear.widget.BoxInsetLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <ScrollView android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:scrollbars="none" app:layout_boxedEdges="all">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:orientation="vertical" android:padding="8dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="@string/smooch_title" android:textColor="#F7F6FF" android:textSize="20sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="@string/smooch_pick" android:textColor="#AEBBD2" android:textSize="11sp" />
+            <GridLayout android:id="@+id/smoochGrid" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:columnCount="3" android:rowCount="3">
+                <Button android:id="@+id/smooch0" style="@style/WearEmojiButton" />
+                <Button android:id="@+id/smooch1" style="@style/WearEmojiButton" />
+                <Button android:id="@+id/smooch2" style="@style/WearEmojiButton" />
+                <Button android:id="@+id/smooch3" style="@style/WearEmojiButton" />
+                <Button android:id="@+id/smooch4" style="@style/WearEmojiButton" />
+                <Button android:id="@+id/smooch5" style="@style/WearEmojiButton" />
+                <Button android:id="@+id/smooch6" style="@style/WearEmojiButton" />
+                <Button android:id="@+id/smooch7" style="@style/WearEmojiButton" />
+                <Button android:id="@+id/smooch8" style="@style/WearEmojiButton" />
+            </GridLayout>
+            <TextView android:id="@+id/smoochUnavailable" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:gravity="center" android:text="@string/smooch_unavailable" android:textColor="#FFC45B" android:visibility="gone" />
+            <Button android:id="@+id/smoochTogether" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="8dp" android:text="@string/open_together" android:textAllCaps="false" />
+            <Button android:id="@+id/smoochCountdown" android:layout_width="match_parent" android:layout_height="44dp" android:text="@string/open_countdown" android:textAllCaps="false" />
+        </LinearLayout>
+    </ScrollView>
+</androidx.wear.widget.BoxInsetLayout>

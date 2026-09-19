@@ -72,6 +72,13 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Add migration 0026, backup exclusions for raw locations and device-health snapshots, backup-gated reaggregation and duplicate archival commands, v3 fixtures, DST/unequal-cadence regressions, and release documentation.
 - [x] Rehearse migration 0026 on disposable PostgreSQL, restore the coordinated encrypted backup, execute the privacy-safe dry run/reaggregation/archive sequence, and verify rollback.
 - [x] Build and verify signed phone code 24, prove byte-identical Wear code 18 reuse, upgrade the physical Pixel, and publish 1.0.1 after an explicit owner waiver of the unavailable physical tablet soak. Keep the compatibility floor at code 23 during optional rollout.
+- [x] Implement the 1.1.0 phone code 25 Watch settings hub with one explicitly managed watch, content controls, target-scoped version/status diagnostics, and metadata-only watch update alerts.
+- [x] Implement the 1.1.0 action-gated five-step installer for install/update/repair plus private purge, uninstall, local-key forgetting, and wireless-debugging revocation guidance.
+- [x] Implement the Wear code 19 Together, exact Countdown, and confirmed Smooch destinations, encrypted five-item/15-minute offline action queue, configurable default destination, improved tile, and separate nearby/countdown complications.
+- [x] Add monotonic watch-target generation barriers, old-target purge, legacy-companion retirement, current relationship/action revalidation, and mixed-version safe behavior.
+- [ ] Run the 1.1.0 physical phone/round-watch gate: first install, remembered update, repair, private removal, target switch, offline Smooch acceptance/expiry, preference revocation, 24-hour deletion, large text, tile, and both complications. The owner explicitly waived this unavailable gate for 1.1.0 publication; it remains open as follow-up evidence.
+- [x] Build and independently verify signed phone code 25 and Wear code 19 artifacts, recording exact sizes, hashes, and the established signer while retaining the optional code-23 compatibility floor.
+- [ ] Publish 1.1.0, preserve no forced-update deadline, and complete production API, web, health, full-download, byte-range, hash, patch-note, and RSS verification.
 
 ## 1.x — Reliability and reach
 
@@ -84,8 +91,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - Calendar-provider compatibility, reminder timing, daylight-saving transitions, and one-way export clarity on physical devices.
 - Partner-avatar crop, replacement, removal, Wear transfer, unpair cleanup, and accessibility checks on two physical phones.
 - Physical-device battery measurements and OEM-specific background-location recovery guidance.
-- Guided watch-installer usability improvements based on physical phone/watch testing.
-- Remembered-watch reconnect latency and progress reporting for slow local transfers.
+- Watch-installer wording and reconnect timing refinements based on the open 1.1.0 physical phone/watch gate.
 - Profile-photo accessibility, transfer retry, and storage measurements on physical phone/watch pairs.
 - Smooch notification timing, weekly-boundary, offline-outbox, and lock-screen privacy measurements on two physical phones.
 - Background partner-alert latency, channel overrides, multi-install delivery, and OEM process-kill behavior on two physical phones.

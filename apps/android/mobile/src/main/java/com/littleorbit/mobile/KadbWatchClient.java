@@ -105,6 +105,17 @@ public final class KadbWatchClient {
         } finally { close(client); }
     }
 
+    /** Uninstalls only Little Orbit from the explicitly inspected watch. */
+    public void uninstall(String host, int port) throws WatchAdbException {
+        Object client = connectedClient(host, port, 30_000);
+        try {
+            String output = shell(client, "pm uninstall com.littleorbit.mobile");
+            if (!"Success".equals(output)) throw new Exception("Watch removal failed");
+        } catch (Exception failure) {
+            throw WatchAdbException.classify(WatchAdbException.Operation.REMOVE, failure);
+        } finally { close(client); }
+    }
+
     /** Removes the saved ADB authorization identity from this phone. */
     public boolean forget() {
         try { invoke(cert(), "clear", new Class<?>[0]); }

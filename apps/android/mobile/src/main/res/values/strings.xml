@@ -553,4 +553,56 @@
     <plurals name="hours"><item quantity="one">%d hour</item><item quantity="other">%d hours</item></plurals>
     <plurals name="minutes"><item quantity="one">%d minute</item><item quantity="other">%d minutes</item></plurals>
     <plurals name="seconds"><item quantity="one">%d second</item><item quantity="other">%d seconds</item></plurals>
+    <string name="back_to_settings">‹ Settings</string>
+    <string name="watch_settings_title">Watch settings</string>
+    <string name="watch_settings_intro">Choose one managed watch, control what it can show, and install or remove Little Orbit.</string>
+    <string name="managed_watch">Managed watch</string>
+    <string name="no_managed_watch">No watch selected</string>
+    <string name="choose_managed_watch">Choose a connected watch</string>
+    <string name="switch_managed_watch">Switch managed watch</string>
+    <string name="watch_connected_now">Connected now</string>
+    <string name="watch_choose_connected">A connected watch is available. Choose it to begin private sync.</string>
+    <string name="confirm_managed_watch">Use this watch?</string>
+    <string name="confirm_managed_watch_message">%1$s will become the only watch allowed to receive this relationship’s private display data. Switching watches purges the previous target first.</string>
+    <string name="use_this_watch">Use this watch</string>
+    <string name="watch_content_section">WHAT APPEARS ON YOUR WATCH</string>
+    <string name="watch_show_photos">Show profile photos</string>
+    <string name="watch_show_countdown_titles">Show countdown titles</string>
+    <string name="watch_allow_smooches">Allow Smooches from watch</string>
+    <string name="watch_update_alerts">Watch update alerts</string>
+    <string name="watch_default_destination">Open the watch app to</string>
+    <string-array name="watch_destinations">
+        <item>Together</item>
+        <item>Countdown</item>
+        <item>Smooch</item>
+    </string-array>
+    <string name="watch_app_section">WATCH APP</string>
+    <string name="check_watch_update">Install or check for update</string>
+    <string name="install_or_update_watch">Install or update watch app</string>
+    <string name="update_watch_app">Update watch app</string>
+    <string name="repair_watch_app">Repair or reinstall</string>
+    <string name="watch_diagnostics">Private diagnostics</string>
+    <string name="remove_watch_privately">Remove Little Orbit from watch</string>
+    <string name="remove_watch_warning">This stops sync, purges watch content and queued Smooches, uninstalls the app, forgets this installer key, and shows how to revoke wireless debugging.</string>
+    <string name="watch_version_unknown">Watch app version not reported yet</string>
+    <string name="watch_version_value">Little Orbit %1$s · build %2$d</string>
+    <string name="watch_update_available">Watch update %1$s is available</string>
+    <string name="watch_update_notification_title">Watch update available</string>
+    <string name="watch_recently_seen">reported by the selected watch</string>
+    <string name="watch_not_seen">not reported yet</string>
+    <string name="watch_diagnostics_value">Version: %1$s\nProtocol: %2$d\nQueued actions: %3$d\nStatus: %4$s\n\nNo account token, message text, precise location, or pairing code is included.</string>
+    <string name="wear_wizard_step_one">STEP 1 OF 5 · CHOOSE YOUR WATCH</string>
+    <string name="wear_wizard_step_two">STEP 2 OF 5 · PAIR OR RECONNECT</string>
+    <string name="wear_wizard_step_three">STEP 3 OF 5 · VERIFY APP</string>
+    <string name="wear_wizard_step_four">STEP 4 OF 5 · AUTHORIZE</string>
+    <string name="wear_wizard_step_five">STEP 5 OF 5 · FINISH</string>
+    <string name="wear_wizard_remove_step">PRIVATE REMOVAL · CONFIRM WATCH</string>
+    <string name="wear_ready_to_begin">Ready. The APK is downloaded only after you continue.</string>
+    <string name="repair_watch_now">Repair watch app</string>
+    <string name="remove_watch_now">Purge and remove</string>
+    <string name="wear_removing">Purging private data and removing Little Orbit…</string>
+    <string name="wear_remove_complete">Little Orbit was removed. On the watch, turn off Wireless debugging and remove “Little Orbit on this phone” from paired devices.</string>
+    <string name="wear_remove_key_failed">The watch app and private cache were removed, but this phone could not forget its installer key. Use “Forget watch authorization” or clear Little Orbit app data.</string>
+    <string name="wear_remove_failed_diagnostic">Private data was purged, but uninstall did not finish (%1$s). Reconnect this exact watch and retry removal.</string>
+    <string name="unavailable">Unavailable</string>
 </resources>

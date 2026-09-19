@@ -112,6 +112,11 @@ final class WearRelationshipGuard {
                 && current.relationshipId().equals(relationshipId);
     }
 
+    static synchronized WearRelationshipPolicy.State current(Context context) {
+        expireIfNeeded(context, System.currentTimeMillis());
+        return read(context);
+    }
+
     static synchronized boolean expireIfNeeded(Context context, long now) {
         WearRelationshipPolicy.Transition expiry =
                 WearRelationshipPolicy.expire(read(context), now);
@@ -175,5 +180,6 @@ final class WearRelationshipGuard {
     private static void clearRelationshipContent(Context context) {
         WearDisplayCache.clearValues(context);
         WearProfileStore.clearAll(context);
+        WearSmoochQueue.clear(context);
     }
 }
