@@ -78,7 +78,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Add monotonic watch-target generation barriers, old-target purge, legacy-companion retirement, current relationship/action revalidation, and mixed-version safe behavior.
 - [ ] Run the 1.1.0 physical phone/round-watch gate: first install, remembered update, repair, private removal, target switch, offline Smooch acceptance/expiry, preference revocation, 24-hour deletion, large text, tile, and both complications. The owner explicitly waived this unavailable gate for 1.1.0 publication; it remains open as follow-up evidence.
 - [x] Build and independently verify signed phone code 25 and Wear code 19 artifacts, recording exact sizes, hashes, and the established signer while retaining the optional code-23 compatibility floor.
-- [ ] Publish 1.1.0, preserve no forced-update deadline, and complete production API, web, health, full-download, byte-range, hash, patch-note, and RSS verification.
+- [x] Publish 1.1.0 at `2026-09-19T20:35:33.306439Z`, preserve no forced-update deadline, and complete production API, web, health, full-download, byte-range, hash, patch-note, and RSS verification.
 
 ## 1.x — Reliability and reach
 
