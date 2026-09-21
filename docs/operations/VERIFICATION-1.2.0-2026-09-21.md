@@ -30,10 +30,11 @@ inspection found the QA-only name `little-orbit-wear-smoke.apk` retained in
 production bytecode. It was never staged or published. Code 27 and its bytes are
 permanently discarded.
 
-The replacement Little Orbit candidate is:
+The Little Orbit release contract is:
 
-- Phone `1.2.0` code 28, 37,695,087 bytes, SHA-256
-  `2da3f906271bab411964cf709a4fa0f4be2b6487bb36f14ca85b0ceda30541bf`.
+- Phone `1.2.0` code 28. Two signed pre-tag preparation builds were superseded after
+  confirming that Android embeds source-control provenance; neither was staged or published.
+  The final size and SHA-256 are recorded below from the single build of the tagged clean commit.
 - Wear `1.1.1` code 20, 14,737,940 bytes, SHA-256
   `b5f2af70402b6c8c5ff6feae91b5f23a32bd7c0ccea91b032ab705f8013d7f2b`.
   These are the unchanged, byte-identical 1.1.1 Wear bytes.
@@ -49,7 +50,7 @@ helper is not a Little Orbit endpoint.
 
 The Big Orbit candidate is package `com.littleorbit.bigorbit`, version `1.0.0`
 code 1, 2,390,730 bytes, SHA-256
-`8a5bf42ae8c2f9786f880f648ff5c58fbfdf9ba62d87e612c3ff3c19b705f2b6`,
+`bc0805458f628cf6721004053c73432d0b10357230942dec42de99e281147098`,
 and signing-certificate SHA-256
 `04dc3502933faaa99dfd6641acc52b2bd71c9895087cb3060e3ce92dd8406f8c`.
 Its signer is independent from Little Orbit. Inspection found no QA endpoint,
@@ -78,6 +79,7 @@ rollout, production still served Little Orbit 1.1.1 phone code 26 and Wear code
 20, `/api/v2/admin/devices` was absent, and readiness returned HTTP 200.
 
 - Fresh coordinated encrypted backup: pending.
+- Final tagged Little Orbit phone artifact size and SHA-256: pending.
 - Migration head `0029` and service health: pending.
 - `/admin` and `/api/v1/admin/*` removal plus `/api/v2/admin/*` authentication:
   pending.
