@@ -8,7 +8,7 @@ from typing import Any, cast
 import httpx
 from pydantic import TypeAdapter, ValidationError
 
-from .schemas import CandidateQuestion, GeneratedBatch, GeneratedCandidate
+from .schemas import CandidateQuestion, GeneratedBatch, GeneratedCandidate, LearningPolicy
 
 
 @dataclass(frozen=True)
@@ -89,6 +89,36 @@ class OllamaClient:
                 "Ollama response failed transport or strict schema validation"
             ) from exc
 
+    async def learn(self, prompt: str) -> LearningPolicy:
+        """Produce bounded writing guidance without persisting review input."""
+
+        request = {
+            "model": self._settings.model,
+            "prompt": prompt,
+            "stream": False,
+            "format": LearningPolicy.model_json_schema(),
+            "keep_alive": 0,
+            "options": {
+                "num_ctx": self._settings.context_tokens,
+                "num_predict": 1200,
+                "temperature": 0.2,
+                "top_p": 0.8,
+            },
+        }
+        timeout = httpx.Timeout(self._settings.timeout_seconds)
+        try:
+            async with httpx.AsyncClient(
+                base_url=self._settings.base_url,
+                timeout=timeout,
+                transport=self._transport,
+            ) as client:
+                await self._require_pinned_model(client)
+                response = await client.post("/api/generate", json=request)
+                response.raise_for_status()
+                return LearningPolicy.model_validate_json(response.json()["response"])
+        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
+            raise OllamaFailure("Ollama learning output failed strict validation") from exc
+
     async def _require_pinned_model(self, client: httpx.AsyncClient) -> None:
         """Reject a mutable tag whose installed manifest is not the reviewed build."""
 
@@ -134,7 +164,7 @@ def _validate_envelope(payload: object) -> tuple[date, list[object]]:
     if not isinstance(payload, dict) or set(payload) != {"schema_version", "date", "questions"}:
         raise ValueError("generation envelope has unexpected fields")
     values = cast(dict[str, Any], payload)
-    if values["schema_version"] != "2":
+    if values["schema_version"] != "3":
         raise ValueError("generation envelope uses an unsupported schema version")
     date_value = values["date"]
     if not isinstance(date_value, str):

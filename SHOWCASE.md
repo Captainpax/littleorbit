@@ -110,6 +110,27 @@ The signed 1.1.0 implementation adds a dedicated phone Watch settings page rathe
 
 Wear code 19 uses vertically scrolling Together, Countdown, and Smooch activities instead of a horizontal carousel. Countdown preserves timed versus all-day timezone semantics. Smooch uses only the nine approved choices, requires a confirmation screen, and queues at most five encrypted actions for 15 minutes without holding a phone account token. Tile and watch-face surfaces remain passive; Nearby and Countdown are separate complications and Smooch is never offered as a passive action. These remain implementation descriptions rather than physical-device captures; the owner approved release with the 1.1.0 round-watch capture checklist still open.
 
+## 1.2 quiz feedback and Big Orbit concepts
+
+![Little Orbit 1.2 quiz-feedback concept](docs/concepts/1.2.0/little-orbit-quiz-feedback-concept.png)
+
+The feedback concept keeps rating downstream of the shared reveal. Stars and fixed tags work without review text; the optional review has a separate unchecked learning-consent control. The implementation follows this hierarchy while retaining native Android dialog behavior, TalkBack labels, dynamic text, and a direct edit/remove path.
+
+![Big Orbit device-enrollment concept](docs/concepts/1.2.0/big-orbit-enrollment-concept.png)
+
+![Big Orbit action-inbox concept](docs/concepts/1.2.0/big-orbit-action-inbox-concept.png)
+
+![Big Orbit quiz-intelligence concept](docs/concepts/1.2.0/big-orbit-quiz-intelligence-concept.png)
+
+![Big Orbit AI-observatory concept](docs/concepts/1.2.0/big-orbit-ai-observatory-concept.png)
+
+These five sheets establish Little Orbit's feedback flow and the separate administrator application's navy, lavender, coral, amber, orbital-line, and soft-glow language. They use simulated data and are concept imagery, not production screenshots. Big Orbit's implementation keeps Android Keystore enrollment, generic notifications, K-anonymous feedback, local model provenance, and allowlisted typed operations visually distinct from passive health information.
+
+The 1.2 **Names & avatars** screen also makes relationship ownership explicit: your partner
+chooses the name and avatar shown for you, while you choose theirs. Phone and wide-tablet QA
+confirmed that both members resolve the same two names, contact-shaped input is rejected, and
+the large-text persistent tablet rail keeps every destination readable.
+
 ## Public website
 
 ![Website landing page concept](docs/assets/web-landing-concept.png)
@@ -124,15 +145,15 @@ The website explains the mission, provides the signed APK and checksum, and host
 
 ![Implemented registration page](docs/assets/site-signup.png)
 
-![Implemented owner MFA login](docs/assets/site-admin-login.png)
+![Historical 1.1 browser owner MFA login](docs/assets/site-admin-login.png)
 
-Regenerate these images from the running gateway with `npm --prefix apps/web run capture:showcase`. The capture command fails on HTTP or browser-console errors.
+The owner-login capture is historical 1.1 evidence. In 1.2 the public site deliberately returns 404 for `/admin`; enrollment and administration move to Big Orbit. Regenerate current public images from the running gateway with `npm --prefix apps/web run capture:showcase`. The capture command fails on HTTP or browser-console errors.
 
-## Owner console
+## Big Orbit administrator app
 
-![Privacy-limited owner console concept](docs/assets/admin-console-concept.png)
+![Historical privacy-limited browser owner console concept](docs/assets/admin-console-concept.png)
 
-The console exposes service health, delivery and generation status, moderation queues, and account metadata. It deliberately has no viewer for notes, answers, precise locations, or exports.
+The historical browser concept is superseded by the 1.2 Big Orbit sheets above. The Android console exposes service health, delivery and generation status, actionable global-question moderation, registration control, bounded account/session actions, security events, and account metadata. It deliberately has no viewer for notes, answers, relationship history, precise locations, or exports.
 
 ## Screenshot checklist
 
@@ -157,9 +178,11 @@ The console exposes service health, delivery and generation status, moderation q
 - [x] RC17 isolated data check: four identical visible cards were proved to be distinct create rows without reading their title/body, and a disposable PostgreSQL run proved different immediate create IDs now resolve to one partner-visible document.
 - [ ] RC17 physical pair: install code 22 on both phones, confirm one save remains one document, collect two confident nearby pairs, and capture the nearby-only Home/widget/Wear presentation.
 - [ ] 1.0.1 physical pair: the owner waived this unavailable tablet gate for publication. A future paired-device soak should still cover foreground and screen-off collection through Wi-Fi/cellular/offline transitions and a forced 15-minute gap followed by confirmation.
-- [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
+- [x] Website baseline: desktop landing, mobile landing, signup, and historical 1.1 owner login.
 - [ ] Website remaining: patch notes/RSS in a feed reader, recovery states, expanded mobile navigation, and dedicated accessibility views.
-- [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.
+- [ ] 1.2 Little Orbit feedback: two-partner reveal eligibility, author-only edit/delete, offline error, dynamic text, TalkBack, and consent copy on physical phones.
+- [x] 1.2 partner names: two-way shared resolution on a physical Pixel and API 36 tablet, invalid contact-shaped input, phone/tablet layouts, and relationship ownership copy.
+- [ ] Big Orbit: Keystore enrollment, TOTP/recovery proof, session rotation, revocation, generic alerts, action inbox, quiz intelligence, AI observatory, typed jobs, and large-text/device screenshots.
 - [ ] Two-device flow: pairing through unpair archive on physical phones.
 - [ ] Updater: first-launch opt-in, once-per-process prompt, six-hour discovery, optional deferral, stalled/interrupted recovery, corrupt APK rejection, Android install approval, and scheduled compatibility floor on a physical phone.
 - [ ] Our Space on two phones: cursor stability during acknowledgements, simultaneous emoji edits, reconnect, explicit conflict choices, attachment scan/rejection, offline preview, delete, archive purge, and quota boundaries.

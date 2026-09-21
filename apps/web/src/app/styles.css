@@ -156,42 +156,6 @@ img { max-width: 100%; height: auto; }
 .health-orb.healthy { background: var(--green); box-shadow: 0 0 12px rgba(104,214,162,.6); }
 .status-card h2 { margin: 0 0 6px; }.status-card p { margin: 0; color: var(--muted); }
 
-.admin-shell { min-height: calc(100vh - 76px); display: grid; grid-template-columns: 230px 1fr; background: #0d1428; }
-body:has(.admin-shell) .site-header,
-body:has(.admin-shell) .site-footer { display: none; }
-.admin-sidebar { display: flex; flex-direction: column; padding: 32px 22px; border-right: 1px solid var(--line); background: #10182c; }
-.admin-sidebar > b { font: 650 1.3rem Georgia, serif; }.admin-sidebar > span { margin-top: 4px; color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; }
-.admin-sidebar nav { display: grid; gap: 6px; margin-top: 48px; }
-.admin-sidebar nav a { padding: 11px 13px; border-radius: 10px; color: var(--muted); font-size: .85rem; }
-.admin-sidebar nav a.active, .admin-sidebar nav a:hover { background: rgba(169,151,255,.1); color: white; }
-.admin-sidebar > small { margin-top: auto; color: #778198; }
-.admin-main { padding: 42px; overflow: hidden; }
-.admin-heading { display: flex; justify-content: space-between; align-items: center; }
-.admin-heading h1 { margin: 7px 0; font: 650 2.5rem Georgia, serif; }.admin-heading p { margin: 0; color: var(--muted); }
-.admin-avatar { width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 50%; background: rgba(255,255,255,.04); color: white; }
-.health-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-block: 32px; }
-.health-grid article { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 12px; padding: 17px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.025); }
-.health-grid small, .health-grid b { display: block; }.health-grid small { color: var(--muted); }.health-grid em { color: var(--muted); font-size: .7rem; font-style: normal; }
-.admin-content { display: grid; grid-template-columns: 1.65fr 1fr; gap: 16px; }
-.panel { padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.025); }
-.panel-heading { display: flex; justify-content: space-between; align-items: start; }.panel h2 { margin: 7px 0; font: 650 1.4rem Georgia, serif; }
-.pipeline-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-block: 22px; }
-.pipeline-metrics div { padding: 15px; border-radius: 12px; background: rgba(255,255,255,.035); }.pipeline-metrics b, .pipeline-metrics span { display: block; }.pipeline-metrics b { font-size: 1.4rem; }.pipeline-metrics span { color: var(--muted); font-size: .7rem; }
-.batch-row { display: grid; grid-template-columns: 70px minmax(70px, 1fr) 60px 120px auto; align-items: center; gap: 10px; min-height: 48px; border-top: 1px solid var(--line); font-size: .76rem; }
-.batch-row small { color: var(--muted); }.progress { height: 4px; border-radius: 99px; background: rgba(255,255,255,.06); }.progress i { display: block; height: 100%; border-radius: inherit; background: var(--green); }
-.batch-preview { grid-column: 1 / -1; padding: 4px 0 12px; color: var(--muted); }
-.batch-preview summary { cursor: pointer; color: var(--lavender); }
-.batch-preview ol { display: grid; gap: 8px; margin: 10px 0 0; padding-left: 24px; }
-.batch-preview li b, .batch-preview li small { display: block; }
-.attention > article { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 12px; padding: 16px 0; border-top: 1px solid var(--line); }.attention > article > b { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: rgba(255,116,109,.1); color: var(--coral-light); }.attention strong, .attention span { display: block; }.attention span { margin-top: 3px; color: var(--muted); font-size: .72rem; }.attention button { border: 0; background: transparent; color: var(--lavender); cursor: pointer; }
-.registration-panel { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }.registration-panel p { margin: 4px 0 0; color: var(--muted); font-size: .8rem; }.switch { width: 48px; height: 26px; padding: 3px; border-radius: 99px; background: var(--green); }.switch i { display: block; width: 20px; height: 20px; margin-left: auto; border-radius: 50%; background: #10182c; }
-.admin-privacy { color: var(--muted); font-size: .75rem; }
-.text-button, .admin-forms button { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: rgba(169,151,255,.08); color: var(--lavender); cursor: pointer; }
-.inline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }.inline-actions label { color: var(--muted); font-size: .72rem; }
-.admin-table-panel, .admin-forms { margin-top: 16px; }.admin-records { display: grid; gap: 0; }.admin-records article { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 0; border-top: 1px solid var(--line); }.admin-records strong, .admin-records span, .admin-records small { display: block; }.admin-records span, .admin-records small { color: var(--muted); font-size: .75rem; }
-.admin-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }.admin-form-grid label, .admin-bank-form label { display: grid; gap: 5px; color: var(--muted); font-size: .75rem; }.admin-form-grid input, .admin-form-grid textarea, .admin-bank-form textarea { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #0d1428; color: white; }.admin-form-grid label:nth-of-type(n+3), .admin-form-grid button { grid-column: 1 / -1; }.admin-forms details { margin-top: 22px; }.admin-bank-form textarea { min-height: 320px; margin-top: 8px; font-family: ui-monospace, monospace; }.admin-bank-form button { margin-top: 10px; }
-.registration-panel ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: .75rem; }
-
 .site-footer { border-top: 1px solid var(--line); background: #090f1f; }
 .footer-grid { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 30px; padding-block: 55px; }
 .footer-brand { margin-bottom: 12px; }.footer-grid p { max-width: 260px; color: var(--muted); font-size: .85rem; }.footer-grid > div:not(:first-child) { display: grid; align-content: start; gap: 10px; }.footer-grid strong { margin-bottom: 6px; font-size: .82rem; }.footer-grid a { color: var(--muted); font-size: .82rem; }
@@ -202,7 +166,6 @@ body:has(.admin-shell) .site-footer { display: none; }
   .hero { grid-template-columns: 1fr; padding-top: 68px; text-align: center; }.hero-copy > p { margin-inline: auto; }.hero .button-row { justify-content: center; }.hero-art { min-height: 520px; }
   .section-heading { display: block; }.section-heading h2 { margin-top: 12px; }.feature-grid, .walkthrough-grid, .roadmap-grid { grid-template-columns: 1fr; }.feature-grid article { min-height: 220px; }.promise { grid-template-columns: 1fr; gap: 45px; }.final-cta { display: grid; padding: 36px; }
   .form-page, .verification-forms { grid-template-columns: 1fr; gap: 35px; padding-block: 70px; }.account-form { margin-inline: auto; }
-  .admin-shell { grid-template-columns: 1fr; }.admin-sidebar { display: none; }.admin-main { padding: 28px 20px; }.health-grid { grid-template-columns: 1fr 1fr; }.admin-content { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1.5fr 1fr 1fr; }.footer-grid > div:last-child { grid-column: 2; }
 }
 
@@ -215,7 +178,6 @@ body:has(.admin-shell) .site-footer { display: none; }
   .page-intro { padding-top: 70px; }.page-intro h1 { font-size: 3.25rem; }.showcase-stack, .roadmap-grid { padding-bottom: 70px; }
   .release-card, .prose, .contributor-card { padding: 23px; }.release-card dl div { grid-template-columns: 1fr; gap: 6px; }
   .form-page { padding-block: 55px; }.form-page h1 { font-size: 3.5rem; }.account-form { padding: 25px; }
-  .health-grid { grid-template-columns: 1fr; }.pipeline-metrics { grid-template-columns: 1fr; }.batch-row { grid-template-columns: 70px 1fr auto; }.batch-row small, .batch-row b { display: none; }.admin-heading h1 { font-size: 2rem; }.admin-records article, .registration-panel { align-items: start; flex-direction: column; }.admin-form-grid { grid-template-columns: 1fr; }.admin-form-grid label { grid-column: 1; }
   .footer-grid { grid-template-columns: 1fr 1fr; }.footer-grid > div:first-child { grid-column: 1 / -1; }.footer-grid > div:last-child { grid-column: auto; }.footer-bottom { display: grid; gap: 8px; }
 }
 

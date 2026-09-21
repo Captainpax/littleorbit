@@ -10,10 +10,10 @@ const contracts = [
   ["v1", "activity-page"], ["v1", "location-batch"], ["v1", "note-operation"],
   ["v1", "note-attachment"],
   ["v1", "pairing"], ["v1", "question-batch"],
-  ["v1", "orbit-profile"], ["v1", "release-history"],
+  ["v1", "orbit-profile"], ["v1", "partner-name"], ["v1", "release-history"],
   ["v1", "smooch"],
   ["v2", "question-batch"], ["v2", "quiz-day"],
-  ["v3", "location-batch"], ["v3", "together-time"],
+  ["v3", "location-batch"], ["v3", "question-batch"], ["v3", "together-time"],
 ] as const;
 
 function readJson(file: string): unknown {

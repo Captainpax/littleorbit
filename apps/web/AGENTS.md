@@ -2,13 +2,13 @@
 
 ## Role
 
-Own the public discovery/account website and the metadata-only owner console.
+Own the public discovery/account website. Privileged administration belongs only to the separate Big Orbit Android application.
 
 ## Boundaries
 
 - Public pages explain, register, recover accounts, show releases, and link to project documents.
 - The website is not a browser client for quizzes, notes, countdowns, partner data, or together-time.
-- `/admin` surfaces operational and account metadata after password plus TOTP authentication.
+- `/admin` must remain absent; tests assert a 404 rather than a redirect or hidden console shell.
 
 ## Hard rules and invariants
 
@@ -39,7 +39,7 @@ npm run build
 npm run test:e2e
 ```
 
-Validate desktop and mobile layouts in a real browser. Test keyboard navigation, signup/recovery neutral responses, admin redirects and role checks, redaction, TOTP flow, release checksum rendering, error states, and reduced motion.
+Validate desktop and mobile layouts in a real browser. Test keyboard navigation, signup/recovery neutral responses, `/admin` absence, release checksum rendering, error states, and reduced motion.
 
 ## Documentation impact
 
@@ -49,7 +49,7 @@ Update README and SHOWCASE for routes and visible changes. Update PRIVACY and NE
 
 - Importing the entire component library into a client bundle.
 - Turning a static page into a client component.
-- Authorizing admin UI only in middleware or client code.
+- Reintroducing an administrator page, proxy, cookie, or client bundle into the public site.
 - Linking the primary download action to an unverified third-party or unversioned APK URL.
 - Hiding focus styles to match a mockup.
 <!-- BEGIN:nextjs-agent-rules -->

@@ -82,6 +82,18 @@ public interface OrbitRepository {
     CompletableFuture<QuizApiModels.Day> reopenQuiz(
             String quizDate, QuizApiModels.DayMutation mutation);
 
+    /** Creates or edits one private post-reveal question rating. */
+    CompletableFuture<QuizApiModels.Feedback> saveQuizFeedback(
+            String quizDate,
+            String questionId,
+            QuizApiModels.FeedbackMutation mutation);
+
+    /** Removes one private rating within its edit window. */
+    CompletableFuture<QuizApiModels.FeedbackDeleteResult> deleteQuizFeedback(
+            String quizDate,
+            String questionId,
+            QuizApiModels.FeedbackDelete mutation);
+
     /** Loads the privacy-limited custom question queue. */
     CompletableFuture<QuizApiModels.CustomQueue> customQuizQueue();
 

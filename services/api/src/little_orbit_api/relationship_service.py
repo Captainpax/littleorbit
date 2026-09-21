@@ -13,7 +13,11 @@ from .activity_models import ActivityEvent, ActivitySeen
 from .countdown_models import Countdown, CountdownReminder
 from .models import Account, Couple, CoupleMember, LocationSample
 from .notification_models import NotificationDevice, NotificationEvent
-from .profile_models import RelationshipAvatar
+from .profile_models import (
+    RelationshipAvatar,
+    RelationshipName,
+    RelationshipNameOperation,
+)
 from .together_models import TogetherDeviceHealth
 
 
@@ -137,6 +141,14 @@ async def _delete_ephemeral_relationship_state(
     )
     await session.execute(
         delete(RelationshipAvatar).where(RelationshipAvatar.couple_id == couple_id)
+    )
+    await session.execute(
+        delete(RelationshipNameOperation).where(
+            RelationshipNameOperation.couple_id == couple_id
+        )
+    )
+    await session.execute(
+        delete(RelationshipName).where(RelationshipName.couple_id == couple_id)
     )
     countdown_ids = select(Countdown.id).where(Countdown.couple_id == couple_id)
     await session.execute(

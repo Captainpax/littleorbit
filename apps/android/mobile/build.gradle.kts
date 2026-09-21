@@ -49,7 +49,9 @@ val prepareSmokeWearAsset by tasks.registering(Copy::class) {
 }
 
 tasks.configureEach {
-    if (name == "mergeSmokeAssets") dependsOn(prepareSmokeWearAsset)
+    if (name != "prepareSmokeWearAsset" && name.contains("Smoke")) {
+        dependsOn(prepareSmokeWearAsset)
+    }
 }
 
 tasks.register("verifyWearArtifactIsolation") {

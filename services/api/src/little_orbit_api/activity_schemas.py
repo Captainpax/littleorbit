@@ -17,6 +17,7 @@ ActivityKind = Literal[
     "quiz_submitted",
     "quiz_revealed",
     "smooch_received",
+    "relationship_name_changed",
 ]
 ActivityTargetType = Literal["note", "countdown", "quiz", "smooch"]
 ActivityEmoji = Literal["😘", "😍", "🤭", "😈", "🔥", "👀", "💖", "🐻", "🍑"]

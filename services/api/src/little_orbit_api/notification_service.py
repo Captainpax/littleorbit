@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .clock import SystemClock
 from .countdown_models import Countdown
 from .interaction_models import Smooch
-from .models import Account, CoupleMember, Note, QuizDay, QuizDayMember
+from .models import CoupleMember, Note, QuizDay, QuizDayMember
 from .notification_models import (
     NotificationDelivery,
     NotificationDevice,
@@ -23,6 +23,7 @@ from .notification_schemas import (
     NotificationKind,
     NotificationPreferencesResponse,
 )
+from .relationship_name_service import visible_relationship_names
 from .together_models import TogetherDay
 
 EVENT_TTL = timedelta(hours=24)
@@ -385,9 +386,12 @@ async def event_response(
 ) -> NotificationEventResponse | None:
     """Resolve current authorized display metadata without storing note titles."""
 
-    actor_name = await session.scalar(
-        select(Account.display_name).where(Account.id == event.actor_id)
-    )
+    actor_name = None
+    if event.actor_id is not None:
+        names = await visible_relationship_names(
+            session, event.couple_id, (event.actor_id,), event.recipient_id
+        )
+        actor_name = names[event.actor_id].display_name
     if event.kind == "smooch_received":
         smooch = await session.get(Smooch, event.source_id)
         if smooch is None:

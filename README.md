@@ -10,11 +10,14 @@ Little Orbit is a free and open couples platform for staying curious, sharing sm
 
 > **Release policy:** 1.1.1 is optional (phone code 26, Wear code 20), keeps the compatibility floor at phone code 23, and has no forced-update deadline. The owner explicitly waived the remaining physical wizard, second-phone, passive-surface/large-font, and production in-place upgrade observations for publication; the missing evidence remains visible in the verification record.
 
+> **Release candidate:** 1.2.0 advances the phone to code 28 while retaining Wear code 20. It adds shared partner-assigned relationship names, private post-reveal quiz feedback, Saturday feedback learning, Sunday week generation, 365-day semantic duplicate prevention, and a separate device-bound Android owner app named [Big Orbit](https://github.com/Captainpax/big-orbit). The exact signed candidates are verified but not yet published.
+
 The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch records are scoped to the selected target and a monotonic purge generation, watch-originated actions contain no account credential, and the phone revalidates the selected watch and active relationship before accepting them. The owner explicitly approved release without the unavailable physical Wear-device gate; that missing evidence remains visible in the verification record.
 
 ## What 1.0 includes
 
 - Five daily questions with private-until-both-answer reveal behavior.
+- Optional launch-forward feedback after shared reveal: 1–5 stars, up to three fixed tags, and a separately consented 300-character review that remains private to its author while linked.
 - Single choice, multiple choice, free text, partner guessing, and weighted 1–5 prompts.
 - Calendar-style timed or all-day countdowns with private reminder choices, upcoming/past views, one-way Android calendar export, encrypted offline edits, and partner change alerts.
 - A preview-first Markdown workspace with live presence, cursor-stable synchronization, inline private images and GIFs, drafts, search, archives, and seven-day undo.
@@ -33,15 +36,17 @@ The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch record
 - In 1.1.1 source, the first valid managed record binds that Wear relationship generation to one controller phone node. Other connected phones receive no watch payload or queue mutation authority. A side-by-side QA build embeds only the generated `.smoke` Wear APK and can never target the production package.
 - An opt-in update detector that checks metadata every six hours and presents a once-per-launch update prompt; APK download and Android installation still require explicit approval and full verification.
 - Eight-character, single-use pairing with confirmation.
-- A public website for registration, account recovery, APK releases, privacy, and project documentation.
+- Relationship-scoped names and avatars chosen only by the other partner. Both people see the same friendly names across the phone, notifications, widget, and managed watch without changing either account identity.
+- A public website for registration, account recovery, APK releases, privacy, and project documentation. Privileged administration is deliberately absent from the web app.
 - Public patch notes at `/patch-notes` and a standards-based RSS feed at `/patch-notes.xml`.
-- A privacy-limited owner console and local daily-question generation through Ollama.
+- The separate Java/XML Big Orbit Android console with protected device-key enrollment, actionable global-question reports, service health, bounded account/session and registration controls, K-anonymous quiz intelligence, AI provenance, typed operations, backup evidence, and generic local alerts.
+- Local weekly question intelligence through pinned Ollama generation and embedding models. Feedback learning receives only thresholded, sanitized product feedback; it never receives quiz answers or relationship data.
 
 ![Implemented RC13 countdown timeline on a wide Android emulator](docs/assets/android-countdowns-rc13-tablet.png)
 
 ## Architecture
 
-Android, Wear OS, and browsers connect to `https://lil-orb.pax-kun.com`. Nginx Proxy Manager forwards traffic to a single gateway port on the application host. The gateway routes `/api/*` and `/ws/*` to FastAPI and all other paths to Next.js. PostgreSQL, Ollama, the worker, and Mailpit remain private to the Compose network.
+Android, Wear OS, Big Orbit, and browsers connect to `https://lil-orb.pax-kun.com`. Nginx Proxy Manager forwards traffic to a single gateway port on the application host. The gateway routes `/api/*` and `/ws/*` to FastAPI and all other paths to Next.js. PostgreSQL, Ollama, the worker, and Mailpit remain private to the Compose network. A secret-free context fetcher has a separate bounded egress network and accepts only code-owned HTTPS sources.
 
 See the [network and logic flows](docs/NETWORK-FLOW.md), [privacy design](docs/PRIVACY.md), and [architecture decisions](docs/adr/) before changing a trust boundary.
 
@@ -78,7 +83,7 @@ The optional-update compatibility floor remains phone code 23. No forced-update 
 
 ## Privacy promise
 
-Little Orbit collects only what a selected feature needs. AI question generation in 1.0 is site-wide and receives no couple data. Precise coordinates are kept for no more than 24 hours, administrator views exclude relationship content, and unpairing immediately stops sharing. Read the full [privacy design](docs/PRIVACY.md).
+Little Orbit collects only what a selected feature needs. AI question generation is site-wide and receives no answers, notes, profiles, locations, identifiers, or relationship history. In 1.2 it may receive K-anonymous ratings and separately consented, sanitized product reviews. Precise coordinates are kept for no more than 24 hours, administrator views exclude relationship content, and unpairing immediately stops sharing. Read the full [privacy design](docs/PRIVACY.md).
 
 ## Project documents
 
@@ -94,6 +99,7 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
 - [Documentation map](docs/DOCUMENTATION-MAP.md)
 - [Latest verification record](docs/operations/VERIFICATION-1.0.0-2026-09-16.md)
+- [1.2.0 implementation-candidate notes](docs/releases/1.2.0.md)
 
 ## License and support
 

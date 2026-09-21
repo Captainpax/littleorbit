@@ -37,6 +37,9 @@ public final class QuizApiModels {
         @Json(name = "my_answer") public final Map<String, Object> myAnswer;
         @Json(name = "my_answer_revision") public final int myAnswerRevision;
         @Json(name = "partner_answer") public final Map<String, Object> partnerAnswer;
+        @Json(name = "feedback_eligible") public final boolean feedbackEligible;
+        @Json(name = "feedback_editable_until") public final String feedbackEditableUntil;
+        @Json(name = "my_feedback") public final Feedback myFeedback;
 
         /** Creates one decoded question. */
         public Question(
@@ -53,6 +56,29 @@ public final class QuizApiModels {
                 Map<String, Object> myAnswer,
                 int myAnswerRevision,
                 Map<String, Object> partnerAnswer) {
+            this(id, position, interactionVersion, kind, prompt, category, intimacy, options,
+                    scaleLowLabel, scaleHighLabel, myAnswer, myAnswerRevision, partnerAnswer,
+                    false, null, null);
+        }
+
+        /** Creates one decoded v3 question with private feedback state. */
+        public Question(
+                String id,
+                int position,
+                int interactionVersion,
+                String kind,
+                String prompt,
+                String category,
+                boolean intimacy,
+                List<Option> options,
+                String scaleLowLabel,
+                String scaleHighLabel,
+                Map<String, Object> myAnswer,
+                int myAnswerRevision,
+                Map<String, Object> partnerAnswer,
+                boolean feedbackEligible,
+                String feedbackEditableUntil,
+                Feedback myFeedback) {
             this.id = id;
             this.position = position;
             this.interactionVersion = interactionVersion;
@@ -66,6 +92,38 @@ public final class QuizApiModels {
             this.myAnswer = myAnswer;
             this.myAnswerRevision = myAnswerRevision;
             this.partnerAnswer = partnerAnswer;
+            this.feedbackEligible = feedbackEligible;
+            this.feedbackEditableUntil = feedbackEditableUntil;
+            this.myFeedback = myFeedback;
+        }
+    }
+
+    /** The authenticated person's private rating for one revealed global question. */
+    public static final class Feedback {
+        public final int revision;
+        public final int stars;
+        public final List<String> tags;
+        public final String review;
+        @Json(name = "review_status") public final String reviewStatus;
+        @Json(name = "editable_until") public final String editableUntil;
+        @Json(name = "updated_at") public final String updatedAt;
+
+        /** Creates decoded private feedback. */
+        public Feedback(
+                int revision,
+                int stars,
+                List<String> tags,
+                String review,
+                String reviewStatus,
+                String editableUntil,
+                String updatedAt) {
+            this.revision = revision;
+            this.stars = stars;
+            this.tags = tags == null ? List.of() : List.copyOf(tags);
+            this.review = review;
+            this.reviewStatus = reviewStatus;
+            this.editableUntil = editableUntil;
+            this.updatedAt = updatedAt;
         }
     }
 
@@ -133,13 +191,75 @@ public final class QuizApiModels {
         public final String status;
         @Json(name = "answered_count") public final int answeredCount;
         @Json(name = "custom_count") public final int customCount;
+        @Json(name = "rated_count") public final int ratedCount;
 
         /** Creates a history item. */
         public HistoryItem(String quizDate, String status, int answeredCount, int customCount) {
+            this(quizDate, status, answeredCount, customCount, 0);
+        }
+
+        /** Creates a v3 history item with the caller's private rating count. */
+        public HistoryItem(
+                String quizDate,
+                String status,
+                int answeredCount,
+                int customCount,
+                int ratedCount) {
             this.quizDate = quizDate;
             this.status = status;
             this.answeredCount = answeredCount;
             this.customCount = customCount;
+            this.ratedCount = ratedCount;
+        }
+    }
+
+    /** Retry-safe create or edit of one private post-reveal rating. */
+    public static final class FeedbackMutation {
+        @Json(name = "operation_id") public final String operationId;
+        @Json(name = "expected_revision") public final int expectedRevision;
+        public final int stars;
+        public final List<String> tags;
+        public final String review;
+        @Json(name = "review_consent") public final boolean reviewConsent;
+
+        /** Creates a bounded feedback mutation. */
+        public FeedbackMutation(
+                String operationId,
+                int expectedRevision,
+                int stars,
+                List<String> tags,
+                String review,
+                boolean reviewConsent) {
+            this.operationId = operationId;
+            this.expectedRevision = expectedRevision;
+            this.stars = stars;
+            this.tags = List.copyOf(tags);
+            this.review = review;
+            this.reviewConsent = reviewConsent;
+        }
+    }
+
+    /** Retry-safe optimistic deletion of one private rating. */
+    public static final class FeedbackDelete {
+        @Json(name = "operation_id") public final String operationId;
+        @Json(name = "expected_revision") public final int expectedRevision;
+
+        /** Creates a feedback deletion request. */
+        public FeedbackDelete(String operationId, int expectedRevision) {
+            this.operationId = operationId;
+            this.expectedRevision = expectedRevision;
+        }
+    }
+
+    /** Stable result returned for a deleted rating. */
+    public static final class FeedbackDeleteResult {
+        public final boolean deleted;
+        public final int revision;
+
+        /** Creates a decoded deletion result. */
+        public FeedbackDeleteResult(boolean deleted, int revision) {
+            this.deleted = deleted;
+            this.revision = revision;
         }
     }
 

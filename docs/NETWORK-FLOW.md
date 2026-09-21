@@ -87,26 +87,36 @@ sequenceDiagram
 
 Public sign-in and password proof failures do not use the authenticated-session purge path. Home derives its recovery state after the failing request completes so a delayed callback cannot replace the signed-out screen with stale cached identity.
 
-## Administrator MFA replacement
+## Big Orbit enrollment and administrator MFA
 
 ```mermaid
 sequenceDiagram
-    actor Admin
+    actor Admin as Owner in Big Orbit
+    participant Key as Android Keystore
     participant API
     participant DB as PostgreSQL
-    Admin->>API: Start replacement with password + current TOTP/recovery
+    Admin->>Key: Create non-exportable P-256 key
+    Admin->>API: Password + current TOTP/recovery + public key
     API->>DB: Commit capped IP + administrator digest counters
-    API->>DB: Lock account and MFA; recheck exact live session + current proof
-    API->>DB: Store encrypted pending secret with bounded expiry
-    Note over DB: Current factor remains active
-    API-->>Admin: Authenticator enrollment URI
-    Admin->>API: Confirm one code from pending factor
-    API->>DB: Recheck account, session, pending expiry, and TOTP replay counter
-    API->>DB: Swap factor + hash new recovery codes + revoke every prior session
-    API-->>Admin: One new MFA session + recovery codes shown once
-    Admin->>API: Read operational configuration
-    API-->>Admin: Explicit safe allowlist only
+    API->>DB: Lock account/MFA; verify role, password, and replay-safe proof
+    API->>DB: Store public key + five-minute enrollment challenge
+    API-->>Admin: Challenge ID and random challenge
+    Admin->>Key: Sign canonical enrollment challenge
+    Admin->>API: Challenge + signature
+    API->>DB: Consume challenge; approve device; store credential hash
+    API-->>Admin: Device credential once
+    loop Each session or background rotation
+        Admin->>API: Request fresh session challenge
+        API-->>Admin: Five-minute single-use challenge
+        Admin->>Key: Sign canonical session challenge
+        Admin->>API: Credential + signature
+        API->>DB: Verify enrolled non-revoked device; bind 30-minute session
+    end
+    Admin->>API: Read allowlisted operational metadata or queue typed job
+    API-->>Admin: No relationship content or arbitrary command surface
 ```
+
+The public web app has no `/admin` interface and the final API has no `/v1/admin`. Administrator MFA replacement still requires the current password plus the current factor, keeps the old factor active until confirmation, and revokes earlier sessions after a successful swap. Big Orbit alert acknowledgement is per enrolled device, so one phone cannot consume another owner's action inbox.
 
 ## Live notes
 
@@ -217,26 +227,33 @@ sequenceDiagram
 
 The timeline helps each partner notice shared changes without creating another copy of private content. Event insertion shares the mutation's couple lock, dedupe keys make retries harmless, and sequence and seen watermarks only move forward. Administrators have no feed viewer.
 
-## Daily AI generation
+## Weekly quiz feedback learning and generation
 
 ```mermaid
-flowchart LR
-    Schedule[Daily scheduler] --> Dates[Find gaps for today + 7 future UTC dates]
-    Dates --> Prompt[Versioned prompt<br/>no couple data]
-    Prompt --> Ollama[Qwen3 4B in Ollama]
-    Ollama --> Parse[Strict v2 JSON parse<br/>exactly 10 candidates]
-    Parse --> Validate{Schema + safety + answerability<br/>canonical visible whitespace}
-    Validate -->|reject| Quarantine[Quarantine with reasons]
-    Validate -->|accept| Dedupe{Exact hash + trigram + repetition}
-    Dedupe -->|duplicate| Quarantine
-    Dedupe -->|unique| Pool[Candidate pool]
-    Pool --> Select[Balance tone, type, and category<br/>select 5 general + intimacy alternatives]
-    Bank[Curated bank] -->|timeout, OOM, shortage| Select
-    Select --> Publish[Publish date pool]
-    Publish --> Audit[Model digest, prompt version, parameters, validation, fallback]
+flowchart TD
+    Reveal[Shared reveal for eligible global question] --> Feedback[Private stars + fixed tags<br/>optional separately consented review]
+    Feedback --> Linked[Author-readable linked feedback<br/>editable through day 30]
+    Linked --> Aggregate{At least 5 distinct accounts<br/>for question and week?}
+    Aggregate -->|no| Hold[No admin or AI review surface]
+    Aggregate -->|yes| Saturday[Saturday UTC learning<br/>ratings, tag counts, sanitized reviews]
+    Saturday --> Policy[Strict bounded policy<br/>atomic version activation]
+    Linked -->|day 30| Unlink[Remove account, couple, and quiz-day links]
+    Unlink -->|by day 90| DeleteReview[Hard-delete raw review text]
+    Policy --> Sunday[Sunday UTC generation<br/>next Monday-Sunday]
+    Sources[Exact code-owned HTTPS sources] --> Fetcher[Secret-free fetcher<br/>public DNS, no redirects, 64 KiB]
+    Fetcher --> Sunday
+    Sunday --> Qwen[Pinned local Qwen model<br/>strict v3 JSON]
+    Qwen --> Validate{Schema, safety, whitespace,<br/>answerability, consent}
+    Validate -->|reject| Quarantine[Quarantine with reason codes]
+    Validate -->|accept| Semantic{365-day exact + trigram +<br/>concept family + pinned Nomic vectors}
+    Semantic -->|duplicate| Quarantine
+    Semantic -->|unique| Select[Balance tone, kind, and category]
+    Bank[Human-reviewed curated bank] -->|outage or shortage| Select
+    Select --> Publish[Exactly 5 global questions per day<br/>plus intimacy alternative]
+    Publish --> Audit[Model digests, prompt/policy versions,<br/>validation and fallback metadata]
 ```
 
-Invalid model output is quarantined rather than repaired. Tabs, line breaks, control characters, non-breaking spaces, repeated horizontal spaces, and leading or trailing whitespace are rejected before publication so hidden layout characters never reach Android. A 180-question curated bank guarantees five general questions plus a consent-gated intimacy alternative for today and seven future dates while the model is unavailable.
+Invalid model output is quarantined rather than repaired. Tabs, line breaks, control characters, non-breaking spaces, repeated horizontal spaces, and leading or trailing whitespace are rejected before publication so hidden layout characters never reach Android. Current plus seven-day curated coverage is maintained independently of the weekly run, so a model, embedding, feedback, or public-context failure cannot leave a quiz day empty. Neither local model receives answers, account/couple identity, notes, custom questions, locations, or relationship history.
 
 ## Daily quiz, custom queue, and reveal
 
@@ -264,6 +281,27 @@ sequenceDiagram
 ```
 
 A person may reopen and edit a finished set only before the shared reveal. Past incomplete days remain editable for seven days and remain visible for 30. Custom questions take the next available UTC slot, up to all five questions, and surprise content is hidden from the other partner until its day arrives. Non-surprise custom questions appear in both partners' pending queue. Intimacy-tagged custom or global questions require both partners' current consent. If either person opts out, every unrevealed intimacy prompt is replaced atomically, its drafts are cleared, and both people review the safe replacement before finishing again.
+
+```mermaid
+sequenceDiagram
+    actor A as Feedback author
+    participant Phone as Little Orbit Android
+    participant API
+    participant DB as PostgreSQL
+    Phone->>API: GET /v3 quiz day
+    API->>DB: Authorize active member before day lookup
+    API-->>Phone: Shared reveal + per-question eligibility + author's feedback only
+    A->>Phone: Stars, up to 3 fixed tags, optional review consent
+    Phone->>API: PUT feedback(operation_id, expected_revision)
+    API->>DB: Reauthorize; lock eligible launch-forward global question
+    API->>DB: Sanitize; dedupe operation; create/update author row
+    API-->>Phone: Author-only revision and editable-until
+    opt Author removes feedback within 30 days
+        Phone->>API: DELETE with operation_id and expected_revision
+        API->>DB: Lock author row; delete idempotently
+    end
+    Note over DB: Partner never receives A's linked feedback<br/>Answers never enter feedback or AI inputs
+```
 
 ## Calendar-aware countdowns and private reminders
 
@@ -506,6 +544,38 @@ Data Layer transport is not treated as partner delivery. The watch reports only 
 
 The first valid managed record for an active Wear relationship generation binds the watch to that source phone node. Status and queued actions return only to the bound controller. Requests and acknowledgements from another connected phone are silently rejected, and no rejection discloses whether relationship state exists. Advancing the relationship purge barrier, sign-out, unpairing, or the 24-hour Wear expiry clears the binding before a future generation can bind again.
 
+## Partner-assigned relationship names
+
+```mermaid
+sequenceDiagram
+    actor Assigner as One active partner
+    participant Phone
+    participant API
+    participant DB as PostgreSQL
+    participant Other as Other partner surfaces
+    Assigner->>Phone: Enter the name both partners should see
+    Phone->>Phone: NFKC + contact/control validation<br/>persist encrypted operation ID + expected revision
+    Phone->>API: PUT current partner name
+    API->>DB: Authorize active relationship before lookup<br/>lock relationship + apply idempotently
+    DB-->>API: New effective name + monotonic name revision
+    API-->>Phone: Accepted shared state
+    Phone->>Other: Refresh phone, notification, widget, and managed-Wear display cache
+    alt stale revision
+        API-->>Phone: Conflict without overwrite
+        Phone->>API: Refresh authorized profile
+    end
+    alt unpair / sign-out / relationship inactive
+        Phone->>Other: Advance purge generation and clear cached names
+        API->>DB: Delete relationship names immediately
+    end
+```
+
+The caller may name only the other current member; account display identity does not change.
+Both members resolve the same result. Mutations carry a stable operation ID and expected
+revision, and Android encrypts the one pending operation before network use so an offline retry
+or process restart cannot create a second mutation. The API emits only a content-free activity
+kind and no partner alert. Big Orbit and AI never receive relationship names.
+
 ## Partner-assigned avatar processing and synchronization
 
 ```mermaid
@@ -575,6 +645,30 @@ sequenceDiagram
 The phone checks connected nodes and the `little_orbit_display_v2` capability so Watch settings can distinguish no watch, a missing watch app, and a connected Little Orbit watch. Metadata checks may run in the background; APK download, pairing, installation, reinstall, and removal require an explicit action. The five-stage wizard supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. Manual values cannot be overwritten by a late discovery callback; **Scan again** explicitly returns to automatic selection. The pairing-code field disables saved state, autofill, and personalized keyboard learning, clears as soon as installation begins and whenever the screen stops, and never appears in diagnostics. A failed signed-artifact preparation exposes a bounded retry. API 34+ discovery callbacks replace and remove service information continuously; older releases serialize one-shot resolution. Private removal first advances the target purge barrier and clears watch-originated actions, then uninstalls only `com.littleorbit.mobile`, forgets the local ADB key, and tells the person to revoke the phone identity and wireless debugging on the watch. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
 
 The smoke source is build-internal and can target only `com.littleorbit.mobile.smoke`; its APK is generated before the smoke phone is packaged. The production source remains immutable HTTPS metadata plus downloaded bytes and the pinned release certificate. Release and ordinary debug phone artifacts exclude the smoke APK and smoke signing metadata.
+
+## Encrypted backup and non-destructive restore drill
+
+```mermaid
+flowchart TD
+    Task[Windows scheduled task or typed Big Orbit request] --> Runner[Single-instance host runner]
+    Runner --> Pause[Pause API, worker, and media mutations]
+    Pause --> PgDump[Dedicated read-only pg_dump role<br/>exclude raw coordinates, health, and raw feedback]
+    Pause --> Attach[Stream attachment payload + manifest]
+    PgDump --> Age[age encryption<br/>no plaintext host file]
+    Attach --> Age
+    Age --> Local[Bounded local encrypted files + SHA-256 sidecars]
+    Local --> Pair[Atomic pair manifest<br/>exact paths, bytes, and hashes]
+    Pair -->|optional verified partial-directory promotion| OffHost[Operator-configured filesystem outside workspace]
+    Runner --> Evidence[Content-free backup_runs record]
+    Tuesday[Tuesday 07:00 task] --> Pair
+    Pair --> Temp[Restore exact paired dump to unique temporary database]
+    Temp --> VerifyDB[Verify schema and excluded tables empty]
+    Pair --> VerifyArchive[Decrypt exact paired attachment stream into hash/manifest verifier only]
+    VerifyDB --> Drop[Force-drop only validated drill database name]
+    VerifyArchive --> Evidence
+```
+
+The task-registration script is explicit and is never run as part of a build or deployment. The age identity stays outside Git and Docker. A restore drill does not replace live attachment bytes, does not inspect note content, and is recorded as operational evidence rather than a guarantee of full disaster recovery.
 
 ## Patch notes and RSS
 

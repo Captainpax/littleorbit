@@ -11,6 +11,7 @@ Own authenticated HTTP/WSS behavior, application transactions, persistence, sche
 - Repositories perform persistence without policy decisions.
 - Domain modules contain pure calculations and invariants.
 - AI generation policy stays in `services/ai`; the API stores and serves validated results.
+- Big Orbit is the only administrator UI; `/v2/admin` sessions must be bound to one enrolled P-256 device and `/v1/admin` must remain absent after cutover.
 
 ## Hard rules and invariants
 
@@ -23,6 +24,9 @@ Own authenticated HTTP/WSS behavior, application transactions, persistence, sche
 - Pair creation, redemption, confirmation, unpairing, and deletion recheck eligibility after locking. Use the global transition order: account rows in UUID order, couple row, then membership rows in account order. Relationship-content mutations lock the couple before any membership row.
 - Pair redemption uses a row lock and one transaction. A couple ends at two active members.
 - Mutations exposed to retries require scoped idempotency keys.
+- A relationship-name caller may mutate only the other active member. Authorize the current relationship before lookup, lock before revision checks, keep replay results bounded, expose no contact-shaped fallback, and purge names on unpair.
+- Quiz feedback is launch-forward, global-question-only, and allowed only after shared reveal. Authorize before question/day lookup; keep linked feedback author-private; enforce operation replay, optimistic revision, 30-day unlinking, 90-day raw-review deletion, separate review consent, and K-anonymous admin/AI use.
+- Big Orbit challenges expire and are consumed once. Verify the canonical purpose/challenge signature against the enrolled Android Keystore public key, hash long-lived device credentials, bind every short admin session to that non-revoked device, and expose only typed jobs with no arbitrary command, SQL, path, URL, or argument.
 - Note creation first honors the exact operation ID. Bounded exact-content recovery for a recently saved current-couple note runs only after authorization and the couple lock; it must not expose content, cross couples, or replace ordinary note IDs.
 - WSS connections authenticate before subscription and reauthorize after hub registration, on every operation, and at least every 30 seconds while idle. A revoked, expired, suspended, deleted, unpaired, or disabled-device state closes the socket; note revisions are monotonic, operation IDs are unique per note, presence counts unique accounts, and archived notes reject edits.
 - Attachment routes authorize before note/file lookup, lock couple quota, stream bounded exact-offset chunks, require matching idempotency replays, expose no unscanned bytes, and retain no server file after deletion or note purge.
@@ -57,7 +61,7 @@ python -m pytest services/api/tests
 alembic -c services/api/alembic.ini upgrade head
 ```
 
-Test expiry and replay, neutral public responses, throttles, honeypot, session rotation, authorization-before-existence, pair races, idempotency, note ordering/reconnect, Android version-floor timing, release immutability, artifact absence/corruption, byte-range downloads, deletion, precise-coordinate expiry, and admin redaction.
+Test expiry and replay, neutral public responses, throttles, honeypot, session rotation, authorization-before-existence, pair races, idempotency, note ordering/reconnect, feedback eligibility/revision/retention, device challenge/session/revocation, typed jobs, Android version-floor timing, release immutability, artifact absence/corruption, byte-range downloads, deletion, precise-coordinate expiry, and admin redaction.
 
 ## Documentation impact
 

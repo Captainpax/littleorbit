@@ -3,32 +3,35 @@
 import asyncio
 import logging
 import os
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from time import perf_counter
 
+from little_orbit_ai.embeddings import OllamaEmbeddingClient
 from little_orbit_ai.ollama import OllamaClient, OllamaSettings
-from little_orbit_ai.pipeline import (
-    PipelineResult,
-    generate_pool,
-    load_curated_bank,
-    select_pool,
-)
-from little_orbit_ai.safety import normalized_hash
-from little_orbit_ai.schemas import CandidateQuestion, Category, IconKey, QuestionKind
-from sqlalchemy import delete, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from little_orbit_ai.pipeline import generate_pool, load_curated_bank, select_pool
+from little_orbit_ai.schemas import CandidateQuestion, LearningPolicy
 
+from .admin_operations import process_quiz_admin_jobs, refresh_admin_alerts
 from .clock import SystemClock
 from .config import get_settings
-from .database import SessionFactory
 from .mail import deliver_pending_mail
 from .maintenance import run_maintenance_once
-from .models import (
-    CuratedBankQuestion,
-    GenerationBatch,
-    Question,
-    QuizAnswer,
-    QuizDayQuestion,
+from .public_context import load_public_context
+from .quiz_generation_pool_service import (
+    curated_bank,
+    embedding_settings,
+    is_coverage_seed,
+    persist_pool,
+    pool_exists,
+    recent_question_prompts,
+    record_seed_attempt,
+    replace_unanswered_pool,
+)
+from .quiz_learning_service import (
+    active_learning_policy,
+    claim_ai_run,
+    finish_ai_run,
+    learn_feedback_week,
 )
 from .quiz_notification_scheduler import ensure_daily_quiz_notifications
 
@@ -43,289 +46,71 @@ def _ollama_settings() -> OllamaSettings:
     )
 
 
-async def _recent_question_prompts(target: date) -> list[str]:
-    async with SessionFactory() as session:
-        return list(
-            await session.scalars(
-                select(Question.prompt)
-                .where(
-                    Question.couple_id.is_(None),
-                    Question.publish_date >= target - timedelta(days=30),
-                    Question.publish_date < target,
-                )
-                .order_by(Question.publish_date.desc())
-            )
-        )
-
-
-async def _pool_exists(target: date) -> bool:
-    async with SessionFactory() as session:
-        general = await session.scalar(
-            select(func.count())
-            .select_from(Question)
-            .where(
-                Question.publish_date == target,
-                Question.couple_id.is_(None),
-                Question.intimacy.is_(False),
-                Question.disabled_at.is_(None),
-                Question.interaction_version == 2,
-            )
-        )
-        intimacy = await session.scalar(
-            select(func.count())
-            .select_from(Question)
-            .where(
-                Question.publish_date == target,
-                Question.couple_id.is_(None),
-                Question.intimacy.is_(True),
-                Question.disabled_at.is_(None),
-                Question.interaction_version == 2,
-            )
-        )
-        if target == SystemClock().now().date() and general != 5:
-            general = await session.scalar(
-                select(func.count())
-                .select_from(Question)
-                .where(
-                    Question.publish_date == target,
-                    Question.couple_id.is_(None),
-                    Question.intimacy.is_(False),
-                    Question.disabled_at.is_(None),
-                )
-            )
-            intimacy = await session.scalar(
-                select(func.count())
-                .select_from(Question)
-                .where(
-                    Question.publish_date == target,
-                    Question.couple_id.is_(None),
-                    Question.intimacy.is_(True),
-                    Question.disabled_at.is_(None),
-                )
-            )
-    return general == 5 and bool(intimacy)
-
-
-async def _curated_bank() -> list[CandidateQuestion] | None:
-    async with SessionFactory() as session:
-        records = list(
-            await session.scalars(
-                select(CuratedBankQuestion)
-                .where(CuratedBankQuestion.enabled.is_(True))
-                .order_by(CuratedBankQuestion.stable_key)
-            )
-        )
-    if any(item.options and not item.option_icons for item in records):
-        return None
-    bank = [
-        CandidateQuestion(
-            client_id=item.stable_key,
-            kind=QuestionKind(item.kind),
-            prompt=item.prompt,
-            category=Category(item.category),
-            intimacy=item.intimacy,
-            options=item.options,
-            option_icons=[IconKey(value) for value in item.option_icons],
-            scale_low_label=item.scale_low_label,
-            scale_high_label=item.scale_high_label,
-        )
-        for item in records
-    ]
-    general_count = sum(not item.intimacy for item in bank)
-    return bank if general_count >= 5 and any(item.intimacy for item in bank) else None
-
-
-async def _persist_pool(
-    target: date,
-    result: PipelineResult,
-    settings: OllamaSettings,
-    bank: list[CandidateQuestion],
-    duration_ms: int,
-) -> None:
-    async with SessionFactory() as session:
-        candidates, database_quarantine = await _database_filtered_pool(
-            session, target, result, bank
-        )
-        bank_ids = {item.client_id for item in bank}
-        general_items = [item for item in candidates if not item.intimacy]
-        order = {item.client_id: index for index, item in enumerate(general_items, start=1)}
-        stored = [
-            Question(
-                publish_date=target,
-                kind=item.kind.value,
-                prompt=item.prompt,
-                category=item.category.value,
-                intimacy=item.intimacy,
-                options=item.options,
-                option_icons=[icon.value for icon in item.option_icons],
-                scale_low_label=item.scale_low_label,
-                scale_high_label=item.scale_high_label,
-                interaction_version=2,
-                display_order=order.get(item.client_id),
-                source="curated" if item.client_id in bank_ids else "ollama",
-                normalized_hash=normalized_hash(item.prompt),
-            )
-            for item in candidates
-        ]
-        session.add_all(stored)
-        await session.flush()
-        session.add(
-            _generation_record(target, result, settings, stored, database_quarantine, duration_ms)
-        )
-        await session.commit()
-
-
-async def _is_database_duplicate(
-    session: AsyncSession, target: date, item: CandidateQuestion
-) -> bool:
-    digest = normalized_hash(item.prompt)
-    matches = await session.scalar(
-        select(func.count())
-        .select_from(Question)
-        .where(
-            Question.couple_id.is_(None),
-            Question.publish_date >= target - timedelta(days=30),
-            Question.publish_date < target,
-            or_(
-                Question.normalized_hash == digest,
-                func.similarity(Question.prompt, item.prompt) >= 0.82,
-            ),
-        )
-    )
-    return bool(matches)
-
-
-async def _database_filtered_pool(
-    session: AsyncSession,
-    target: date,
-    result: PipelineResult,
-    bank: list[CandidateQuestion],
-) -> tuple[list[CandidateQuestion], list[dict[str, object]]]:
-    selected, rejected = await _filter_database_duplicates(session, target, result)
-    general = [item for item in selected if not item.intimacy][:5]
-    intimacy = [item for item in selected if item.intimacy]
-    await _fill_from_bank(session, target, bank, general, intimacy, selected)
-    if len(general) < 5 or not intimacy:
-        raise RuntimeError("database duplicate gate exhausted the curated bank")
-    return [*general[:5], *intimacy], rejected
-
-
-async def _filter_database_duplicates(
-    session: AsyncSession, target: date, result: PipelineResult
-) -> tuple[list[CandidateQuestion], list[dict[str, object]]]:
-    selected: list[CandidateQuestion] = []
-    rejected: list[dict[str, object]] = []
-    proposed = [*result.pool.general, *result.pool.intimacy_alternatives]
-    for item in proposed:
-        if await _is_database_duplicate(session, target, item):
-            rejected.append({"client_id": item.client_id, "reasons": ["database_near_duplicate"]})
-        else:
-            selected.append(item)
-    return selected, rejected
-
-
-def _needs_bank_item(
-    item: CandidateQuestion, general: list[CandidateQuestion], intimacy: list[CandidateQuestion]
-) -> bool:
-    return (not item.intimacy and len(general) < 5) or (item.intimacy and not intimacy)
-
-
-async def _fill_from_bank(
-    session: AsyncSession,
-    target: date,
-    bank: list[CandidateQuestion],
-    general: list[CandidateQuestion],
-    intimacy: list[CandidateQuestion],
-    selected: list[CandidateQuestion],
-) -> None:
-    used = {normalized_hash(item.prompt) for item in selected}
-    for item in _rotated_bank(target, bank):
-        if not _needs_bank_item(item, general, intimacy):
-            continue
-        if normalized_hash(item.prompt) in used:
-            continue
-        if not await _is_database_duplicate(session, target, item):
-            (intimacy if item.intimacy else general).append(item)
-            used.add(normalized_hash(item.prompt))
-
-
-def _rotated_bank(target: date, bank: list[CandidateQuestion]) -> list[CandidateQuestion]:
-    start = (target.toordinal() * 5) % len(bank)
-    return bank[start:] + bank[:start]
-
-
-def _generation_record(
-    target: date,
-    result: PipelineResult,
-    settings: OllamaSettings,
-    stored: list[Question],
-    database_quarantine: list[dict[str, object]],
-    duration_ms: int,
-) -> GenerationBatch:
-    fallback_reason = result.pool.fallback_reason
-    if database_quarantine and fallback_reason is None:
-        fallback_reason = "database_near_duplicate"
-    return GenerationBatch(
-        publish_date=target,
-        model=result.pool.model,
-        model_digest=result.pool.model_manifest_digest,
-        prompt_version=result.pool.prompt_version,
-        parameters={
-            "context_tokens": settings.context_tokens,
-            "output_tokens": settings.output_tokens,
-            "keep_alive": 0,
-        },
-        validation_results=[
-            {"client_id": item.client_id, "reasons": list(item.reasons)}
-            for item in result.quarantined
-        ]
-        + database_quarantine,
-        candidate_snapshot=[
-            {
-                "kind": item.kind.value,
-                "prompt": item.prompt,
-                "category": item.category.value,
-                "intimacy": item.intimacy,
-                "options": item.options,
-                "option_icons": [icon.value for icon in item.option_icons],
-                "scale_low_label": item.scale_low_label,
-                "scale_high_label": item.scale_high_label,
-            }
-            for item in [*result.pool.general, *result.pool.intimacy_alternatives]
-        ],
-        selected_question_ids=[str(item.id) for item in stored],
-        fallback_reason=fallback_reason,
-        duration_ms=duration_ms,
-        created_at=SystemClock().now(),
-    )
-
-
 async def ensure_question_coverage(days: int = 7) -> None:
-    """Generate and persist missing global pools for seven future UTC dates.
+    """Seed missing dates from the safe bank so model outages never create gaps.
 
     Serving uses each client's validated local date. Maintaining future UTC dates
-    plus the current date provides a safe global baseline while timezone-specific
-    scheduling is completed.
+    plus the current date provides a safe baseline. The Sunday job replaces these
+    seeds with validated model output for the next Monday-through-Sunday week.
     """
 
     settings = _ollama_settings()
-    client = OllamaClient(settings)
-    curated_bank = await _curated_bank()
-    effective_bank = curated_bank or load_curated_bank()
+    embedding_client = OllamaEmbeddingClient(embedding_settings())
+    database_bank = await curated_bank()
+    effective_bank = database_bank or load_curated_bank()
     today = SystemClock().now().date()
     targets = [today + timedelta(days=offset) for offset in range(days + 1)]
     for target in targets:
-        if not await _pool_exists(target):
-            if not await _replace_unanswered_pool(target):
+        if not await pool_exists(target):
+            if not await replace_unanswered_pool(target):
                 continue
-            recent = await _recent_question_prompts(target)
-            seed = select_pool(target, None, recent, settings, "coverage_seed", curated_bank)
-            await _persist_pool(target, seed, settings, effective_bank, 0)
-    for target in targets[1:]:
+            recent = await recent_question_prompts(target)
+            seed = select_pool(target, None, recent, settings, "coverage_seed", database_bank)
+            await persist_pool(target, seed, settings, effective_bank, 0, embedding_client)
+
+
+async def generate_question_week(week_start: date) -> dict[str, int]:
+    """Generate the exact next Monday-to-Sunday set using the active policy."""
+
+    settings = _ollama_settings()
+    client = OllamaClient(settings)
+    embedding_client = OllamaEmbeddingClient(embedding_settings())
+    database_bank = await curated_bank()
+    effective_bank = database_bank or load_curated_bank()
+    policy = await active_learning_policy()
+    public_context = await load_public_context()
+    generated = 0
+    fallback = 0
+    for offset in range(7):
+        target = week_start + timedelta(days=offset)
+        if not await pool_exists(target):
+            recent = await recent_question_prompts(target)
+            seed = select_pool(target, None, recent, settings, "coverage_seed", database_bank)
+            await persist_pool(
+                target,
+                seed,
+                settings,
+                effective_bank,
+                0,
+                embedding_client,
+            )
         try:
-            await _improve_seeded_pool(target, client, settings, effective_bank, curated_bank)
+            improved = await _improve_seeded_pool(
+                target,
+                client,
+                settings,
+                effective_bank,
+                database_bank,
+                embedding_client,
+                policy,
+                public_context,
+            )
+            generated += int(improved)
+            fallback += int(not improved)
         except Exception:
-            LOGGER.exception("AI improvement failed for %s; curated coverage remains", target)
+            fallback += 1
+            LOGGER.exception("Weekly generation failed for %s; safe seed remains", target)
+    return {"generated_days": generated, "fallback_days": fallback}
 
 
 async def _improve_seeded_pool(
@@ -334,67 +119,79 @@ async def _improve_seeded_pool(
     settings: OllamaSettings,
     bank: list[CandidateQuestion],
     database_bank: list[CandidateQuestion] | None,
-) -> None:
-    async with SessionFactory() as session:
-        batch = await session.scalar(
-            select(GenerationBatch).where(GenerationBatch.publish_date == target)
-        )
-        if batch is None or batch.fallback_reason != "coverage_seed":
-            return
-    recent = await _recent_question_prompts(target)
+    embedding_client: OllamaEmbeddingClient,
+    policy: LearningPolicy | None = None,
+    public_context: list[str] | None = None,
+) -> bool:
+    if not await is_coverage_seed(target):
+        return False
+    recent = await recent_question_prompts(target)
     started = perf_counter()
-    result = await generate_pool(target, recent, client, settings, database_bank)
+    result = await generate_pool(
+        target,
+        recent,
+        client,
+        settings,
+        database_bank,
+        policy,
+        public_context,
+    )
     duration_ms = int((perf_counter() - started) * 1000)
     bank_ids = {item.client_id for item in bank}
     selected = [*result.pool.general, *result.pool.intimacy_alternatives]
     if all(item.client_id in bank_ids for item in selected):
-        await _record_seed_attempt(target, result, duration_ms)
+        await record_seed_attempt(target, result, duration_ms)
+        return False
+    if await replace_unanswered_pool(target):
+        await persist_pool(
+            target,
+            result,
+            settings,
+            bank,
+            duration_ms,
+            embedding_client,
+        )
+        return True
+    return False
+
+
+async def run_weekly_quiz_jobs(now: datetime | None = None) -> None:
+    """Catch up the latest due Saturday learning and Sunday generation runs."""
+
+    current = now or SystemClock().now()
+    settings = get_settings()
+    learning_date = _latest_due_date(current, 5, settings.ai_learning_hour_utc)
+    if learning_date is not None:
+        await learn_feedback_week(
+            learning_date - timedelta(days=5),
+            OllamaClient(_ollama_settings()),
+        )
+    generation_date = _latest_due_date(current, 6, settings.ai_generation_hour_utc)
+    if generation_date is None:
         return
-    if await _replace_unanswered_pool(target):
-        await _persist_pool(target, result, settings, bank, duration_ms)
+    week_start = generation_date + timedelta(days=1)
+    run_key = f"generate:{week_start.isoformat()}"
+    if not await claim_ai_run(run_key, "generation", current):
+        return
+    try:
+        generated_summary = await generate_question_week(week_start)
+        summary: dict[str, object] = dict(generated_summary)
+        status = "passed" if summary["fallback_days"] == 0 else "fallback"
+        await finish_ai_run(run_key, status, summary)
+    except Exception:
+        await finish_ai_run(run_key, "failed", {"reason": "internal_failure"})
+        raise
 
 
-async def _record_seed_attempt(target: date, result: PipelineResult, duration_ms: int) -> None:
-    """Record a failed AI attempt without disturbing safe curated coverage."""
+def _latest_due_date(current: datetime, weekday: int, hour: int) -> date | None:
+    """Return the latest UTC schedule date at or before the current instant."""
 
-    async with SessionFactory() as session:
-        batch = await session.scalar(
-            select(GenerationBatch).where(GenerationBatch.publish_date == target).with_for_update()
-        )
-        if batch is None or batch.fallback_reason != "coverage_seed":
-            return
-        batch.duration_ms = duration_ms
-        batch.fallback_reason = result.pool.fallback_reason or "no_valid_ai_candidates"
-        batch.validation_results = [
-            {"client_id": item.client_id, "reasons": list(item.reasons)}
-            for item in result.quarantined
-        ]
-        await session.commit()
-
-
-async def _replace_unanswered_pool(target: date) -> bool:
-    """Remove only a future/global pool that has no answer or day references."""
-
-    async with SessionFactory() as session:
-        ids = select(Question.id).where(
-            Question.publish_date == target, Question.couple_id.is_(None)
-        )
-        answered = await session.scalar(
-            select(func.count()).select_from(QuizAnswer).where(QuizAnswer.question_id.in_(ids))
-        )
-        materialized = await session.scalar(
-            select(func.count())
-            .select_from(QuizDayQuestion)
-            .where(QuizDayQuestion.question_id.in_(ids))
-        )
-        if answered or materialized:
-            return False
-        await session.execute(delete(GenerationBatch).where(GenerationBatch.publish_date == target))
-        await session.execute(
-            delete(Question).where(Question.publish_date == target, Question.couple_id.is_(None))
-        )
-        await session.commit()
-    return True
+    aware = current.astimezone(UTC)
+    candidate = aware.date() - timedelta(days=(aware.weekday() - weekday) % 7)
+    scheduled = datetime.combine(candidate, time(hour=hour), tzinfo=UTC)
+    if scheduled > aware:
+        candidate -= timedelta(days=7)
+    return candidate
 
 
 async def _poll_mail_forever(interval_seconds: int) -> None:
@@ -412,6 +209,18 @@ async def _run_scheduled_jobs_forever(interval_seconds: int) -> None:
             await ensure_question_coverage()
         except Exception:
             LOGGER.exception("question coverage cycle failed")
+        try:
+            await run_weekly_quiz_jobs()
+        except Exception:
+            LOGGER.exception("weekly quiz intelligence cycle failed")
+        try:
+            await process_quiz_admin_jobs(
+                OllamaClient(_ollama_settings()),
+                generate_question_week,
+            )
+            await refresh_admin_alerts()
+        except Exception:
+            LOGGER.exception("Big Orbit operations cycle failed")
         try:
             await ensure_daily_quiz_notifications()
         except Exception:

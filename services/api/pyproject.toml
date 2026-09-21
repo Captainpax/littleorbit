@@ -17,6 +17,7 @@ dependencies = [
   "httpx==0.28.1",
   "orjson==3.11.3",
   "pillow==11.3.0",
+  "pgvector==0.5.0",
   "psycopg[binary]==3.2.10",
   "pypdf==6.0.0",
   "pymupdf==1.26.4",

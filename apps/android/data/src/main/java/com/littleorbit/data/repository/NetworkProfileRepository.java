@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import okhttp3.MediaType;
@@ -64,6 +65,9 @@ public final class NetworkProfileRepository implements ProfileRepository {
                     displays.clear();
                     throw failure;
                 }
+                if (RelationshipCachePurger.statusCode(failure) == 409) {
+                    return fetchProfile();
+                }
                 return store.read();
             }
         }, executor);
@@ -85,10 +89,26 @@ public final class NetworkProfileRepository implements ProfileRepository {
         }, executor);
     }
 
+    @Override
+    public CompletableFuture<State> savePartnerName(String displayName) {
+        String normalized = PartnerNameRules.normalize(displayName);
+        return mutatePartnerName("set", normalized);
+    }
+
+    @Override
+    public CompletableFuture<State> resetPartnerName() {
+        return mutatePartnerName("reset", null);
+    }
+
     @Override public void clearPartner() { store.clearPartner(); wear.publish(store.read()); }
     @Override public void clearAll() { store.clearAll(); wear.clear(); }
 
     private State refreshNow() {
+        resumePendingName();
+        return fetchProfile();
+    }
+
+    private State fetchProfile() {
         ProfileApiModels.OrbitProfile profile = execute(api.orbitProfile());
         State cached = store.read();
         byte[] own = resolvePhoto(false, profile.me.photo, cached.myPhoto());
@@ -100,10 +120,62 @@ public final class NetworkProfileRepository implements ProfileRepository {
         store.save(
                 profile.me.displayName, ownRevision, hash(profile.me.photo), own,
                 partner == null ? null : partner.displayName,
-                partnerRevision, hash(partner == null ? null : partner.photo), partnerPhoto);
+                partnerRevision, hash(partner == null ? null : partner.photo), partnerPhoto,
+                profile.me.nameRevision, profile.me.partnerAssigned,
+                partner == null ? 0 : partner.nameRevision,
+                partner != null && partner.partnerAssigned);
         State refreshed = store.read();
         wear.publish(refreshed);
         return refreshed;
+    }
+
+    private CompletableFuture<State> mutatePartnerName(String action, String displayName) {
+        return CompletableFuture.supplyAsync(() -> {
+            ProfilePhotoStore.PendingName pending = store.pendingName();
+            if (pending == null) {
+                pending = new ProfilePhotoStore.PendingName(
+                        action,
+                        UUID.randomUUID().toString(),
+                        store.read().partnerNameRevision(),
+                        displayName);
+                store.savePendingName(pending);
+            } else if (!matches(pending, action, displayName)) {
+                throw new OrbitServiceException(409, "name_operation_pending");
+            }
+            executePendingName(pending);
+            return fetchProfile();
+        }, executor);
+    }
+
+    private void resumePendingName() {
+        ProfilePhotoStore.PendingName pending = store.pendingName();
+        if (pending != null) executePendingName(pending);
+    }
+
+    private void executePendingName(ProfilePhotoStore.PendingName pending) {
+        try {
+            if ("reset".equals(pending.action())) {
+                execute(api.resetPartnerName(new ProfileApiModels.PartnerNameReset(
+                        pending.operationId(), pending.expectedRevision())));
+            } else {
+                execute(api.putPartnerName(new ProfileApiModels.PartnerNameMutation(
+                        pending.operationId(),
+                        pending.expectedRevision(),
+                        pending.displayName())));
+            }
+            store.clearPendingName();
+        } catch (RuntimeException failure) {
+            int code = RelationshipCachePurger.statusCode(failure);
+            if (code >= 400 && code < 500 && code != 429) store.clearPendingName();
+            throw failure;
+        }
+    }
+
+    private static boolean matches(
+            ProfilePhotoStore.PendingName pending, String action, String displayName) {
+        if (!pending.action().equals(action)) return false;
+        if (pending.displayName() == null) return displayName == null;
+        return pending.displayName().equals(displayName);
     }
 
     private byte[] resolvePhoto(

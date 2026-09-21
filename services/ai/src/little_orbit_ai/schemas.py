@@ -60,6 +60,8 @@ class CandidateQuestion(BaseModel):
     option_icons: list[IconKey] = Field(default_factory=list, max_length=6)
     scale_low_label: str | None = Field(default=None, min_length=1, max_length=32)
     scale_high_label: str | None = Field(default=None, min_length=1, max_length=32)
+    concept_family: str = Field(default="", pattern=r"^[a-z0-9-]{0,80}$")
+    concept_summary: str = Field(default="", max_length=180)
 
     @model_validator(mode="after")
     def validate_shape(self) -> "CandidateQuestion":
@@ -112,6 +114,8 @@ class GeneratedChoiceQuestion(CandidateQuestion):
     option_icons: list[IconKey] = Field(min_length=2, max_length=6)
     scale_low_label: None = None
     scale_high_label: None = None
+    concept_family: str = Field(pattern=r"^[a-z0-9-]{3,80}$")
+    concept_summary: str = Field(min_length=8, max_length=180)
 
 
 class GeneratedWeightedQuestion(CandidateQuestion):
@@ -122,6 +126,8 @@ class GeneratedWeightedQuestion(CandidateQuestion):
     option_icons: list[IconKey] = Field(min_length=2, max_length=5)
     scale_low_label: str = Field(min_length=1, max_length=32)
     scale_high_label: str = Field(min_length=1, max_length=32)
+    concept_family: str = Field(pattern=r"^[a-z0-9-]{3,80}$")
+    concept_summary: str = Field(min_length=8, max_length=180)
 
 
 class GeneratedOpenQuestion(CandidateQuestion):
@@ -132,6 +138,8 @@ class GeneratedOpenQuestion(CandidateQuestion):
     option_icons: list[IconKey] = Field(max_length=0)
     scale_low_label: None = None
     scale_high_label: None = None
+    concept_family: str = Field(pattern=r"^[a-z0-9-]{3,80}$")
+    concept_summary: str = Field(min_length=8, max_length=180)
 
 
 GeneratedCandidate = Annotated[
@@ -145,7 +153,7 @@ class GeneratedBatch(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["2"]
+    schema_version: Literal["3"]
     date: date
     questions: list[GeneratedCandidate] = Field(min_length=10, max_length=10)
 
@@ -160,3 +168,36 @@ class PublishedPool(BaseModel):
     model: str
     model_manifest_digest: str
     fallback_reason: str | None = None
+
+
+class LearningQuestionSignal(BaseModel):
+    """K-anonymous product signal supplied to the local learning pass."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    concept_family: str = Field(min_length=3, max_length=80)
+    category: Category
+    rating_count: int = Field(ge=5)
+    average_stars: float = Field(ge=1, le=5)
+    tag_counts: dict[str, int]
+    reviews: list[str] = Field(default_factory=list, max_length=20)
+
+
+class LearningPolicy(BaseModel):
+    """Strict, bounded guidance learned from consented aggregate feedback."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["1"]
+    avoid_concepts: list[str] = Field(max_length=20)
+    prefer_categories: dict[Category, float]
+    guidance: list[str] = Field(max_length=12)
+    review_themes: list[str] = Field(max_length=12)
+
+    @model_validator(mode="after")
+    def bounded_weights(self) -> "LearningPolicy":
+        """Reject policy weights that could overwhelm core safety instructions."""
+
+        if any(value < 0.5 or value > 1.5 for value in self.prefer_categories.values()):
+            raise ValueError("category policy weights must remain between 0.5 and 1.5")
+        return self

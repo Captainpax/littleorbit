@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="orbit_navigation_drawer_width">304dp</dimen>
-    <dimen name="orbit_navigation_rail_width">232dp</dimen>
+    <dimen name="orbit_navigation_rail_width">344dp</dimen>
     <dimen name="orbit_context_drawer_width">336dp</dimen>
     <dimen name="orbit_content_max_width">840dp</dimen>
     <dimen name="orbit_drawer_edge_width">24dp</dimen>

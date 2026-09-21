@@ -29,6 +29,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/DOCUMENTATION-MAP.md` — this complete Markdown inventory and ownership map.
 - `docs/NETWORK-FLOW.md` — editable Mermaid source of truth for network and logic flows.
 - `docs/PRIVACY.md` — data, purpose, access, retention, consent, AI, location, and update boundaries.
+- `docs/concepts/1.2.0/README.md` — labels and privacy notes for the five generated 1.2 concept sheets.
 - `protocol/README.md` — versioned cross-language contract and fixture conventions.
 
 ## Architecture decisions
@@ -67,6 +68,10 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0038-single-flight-note-autosave-and-explicit-forks.md` — crash-safe serialized autosave, explicit conflicts, attachment-safe forks, and backup-gated duplicate archival.
 - `docs/adr/0039-managed-watch-target-and-actions.md` — one explicit Wear target, monotonic target purges, and credential-free bounded watch actions.
 - `docs/adr/0040-controller-bound-wear-and-isolated-qa.md` — one controller phone per Wear generation and fixed-target side-by-side smoke artifacts.
+- `docs/adr/0041-private-quiz-feedback-and-weekly-intelligence.md` — revealed-question feedback, retention, K-anonymous learning, and semantic duplicate prevention.
+- `docs/adr/0042-device-bound-big-orbit-administration.md` — separate Android administration, enrolled keys, bound sessions, alerts, and typed jobs.
+- `docs/adr/0043-allowlisted-context-and-testable-encrypted-operations.md` — bounded public context plus scheduled encrypted backup and non-destructive restore evidence.
+- `docs/adr/0044-partner-assigned-relationship-names.md` — shared partner-only names, contact-safe fallbacks, retry semantics, and unpair purge.
 - `docs/adr/0028-isolated-attachment-media-worker.md` — least-privilege scanning, sanitization, atomic publication, and private archive access.
 - `docs/adr/0029-relationship-invalidation-purge-protocol.md` — structured invalidation and generation-ordered phone, widget, and Wear cleanup.
 - `docs/adr/0030-together-time-retention-and-corrections.md` — short raw-coordinate retention, 30-day minute detail, durable totals, and audited corrections.
@@ -101,6 +106,8 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-1.0.1-2026-09-19.md` — confirmed-gap, diagnostic, autosave, fork, migration, artifact, device, and rollout gate evidence.
 - `docs/operations/VERIFICATION-1.1.0-2026-09-19.md` — managed-watch implementation, automated, signed-artifact, waived-device, and rollout evidence.
 - `docs/operations/VERIFICATION-1.1.1-2026-09-19.md` — watch crash, controller binding, artifact isolation, emulator, and physical-Wear candidate evidence.
+- `docs/operations/VERIFICATION-1.2.0-2026-09-20.md` — quiz intelligence, Big Orbit, automated checks, emulator evidence, and explicit open release gates.
+- `docs/operations/VERIFICATION-1.2.0-2026-09-21.md` — replacement signed candidates, disposable-stack and device checks, rollout gates, and production evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -131,6 +138,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.1.md` — pending nearby-time reliability, collection-health, autosave, conflict, duplicate, and GIF correction release.
 - `docs/releases/1.1.0.md` — managed-watch settings, installer, Together/Countdown/Smooch destinations, target privacy, and complications.
 - `docs/releases/1.1.1.md` — optional watch-hardening candidate, controller binding, isolated QA installer, and release-gate status.
+- `docs/releases/1.2.0.md` — unpublished quiz-intelligence and Big Orbit implementation candidate with explicit remaining gates.
 <!-- documentation-inventory:end -->
 
 ## Review routing

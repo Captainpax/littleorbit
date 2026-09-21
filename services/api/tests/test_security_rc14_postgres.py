@@ -243,23 +243,23 @@ async def _replace_admin_factor(
         transport=httpx.ASGITransport(app=create_app()), base_url="http://localhost"
     ) as client:
         rejected = await client.post(
-            "/v1/admin/mfa/start",
+            "/v2/admin/mfa/start",
             headers=headers,
             json={"password": "valid-password-123"},
         )
         started = await client.post(
-            "/v1/admin/mfa/start",
+            "/v2/admin/mfa/start",
             headers=headers,
             json={"password": "valid-password-123", "current_recovery_code": recovery},
         )
         secret = parse_qs(urlparse(started.json()["otpauth_uri"]).query)["secret"][0]
         confirmed = await client.post(
-            "/v1/admin/mfa/confirm",
+            "/v2/admin/mfa/confirm",
             headers=headers,
             json={"code": pyotp.TOTP(secret).now()},
         )
         config = await client.get(
-            "/v1/admin/configuration",
+            "/v2/admin/configuration",
             headers={"Authorization": f"Bearer {confirmed.json()['access_token']}"},
         )
     return rejected, started, confirmed, config
@@ -275,7 +275,7 @@ async def test_mfa_replacement_needs_old_factor_then_revokes_sessions() -> None:
     assert rejected.status_code == 401
     assert started.status_code == 200
     assert confirmed.status_code == 200
-    assert config.status_code == 200
+    assert config.status_code == 403
     serialized = config.text
     assert "database_url" not in serialized
     assert "token_pepper" not in serialized

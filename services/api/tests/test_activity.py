@@ -24,7 +24,7 @@ def test_activity_response_contains_no_relationship_content() -> None:
 
     rendered = _response(event, "Private name", viewer_id, 6).model_dump()
 
-    assert rendered["partner_display_name"] == "You"
+    assert rendered["partner_display_name"] == "Private name"
     assert rendered["seen"] is False
     assert not ({"body", "answer", "location", "file_name"} & rendered.keys())
 

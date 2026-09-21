@@ -51,6 +51,26 @@ Use the RC smoke project when Android needs real paired accounts, attachment pro
 
 The account generator creates unique `@example.com` accounts, consumes their Mailpit verification links, confirms a pair, and writes credentials only to ignored `.inspect/smoke-accounts.json`. The note-sync smoke creates a document as the first partner, requires the second partner to list it, exercises live edits in both directions, disconnect/reconnect catch-up, and identical final snapshots. The attachment seed uploads a synthetic transparent PNG and animated GIF through the private scan/sanitize pipeline, inserts their `attachment://` links, and records a unique ignored document title so repeated runs cannot select a stale fixture. The notification smoke verifies a content-free foreground hint, independent delivery and acknowledgement for two installations, legacy Smooch suppression, note-edit cooldown, and partner-viewing suppression. The Android smoke build targets the loopback gateway through `adb reverse tcp:18180 tcp:18180`. Its script signs in, checks the responsive shell, opens that exact synthetic attachment note, verifies both sanitized attachments, switches from preview to the Markdown dock, and stores an ignored screenshot. Run it sequentially on API 29, API 30, API 36 phone, and a wide API 36 tablet. Launch the Wear debug APK separately on the API 34 watch emulator and check the explicit stale fallback. Never point this workflow at the production Compose project.
 
+## Quiz feedback and Big Orbit development
+
+Run migrations `0027` and `0028` only against the smoke or another disposable PostgreSQL 17/pgvector database. The optional integration suite refuses to run unless `LITTLE_ORBIT_TEST_DATABASE_URL` names that exact target. Exercise pre-rollout questions, incomplete quizzes, custom questions, partner feedback lookup, replayed and conflicting operation IDs, revision conflicts, day-30 unlinking, day-90 review deletion, and the five-account aggregation threshold.
+
+```powershell
+$env:LITTLE_ORBIT_TEST_DATABASE_URL = "postgresql+asyncpg://.../little_orbit_test"
+python -m pytest services/api/tests/test_quiz_feedback_postgres.py
+```
+
+Build the separate sibling project without sharing Little Orbit signing values:
+
+```powershell
+cd ..\big-orbit
+.\gradlew.bat test lintSmoke assembleSmoke
+```
+
+The smoke package is `com.littleorbit.bigorbit.smoke`, visibly labeled **Big Orbit QA**, and targets only the isolated loopback smoke API. Validate package/version/label and absence of production signing metadata before installing it. Initial device enrollment requires a disposable administrator with current MFA; never use production recovery codes in screenshots or test logs. Revoke the smoke device and delete the disposable account after testing.
+
+The context fetcher may be tested only with its fixed source keys. Cover redirects, loopback/private/link-local DNS, oversized bodies, wrong media types, timeouts, script/style removal, and instruction-shaped text. Do not add an arbitrary-URL debug endpoint.
+
 ## Partner notification development
 
 The server stores account preferences and random app-installation UUIDs. Do not use hardware identifiers. Smooch and note-edit transactions create short-lived events and one pending delivery per active installation. The foreground socket carries only `notification.available`; clients must fetch the authorized event before displaying it. Acknowledge only after Android accepts the post, and test that another installation remains pending. On Android 13 and later, test runtime permission denial and recovery; on every supported API, test disabled channels, sign-out device disabling, process restart, the 15-minute fallback, and generic lock-screen public text. A local pass cannot establish OEM background timing on a physical phone.

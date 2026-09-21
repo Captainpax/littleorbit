@@ -12,9 +12,11 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 
 - Expose only gateway port `8180`. Never publish API, web, PostgreSQL, Ollama, or production Mailpit ports.
 - Keep application callers off Ollama's model-download egress bridge; only Ollama joins it, and only the worker plus one-shot initializer join the internal AI network.
+- Keep the public-context fetcher secret-free and off every application/database/AI private network. It may join only a private worker link and its own egress link, fetch exact code-owned HTTPS sources, refuse redirects/private DNS, and bound bytes and content types.
 - Keep notifications first-party: no Firebase credentials, hosted push overlay, provider SDK, or notification-worker egress is permitted.
 - Keep ClamAV and the media worker on an internal-only network. Share attachment bytes only through the private volume; pair its encrypted backup with the matching PostgreSQL dump and verify manifests before restore.
-- Exclude raw coordinate rows and opt-in device-health snapshots from PostgreSQL backup data. Backup sidecars must state both exclusions before migration or repair tooling accepts the artifact.
+- Exclude raw coordinate rows, opt-in device-health snapshots, attributable quiz feedback, feedback operation records, and anonymous raw reviews from PostgreSQL backup data. Backup sidecars must state the exclusions before migration or repair tooling accepts the artifact.
+- Daily backups pause mutation services, stream directly through age, and may copy only encrypted artifacts/sidecars to an explicit path outside the workspace. Weekly drills restore into an exact temporary database and stream-verify attachments without touching the live volume. Host jobs accept fixed kinds only.
 - Pin image versions and the validated Ollama model digest. Never use `latest`.
 - Keep secrets in environment/secret files outside Git and redact diagnostic output.
 - Permit forwarded headers only from `192.168.50.6` and restrict Windows Firewall port 8180 to that source for production.
@@ -45,7 +47,7 @@ docker compose --env-file .env -f infra/compose.yaml exec postgres pg_isready -U
 .\infra\scripts\smoke-stack.ps1 up
 ```
 
-Test WSS upgrade, TLS renewal, forwarding trust, blocked internal ports, host reboot, Ollama timeout/CPU fallback, backup retention, and restore into an empty database.
+Test WSS upgrade, TLS renewal, forwarding trust, blocked internal ports, host reboot, Ollama timeout/CPU fallback, context-fetcher SSRF/redirect/size rejection, backup retention/off-host failure, and restore into an empty database.
 
 ## Documentation impact
 

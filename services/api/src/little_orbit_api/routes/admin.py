@@ -5,7 +5,7 @@ from typing import cast
 from uuid import UUID
 
 import pyotp
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,32 +13,29 @@ from ..admin_schemas import (
     AdminEnrollmentChallenge,
     AdminEnrollmentConfirm,
     AdminEnrollmentStart,
-    AdminSessionRequest,
     AdminSessionResponse,
 )
+from ..big_orbit_dependencies import current_big_orbit_account
 from ..clock import SystemClock
 from ..config import Settings, get_settings
 from ..database import session_scope
-from ..dependencies import current_account, current_admin, request_client_ip
+from ..dependencies import current_account, request_client_ip
 from ..models import Account, AdminMfa, SecurityEvent, Session
 from ..rate_limit import consume_rate_limits, request_rules
 from ..schemas import AdminConfigResponse
 from ..security import (
     decrypt_totp_secret,
     encrypt_totp_secret,
-    hash_password,
     hash_token,
     new_opaque_token,
     new_recovery_codes,
-    normalize_email,
     qr_svg_data_url,
     totp_uri,
     verify_password,
     verify_totp,
 )
 
-router = APIRouter(prefix="/v1/admin", tags=["administration"])
-_dummy_admin_hash = hash_password("timing-only-administrator-password")
+router = APIRouter(prefix="/v2/admin", tags=["administration"])
 
 
 def _fernet_key(settings: Settings) -> str:
@@ -83,20 +80,6 @@ async def _issue_admin_session(
         expires_at=expires,
         account_id=account.id,
         recovery_codes=recovery_codes or [],
-    )
-
-
-def _set_admin_cookie(response: Response, token: str, settings: Settings) -> None:
-    """Set the browser-only console proof after MFA succeeds."""
-
-    response.set_cookie(
-        key="little_orbit_admin",
-        value=token,
-        max_age=settings.admin_session_minutes * 60,
-        httponly=True,
-        secure=settings.public_base_url.startswith("https://"),
-        samesite="strict",
-        path="/admin",
     )
 
 
@@ -241,7 +224,6 @@ async def start_mfa(
 @router.post("/mfa/confirm", response_model=AdminSessionResponse)
 async def confirm_mfa(
     payload: AdminEnrollmentConfirm,
-    http_response: Response,
     actor: Account = Depends(current_account),
     authorization: str | None = Header(default=None),
     client_ip: str = Depends(request_client_ip),
@@ -286,57 +268,9 @@ async def confirm_mfa(
     record.updated_at = now
     await _revoke_sessions(session, actor.id, now)
     response = await _issue_admin_session(session, locked_actor, settings, recovery_codes)
-    _set_admin_cookie(http_response, response.access_token, settings)
     session.add(_event(actor.id, "admin_mfa_enrollment", "enabled"))
     await session.commit()
     return response
-
-
-@router.post("/session", response_model=AdminSessionResponse)
-async def admin_session(
-    payload: AdminSessionRequest,
-    http_response: Response,
-    client_ip: str = Depends(request_client_ip),
-    session: AsyncSession = Depends(session_scope),
-    settings: Settings = Depends(get_settings),
-) -> AdminSessionResponse:
-    """Issue an admin session after password and replay-safe TOTP or recovery proof."""
-
-    normalized = normalize_email(str(payload.email))
-    allowed = await _admin_rate_allowed("admin-session", client_ip, normalized, settings)
-    if not allowed:
-        await _reject_admin_rate_limit(session, None)
-    account = await _admin_login_account(session, normalized, payload.password)
-    record = await session.get(AdminMfa, account.id, with_for_update=True)
-    if record is None or record.enabled_at is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Administrator MFA is required")
-    accepted = _verify_admin_proof(record, payload, settings)
-    session.add(_event(account.id, "admin_session", "accepted" if accepted else "rejected"))
-    if not accepted:
-        await session.commit()
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Administrator credentials are invalid")
-    response = await _issue_admin_session(session, account, settings)
-    _set_admin_cookie(http_response, response.access_token, settings)
-    await session.commit()
-    return response
-
-
-async def _admin_login_account(
-    session: AsyncSession, normalized_email: str, password: str
-) -> Account:
-    account = await session.scalar(
-        select(Account)
-        .where(Account.email_normalized == normalized_email)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    )
-    password_ok = verify_password(
-        account.password_hash if account is not None else _dummy_admin_hash,
-        password,
-    )
-    if not password_ok or not _admin_account_active(account) or account is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Administrator credentials are invalid")
-    return account
 
 
 def _admin_account_active(account: Account | None) -> bool:
@@ -369,10 +303,6 @@ async def _request_session_active(
         )
         is not None
     )
-
-
-def _verify_admin_proof(record: AdminMfa, payload: AdminSessionRequest, settings: Settings) -> bool:
-    return _verify_factor(record, payload.totp_code, payload.recovery_code, settings)
 
 
 def _verify_factor(
@@ -418,7 +348,8 @@ async def _revoke_sessions(session: AsyncSession, account_id: UUID, now: datetim
 
 @router.get("/configuration", response_model=AdminConfigResponse)
 async def configuration(
-    _admin: Account = Depends(current_admin), settings: Settings = Depends(get_settings)
+    _admin: Account = Depends(current_big_orbit_account),
+    settings: Settings = Depends(get_settings),
 ) -> AdminConfigResponse:
     """Return only explicitly approved operational configuration fields."""
 

@@ -21,7 +21,7 @@ public final class ProtocolFixturesTest {
     private static final List<String> NAMES = List.of(
             "activity-page", "countdown", "location-batch", "note-operation", "note-attachment",
             "notification-event", "pairing",
-            "question-batch", "orbit-profile", "smooch");
+            "question-batch", "orbit-profile", "partner-name", "smooch");
     private final JsonAdapter<Map<String, Object>> adapter;
 
     /** Creates a generic JSON adapter without coupling protocol payloads to Room entities. */
@@ -52,6 +52,12 @@ public final class ProtocolFixturesTest {
         assertFalse(validTogetherTime(read("v3", "together-time.invalid.json")));
         assertTrue(validLocationV3(read("v3", "location-batch.valid.json")));
         assertFalse(validLocationV3(read("v3", "location-batch.invalid.json")));
+    }
+
+    @Test
+    public void v3QuestionBatchRequiresSemanticConceptIdentity() throws IOException {
+        assertTrue(validQuestionBatchV3(read("v3", "question-batch.valid.json")));
+        assertFalse(validQuestionBatchV3(read("v3", "question-batch.invalid.json")));
     }
 
     @Test
@@ -107,6 +113,7 @@ public final class ProtocolFixturesTest {
             case "pairing" -> validPairing(value);
             case "question-batch" -> validQuestionBatch(value);
             case "orbit-profile" -> validOrbitProfile(value);
+            case "partner-name" -> validPartnerName(value);
             case "smooch" -> validSmooch(value);
             default -> false;
         };
@@ -151,7 +158,8 @@ public final class ProtocolFixturesTest {
                 && numberIn(event.get("sequence"), 1, Integer.MAX_VALUE)
                 && List.of("note_created", "note_updated", "attachment_available",
                         "countdown_created", "countdown_updated", "quiz_submitted",
-                        "quiz_revealed", "smooch_received").contains(event.get("kind"))
+                        "quiz_revealed", "smooch_received",
+                        "relationship_name_changed").contains(event.get("kind"))
                 && boundedText(event.get("partner_display_name"), 120)
                 && (event.get("target_type") == null || List.of(
                         "note", "countdown", "quiz", "smooch").contains(event.get("target_type")))
@@ -279,7 +287,20 @@ public final class ProtocolFixturesTest {
         boolean validPhoto = photo == null || photo instanceof Map<?, ?> details
                 && numberIn(details.get("revision"), 1, Integer.MAX_VALUE)
                 && String.valueOf(details.get("sha256")).matches("^[a-f0-9]{64}$");
-        return name instanceof String text && !text.isBlank() && validPhoto;
+        return name instanceof String text && !text.isBlank()
+                && numberIn(me.get("name_revision"), 0, Integer.MAX_VALUE)
+                && me.get("partner_assigned") instanceof Boolean
+                && validPhoto;
+    }
+
+    private static boolean validPartnerName(Map<String, Object> value) {
+        Object assigned = value.get("assigned_name");
+        return value.size() == 5
+                && boundedText(value.get("display_name"), 80)
+                && (assigned == null || boundedText(assigned, 40))
+                && numberIn(value.get("revision"), 1, Integer.MAX_VALUE)
+                && value.get("partner_assigned") instanceof Boolean
+                && String.valueOf(value.get("updated_at")).matches("^.+T.+(?:Z|[+-].+)$");
     }
 
     private static boolean validReleaseHistory(List<Map<String, Object>> values) {
@@ -346,6 +367,24 @@ public final class ProtocolFixturesTest {
         return list.stream().allMatch(item -> item instanceof Map<?, ?> question
                 && question.get("prompt") instanceof String prompt
                 && prompt.length() >= 12
+                && question.get("options") instanceof List<?> options
+                && question.get("option_icons") instanceof List<?> icons
+                && options.size() == icons.size());
+    }
+
+    private static boolean validQuestionBatchV3(Map<String, Object> value) {
+        Object questions = value.get("questions");
+        if (!"3".equals(value.get("schema_version"))
+                || !(questions instanceof List<?> list)
+                || list.size() != 10) {
+            return false;
+        }
+        return list.stream().allMatch(item -> item instanceof Map<?, ?> question
+                && question.get("prompt") instanceof String prompt
+                && prompt.length() >= 12
+                && question.get("concept_family") instanceof String family
+                && family.matches("^[a-z0-9-]{3,80}$")
+                && boundedText(question.get("concept_summary"), 180)
                 && question.get("options") instanceof List<?> options
                 && question.get("option_icons") instanceof List<?> icons
                 && options.size() == icons.size());

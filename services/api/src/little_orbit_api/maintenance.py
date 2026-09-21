@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .account_deletion import complete_deletion_job
 from .activity_models import ActivityEvent
+from .admin_device_models import AdminDeviceChallenge
 from .attachment_maintenance import (
     delete_attachment_files,
     delete_orphan_files,
@@ -27,6 +28,8 @@ from .models import (
     TogetherBucket,
 )
 from .notification_service import purge_notification_state
+from .profile_models import RelationshipNameOperation
+from .quiz_feedback_retention import enforce_feedback_retention
 from .rate_limit import purge_rate_limit_state
 from .together_models import (
     RelationshipStartProposal,
@@ -98,6 +101,11 @@ async def purge_expired_location_samples(session: AsyncSession, now: datetime) -
     await session.execute(
         delete(OneUseToken).where(OneUseToken.expires_at <= now - timedelta(days=7))
     )
+    await session.execute(
+        delete(AdminDeviceChallenge).where(
+            AdminDeviceChallenge.expires_at <= now - timedelta(days=7)
+        )
+    )
     await session.execute(delete(Session).where(Session.expires_at <= now - timedelta(days=7)))
     await purge_rate_limit_state(session, now)
     await purge_diagnostics(session, now)
@@ -108,6 +116,7 @@ async def purge_expired_location_samples(session: AsyncSession, now: datetime) -
         delete(ActivityEvent).where(ActivityEvent.created_at <= now - timedelta(days=30))
     )
     await purge_notification_state(session, now)
+    await enforce_feedback_retention(session, now)
     await session.execute(
         update(RelationshipStartProposal)
         .where(
@@ -118,6 +127,11 @@ async def purge_expired_location_samples(session: AsyncSession, now: datetime) -
     )
     await session.execute(
         delete(TogetherOperation).where(TogetherOperation.created_at <= now - timedelta(days=30))
+    )
+    await session.execute(
+        delete(RelationshipNameOperation).where(
+            RelationshipNameOperation.created_at <= now - timedelta(days=30)
+        )
     )
     await session.execute(
         delete(RelationshipStartProposal).where(

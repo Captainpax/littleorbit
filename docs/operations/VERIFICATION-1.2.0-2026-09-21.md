@@ -1,0 +1,93 @@
+# 1.2.0 release-candidate and rollout verification — 2026-09-21
+
+This record follows the initial 1.2.0 implementation report dated 2026-09-20. It
+records the replacement signed Android candidate, disposable-stack checks, and
+the production rollout. Times in this record are UTC. Checks that were waived,
+unavailable, or still pending are called out rather than treated as passed.
+
+## Automated and database evidence
+
+- A disposable PostgreSQL 17 database using the pinned pgvector image applied
+  migrations `0001` through `0029`, downgraded `0029` through `0026`, and then
+  reapplied `0027` through `0029` successfully.
+- The complete API and AI suite passed with 217 tests. A separate non-database
+  run passed 182 tests with 35 database-dependent skips.
+- Ruff passed. Mypy passed all 186 checked source files. The ratcheted source
+  quality check passed all 474 files.
+- The web check passed lint, strict type checking, 36 tests, and the production
+  Next.js build. Its generated route inventory contained no `/admin` route.
+- Android phone, data, domain, and Wear unit tests plus debug, smoke, and release
+  lint/build tasks passed. The API 36 tablet completed the connected smoke suite
+  after the Wear-artifact source split, and release Wear-artifact isolation
+  passed.
+- Big Orbit unit tests, smoke assembly, smoke lint, release lint, release build,
+  signature inspection, and fixed-endpoint policy checks passed.
+
+## Immutable candidate identities
+
+The first signed phone candidate used version code 27. Independent APK
+inspection found the QA-only name `little-orbit-wear-smoke.apk` retained in
+production bytecode. It was never staged or published. Code 27 and its bytes are
+permanently discarded.
+
+The replacement Little Orbit candidate is:
+
+- Phone `1.2.0` code 28, 37,695,087 bytes, SHA-256
+  `2da3f906271bab411964cf709a4fa0f4be2b6487bb36f14ca85b0ceda30541bf`.
+- Wear `1.1.1` code 20, 14,737,940 bytes, SHA-256
+  `b5f2af70402b6c8c5ff6feae91b5f23a32bd7c0ccea91b032ab705f8013d7f2b`.
+  These are the unchanged, byte-identical 1.1.1 Wear bytes.
+- Both APKs use signing-certificate SHA-256
+  `43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337`.
+- The compatibility floor remains phone code 23 and no forced-update deadline
+  is configured.
+
+The release scanner found no fixed smoke endpoint, QA label, smoke package,
+smoke-APK entry, or smoke signing metadata in the code-28 phone artifact. The
+bare loopback string that remains in an AndroidX ConstraintLayout diagnostic
+helper is not a Little Orbit endpoint.
+
+The Big Orbit candidate is package `com.littleorbit.bigorbit`, version `1.0.0`
+code 1, 2,390,730 bytes, SHA-256
+`8a5bf42ae8c2f9786f880f648ff5c58fbfdf9ba62d87e612c3ff3c19b705f2b6`,
+and signing-certificate SHA-256
+`04dc3502933faaa99dfd6641acc52b2bd71c9895087cb3060e3ce92dd8406f8c`.
+Its signer is independent from Little Orbit. Inspection found no QA endpoint,
+label, package, signing metadata, or bundled APK.
+
+## Disposable-stack and device evidence
+
+- The isolated smoke API, worker, PostgreSQL, Mailpit, and gateway were healthy.
+- Shared partner names were set from each disposable account and rendered as
+  `Moon Owl` and `Starlight` on the physical Pixel and API 36 tablet. A
+  contact-shaped email value was rejected.
+- Big Orbit smoke enrolled on the tablet, received notification permission, and
+  opened every console destination without a crash. Two activity crashes found
+  during that pass were corrected and reverified.
+- Device management revoked both an older active tablet credential and a pending
+  diagnostic credential while leaving the current tablet credential active.
+- The tablet shell was checked at 1.3 font scale; the navigation rail width was
+  increased so labels remain visible. Captured evidence stays ignored under
+  `.inspect/` because it contains disposable test state rather than showcase
+  material.
+
+## Production rollout evidence
+
+This section is completed only after the actual deployment. At the start of the
+rollout, production still served Little Orbit 1.1.1 phone code 26 and Wear code
+20, `/api/v2/admin/devices` was absent, and readiness returned HTTP 200.
+
+- Fresh coordinated encrypted backup: pending.
+- Migration head `0029` and service health: pending.
+- `/admin` and `/api/v1/admin/*` removal plus `/api/v2/admin/*` authentication:
+  pending.
+- Two recovery-capable production Big Orbit devices: pending.
+- Exact signed code-28 in-place Pixel upgrade with preserved account and
+  relationship state: pending.
+- Immutable API publication, GitHub mirrors, full/range downloads, and public
+  hash verification: pending.
+
+The owner explicitly waived only the off-host backup-copy/restore gate and the
+durable off-host backup of the Big Orbit signing key until the replacement
+server is available. Those waivers are not evidence that either recovery path
+was exercised.

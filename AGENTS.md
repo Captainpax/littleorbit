@@ -22,6 +22,7 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 2. Authorization precedes resource lookup. Public responses must not reveal whether protected data exists.
 3. Administrators may inspect operational metadata, never relationship content, answers, notes, precise locations, or exports.
 4. AI receives no user, couple, answer, note, email, location, or relationship data in 1.0.
+   In 1.2, the only user-originated AI input is separately consented, sanitized quiz-quality feedback after a five-account aggregation threshold; it contains no account/couple identity or answer.
 5. Raw coordinates expire within 24 hours. Unpairing stops sharing immediately.
 6. Store secrets outside Git. Logs and audit events must omit tokens, passwords, TOTP secrets, recovery codes, and personal content.
 7. Use Java 17/XML in Android production code, Python with strict typing in services, and strict TypeScript in the web app.
@@ -40,6 +41,8 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Public authentication, recovery, pair redemption, and administrator proof attempts use capped PostgreSQL counters keyed by domain-separated subject hashes. IP limits run before attacker-controlled subject limits, and expired counters are purged.
 - Replacing enabled administrator MFA requires the current password plus one current TOTP or recovery proof. The new encrypted factor remains pending until confirmation, then every earlier session is revoked.
 - Quiz responses remain hidden until both partners submit.
+- Quiz feedback is optional, author-private while linked, available only for launch-forward revealed global questions, unlinked after 30 days, and stripped of raw review text by 90 days. Admin and AI use requires at least five distinct contributing accounts.
+- Privileged administration uses Big Orbit under `/v2/admin`: password/MFA plus enrolled P-256 key, single-use challenges, device-bound short sessions, per-device alerts, and allowlisted typed operations. The public web app and `/v1/admin` expose no admin console.
 - Intimacy questions require both partners' current opt-in; either opt-out takes effect immediately.
 - Note operation IDs are idempotent and server revisions increase monotonically. A new-document workspace persists one stable create identity before network use and keeps at most one mutation in flight. Autosave never overwrites a newer server revision: it pauses for merge, explicit fork, or shared-version recovery.
 - Long-running note and notification sockets revalidate the account and exact session after registration, for every client operation, and at least every 30 seconds while idle. Revocation closes the socket.
@@ -49,6 +52,7 @@ Read the closest nested `AGENTS.md` before editing within one of these systems.
 - Couple activity is a 30-day, content-free metadata timeline. It may name a note or countdown but never stores note bodies, attachment names, quiz answers, locations, or custom Smooch text.
 - Relationship age begins at the immutable confirmed pairing instant. Together-time sessions never overlap; uploaded samples are deduplicated, scoped to the exact relationship generation, and results are labelled estimates. Evaluate every chronological observation, require retained evidence from both members, count direct intervals only through five minutes, and bridge a missing interval only after a later strong nearby anchor within 20 minutes and no intervening apart or poor-accuracy evidence. Phone projection uses a monotonic clock and stops after five minutes at the server deadline; passive surfaces show only authoritative durable nearby duration rather than pairing age.
 - Relationship avatars belong to the active couple. Only the other current member may assign or remove a person's avatar; self-assignment is invalid, and unpairing deletes both images.
+- Relationship names belong to the active couple. Only the other current member may assign or reset a person's name; both partners resolve the same value, contact-shaped fallbacks stay private, and unpairing deletes both names.
 - Passive widget and Wear records carry only an opaque relationship identity and monotonic local generation. Sign-out, unpairing, or `relationship_inactive` advances a durable purge barrier; disconnected Wear relationship data is deleted after 24 hours and cannot be revived by an older payload.
 - A countdown is either a timed instant with an IANA timezone or an all-day local date. Reminder offsets belong privately to one member, while partner alerts exclude notes and reminder choices.
 - A Smooch uses one approved emoji and phrase key, is limited to five sends per account in a rolling hour, survives unpairing in private archives, and is erased when either original participant deletes their account.

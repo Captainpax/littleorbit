@@ -1,5 +1,6 @@
 """Version 3 chronological together-time routes."""
 
+from collections.abc import Mapping
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal, cast
 from uuid import UUID
@@ -21,6 +22,7 @@ from ..models import (
     TogetherBucket,
 )
 from ..notification_service import enqueue_together_correction_event
+from ..relationship_name_service import visible_relationship_names
 from ..schemas import (
     LocationBatchRequest,
     LocationBatchV2Response,
@@ -165,12 +167,11 @@ async def together_history(
             )
         )
     )
-    names = {
-        account_id: await session.scalar(
-            select(Account.display_name).where(Account.id == account_id)
-        )
-        for account_id in {item.corrected_by for item in records if item.corrected_by}
-    }
+    corrector_ids = {item.corrected_by for item in records if item.corrected_by}
+    visible_names = await visible_relationship_names(
+        session, couple.id, corrector_ids, actor.id
+    )
+    names = {account_id: item.display_name for account_id, item in visible_names.items()}
     by_day = {item.day: item for item in records}
     breakdowns = {
         target: await day_breakdown(session, couple.id, target, couple.home_timezone)
@@ -191,7 +192,7 @@ async def together_history(
 def _history_response(
     day: date,
     records: dict[date, TogetherDay],
-    names: dict[UUID, str | None],
+    names: Mapping[UUID, str | None],
     breakdown: DayBreakdown,
     timezone_name: str,
 ) -> TogetherHistoryDay:
@@ -319,6 +320,7 @@ async def _corrected_response(
     start: datetime,
     end: datetime,
 ) -> TogetherHistoryDay:
+    names = await visible_relationship_names(session, couple.id, (actor.id,), actor.id)
     return TogetherHistoryDay(
         day=target_day,
         day_timezone=couple.home_timezone,
@@ -327,7 +329,7 @@ async def _corrected_response(
         corrected=True,
         estimate_method="corrected",
         revision=item.revision,
-        corrected_by_display_name=actor.display_name,
+        corrected_by_display_name=names[actor.id].display_name,
         correction_reason=item.correction_reason,
         **_breakdown_fields(
             await day_breakdown(session, couple.id, target_day, couple.home_timezone)

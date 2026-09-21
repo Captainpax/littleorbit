@@ -9,7 +9,13 @@ from itertools import combinations
 from .ollama import OllamaClient, OllamaFailure, OllamaSettings, ParsedBatch
 from .prompt import PROMPT_VERSION, build_prompt
 from .safety import validate_candidate
-from .schemas import CandidateQuestion, Category, PublishedPool, QuestionKind
+from .schemas import (
+    CandidateQuestion,
+    Category,
+    LearningPolicy,
+    PublishedPool,
+    QuestionKind,
+)
 
 
 @dataclass(frozen=True)
@@ -185,13 +191,17 @@ async def generate_pool(
     client: OllamaClient,
     settings: OllamaSettings,
     curated_bank: list[CandidateQuestion] | None = None,
+    policy: LearningPolicy | None = None,
+    public_context: list[str] | None = None,
 ) -> PipelineResult:
     """Generate once within a deadline, then always return five general questions."""
 
     # Do not retry model generation here: one bounded attempt prevents an outage from
     # delaying the daily pool, and deterministic fallback guarantees coverage.
     try:
-        batch = await client.generate(build_prompt(target_date, recent_questions))
+        batch = await client.generate(
+            build_prompt(target_date, recent_questions, policy, public_context)
+        )
         if batch.date != target_date:
             return select_pool(
                 target_date,

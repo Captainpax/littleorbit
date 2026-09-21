@@ -5,7 +5,20 @@ import java.util.concurrent.CompletableFuture;
 /** Partner-assigned relationship-avatar boundary with encrypted offline thumbnails. */
 public interface ProfileRepository {
     /** Immutable names and private thumbnails safe for the signed-in phone UI. */
-    record State(String myName, byte[] myPhoto, String partnerName, byte[] partnerPhoto) {
+    record State(
+            String myName,
+            byte[] myPhoto,
+            String partnerName,
+            byte[] partnerPhoto,
+            int myNameRevision,
+            boolean myNamePartnerAssigned,
+            int partnerNameRevision,
+            boolean partnerNameAssigned) {
+        /** Backward-compatible empty name metadata for signed-out and test states. */
+        public State(String myName, byte[] myPhoto, String partnerName, byte[] partnerPhoto) {
+            this(myName, myPhoto, partnerName, partnerPhoto, 0, false, 0, false);
+        }
+
         /** Copies mutable byte arrays at the repository boundary. */
         public State {
             myPhoto = myPhoto == null ? null : myPhoto.clone();
@@ -32,6 +45,12 @@ public interface ProfileRepository {
 
     /** Deletes the avatar that the caller assigned to the current partner. */
     CompletableFuture<State> deletePartnerPhoto();
+
+    /** Assigns a shared relationship name to the current partner. */
+    CompletableFuture<State> savePartnerName(String displayName);
+
+    /** Resets the current partner to the privacy-safe account-name fallback. */
+    CompletableFuture<State> resetPartnerName();
 
     /** Clears both relationship-scoped avatars as soon as sharing ends. */
     void clearPartner();

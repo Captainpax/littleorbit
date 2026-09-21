@@ -60,19 +60,8 @@ test("verification links fill their one-use token from the URL fragment", async 
   await expect(page.getByLabel("Secure link token")).toHaveValue(token);
 });
 
-test("admin redirects to password and second-factor entry", async ({ page }) => {
-  await page.goto("/admin");
-  await expect(page).toHaveURL(/\/admin\/login/);
-  await expect(page.getByLabel("Authenticator code")).toBeVisible();
-  await expect(page.getByLabel("Recovery code")).toBeVisible();
-});
-
-test("a forged admin cookie is rejected by the server", async ({ context, page, baseURL }) => {
-  await context.addCookies([{
-    name: "little_orbit_admin",
-    value: "forged",
-    url: `${baseURL}/admin`,
-  }]);
-  await page.goto("/admin");
-  await expect(page).toHaveURL(/\/admin\/login/);
+test("the public website does not expose an administrator panel", async ({ page }) => {
+  const response = await page.goto("/admin");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByLabel("Authenticator code")).toHaveCount(0);
 });

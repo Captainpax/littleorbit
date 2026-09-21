@@ -51,6 +51,16 @@ public interface LittleOrbitApi {
     @DELETE("api/v1/couple/current/partner-avatar")
     Call<Void> deletePartnerAvatar();
 
+    /** Assigns a shared relationship name to the caller's current partner. */
+    @PUT("api/v1/couple/current/partner-name")
+    Call<ProfileApiModels.PartnerNameState> putPartnerName(
+            @Body ProfileApiModels.PartnerNameMutation request);
+
+    /** Resets only the shared partner name controlled by the caller. */
+    @POST("api/v1/couple/current/partner-name/reset")
+    Call<ProfileApiModels.PartnerNameState> resetPartnerName(
+            @Body ProfileApiModels.PartnerNameReset request);
+
     /** Authenticates a verified account. */
     @POST("api/v1/auth/login")
     Call<ApiModels.SessionResponse> login(@Body ApiModels.LoginRequest request);
@@ -99,37 +109,54 @@ public interface LittleOrbitApi {
             @Body ApiModels.QuestionReportRequest request);
 
     /** Loads the server-authoritative UTC quiz day for RC5. */
-    @GET("api/v2/quizzes/today")
+    @GET("api/v3/quizzes/today")
     Call<QuizApiModels.Day> quizToday();
 
     /** Loads one current or historical UTC quiz day. */
-    @GET("api/v2/quizzes/days/{quizDate}")
+    @GET("api/v3/quizzes/days/{quizDate}")
     Call<QuizApiModels.Day> quizDay(@Path("quizDate") String quizDate);
 
     /** Loads the fixed thirty-day content-free history. */
-    @GET("api/v2/quizzes/history")
+    @GET("api/v3/quizzes/history")
     Call<java.util.List<QuizApiModels.HistoryItem>> quizHistory(@Query("days") int days);
 
     /** Loads content-free quiz completion state for delayed polling. */
-    @GET("api/v2/quizzes/status")
+    @GET("api/v3/quizzes/status")
     Call<QuizApiModels.Status> quizStatus();
 
     /** Saves one revisioned private answer draft. */
-    @PUT("api/v2/quizzes/days/{quizDate}/questions/{questionId}/draft")
+    @PUT("api/v3/quizzes/days/{quizDate}/questions/{questionId}/draft")
     Call<QuizApiModels.Day> saveQuizDraft(
             @Path("quizDate") String quizDate,
             @Path("questionId") String questionId,
             @Body QuizApiModels.DraftMutation request);
 
     /** Finishes the caller's reviewed daily quiz. */
-    @POST("api/v2/quizzes/days/{quizDate}/finish")
+    @POST("api/v3/quizzes/days/{quizDate}/finish")
     Call<QuizApiModels.Day> finishQuiz(
             @Path("quizDate") String quizDate, @Body QuizApiModels.DayMutation request);
 
     /** Reopens the caller's daily quiz while shared reveal is pending. */
-    @POST("api/v2/quizzes/days/{quizDate}/reopen")
+    @POST("api/v3/quizzes/days/{quizDate}/reopen")
     Call<QuizApiModels.Day> reopenQuiz(
             @Path("quizDate") String quizDate, @Body QuizApiModels.DayMutation request);
+
+    /** Creates or edits the caller's private rating after shared reveal. */
+    @PUT("api/v3/quizzes/days/{quizDate}/questions/{questionId}/feedback")
+    Call<QuizApiModels.Feedback> saveQuizFeedback(
+            @Path("quizDate") String quizDate,
+            @Path("questionId") String questionId,
+            @Body QuizApiModels.FeedbackMutation request);
+
+    /** Deletes the caller's private rating within its edit window. */
+    @HTTP(
+            method = "DELETE",
+            path = "api/v3/quizzes/days/{quizDate}/questions/{questionId}/feedback",
+            hasBody = true)
+    Call<QuizApiModels.FeedbackDeleteResult> deleteQuizFeedback(
+            @Path("quizDate") String quizDate,
+            @Path("questionId") String questionId,
+            @Body QuizApiModels.FeedbackDelete request);
 
     /** Loads creator-visible custom prompts and a partner surprise count. */
     @GET("api/v2/quizzes/custom")

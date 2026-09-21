@@ -7,6 +7,7 @@ import com.littleorbit.data.remote.QuizApiModels;
 import com.littleorbit.data.repository.OrbitRepository;
 import dagger.hilt.android.lifecycle.HiltViewModel;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
@@ -118,6 +119,44 @@ public final class QuizViewModel extends ViewModel {
         state.setValue(new QuizScreenState(
                 current.day, current.questionIndex, true, false, null));
         orbit.reportQuizQuestion(questionId, new QuizApiModels.ReportMutation(reasonCode, details))
+                .thenCompose(ignored -> orbit.quizDay(current.day.quizDate))
+                .whenComplete((day, failure) -> state.postValue(
+                        failure == null
+                                ? new QuizScreenState(day, current.questionIndex, false, false, null)
+                                : error(current, failure)));
+    }
+
+    /** Creates or edits the caller's private rating, then reloads reveal state. */
+    public void saveFeedback(
+            QuizApiModels.Question question,
+            int stars,
+            List<String> tags,
+            String review,
+            boolean consent) {
+        QuizScreenState current = state.getValue();
+        if (current == null || current.day == null || !question.feedbackEligible) return;
+        int expected = question.myFeedback == null ? 0 : question.myFeedback.revision;
+        QuizApiModels.FeedbackMutation mutation = new QuizApiModels.FeedbackMutation(
+                UUID.randomUUID().toString(), expected, stars, tags, review, consent);
+        state.setValue(new QuizScreenState(
+                current.day, current.questionIndex, true, false, null));
+        orbit.saveQuizFeedback(current.day.quizDate, question.id, mutation)
+                .thenCompose(ignored -> orbit.quizDay(current.day.quizDate))
+                .whenComplete((day, failure) -> state.postValue(
+                        failure == null
+                                ? new QuizScreenState(day, current.questionIndex, false, false, null)
+                                : error(current, failure)));
+    }
+
+    /** Deletes the caller's private rating and reloads the reveal. */
+    public void deleteFeedback(QuizApiModels.Question question) {
+        QuizScreenState current = state.getValue();
+        if (current == null || current.day == null || question.myFeedback == null) return;
+        QuizApiModels.FeedbackDelete mutation = new QuizApiModels.FeedbackDelete(
+                UUID.randomUUID().toString(), question.myFeedback.revision);
+        state.setValue(new QuizScreenState(
+                current.day, current.questionIndex, true, false, null));
+        orbit.deleteQuizFeedback(current.day.quizDate, question.id, mutation)
                 .thenCompose(ignored -> orbit.quizDay(current.day.quizDate))
                 .whenComplete((day, failure) -> state.postValue(
                         failure == null

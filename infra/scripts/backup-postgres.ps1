@@ -58,6 +58,9 @@ try {
         encrypted_sha256 = (Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash.ToLowerInvariant()
         raw_location_rows_included = $false
         device_health_rows_included = $false
+        attributable_quiz_feedback_included = $false
+        feedback_operation_rows_included = $false
+        anonymous_review_rows_included = $false
     }
     $metadata | ConvertTo-Json | Set-Content -LiteralPath $metadataPath -Encoding utf8
     Get-ChildItem -LiteralPath $destinationPath -File -Filter "little-orbit-*.dump.age" |

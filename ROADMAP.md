@@ -84,12 +84,29 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [ ] Complete the in-app wireless-ADB wizard observation, second-phone controller rejection observation, large-text/passive-surface matrix, and production 1.1.0-to-1.1.1 replacement. The owner waived these as 1.1.1 publication gates on 2026-09-19; they remain open follow-up work rather than passed evidence.
 - [x] Publish the exact verified 1.1.1 phone code 26 and Wear code 20 artifacts at `2026-09-19T23:45:53.67375Z` with compatibility floor 23 and no forced-update deadline; verify immutable metadata, complete and ranged local/public downloads, hashes, patch notes, RSS, and health.
 
+## 1.2.0 — Quiz intelligence and Big Orbit
+
+- [x] Add `/v3/quizzes` launch-forward feedback after shared reveal with one-to-five stars, at most three fixed tags, optional separately consented 300-character reviews, idempotent mutations, optimistic revisions, and author-only linked reads.
+- [x] Add 30-day editable attribution, 90-day raw-review deletion, K-anonymous weekly aggregates, and coordinated-backup exclusions for every attributable or raw feedback table.
+- [x] Replace formatting-only duplicate checks with concept families, 365-day exact/trigram memory, and pinned local Nomic embeddings stored through pgvector.
+- [x] Implement Saturday UTC learning and Sunday next-week generation with strict schemas, bounded learned policy, atomic activation, run takeover, safe curated coverage, and quarantined failures.
+- [x] Add a secret-free public-context fetcher restricted to exact code-owned HTTPS URLs, public DNS results, bounded content types and sizes, no redirects, and an isolated egress network.
+- [x] Remove the browser administrator interface and `/v1/admin`; add device-bound `/v2/admin` contracts for Big Orbit enrollment, sessions, action inbox, quiz intelligence, AI observatory, typed jobs, backups, and per-device acknowledgements.
+- [x] Create the separate Java 17/XML Big Orbit Android project with independent package/signing boundaries, smoke variant, Keystore enrollment, protected sessions, five primary destinations plus native owner controls, actionable moderation, polling notifications, and concept-led cosmic UI.
+- [x] Add daily encrypted backup, optional outside-workspace copy, Tuesday disposable restore drill, and a host runner for fixed Big Orbit backup/restore jobs. Registration remains an explicit owner action.
+- [x] Advance the Little Orbit phone candidate to 1.2.0 code 28 while preserving Wear 1.1.1 code 20, compatibility floor 23, and no forced-update deadline. Code 27 was discarded after release inspection found a QA-only asset-name marker in production bytecode.
+- [x] Add partner-assigned relationship names with shared phone/Wear/notification rendering, contact-safe fallbacks, optimistic retry-safe edits, encrypted Android replay, export support, and immediate unpair purge.
+- [ ] Verify feedback retention, Big Orbit enrollment/revocation, typed host operations, and weekly AI behavior against a disposable PostgreSQL 17/pgvector stack.
+- [ ] Exercise Little Orbit feedback and Big Orbit enrollment, alerts, large text, offline/retry, and revocation on physical devices; complete the two-partner privacy and accessibility matrix.
+- [ ] Build and independently verify the exact signed phone code-28 candidate and byte-identical Wear code-20 reuse, then perform an optional 1.1.1-to-1.2.0 upgrade. Do not publish or reuse a failed candidate.
+- [ ] Register and observe the daily backup and Tuesday restore tasks on the production host, including one protected off-host encrypted copy.
+
 ## 1.x — Reliability and reach
 
 - Accessibility and large-text improvements based on real device testing.
 - Translations and timezone edge-case hardening.
-- Question-quality feedback and community-contributed curated questions.
-- Operational dashboards, backup drills, and incident playbooks.
+- Community-contributed curated questions with moderation and provenance.
+- Continue operational dashboard, backup-drill, and incident-playbook hardening from the 1.2 Big Orbit baseline.
 - Improved offline reconciliation and battery measurements.
 - Device-tested notification timing and richer quiz reveal motion under reduced-motion controls.
 - Calendar-provider compatibility, reminder timing, daylight-saving transitions, and one-way export clarity on physical devices.

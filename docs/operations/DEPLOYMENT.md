@@ -16,7 +16,7 @@ Promote the first owner only after that person has registered and verified their
 docker compose --env-file .env -f infra/compose.yaml exec api python -m little_orbit_api.cli promote-admin owner@example.com
 ```
 
-Then visit `/admin/enroll`, re-enter the owner password, scan the TOTP QR code, confirm one current code, and store the one-time recovery codes. The command never creates an account or bypasses email verification.
+For releases through 1.1, the historical browser enrollment flow configured the first TOTP. In the 1.2 final state `/admin` is absent. Use Big Orbit's initial MFA setup and device-enrollment flow: re-enter the owner password, confirm the new TOTP, store the one-time recovery codes, create the app's non-exportable P-256 key, and finish its five-minute signed challenge. The promotion command never creates an account or bypasses email verification.
 
 ## Windows Firewall
 
@@ -309,3 +309,21 @@ all four 1,024-byte range requests returned HTTP 206 with correct totals.
 Download, patch notes, RSS, status, showcase, and readiness checks returned
 HTTP 200. Release-service logs contained no traceback, unhandled, fatal, or
 error match during the rollout window.
+
+## 1.2.0 quiz intelligence and Big Orbit candidate
+
+1.2.0 is not published. Take a coordinated encrypted backup before migrations `0027` and `0028`. PostgreSQL 17 must use the pinned pgvector image; verify `CREATE EXTENSION vector` succeeds and run the migrations on a disposable clone before production. Confirm that dumps exclude `question_feedback`, `question_feedback_operations`, and `anonymous_question_reviews` data in addition to raw location and health tables.
+
+Deploy the secret-free `context-fetcher` with both its private worker link and separate egress link. It must not join the application/database/AI private networks, receive `.env` secrets, follow redirects, resolve private addresses, or fetch a URL outside the code-owned allowlist. Pull and verify both pinned Ollama manifests before starting the worker. Confirm Qwen and Nomic digests match configuration and Ollama still publishes no host port.
+
+Administrator cutover is staged operationally even though the final source exposes only `/v2/admin`:
+
+1. deploy a temporary reviewed compatibility build capable of enrolling Big Orbit while the existing owner recovery route remains available;
+2. enroll at least two recovery-capable Big Orbit devices or one device plus verified one-time recovery codes;
+3. prove login, 30-minute session rotation, independent alert acknowledgement, revocation, and recovery;
+4. deploy the final code, verify `/admin` and every `/api/v1/admin/*` path return 404, and verify `/api/v2/admin/*` requires a valid device-bound session;
+5. remove the temporary build rather than retaining a hidden legacy route.
+
+Register daily backup and Tuesday restore tasks only after reviewing [`BACKUP-RESTORE.md`](BACKUP-RESTORE.md). Run both tasks manually once, confirm content-free `backup_runs` evidence, and verify the optional destination is truly off-host. Do not treat task registration or a same-disk copy as a completed recovery drill.
+
+The phone candidate is version 1.2.0 code 28. Code 27 was signed but discarded before publication when deep artifact inspection found a QA-only asset-name marker retained in production bytecode. Reuse the exact signed 1.1.1 Wear code-20 artifact because 1.2 changes no Wear behavior or protocol. Keep the compatibility floor at phone code 23 and omit `required_after`. Build from the final commit, independently inspect package/version/signer/hash/size, and record those immutable values in the release note only after all gates pass. A failed candidate receives new bytes and a new version code; never overwrite a published record.

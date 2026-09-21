@@ -1,5 +1,5 @@
 {
-  "me": { "display_name": "", "photo": { "revision": 0, "sha256": "bad", "updated_at": "today" } },
+  "me": { "display_name": "", "photo": { "revision": 0, "sha256": "bad", "updated_at": "today" }, "name_revision": -1, "partner_assigned": "yes" },
   "partner": null,
   "email": "must-not-appear@example.test"
 }

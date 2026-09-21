@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v1/partner-name.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "display_name", "assigned_name", "revision", "partner_assigned", "updated_at"
+  ],
+  "properties": {
+    "display_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "assigned_name": {
+      "oneOf": [
+        { "type": "string", "minLength": 1, "maxLength": 40 },
+        { "type": "null" }
+      ]
+    },
+    "revision": { "type": "integer", "minimum": 1 },
+    "partner_assigned": { "type": "boolean" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

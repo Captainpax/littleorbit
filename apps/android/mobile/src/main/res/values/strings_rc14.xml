@@ -80,9 +80,9 @@
     <string name="rc14_return_home">Return Home</string>
     <string name="rc14_refresh_pending">Check now</string>
 
-    <string name="rc14_orbit_avatars">Orbit avatars</string>
-    <string name="rc14_avatar_intro">Each partner chooses the other person’s relationship avatar. Your own avatar is read-only here.</string>
-    <string name="rc14_your_avatar_read_only">Your avatar · chosen by your partner</string>
+    <string name="rc14_orbit_avatars">Names &amp; avatars</string>
+    <string name="rc14_avatar_intro">Choose the name and avatar you both use for your partner. They choose yours. Everything here belongs only to this relationship and is erased when you unpair.</string>
+    <string name="rc14_your_avatar_read_only">Your name &amp; avatar · chosen by your partner</string>
     <string name="rc14_partner_avatar_heading">%1$s’s avatar · chosen by you</string>
     <string name="rc14_choose_partner_avatar">Choose %1$s’s avatar</string>
     <string name="rc14_replace_partner_avatar">Replace %1$s’s avatar</string>

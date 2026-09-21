@@ -43,7 +43,8 @@ public final class QuizHistoryActivity extends InsetAwareActivity {
                     date,
                     status,
                     quantity(R.plurals.visual_quiz_answers, item.answeredCount),
-                    quantity(R.plurals.visual_custom_questions, item.customCount)));
+                    quantity(R.plurals.visual_custom_questions, item.customCount))
+                    + "\n" + quantity(R.plurals.quiz_feedback_history_count, item.ratedCount));
             row.setTextColor(getColor(R.color.cloud));
             row.setTextSize(16);
             row.setLineSpacing(0, 1.12f);

@@ -4,6 +4,7 @@ import asyncio
 import os
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 import pytest_asyncio
@@ -90,7 +91,8 @@ async def test_concurrent_upload_retry_and_restart_are_deterministic() -> None:
         day = await restarted_session.scalar(
             select(TogetherDay).where(
                 TogetherDay.couple_id == pair.id,
-                TogetherDay.day == next_left.recorded_at.astimezone(UTC).date(),
+                TogetherDay.day
+                == next_left.recorded_at.astimezone(ZoneInfo(pair.home_timezone)).date(),
             )
         )
 

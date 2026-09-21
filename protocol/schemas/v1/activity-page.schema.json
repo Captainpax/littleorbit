@@ -34,7 +34,7 @@
           "enum": [
             "note_created", "note_updated", "attachment_available",
             "countdown_created", "countdown_updated", "quiz_submitted",
-            "quiz_revealed", "smooch_received"
+            "quiz_revealed", "smooch_received", "relationship_name_changed"
           ]
         },
         "partner_display_name": { "type": "string", "minLength": 1, "maxLength": 120 },

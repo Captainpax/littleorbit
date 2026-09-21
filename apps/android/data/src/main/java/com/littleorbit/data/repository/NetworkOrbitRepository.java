@@ -194,6 +194,22 @@ public final class NetworkOrbitRepository implements OrbitRepository {
     }
 
     @Override
+    public CompletableFuture<QuizApiModels.Feedback> saveQuizFeedback(
+            String quizDate,
+            String questionId,
+            QuizApiModels.FeedbackMutation mutation) {
+        return async(api.saveQuizFeedback(quizDate, questionId, mutation));
+    }
+
+    @Override
+    public CompletableFuture<QuizApiModels.FeedbackDeleteResult> deleteQuizFeedback(
+            String quizDate,
+            String questionId,
+            QuizApiModels.FeedbackDelete mutation) {
+        return async(api.deleteQuizFeedback(quizDate, questionId, mutation));
+    }
+
+    @Override
     public CompletableFuture<QuizApiModels.CustomQueue> customQuizQueue() {
         return async(api.customQuizQueue());
     }

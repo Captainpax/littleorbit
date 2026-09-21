@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     admin_mfa_enrollment_minutes: int = Field(default=10, ge=5, le=60)
     session_minutes: int = Field(default=43_200, ge=30, le=525_600)
     admin_session_minutes: int = Field(default=30, ge=5, le=1_440)
+    ai_learning_hour_utc: int = Field(default=23, ge=0, le=23)
+    ai_generation_hour_utc: int = Field(default=3, ge=0, le=23)
+    ai_public_context_enabled: bool = True
+    public_context_fetcher_url: str = "http://context-fetcher:8010"
 
 
 @lru_cache

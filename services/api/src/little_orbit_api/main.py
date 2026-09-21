@@ -14,6 +14,8 @@ from .routes import (
     archive_attachments,
     attachments,
     auth,
+    big_orbit_auth,
+    big_orbit_console,
     countdowns,
     couples,
     diagnostics,
@@ -25,6 +27,8 @@ from .routes import (
     profile_photos,
     quizzes,
     quizzes_v2,
+    quizzes_v3,
+    relationship_names,
     releases,
     smooches,
     together_time_details,
@@ -63,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(diagnostics.router)
     app.include_router(quizzes.router)
     app.include_router(quizzes_v2.router)
+    app.include_router(quizzes_v3.router)
     app.include_router(countdowns.router)
     app.include_router(together_time_legacy.router)
     app.include_router(together_time_v2.v3_router)
@@ -70,9 +75,12 @@ def create_app() -> FastAPI:
     app.include_router(account.router)
     app.include_router(activity.router)
     app.include_router(profile_photos.router)
+    app.include_router(relationship_names.router)
     app.include_router(releases.router)
     app.include_router(admin.router)
     app.include_router(admin_console.router)
+    app.include_router(big_orbit_auth.router)
+    app.include_router(big_orbit_console.router)
     app.include_router(notes.router)
     app.include_router(note_forks.router)
     app.include_router(notifications.router)

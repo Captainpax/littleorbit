@@ -57,6 +57,41 @@ function Read-VersionCode([string]$Aapt, [string]$Apk) {
     return [int]$Matches[1]
 }
 
+function Assert-NoQaMaterial([string]$Apk) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $forbidden = @(
+        "http://127.0.0.1:18180",
+        "ws://127.0.0.1:18180",
+        "Little Orbit QA",
+        "com.littleorbit.mobile.smoke",
+        "little-orbit-wear-smoke.apk"
+    )
+    $archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $Apk))
+    try {
+        foreach ($entry in $archive.Entries) {
+            if ($entry.FullName -eq "assets/little-orbit-wear-smoke.apk") {
+                throw "A production APK contains the bundled Wear QA artifact."
+            }
+            $input = $entry.Open()
+            $memory = [IO.MemoryStream]::new()
+            try {
+                $input.CopyTo($memory)
+                $text = [Text.Encoding]::UTF8.GetString($memory.ToArray())
+            } finally {
+                $input.Dispose()
+                $memory.Dispose()
+            }
+            foreach ($marker in $forbidden) {
+                if ($text.Contains($marker)) {
+                    throw "A production APK contains QA-only material: $marker"
+                }
+            }
+        }
+    } finally {
+        $archive.Dispose()
+    }
+}
+
 function Publish-Apk(
     [string]$Source,
     [string]$Destination,
@@ -150,6 +185,8 @@ $wearVersionCode = if ($ReuseWearApk) {
     }
     [int]$wearMetadata.elements[0].versionCode
 }
+Assert-NoQaMaterial $phoneSource
+Assert-NoQaMaterial $wearSource
 $phoneDestination = Join-Path $outputPath "little-orbit-$versionName.apk"
 $wearDestination = Join-Path $outputPath "little-orbit-wear-$versionName.apk"
 $phone = Publish-Apk $phoneSource $phoneDestination $apkSigner
