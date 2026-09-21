@@ -70,22 +70,22 @@ export function formatReleaseDate(publishedAt: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.1.1",
-  versionCode: 26,
+  version: "1.2.0",
+  versionCode: 28,
   minimumSupportedVersionCode: 23,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "a80a06513239b459522b3043083efc0cfce9e96e63cadbaadc5d0f3e3d3f1768",
+  sha256: "aaa8c98d452db6d87c687f25cd2630432b64481ab6753c2bdb7bdb5baa7dc04f",
   releaseNotes: [
-    "Fixes the Wear Smooch queue crash and rejects expired, future-dated, or duplicate actions.",
-    "Moves Together Time diagnostics off the Android main thread.",
-    "Binds each Wear relationship generation to one controller phone.",
-    "Refreshes Watch settings, the installer, and round-watch destinations.",
-    "Adds isolated side-by-side QA installer artifacts without changing production packages.",
+    "Adds shared partner-assigned names across authorized Little Orbit surfaces.",
+    "Adds private post-reveal quiz ratings, tags, and optional consented reviews.",
+    "Adds thresholded Saturday learning and Sunday generation for the next quiz week.",
+    "Uses semantic concept memory to prevent repeated questions with different formatting.",
+    "Moves administration to the separate device-bound Big Orbit Android app.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.1.1",
-  apkUrl: hostedApkPath("1.1.1"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.2.0",
+  apkUrl: hostedApkPath("1.2.0"),
   wear: {
-    apkUrl: hostedWearApkPath("1.1.1"),
+    apkUrl: hostedWearApkPath("1.2.0"),
     sha256: "b5f2af70402b6c8c5ff6feae91b5f23a32bd7c0ccea91b032ab705f8013d7f2b",
     sizeBytes: 14737940,
     versionCode: 20,
@@ -175,7 +175,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-19T23:45:53.67375Z",
+    publishedAt: "2026-09-21T12:10:32.956306Z",
   }];
 }
 

@@ -15,7 +15,7 @@ $settings = New-ScheduledTaskSettingsSet `
 $principal = New-ScheduledTaskPrincipal `
     -UserId $identity `
     -LogonType Interactive `
-    -RunLevel Highest
+    -RunLevel Limited
 
 function Register-LittleOrbitTask {
     param(
@@ -36,7 +36,9 @@ function Register-LittleOrbitTask {
         -Settings $settings `
         -Principal $principal `
         -Description $Description
-    Register-ScheduledTask -TaskName "$TaskPrefix $Name" -InputObject $task -Force | Out-Null
+    Register-ScheduledTask -TaskName "$TaskPrefix $Name" -InputObject $task `
+        -Force -ErrorAction Stop | Out-Null
+    Get-ScheduledTask -TaskName "$TaskPrefix $Name" -ErrorAction Stop | Out-Null
 }
 
 $daily = New-ScheduledTaskTrigger -Daily -At "06:00"

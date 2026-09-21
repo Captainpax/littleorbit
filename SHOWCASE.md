@@ -155,6 +155,8 @@ The owner-login capture is historical 1.1 evidence. In 1.2 the public site delib
 
 The historical browser concept is superseded by the 1.2 Big Orbit sheets above. The Android console exposes service health, delivery and generation status, actionable global-question moderation, registration control, bounded account/session actions, security events, and account metadata. It deliberately has no viewer for notes, answers, relationship history, precise locations, or exports.
 
+Big Orbit 1.0.0 code 2 is published and its exact minified APK cold-launched on the physical Pixel and API 36 tablet. Production enrollment and console screenshots remain open because the owner waived those live observations for publication and will report them separately.
+
 ## Screenshot checklist
 
 - [x] Real Pixel 8 Pro: signed RC9 upgrade with retained account data, revealed-quiz Done return, profile crop approval/upload, and no new widget or Android runtime crash after the reproduced RC8 failure.
@@ -182,7 +184,8 @@ The historical browser concept is superseded by the 1.2 Big Orbit sheets above. 
 - [ ] Website remaining: patch notes/RSS in a feed reader, recovery states, expanded mobile navigation, and dedicated accessibility views.
 - [ ] 1.2 Little Orbit feedback: two-partner reveal eligibility, author-only edit/delete, offline error, dynamic text, TalkBack, and consent copy on physical phones.
 - [x] 1.2 partner names: two-way shared resolution on a physical Pixel and API 36 tablet, invalid contact-shaped input, phone/tablet layouts, and relationship ownership copy.
-- [ ] Big Orbit: Keystore enrollment, TOTP/recovery proof, session rotation, revocation, generic alerts, action inbox, quiz intelligence, AI observatory, typed jobs, and large-text/device screenshots.
+- [x] 1.2 package upgrade: the exact signed Pixel package moved from phone code 26 to 28 with the same UID and original install time, and the installed base APK matched the published SHA-256. Unlocked UI/account-state observation was owner-waived.
+- [ ] Big Orbit: production Keystore enrollment, TOTP/recovery proof, session rotation, revocation, generic alerts, action inbox, quiz intelligence, AI observatory, typed jobs, and large-text/device screenshots. The owner waived this publication gate and will perform it as post-release QA.
 - [ ] Two-device flow: pairing through unpair archive on physical phones.
 - [ ] Updater: first-launch opt-in, once-per-process prompt, six-hour discovery, optional deferral, stalled/interrupted recovery, corrupt APK rejection, Android install approval, and scheduled compatibility floor on a physical phone.
 - [ ] Our Space on two phones: cursor stability during acknowledgements, simultaneous emoji edits, reconnect, explicit conflict choices, attachment scan/rejection, offline preview, delete, archive purge, and quota boundaries.

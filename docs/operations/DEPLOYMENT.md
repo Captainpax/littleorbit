@@ -310,20 +310,14 @@ Download, patch notes, RSS, status, showcase, and readiness checks returned
 HTTP 200. Release-service logs contained no traceback, unhandled, fatal, or
 error match during the rollout window.
 
-## 1.2.0 quiz intelligence and Big Orbit candidate
+## 1.2.0 quiz intelligence and Big Orbit release
 
-1.2.0 is not published. Take a coordinated encrypted backup before migrations `0027` and `0028`. PostgreSQL 17 must use the pinned pgvector image; verify `CREATE EXTENSION vector` succeeds and run the migrations on a disposable clone before production. Confirm that dumps exclude `question_feedback`, `question_feedback_operations`, and `anonymous_question_reviews` data in addition to raw location and health tables.
+Production 1.2.0 was published at `2026-09-21T12:10:32.956306Z` after a coordinated encrypted backup and migrations `0027` through `0029`. PostgreSQL 17 uses the pinned pgvector 0.8.6 image. The secret-free context fetcher joins only its private worker link and bounded egress network, Ollama remains internal, and only gateway port 8180 is host-published.
 
-Deploy the secret-free `context-fetcher` with both its private worker link and separate egress link. It must not join the application/database/AI private networks, receive `.env` secrets, follow redirects, resolve private addresses, or fetch a URL outside the code-owned allowlist. Pull and verify both pinned Ollama manifests before starting the worker. Confirm Qwen and Nomic digests match configuration and Ollama still publishes no host port.
+At the owner's direction, the final v2-only administrator API was deployed directly rather than retaining or deploying a temporary `/v1/admin` compatibility route. Local and public `/admin` plus `/api/v1/admin/configuration` return 404; unauthenticated `/api/v2/admin/devices` returns 403. The exact Big Orbit 1.0.0 code-2 APK was installed and cold-launched on the Pixel and tablet, but the owner waived production two-device enrollment, revocation, alerts, and recovery observation and will perform that QA after release. Do not describe those recovery devices as enrolled until that later evidence exists.
 
-Administrator cutover is staged operationally even though the final source exposes only `/v2/admin`:
+The three Windows operations tasks are registered for the current interactive owner. A manual runner backup recorded a passing local encrypted pair, and a manual non-destructive restore recorded a pass, verified excluded private rows were empty, and removed its temporary database. The owner waived an off-host copy/restore and durable off-host Big Orbit signer backup until the replacement server is available. A same-disk passing drill is not off-host disaster-recovery evidence.
 
-1. deploy a temporary reviewed compatibility build capable of enrolling Big Orbit while the existing owner recovery route remains available;
-2. enroll at least two recovery-capable Big Orbit devices or one device plus verified one-time recovery codes;
-3. prove login, 30-minute session rotation, independent alert acknowledgement, revocation, and recovery;
-4. deploy the final code, verify `/admin` and every `/api/v1/admin/*` path return 404, and verify `/api/v2/admin/*` requires a valid device-bound session;
-5. remove the temporary build rather than retaining a hidden legacy route.
+The immutable phone artifact is version 1.2.0 code 28, 37,695,087 bytes, SHA-256 `aaa8c98d452db6d87c687f25cd2630432b64481ab6753c2bdb7bdb5baa7dc04f`. The unchanged Wear 1.1.1 code-20 artifact is 14,737,940 bytes with SHA-256 `b5f2af70402b6c8c5ff6feae91b5f23a32bd7c0ccea91b032ab705f8013d7f2b`. Both use certificate SHA-256 `43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337`. The compatibility floor remains 23 and `required_after` is absent.
 
-Register daily backup and Tuesday restore tasks only after reviewing [`BACKUP-RESTORE.md`](BACKUP-RESTORE.md). Run both tasks manually once, confirm content-free `backup_runs` evidence, and verify the optional destination is truly off-host. Do not treat task registration or a same-disk copy as a completed recovery drill.
-
-The phone candidate is version 1.2.0 code 28. Code 27 was signed but discarded before publication when deep artifact inspection found a QA-only asset-name marker retained in production bytecode. Reuse the exact signed 1.1.1 Wear code-20 artifact because 1.2 changes no Wear behavior or protocol. Keep the compatibility floor at phone code 23 and omit `required_after`. Build from the final commit, independently inspect package/version/signer/hash/size, and record those immutable values in the release note only after all gates pass. A failed candidate receives new bytes and a new version code; never overwrite a published record.
+Code 27 was signed but discarded before publication when deep inspection found a QA-only asset-name marker in production bytecode. Big Orbit code 1 was also discarded after the exact minified APK crashed during WorkManager initialization. Neither failed version code nor its bytes was reused. Public and local complete/range downloads, GitHub mirrors, patch notes, RSS, public pages, readiness, and rollout logs were verified against the final code-28 and Big Orbit code-2 artifacts.

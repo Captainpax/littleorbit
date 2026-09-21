@@ -107,7 +107,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-1.1.0-2026-09-19.md` — managed-watch implementation, automated, signed-artifact, waived-device, and rollout evidence.
 - `docs/operations/VERIFICATION-1.1.1-2026-09-19.md` — watch crash, controller binding, artifact isolation, emulator, and physical-Wear candidate evidence.
 - `docs/operations/VERIFICATION-1.2.0-2026-09-20.md` — quiz intelligence, Big Orbit, automated checks, emulator evidence, and explicit open release gates.
-- `docs/operations/VERIFICATION-1.2.0-2026-09-21.md` — replacement signed candidates, disposable-stack and device checks, rollout gates, and production evidence.
+- `docs/operations/VERIFICATION-1.2.0-2026-09-21.md` — final signed identities, disposable-stack and device checks, waivers, rollout, backup, and public production evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -138,7 +138,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.0.1.md` — pending nearby-time reliability, collection-health, autosave, conflict, duplicate, and GIF correction release.
 - `docs/releases/1.1.0.md` — managed-watch settings, installer, Together/Countdown/Smooch destinations, target privacy, and complications.
 - `docs/releases/1.1.1.md` — optional watch-hardening candidate, controller binding, isolated QA installer, and release-gate status.
-- `docs/releases/1.2.0.md` — unpublished quiz-intelligence and Big Orbit implementation candidate with explicit remaining gates.
+- `docs/releases/1.2.0.md` — published quiz-intelligence, shared-name, and Big Orbit release identity with verification and explicit waived follow-up.
 <!-- documentation-inventory:end -->
 
 ## Review routing
