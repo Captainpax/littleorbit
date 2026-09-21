@@ -100,6 +100,9 @@ code 20, `/api/v2/admin/devices` was absent, and readiness returned HTTP 200.
   original install time were preserved, and pulling the installed base APK produced SHA-256
   `aaa8c98d452db6d87c687f25cd2630432b64481ab6753c2bdb7bdb5baa7dc04f`.
   The owner waived unlocked UI, account, pairing, and relationship-state observation.
+- The physical Pixel Watch 3 remains installed on code 19. The published production wizard now
+  offers the unchanged signed code-20 artifact; the owner will exercise that update as post-release
+  QA, so this rollout does not claim a physical code-20 installation.
 - The immutable API record was published at `2026-09-21T12:10:32.956306Z`, retained floor 23,
   and omitted `required_after`. Local and public complete phone/Wear downloads matched the
   manifest; all four 1,024-byte ranges returned 206 with correct totals.
