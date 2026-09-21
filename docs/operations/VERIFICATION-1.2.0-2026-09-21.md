@@ -48,10 +48,14 @@ smoke-APK entry, or smoke signing metadata in the code-28 phone artifact. The
 bare loopback string that remains in an AndroidX ConstraintLayout diagnostic
 helper is not a Little Orbit endpoint.
 
-The Big Orbit candidate is package `com.littleorbit.bigorbit`, version `1.0.0`
-code 1, 2,390,730 bytes, SHA-256
-`bc0805458f628cf6721004053c73432d0b10357230942dec42de99e281147098`,
-and signing-certificate SHA-256
+The first minified Big Orbit candidate, code 1, crashed before its first activity because R8
+removed the reflectively created WorkManager Room database constructor. It was never published,
+its bytes are discarded, and the release-mode cold-launch check is now part of the build script.
+
+The replacement Big Orbit candidate is package `com.littleorbit.bigorbit`, version `1.0.0`
+code 2, 2,475,090 bytes, SHA-256
+`ef4c10509709504394078835d1b74db44788999fff65dfb0f68e8bee7821a824`, and
+signing-certificate SHA-256
 `04dc3502933faaa99dfd6641acc52b2bd71c9895087cb3060e3ce92dd8406f8c`.
 Its signer is independent from Little Orbit. Inspection found no QA endpoint,
 label, package, signing metadata, or bundled APK.
@@ -67,6 +71,9 @@ label, package, signing metadata, or bundled APK.
   during that pass were corrected and reverified.
 - Device management revoked both an older active tablet credential and a pending
   diagnostic credential while leaving the current tablet credential active.
+- The exact minified Big Orbit code-2 APK cold-launched without a fatal runtime event on both
+  the API 36 tablet emulator and physical Pixel 8 Pro. The Pixel remained behind its secure
+  keyguard, so this proves process startup but not physical UI interaction or enrollment.
 - The tablet shell was checked at 1.3 font scale; the navigation rail width was
   increased so labels remain visible. Captured evidence stays ignored under
   `.inspect/` because it contains disposable test state rather than showcase
