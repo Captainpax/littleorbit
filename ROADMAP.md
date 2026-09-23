@@ -64,8 +64,6 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Sign and self-host the RC13 phone and Wear artifacts, retain byte-range downloads, and configure the reviewed production proxy/firewall route.
 - [ ] Complete the remaining owner-controlled credential tasks: rotate the Gmail SMTP app password and re-enroll the owner administrator TOTP.
 - [x] Publish the staged RC14 phone and Wear candidates and verify current metadata, complete and ranged self-hosted downloads, hashes, RSS notes, and local/public production health.
-- [ ] Complete the remaining production observations for the published updater, TLS renewal/recovery, SMTP, WSS revocation, and administrator MFA re-enrollment.
-- [ ] Complete the two-phone, tablet, and Wear OS 1.0 end-to-end gate, including a measured nearby interval, self-hosted notification latency, session and relationship purge, accessibility, large text, navigation modes, offline recovery, and smoke-account deletion.
 - [x] Build, sign, self-host, and publish 1.0 phone code 23 and Wear code 18; verify immutable metadata, complete and ranged downloads, updater discovery, RSS notes, migration 0025, production health, and a non-destructive Pixel upgrade.
 - [x] Implement 1.0.1 phone code 24 with five-minute direct evidence, later-confirmed 20-minute bridges, shared-home local-day history, opt-in expiring collection diagnostics, and Together Time dashboard, health, day-detail, and correction screens.
 - [x] Implement 1.0.1 Our Space single-flight autosave, encrypted crash recovery, explicit newer-revision choices, idempotent attachment-safe note forks, conservative duplicate classification, and reduced-motion-aware animated GIF preview controls.
