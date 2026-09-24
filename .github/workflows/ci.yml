@@ -63,7 +63,7 @@ jobs:
         run: |
           ANDROID_SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           test -n "$ANDROID_SDK"
-          test -d "$ANDROID_SDK/platforms/android-37"
+          test -d "$ANDROID_SDK/platforms/android-37.0"
           test -d "$ANDROID_SDK/build-tools/37.0.0"
       - run: >-
           ./gradlew
