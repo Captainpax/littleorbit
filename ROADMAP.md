@@ -113,7 +113,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [x] Verify full Python tests, cross-language v4 fixtures, quality limits, version contracts, disposable migration rollback/re-upgrade, one-use reserve, and first-MFA bootstrap behavior locally.
 - [ ] Complete physical Big Orbit fresh/returning-device, Little Orbit two-partner quiz/privacy/accessibility, phone/tablet, and phone/Wear upgrade QA. The owner requested an expedited release and will perform this live QA after publication; no hardware result is implied by emulator evidence.
 - [x] Build, sign, inspect, and emulator-cold-launch exact phone code 29, Wear code 21, and Big Orbit code 3 candidates. Complete a coordinated encrypted production backup and non-destructive restore drill, including a Windows PowerShell 5.1 coordinator compatibility repair.
-- [ ] Apply production migrations 0030 and 0031, publish immutable API metadata and GitHub mirror bytes, verify complete/ranged downloads and public health, and update stable-release pointers. Never reuse a failed candidate code or bytes.
+- [x] Apply production migrations 0030 and 0031, publish immutable API metadata and GitHub mirror bytes, verify complete/ranged downloads and public health, and update stable-release pointers. The immutable API record was published at `2026-09-24T02:33:46.511784Z`; no failed candidate code or bytes were reused.
 
 ## 1.x — Reliability and reach
 

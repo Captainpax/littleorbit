@@ -1,6 +1,6 @@
 # 1.3.0 implementation verification — 2026-09-23
 
-This record covers source verification, exact signed artifacts, emulator cold launches, and the pre-migration production backup. It is not a physical-device, production-migration, or publication claim unless a later section records that evidence explicitly.
+This record covers source verification, exact signed artifacts, emulator cold launches, the pre-migration production backup, and the completed production publication. It is not a physical-device claim; deferred hardware observations are listed explicitly.
 
 ## Verified locally
 
@@ -45,11 +45,19 @@ Production was healthy on migration head 0029 and still advertised 1.2.0 before 
 - Global questions retain exact, trigram, concept-family, and embedding duplicate gates; model candidates fail closed when semantic verification is unavailable.
 - Big Orbit receives content-free operational state only. No account token, quiz answer, note, relationship content, review author, precise location, or arbitrary command input was added.
 
-## Open gates and owner direction
+## Production rollout and publication
 
-- Apply production migrations 0030 and 0031, verify knowledge/reserve synchronization and healthy workers, then publish immutable API metadata and exact GitHub mirror bytes.
-- Verify current metadata, patch notes, RSS, local/public readiness, complete downloads, and 1,024-byte ranged downloads against the exact hashes above.
+- The completed encrypted backup pair passed a non-destructive restore drill. Its pair-manifest SHA-256 is `e17b8f5fce4e9f7268d44c3d4547d81dc7cc45f388810837db33e8dd38a708fd`; the database component is `aed05bf164d63f487ff981914e97ef33fbdf5dea54f15b40dc1a9e6efcc04c5c`; the attachment component is `6a85bdb5e2dc15680a4789ce002d51b91ec4916f70cde412b995c02581268292`. The drill verified schema, empty excluded-private tables, and attachment manifest integrity.
+- Production migrated from head 0029 through 0030 and 0031. It then reported API version 1.3.0, 1,825 general plus 365 intimacy reserve entries, nine active/embedded reviewed-knowledge chunks, the `America/Los_Angeles` Saturday/Sunday 09:00 schedule, one current seven-day plan, seven daily themes, and intact near-term question coverage.
+- Allowlisted external context sources returned 502 during the rollout probe. The worker recorded the bounded degraded state and retained the designed sanitized fallback; it did not expose relationship content or interrupt published quiz coverage.
+- GitHub published the immutable [Little Orbit 1.3.0 release](https://github.com/Captainpax/littleorbit/releases/tag/v1.3.0) at `2026-09-24T02:22:58Z` and the [Big Orbit 1.3.0 release](https://github.com/Captainpax/big-orbit/releases/tag/v1.3.0) at `2026-09-24T02:23:00Z`. GitHub's asset sizes and digests match the table above.
+- The production API published 1.3.0 at `2026-09-24T02:33:46.511784Z` with compatibility floor phone code 23 and no `required_after` deadline. Local and public current metadata match.
+- Full phone and Wear downloads from both local and public endpoints reproduced their exact byte counts and SHA-256 values. All four 1,024-byte range probes returned HTTP 206, exactly 1,024 bytes, and correct total sizes. Public download, patch-notes, RSS, status, and readiness routes were healthy, and the post-rollout log window had no fatal, traceback, unhandled, or error match.
+- The first hosted Android jobs failed before Gradle because the setup action requested a removed legacy SDK tools package. CI was simplified to a pinned Ubuntu 24.04 runner with an explicit check for its preinstalled Android 37 platform and Build Tools 37.0.0; it still runs the bounded unit, lint, debug-build, and artifact-isolation gates without an emulator, database, signing, or deployment job.
+
+## Deferred physical-device evidence
+
 - Exercise fresh, returning, expired, wrong-PIN, fifth-failure, process-death, malformed-QR, first-MFA, and existing-MFA flows on real Big Orbit devices.
 - Exercise the v4 quiz UI, large text, theme fallback, offline/retry behavior, and two-partner feedback privacy on the physical phone/tablet matrix; upgrade the physical phone and watch and verify preservation/passive surfaces.
 
-On 2026-09-23 the owner asked for the signed update to be released as soon as possible and will perform the physical-device checks as live QA after publication. Publication may proceed only after the automated, exact-artifact, encrypted-backup/restore, migration, and public-verification gates pass. This direction defers the listed hardware observations; it does not convert them into passed evidence.
+On 2026-09-23 the owner asked for the signed update to be released as soon as possible and will perform these physical-device checks as live QA. This direction defers the listed hardware observations; it does not convert them into passed evidence.

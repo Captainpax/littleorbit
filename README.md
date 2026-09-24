@@ -6,13 +6,11 @@
 
 Little Orbit is a free and open couples platform for staying curious, sharing small moments, and understanding each other better. It has no subscriptions, premium tiers, advertising, or sale of personal data. The project is also a practical learning space: important flows, privacy boundaries, and design decisions are documented in public.
 
-> **Project status:** 1.2.0 is the current signed stable release. It adds shared partner-assigned names, private post-reveal quiz feedback, thresholded Saturday learning, Sunday week generation, semantic duplicate prevention, and the separate device-bound Big Orbit Android owner app. Partner alerts remain entirely self-hosted.
+> **Project status:** [1.3.0](https://github.com/Captainpax/littleorbit/releases/tag/v1.3.0) is the current signed stable release. It adds themed local-time weekly quizzes, reviewed Markdown retrieval, a 2,190-question one-use reserve, strict semantic no-repeat gates, richer Big Orbit observability, and terminal-PIN device bootstrap. Partner alerts remain entirely self-hosted.
 >
-> **1.3.0 signed candidate:** Little Orbit phone code 29, Wear code 21, and Big Orbit code 3 now share one release-train version. The candidate adds themed local-time weekly quizzes, reviewed Markdown retrieval, a 2,190-question offline reserve, strict semantic no-repeat gates, richer Big Orbit observability, and terminal-PIN device bootstrap. All three exact APKs are signed, independently inspected, and cold-launched on API 36/API 34 emulators; 1.2.0 remains stable until the production migration and immutable publication finish. Physical-device observations remain deferred live QA rather than passed evidence.
+> **Release policy:** 1.3.0 is optional (phone code 29, Wear code 21), keeps the compatibility floor at phone code 23, and has no forced-update deadline. The exact phone, Wear, and Big Orbit APKs were independently inspected and cold-launched on API 36/API 34 emulators. The owner explicitly deferred physical phone/watch, two-partner, and fresh/returning Big Orbit observations to live QA; that missing evidence remains visible in the verification records.
 >
-> **Release policy:** 1.2.0 is optional (phone code 28, unchanged Wear code 20), keeps the compatibility floor at phone code 23, and has no forced-update deadline. The owner explicitly waived production Big Orbit two-device enrollment/revocation and post-upgrade UI observation for publication and will perform that QA live; the missing evidence remains visible in the verification record.
->
-> **Big Orbit:** [Big Orbit 1.0.0](https://github.com/Captainpax/big-orbit/releases/tag/v1.0.0) remains the published stable app with its own package and signer. The [Big Orbit source repository](https://github.com/Captainpax/big-orbit) is aligned to the 1.3.0 candidate and its new one-use terminal-PIN enrollment flow.
+> **Big Orbit:** [Big Orbit 1.3.0](https://github.com/Captainpax/big-orbit/releases/tag/v1.3.0) is the matching published owner app. It retains its own package and independent signer while sharing the 1.3.0 release-train label and one-use terminal-PIN enrollment flow.
 
 The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch records are scoped to the selected target and a monotonic purge generation, watch-originated actions contain no account credential, and the phone revalidates the selected watch and active relationship before accepting them. The owner explicitly approved release without the unavailable physical Wear-device gate; that missing evidence remains visible in the verification record.
 
@@ -78,9 +76,9 @@ python -m venv .venv
 
 ## Signed Android release
 
-[`1.2.0`](https://github.com/Captainpax/littleorbit/releases/tag/v1.2.0) is the current signed stable release. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.2.0/apk) is 37,695,087 bytes with SHA-256 `aaa8c98d452db6d87c687f25cd2630432b64481ab6753c2bdb7bdb5baa7dc04f`. The independently versioned 14,737,940-byte [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.2.0/wear-apk) remains version code 20 and is byte-identical to 1.1.1 with SHA-256 `b5f2af70402b6c8c5ff6feae91b5f23a32bd7c0ccea91b032ab705f8013d7f2b`. Both artifacts use Android application ID `com.littleorbit.mobile` and retain the pinned [signing certificate](docs/signing/README.md). GitHub remains the canonical source history while APK bytes are served by Little Orbit's first-party API. Notifications are fully self-hosted; a visible app receives authenticated WebSocket hints and background WorkManager polls the same API, subject to Android battery delays. RC10.1 and RC11.1 require one manual update because their already-installed updater abandons its package session; automatic updates work after crossing that boundary.
+[`1.3.0`](https://github.com/Captainpax/littleorbit/releases/tag/v1.3.0) is the current signed stable release. The [phone APK](https://lil-orb.pax-kun.com/api/v1/releases/1.3.0/apk) is version code 29, 37,696,175 bytes, with SHA-256 `c5c879d458719e3ed27e5bdda38823d839600141ca08ff0d8967356df0d623e9`. The independently versioned [Wear APK](https://lil-orb.pax-kun.com/api/v1/releases/1.3.0/wear-apk) is version code 21, 14,737,944 bytes, with SHA-256 `0f0f0f221d80bbb5fc9db70773d8980b5b40136251df2fe4e64c8b3530e985cf`. Both artifacts use Android application ID `com.littleorbit.mobile` and retain the pinned [signing certificate](docs/signing/README.md). GitHub remains the canonical source history while identical APK bytes are served by Little Orbit's first-party API. Notifications are fully self-hosted; a visible app receives authenticated WebSocket hints and background WorkManager polls the same API, subject to Android battery delays. RC10.1 and RC11.1 require one manual update because their already-installed updater abandons its package session; automatic updates work after crossing that boundary.
 
-The [1.2.0 release note](docs/releases/1.2.0.md) and [verification record](docs/operations/VERIFICATION-1.2.0-2026-09-21.md) record the exact artifacts, migration and backup evidence, public verification, and owner-waived live-device observations.
+The [1.3.0 release note](docs/releases/1.3.0.md) and [verification record](docs/operations/VERIFICATION-1.3.0-2026-09-23.md) record the exact artifacts, migration and backup evidence, public verification, and owner-deferred live-device observations.
 
 The optional-update compatibility floor remains phone code 23. No forced-update deadline is scheduled.
 
@@ -101,9 +99,8 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Deployment runbook](docs/operations/DEPLOYMENT.md)
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
 - [Documentation map](docs/DOCUMENTATION-MAP.md)
-- [Latest stable verification record](docs/operations/VERIFICATION-1.2.0-2026-09-21.md)
-- [1.3.0 source verification](docs/operations/VERIFICATION-1.3.0-2026-09-23.md)
-- [1.3.0 implementation-candidate notes](docs/releases/1.3.0.md)
+- [Latest stable verification record](docs/operations/VERIFICATION-1.3.0-2026-09-23.md)
+- [1.3.0 release notes](docs/releases/1.3.0.md)
 
 ## License and support
 

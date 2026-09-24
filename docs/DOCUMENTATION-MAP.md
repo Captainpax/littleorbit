@@ -118,7 +118,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-1.1.1-2026-09-19.md` — watch crash, controller binding, artifact isolation, emulator, and physical-Wear candidate evidence.
 - `docs/operations/VERIFICATION-1.2.0-2026-09-20.md` — quiz intelligence, Big Orbit, automated checks, emulator evidence, and explicit open release gates.
 - `docs/operations/VERIFICATION-1.2.0-2026-09-21.md` — final signed identities, disposable-stack and device checks, waivers, rollout, backup, and public production evidence.
-- `docs/operations/VERIFICATION-1.3.0-2026-09-23.md` — themed quiz, retrieval, reserve, PIN-bootstrap, CI, and explicit open candidate-gate evidence.
+- `docs/operations/VERIFICATION-1.3.0-2026-09-23.md` — themed quiz, retrieval, reserve, PIN-bootstrap, signed artifacts, production rollout, and deferred physical-device evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -150,7 +150,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.1.0.md` — managed-watch settings, installer, Together/Countdown/Smooch destinations, target privacy, and complications.
 - `docs/releases/1.1.1.md` — optional watch-hardening candidate, controller binding, isolated QA installer, and release-gate status.
 - `docs/releases/1.2.0.md` — published quiz-intelligence, shared-name, and Big Orbit release identity with verification and explicit waived follow-up.
-- `docs/releases/1.3.0.md` — themed quiz and Big Orbit bootstrap source candidate with intended codes and open signed-release gates.
+- `docs/releases/1.3.0.md` — published themed-quiz and Big Orbit bootstrap release with exact immutable identities and deferred live QA.
 <!-- documentation-inventory:end -->
 
 ## Review routing

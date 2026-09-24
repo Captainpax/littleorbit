@@ -1,8 +1,8 @@
 # Privacy design
 
-Little Orbit is designed around two people sharing deliberately. It does not sell personal data, display advertising, or use answers or relationship activity to train or personalize AI. The 1.2 AI pipeline creates the same calendar-based question pool for the service. It may learn from separately consented, sanitized question-quality feedback only after K-anonymity thresholds are met; it never receives quiz answers or account, couple, note, location, or relationship data.
+Little Orbit is designed around two people sharing deliberately. It does not sell personal data, display advertising, or use answers or relationship activity to train or personalize AI. The 1.3 AI pipeline creates the same calendar-based question pool for the service. It may learn from separately consented, sanitized question-quality feedback only after K-anonymity thresholds are met; it never receives quiz answers or account, couple, note, location, or relationship data.
 
-This document describes implemented behavior and the unpublished 1.2 candidate. A production privacy notice and legal review remain release gates for changed data use.
+This document describes the implemented and published 1.3 behavior. A production privacy notice and legal review remain operational requirements for future changed data use.
 
 ## Data and purpose
 
