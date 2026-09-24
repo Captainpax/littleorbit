@@ -60,9 +60,11 @@ jobs:
           java-version: "17"
           cache: gradle
       - name: Verify preinstalled Android SDK
-        run: >-
-          test -d "$ANDROID_SDK_ROOT/platforms/android-37"
-          && test -d "$ANDROID_SDK_ROOT/build-tools/37.0.0"
+        run: |
+          ANDROID_SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          test -n "$ANDROID_SDK"
+          test -d "$ANDROID_SDK/platforms/android-37"
+          test -d "$ANDROID_SDK/build-tools/37.0.0"
       - run: >-
           ./gradlew
           :apps:android:domain:test
