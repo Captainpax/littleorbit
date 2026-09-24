@@ -22,6 +22,18 @@ $paused = $false
 $serviceIds = @()
 $pairPartial = $null
 
+function Get-WorkspaceRelativePath([string]$BasePath, [string]$TargetPath) {
+    $baseFullPath = [IO.Path]::GetFullPath($BasePath).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    ) + [IO.Path]::DirectorySeparatorChar
+    $targetFullPath = [IO.Path]::GetFullPath($TargetPath)
+    if (-not $targetFullPath.StartsWith($baseFullPath, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Backup output must stay inside the Little Orbit workspace."
+    }
+    return $targetFullPath.Substring($baseFullPath.Length).Replace('\', '/')
+}
+
 Push-Location $repoRoot
 try {
     $containerId = (& $docker @composeArguments ps -q api).Trim()
@@ -59,12 +71,12 @@ try {
         schema_version = 1
         created_at = (Get-Date).ToUniversalTime().ToString("o")
         database = [ordered]@{
-            path = ([IO.Path]::GetRelativePath($repoRoot, $databasePath)).Replace('\', '/')
+            path = Get-WorkspaceRelativePath $repoRoot $databasePath
             bytes = (Get-Item -LiteralPath $databasePath).Length
             sha256 = (Get-FileHash -LiteralPath $databasePath -Algorithm SHA256).Hash.ToLowerInvariant()
         }
         attachments = [ordered]@{
-            path = ([IO.Path]::GetRelativePath($repoRoot, $attachmentPath)).Replace('\', '/')
+            path = Get-WorkspaceRelativePath $repoRoot $attachmentPath
             bytes = (Get-Item -LiteralPath $attachmentPath).Length
             sha256 = (Get-FileHash -LiteralPath $attachmentPath -Algorithm SHA256).Hash.ToLowerInvariant()
         }

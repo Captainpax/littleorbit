@@ -27,6 +27,8 @@ The command creates:
 - JSON sidecars containing encrypted size, SHA-256, and content-free backup facts
 - `backups/manifests/little-orbit-pair-YYYYMMDD-HHMMSSfff.json`, written only after both encrypted files complete
 
+The coordinator is compatible with both Windows PowerShell 5.1 and PowerShell 7. It validates that component outputs remain inside the workspace before recording relative paths in the pair manifest.
+
 PostgreSQL uses the dedicated read-only backup role and explicitly excludes all `location_samples`, `together_device_health`, `question_feedback`, `question_feedback_operations`, and `anonymous_question_reviews` table data. The JSON sidecar records the privacy exclusions; repair commands reject an older or ambiguous sidecar before changing rows. Identity-free weekly aggregates and learned policy remain in the dump. The attachment archive includes a relative-path, byte-count, and SHA-256 manifest. Both scripts retain 14 days by default and restart the exact mutation containers that were running before the snapshot.
 
 To copy only the encrypted artifacts and sidecars to a separately managed filesystem, set an absolute destination outside the repository:
