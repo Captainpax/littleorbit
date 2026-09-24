@@ -70,25 +70,25 @@ export function formatReleaseDate(publishedAt: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.2.0",
-  versionCode: 28,
+  version: "1.3.0",
+  versionCode: 29,
   minimumSupportedVersionCode: 23,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "aaa8c98d452db6d87c687f25cd2630432b64481ab6753c2bdb7bdb5baa7dc04f",
+  sha256: "c5c879d458719e3ed27e5bdda38823d839600141ca08ff0d8967356df0d623e9",
   releaseNotes: [
-    "Adds shared partner-assigned names across authorized Little Orbit surfaces.",
-    "Adds private post-reveal quiz ratings, tags, and optional consented reviews.",
-    "Adds thresholded Saturday learning and Sunday generation for the next quiz week.",
-    "Uses semantic concept memory to prevent repeated questions with different formatting.",
-    "Moves administration to the separate device-bound Big Orbit Android app.",
+    "Adds one weekly quiz arc with seven distinct daily themes and balanced depth.",
+    "Uses reviewed Markdown retrieval and a 2,190-question one-use offline reserve.",
+    "Strengthens same-day, same-week, and 365-day semantic no-repeat checks.",
+    "Runs privacy-thresholded learning on Saturday and next-week generation on Sunday.",
+    "Adds terminal-PIN bootstrap and richer content-free observability in Big Orbit 1.3.0.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.2.0",
-  apkUrl: hostedApkPath("1.2.0"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.3.0",
+  apkUrl: hostedApkPath("1.3.0"),
   wear: {
-    apkUrl: hostedWearApkPath("1.2.0"),
-    sha256: "b5f2af70402b6c8c5ff6feae91b5f23a32bd7c0ccea91b032ab705f8013d7f2b",
-    sizeBytes: 14737940,
-    versionCode: 20,
+    apkUrl: hostedWearApkPath("1.3.0"),
+    sha256: "0f0f0f221d80bbb5fc9db70773d8980b5b40136251df2fe4e64c8b3530e985cf",
+    sizeBytes: 14737944,
+    versionCode: 21,
     minimumAndroid: 30,
   },
   published: true,
@@ -175,7 +175,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-21T12:10:32.956306Z",
+    publishedAt: "2026-09-24T02:22:58Z",
   }];
 }
 
