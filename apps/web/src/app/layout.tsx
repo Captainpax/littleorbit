@@ -21,7 +21,7 @@ export const viewport: Viewport = { themeColor: "#10172b", colorScheme: "dark" }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body>
         <Providers>
           <a className="skip-link" href="#main">Skip to content</a>

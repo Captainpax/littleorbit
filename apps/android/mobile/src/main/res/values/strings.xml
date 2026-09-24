@@ -210,6 +210,8 @@
     <string name="today_orbit">TODAY’S ORBIT</string>
     <string name="question_placeholder">What made you smile today?</string>
     <string name="question_private">Answers stay private until you both submit</string>
+    <string name="quiz_week_theme">THIS WEEK · %1$s</string>
+    <string name="quiz_daily_theme_description">Today’s theme, %1$s. %2$s</string>
     <string name="countdown_label">NEXT COUNTDOWN</string>
     <string name="note_label">SHARED NOTES</string>
     <string name="create_account">Create account on the web</string>

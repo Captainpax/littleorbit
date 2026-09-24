@@ -101,7 +101,7 @@ async def _assert_public_dns(source: PublicContextSourceDefinition) -> None:
 
 
 async def _fetch_bounded(source: PublicContextSourceDefinition) -> tuple[bytes, str]:
-    headers = {"User-Agent": "Little-Orbit-Public-Context/1.2 (+https://lil-orb.pax-kun.com)"}
+    headers = {"User-Agent": "Little-Orbit-Public-Context/1.3 (+https://lil-orb.pax-kun.com)"}
     try:
         async with (
             httpx.AsyncClient(

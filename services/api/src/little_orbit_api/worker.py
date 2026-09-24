@@ -3,20 +3,21 @@
 import asyncio
 import logging
 import os
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from time import perf_counter
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from little_orbit_ai.embeddings import OllamaEmbeddingClient
 from little_orbit_ai.ollama import OllamaClient, OllamaSettings
 from little_orbit_ai.pipeline import generate_pool, load_curated_bank, select_pool
-from little_orbit_ai.schemas import CandidateQuestion, LearningPolicy
+from little_orbit_ai.schemas import CandidateQuestion, DayTheme, LearningPolicy
 
 from .admin_operations import process_quiz_admin_jobs, refresh_admin_alerts
 from .clock import SystemClock
-from .config import get_settings
+from .config import Settings, get_settings
 from .mail import deliver_pending_mail
 from .maintenance import run_maintenance_once
-from .public_context import load_public_context
+from .public_context import PublicContextBundle, load_public_context_bundle
 from .quiz_generation_pool_service import (
     curated_bank,
     embedding_settings,
@@ -27,6 +28,7 @@ from .quiz_generation_pool_service import (
     record_seed_attempt,
     replace_unanswered_pool,
 )
+from .quiz_knowledge_service import retrieve_knowledge, sync_reviewed_knowledge
 from .quiz_learning_service import (
     active_learning_policy,
     claim_ai_run,
@@ -34,6 +36,13 @@ from .quiz_learning_service import (
     learn_feedback_week,
 )
 from .quiz_notification_scheduler import ensure_daily_quiz_notifications
+from .quiz_reserve_service import sync_question_reserve
+from .quiz_theme_service import (
+    mark_week_published,
+    plan_quiz_week,
+    quiz_week_planned,
+    theme_for_date,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +63,7 @@ async def ensure_question_coverage(days: int = 7) -> None:
     seeds with validated model output for the next Monday-through-Sunday week.
     """
 
+    await sync_question_reserve()
     settings = _ollama_settings()
     embedding_client = OllamaEmbeddingClient(embedding_settings())
     database_bank = await curated_bank()
@@ -65,11 +75,20 @@ async def ensure_question_coverage(days: int = 7) -> None:
             if not await replace_unanswered_pool(target):
                 continue
             recent = await recent_question_prompts(target)
-            seed = select_pool(target, None, recent, settings, "coverage_seed", database_bank)
+            theme = await theme_for_date(target)
+            seed = select_pool(
+                target,
+                None,
+                recent,
+                settings,
+                "coverage_seed",
+                database_bank,
+                theme.day if theme else None,
+            )
             await persist_pool(target, seed, settings, effective_bank, 0, embedding_client)
 
 
-async def generate_question_week(week_start: date) -> dict[str, int]:
+async def generate_question_week(week_start: date, *, force: bool = False) -> dict[str, int]:
     """Generate the exact next Monday-to-Sunday set using the active policy."""
 
     settings = _ollama_settings()
@@ -78,39 +97,87 @@ async def generate_question_week(week_start: date) -> dict[str, int]:
     database_bank = await curated_bank()
     effective_bank = database_bank or load_curated_bank()
     policy = await active_learning_policy()
-    public_context = await load_public_context()
+    context = await load_public_context_bundle()
+    await _prepare_week_intelligence(
+        week_start, client, embedding_client, policy, context
+    )
     generated = 0
     fallback = 0
     for offset in range(7):
         target = week_start + timedelta(days=offset)
-        if not await pool_exists(target):
-            recent = await recent_question_prompts(target)
-            seed = select_pool(target, None, recent, settings, "coverage_seed", database_bank)
-            await persist_pool(
-                target,
-                seed,
-                settings,
-                effective_bank,
-                0,
-                embedding_client,
-            )
         try:
-            improved = await _improve_seeded_pool(
+            improved = await _generate_question_day(
                 target,
+                force,
                 client,
                 settings,
-                effective_bank,
                 database_bank,
+                effective_bank,
                 embedding_client,
                 policy,
-                public_context,
+                context,
             )
             generated += int(improved)
             fallback += int(not improved)
         except Exception:
             fallback += 1
             LOGGER.exception("Weekly generation failed for %s; safe seed remains", target)
-    return {"generated_days": generated, "fallback_days": fallback}
+    if generated + fallback == 7:
+        await mark_week_published(week_start)
+    return {
+        "generated_days": generated,
+        "fallback_days": fallback,
+        "context_stale_sources": len(context.stale_sources),
+    }
+
+
+async def _generate_question_day(
+    target: date,
+    force: bool,
+    client: OllamaClient,
+    settings: OllamaSettings,
+    database_bank: list[CandidateQuestion] | None,
+    effective_bank: list[CandidateQuestion],
+    embedding_client: OllamaEmbeddingClient,
+    policy: LearningPolicy | None,
+    context: PublicContextBundle,
+) -> bool:
+    """Seed one day safely, then replace it only with a validated generated pool."""
+
+    if force:
+        await replace_unanswered_pool(target)
+    theme = await theme_for_date(target)
+    day_theme = theme.day if theme else None
+    knowledge = await retrieve_knowledge(
+        _knowledge_query(day_theme.title if day_theme else "evergreen couples questions"),
+        embedding_client,
+    )
+    if not await pool_exists(target):
+        seed = select_pool(
+            target,
+            None,
+            await recent_question_prompts(target),
+            settings,
+            "coverage_seed",
+            database_bank,
+            day_theme,
+            knowledge.revision,
+            context.digest,
+        )
+        await persist_pool(target, seed, settings, effective_bank, 0, embedding_client)
+    return await _improve_seeded_pool(
+        target,
+        client,
+        settings,
+        effective_bank,
+        database_bank,
+        embedding_client,
+        policy,
+        context,
+        day_theme,
+        knowledge.snippets,
+        knowledge.revision,
+    )
 
 
 async def _improve_seeded_pool(
@@ -121,7 +188,10 @@ async def _improve_seeded_pool(
     database_bank: list[CandidateQuestion] | None,
     embedding_client: OllamaEmbeddingClient,
     policy: LearningPolicy | None = None,
-    public_context: list[str] | None = None,
+    public_context: PublicContextBundle | None = None,
+    day_theme: DayTheme | None = None,
+    knowledge: list[str] | None = None,
+    knowledge_revision: str | None = None,
 ) -> bool:
     if not await is_coverage_seed(target):
         return False
@@ -134,7 +204,11 @@ async def _improve_seeded_pool(
         settings,
         database_bank,
         policy,
-        public_context,
+        public_context.snippets if public_context else None,
+        day_theme,
+        knowledge,
+        knowledge_revision,
+        public_context.digest if public_context else None,
     )
     duration_ms = int((perf_counter() - started) * 1000)
     bank_ids = {item.client_id for item in bank}
@@ -160,13 +234,24 @@ async def run_weekly_quiz_jobs(now: datetime | None = None) -> None:
 
     current = now or SystemClock().now()
     settings = get_settings()
-    learning_date = _latest_due_date(current, 5, settings.ai_learning_hour_utc)
+    learning_date = _latest_due_date(
+        current,
+        5,
+        settings.ai_learning_local_hour,
+        settings.ai_schedule_timezone,
+    )
     if learning_date is not None:
         await learn_feedback_week(
             learning_date - timedelta(days=5),
             OllamaClient(_ollama_settings()),
         )
-    generation_date = _latest_due_date(current, 6, settings.ai_generation_hour_utc)
+        await _prepare_saturday_plan(learning_date + timedelta(days=2), settings)
+    generation_date = _latest_due_date(
+        current,
+        6,
+        settings.ai_generation_local_hour,
+        settings.ai_schedule_timezone,
+    )
     if generation_date is None:
         return
     week_start = generation_date + timedelta(days=1)
@@ -176,22 +261,74 @@ async def run_weekly_quiz_jobs(now: datetime | None = None) -> None:
     try:
         generated_summary = await generate_question_week(week_start)
         summary: dict[str, object] = dict(generated_summary)
-        status = "passed" if summary["fallback_days"] == 0 else "fallback"
+        status = (
+            "passed"
+            if summary["fallback_days"] == 0
+            and summary["context_stale_sources"] == 0
+            else "fallback"
+        )
         await finish_ai_run(run_key, status, summary)
     except Exception:
         await finish_ai_run(run_key, "failed", {"reason": "internal_failure"})
         raise
 
 
-def _latest_due_date(current: datetime, weekday: int, hour: int) -> date | None:
-    """Return the latest UTC schedule date at or before the current instant."""
+def _latest_due_date(
+    current: datetime, weekday: int, hour: int, timezone: str = "UTC"
+) -> date | None:
+    """Return the latest local schedule date once, including across DST transitions."""
 
-    aware = current.astimezone(UTC)
+    try:
+        zone = ZoneInfo(timezone)
+    except ZoneInfoNotFoundError as exc:
+        raise ValueError("AI schedule timezone is not installed") from exc
+    aware = current.astimezone(zone)
     candidate = aware.date() - timedelta(days=(aware.weekday() - weekday) % 7)
-    scheduled = datetime.combine(candidate, time(hour=hour), tzinfo=UTC)
+    scheduled = datetime.combine(candidate, time(hour=hour), tzinfo=zone)
     if scheduled > aware:
         candidate -= timedelta(days=7)
     return candidate
+
+
+async def _prepare_saturday_plan(week_start: date, settings: Settings) -> None:
+    if await quiz_week_planned(week_start):
+        return
+    model = OllamaClient(_ollama_settings())
+    embeddings = OllamaEmbeddingClient(embedding_settings())
+    context = await load_public_context_bundle(settings)
+    policy = await active_learning_policy()
+    await _prepare_week_intelligence(
+        week_start, model, embeddings, policy, context, settings
+    )
+
+
+async def _prepare_week_intelligence(
+    week_start: date,
+    model: OllamaClient,
+    embeddings: OllamaEmbeddingClient,
+    policy: LearningPolicy | None,
+    context: PublicContextBundle,
+    runtime: Settings | None = None,
+) -> None:
+    settings = runtime or get_settings()
+    try:
+        await sync_reviewed_knowledge(embeddings)
+    except Exception:
+        LOGGER.exception("Reviewed knowledge sync failed; prior revision remains active")
+    knowledge = await retrieve_knowledge("weekly theme planning", embeddings)
+    await plan_quiz_week(
+        week_start,
+        model,
+        policy,
+        context.snippets,
+        knowledge.snippets,
+        timezone=settings.ai_schedule_timezone,
+        locale=settings.ai_theme_locale,
+    )
+
+
+def _knowledge_query(theme_title: str) -> str:
+    return f"couples quiz theme {theme_title} emotional depth safety variety"
 
 
 async def _poll_mail_forever(interval_seconds: int) -> None:

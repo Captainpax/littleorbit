@@ -91,7 +91,7 @@ def test_curated_fallback_always_publishes_five_general_questions() -> None:
 
 
 def test_wrong_candidate_mix_is_recorded_without_discarding_valid_questions() -> None:
-    fixture = Path(__file__).parents[3] / "protocol/fixtures/v3/question-batch.valid.json"
+    fixture = Path(__file__).parents[3] / "protocol/fixtures/v4/question-batch.valid.json"
     payload = json.loads(fixture.read_text(encoding="utf-8"))
     payload["questions"][-1]["intimacy"] = False
     payload["questions"][-1]["category"] = "connection"
@@ -119,7 +119,7 @@ async def test_pinned_model_generates_a_strict_batch() -> None:
         assert request_payload["keep_alive"] == 0
         assert request_payload["options"]["num_ctx"] == 4096
         payload = {
-            "schema_version": "3",
+            "schema_version": "4",
             "date": "2026-09-11",
             "questions": [
                 {
@@ -134,6 +134,9 @@ async def test_pinned_model_generates_a_strict_batch() -> None:
                         "scale_high_label": None,
                         "concept_family": f"shared-moment-{index}",
                         "concept_summary": f"A distinct shared moment preference number {index}",
+                        "depth": ["light", "reflective", "reflective", "deeper"][index % 4],
+                        "theme_role": "themed" if index % 5 < 3 else "variety",
+                        "theme_tags": ["shared-moments"],
                 }
                 for index in range(10)
             ],

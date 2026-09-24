@@ -8,13 +8,15 @@ Little Orbit is a free and open couples platform for staying curious, sharing sm
 
 > **Project status:** 1.2.0 is the current signed stable release. It adds shared partner-assigned names, private post-reveal quiz feedback, thresholded Saturday learning, Sunday week generation, semantic duplicate prevention, and the separate device-bound Big Orbit Android owner app. Partner alerts remain entirely self-hosted.
 >
+> **1.3.0 source candidate:** Little Orbit phone code 29, Wear code 21, and Big Orbit code 3 now share one release-train version. The candidate adds themed local-time weekly quizzes, reviewed Markdown retrieval, a 2,190-question offline reserve, strict semantic no-repeat gates, richer Big Orbit observability, and terminal-PIN device bootstrap. It is not signed or published yet; 1.2.0 remains stable until the open artifact, device, migration, and publication gates pass.
+>
 > **Release policy:** 1.2.0 is optional (phone code 28, unchanged Wear code 20), keeps the compatibility floor at phone code 23, and has no forced-update deadline. The owner explicitly waived production Big Orbit two-device enrollment/revocation and post-upgrade UI observation for publication and will perform that QA live; the missing evidence remains visible in the verification record.
 >
-> **Big Orbit:** [Big Orbit 1.0.0](https://github.com/Captainpax/big-orbit/releases/tag/v1.0.0) is published separately as version code 2 with its own package and signer. Its exact minified APK cold-launched on the Pixel and tablet; production enrollment remains owner-waived follow-up QA.
+> **Big Orbit:** [Big Orbit 1.0.0](https://github.com/Captainpax/big-orbit/releases/tag/v1.0.0) remains the published stable app with its own package and signer. The [Big Orbit source repository](https://github.com/Captainpax/big-orbit) is aligned to the 1.3.0 candidate and its new one-use terminal-PIN enrollment flow.
 
 The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch records are scoped to the selected target and a monotonic purge generation, watch-originated actions contain no account credential, and the phone revalidates the selected watch and active relationship before accepting them. The owner explicitly approved release without the unavailable physical Wear-device gate; that missing evidence remains visible in the verification record.
 
-## What 1.0 includes
+## What the current source includes
 
 - Five daily questions with private-until-both-answer reveal behavior.
 - Optional launch-forward feedback after shared reveal: 1–5 stars, up to three fixed tags, and a separately consented 300-character review that remains private to its author while linked.
@@ -41,12 +43,15 @@ The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch record
 - Public patch notes at `/patch-notes` and a standards-based RSS feed at `/patch-notes.xml`.
 - The separate Java/XML Big Orbit Android console with protected device-key enrollment, actionable global-question reports, service health, bounded account/session and registration controls, K-anonymous quiz intelligence, AI provenance, typed operations, backup evidence, and generic local alerts.
 - Local weekly question intelligence through pinned Ollama generation and embedding models. Feedback learning receives only thresholded, sanitized product feedback; it never receives quiz answers or relationship data.
+- In 1.3 source, Saturday 09:00 local learning and planning creates one seven-day arc with distinct daily themes; Sunday generation publishes three themed and two variety questions per day across an explicit light-to-deeper balance. Reviewed Markdown and allowlisted public context are bounded retrieval inputs, not model fine-tuning.
+- A deterministic one-use reserve holds 1,825 general and 365 consent-centered intimacy prompts. Global generated content is checked for same-day, same-week, and preceding-365-day semantic repetition; custom couple questions remain private and exempt.
+- Every fresh Big Orbit device begins with an eight-digit, ten-minute, hash-only PIN printed once by the server CLI, then proves its Android Keystore key. The first owner enrolls MFA from an in-app QR; existing MFA is never replaced by device enrollment.
 
 ![Implemented RC13 countdown timeline on a wide Android emulator](docs/assets/android-countdowns-rc13-tablet.png)
 
 ## Architecture
 
-Android, Wear OS, Big Orbit, and browsers connect to `https://lil-orb.pax-kun.com`. Nginx Proxy Manager forwards traffic to a single gateway port on the application host. The gateway routes `/api/*` and `/ws/*` to FastAPI and all other paths to Next.js. PostgreSQL, Ollama, the worker, and Mailpit remain private to the Compose network. A secret-free context fetcher has a separate bounded egress network and accepts only code-owned HTTPS sources.
+Android, Wear OS, [Big Orbit](https://github.com/Captainpax/big-orbit), and browsers connect to `https://lil-orb.pax-kun.com`. Nginx Proxy Manager forwards traffic to a single gateway port on the application host. The gateway routes `/api/*` and `/ws/*` to FastAPI and all other paths to Next.js. PostgreSQL, pgvector, Ollama, the worker, and Mailpit remain private to the Compose network. A secret-free context fetcher has a separate bounded egress network and accepts only code-owned HTTPS sources.
 
 See the [network and logic flows](docs/NETWORK-FLOW.md), [privacy design](docs/PRIVACY.md), and [architecture decisions](docs/adr/) before changing a trust boundary.
 
@@ -96,8 +101,9 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Deployment runbook](docs/operations/DEPLOYMENT.md)
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
 - [Documentation map](docs/DOCUMENTATION-MAP.md)
-- [Latest verification record](docs/operations/VERIFICATION-1.0.0-2026-09-16.md)
-- [1.2.0 implementation-candidate notes](docs/releases/1.2.0.md)
+- [Latest stable verification record](docs/operations/VERIFICATION-1.2.0-2026-09-21.md)
+- [1.3.0 source verification](docs/operations/VERIFICATION-1.3.0-2026-09-23.md)
+- [1.3.0 implementation-candidate notes](docs/releases/1.3.0.md)
 
 ## License and support
 

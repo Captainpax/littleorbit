@@ -50,7 +50,8 @@ class AdminDeviceChallenge(Base):
     __tablename__ = "admin_device_challenges"
     __table_args__ = (
         CheckConstraint(
-            "purpose IN ('enrollment', 'session')", name="ck_admin_challenge_purpose"
+            "purpose IN ('enrollment', 'session', 'bootstrap')",
+            name="ck_admin_challenge_purpose",
         ),
         Index("ix_admin_challenges_expiry", "expires_at"),
     )
@@ -77,6 +78,48 @@ class AdminDeviceSession(Base):
     device_id: Mapped[UUID] = mapped_column(
         ForeignKey("admin_devices.id", ondelete="CASCADE"), index=True, nullable=False
     )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AdminBootstrapCredential(Base):
+    """One short-lived, hashed PIN issued only from the trusted server terminal."""
+
+    __tablename__ = "admin_bootstrap_credentials"
+    __table_args__ = (
+        CheckConstraint("failed_attempts BETWEEN 0 AND 5", name="ck_bootstrap_pin_attempts"),
+        Index("ix_bootstrap_credentials_expiry", "expires_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    account_id: Mapped[UUID] = mapped_column(
+        ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    pin_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    failed_attempts: Mapped[int] = mapped_column(nullable=False, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AdminBootstrapSession(Base):
+    """Restricted resumable setup capability; never accepted as an admin bearer."""
+
+    __tablename__ = "admin_bootstrap_sessions"
+    __table_args__ = (Index("ix_bootstrap_sessions_expiry", "expires_at"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    account_id: Mapped[UUID] = mapped_column(
+        ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    device_id: Mapped[UUID] = mapped_column(
+        ForeignKey("admin_devices.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    mfa_required: Mapped[bool] = mapped_column(nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    device_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

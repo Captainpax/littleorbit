@@ -69,7 +69,31 @@ cd ..\big-orbit
 
 The smoke package is `com.littleorbit.bigorbit.smoke`, visibly labeled **Big Orbit QA**, and targets only the isolated loopback smoke API. Validate package/version/label and absence of production signing metadata before installing it. Initial device enrollment requires a disposable administrator with current MFA; never use production recovery codes in screenshots or test logs. Revoke the smoke device and delete the disposable account after testing.
 
-The context fetcher may be tested only with its fixed source keys. Cover redirects, loopback/private/link-local DNS, oversized bodies, wrong media types, timeouts, script/style removal, and instruction-shaped text. Do not add an arbitrary-URL debug endpoint.
+The context fetcher may be tested only with its fixed source keys. Cover redirects, loopback/private/link-local DNS, oversized bodies, wrong media types, timeouts, script/style removal, instruction-shaped text, 30-day snapshots, and unavailable-source fallback. Do not add an arbitrary-URL debug endpoint.
+
+### 1.3 themed retrieval and PIN bootstrap
+
+Migrations 0030 and 0031 add weekly themes/retrieval/reserve state and the separate restricted Big Orbit bootstrap capability. Test them only against a disposable PostgreSQL 17/pgvector database, including downgrade to 0029 and re-upgrade to head. The worker synchronizes manifest-owned Markdown chunks and the deterministic reserve; it must report exactly 1,825 general and 365 intimacy entries without copying account or relationship data.
+
+```powershell
+$env:LITTLE_ORBIT_TEST_DATABASE_URL = "postgresql+asyncpg://.../little_orbit_13_test"
+python -m pytest services/api/tests/test_big_orbit_bootstrap_postgres.py services/api/tests/test_quiz_reserve_postgres.py
+python -m pytest services/api/tests services/ai/tests
+python infra/scripts/check_versions.py
+python infra/scripts/check_docs.py
+python infra/scripts/check_quality.py
+```
+
+Create a disposable administrator account, then generate a fresh-device PIN from the trusted API environment:
+
+```powershell
+docker compose --env-file .env -f infra/compose.yaml exec api `
+  python -m little_orbit_api.cli bootstrap-admin owner@example.com
+```
+
+The eight-digit PIN is printed once, expires after ten minutes, and must never enter a screenshot, shell transcript committed to Git, test fixture, or log. Generating another PIN invalidates the earlier PIN and every unfinished setup for that owner. Validate wrong PIN, fifth failure, expiry, process restart, device proof, first-owner QR/TOTP, recovery-code acknowledgement, and existing-MFA preservation. A bootstrap token must receive denial from every ordinary `/v2/admin` route.
+
+The reviewed knowledge set lives under `services/ai/src/little_orbit_ai/knowledge/` and is allowlisted by `knowledge_manifest.json`. Add or edit a file only with prompt-safety review and tests for stable hashing, bounded chunks, and retrieval. Do not point retrieval at arbitrary repository paths or user uploads. Reserve templates are code-owned, deterministic, and one-use in the database; never reset production consumption to make generation appear healthy.
 
 ## Partner notification development
 

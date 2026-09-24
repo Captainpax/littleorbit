@@ -3,55 +3,74 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, "release/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  docs-and-python:
+  docs-python-contracts:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
+      - run: python infra/scripts/check_versions.py
       - run: python infra/scripts/check_docs.py
       - run: python infra/scripts/check_quality.py
-      - run: pip install -e './services/api[dev]' -e ./services/ai
-      - run: ruff check services/api services/ai
-      - run: mypy --config-file services/api/pyproject.toml services/api/src services/ai/src
+      - run: pip install -e './services/api[dev]' -e './services/ai[dev]'
+      - run: ruff check services
+      - run: mypy services
       - run: pytest -q services/api/tests services/ai/tests
 
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
-      - run: npm ci
+      - run: npm ci --no-audit --no-fund
       - run: npm run check
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
 
   android:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
           cache: gradle
-      - uses: android-actions/setup-android@v4
-        with:
-          packages: platform-tools
-      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
-      - run: ./gradlew :apps:android:domain:test :apps:android:data:testDebugUnitTest :apps:android:data:lintDebug :apps:android:mobile:testDebugUnitTest :apps:android:mobile:lintDebug :apps:android:wear:testDebugUnitTest :apps:android:wear:lintDebug :apps:android:mobile:assembleDebug :apps:android:wear:assembleDebug --stacktrace
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platform-tools" "platforms;android-37" "build-tools;37.0.0"
+      - run: >-
+          ./gradlew
+          :apps:android:domain:test
+          :apps:android:data:testDebugUnitTest
+          :apps:android:data:lintDebug
+          :apps:android:mobile:testDebugUnitTest
+          :apps:android:mobile:lintDebug
+          :apps:android:wear:testDebugUnitTest
+          :apps:android:wear:lintDebug
+          :apps:android:mobile:assembleDebug
+          :apps:android:wear:assembleDebug
+          :apps:android:mobile:verifyWearArtifactIsolation
+          --stacktrace

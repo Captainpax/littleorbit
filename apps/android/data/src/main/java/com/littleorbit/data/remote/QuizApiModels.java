@@ -40,6 +40,9 @@ public final class QuizApiModels {
         @Json(name = "feedback_eligible") public final boolean feedbackEligible;
         @Json(name = "feedback_editable_until") public final String feedbackEditableUntil;
         @Json(name = "my_feedback") public final Feedback myFeedback;
+        public final String depth;
+        @Json(name = "theme_role") public final String themeRole;
+        @Json(name = "theme_tags") public final List<String> themeTags;
 
         /** Creates one decoded question. */
         public Question(
@@ -58,7 +61,7 @@ public final class QuizApiModels {
                 Map<String, Object> partnerAnswer) {
             this(id, position, interactionVersion, kind, prompt, category, intimacy, options,
                     scaleLowLabel, scaleHighLabel, myAnswer, myAnswerRevision, partnerAnswer,
-                    false, null, null);
+                    false, null, null, "reflective", "variety", List.of());
         }
 
         /** Creates one decoded v3 question with private feedback state. */
@@ -79,6 +82,33 @@ public final class QuizApiModels {
                 boolean feedbackEligible,
                 String feedbackEditableUntil,
                 Feedback myFeedback) {
+            this(id, position, interactionVersion, kind, prompt, category, intimacy, options,
+                    scaleLowLabel, scaleHighLabel, myAnswer, myAnswerRevision, partnerAnswer,
+                    feedbackEligible, feedbackEditableUntil, myFeedback,
+                    "reflective", "variety", List.of());
+        }
+
+        /** Creates one decoded v4 question with theme composition metadata. */
+        public Question(
+                String id,
+                int position,
+                int interactionVersion,
+                String kind,
+                String prompt,
+                String category,
+                boolean intimacy,
+                List<Option> options,
+                String scaleLowLabel,
+                String scaleHighLabel,
+                Map<String, Object> myAnswer,
+                int myAnswerRevision,
+                Map<String, Object> partnerAnswer,
+                boolean feedbackEligible,
+                String feedbackEditableUntil,
+                Feedback myFeedback,
+                String depth,
+                String themeRole,
+                List<String> themeTags) {
             this.id = id;
             this.position = position;
             this.interactionVersion = interactionVersion;
@@ -95,6 +125,28 @@ public final class QuizApiModels {
             this.feedbackEligible = feedbackEligible;
             this.feedbackEditableUntil = feedbackEditableUntil;
             this.myFeedback = myFeedback;
+            this.depth = depth == null ? "reflective" : depth;
+            this.themeRole = themeRole == null ? "variety" : themeRole;
+            this.themeTags = themeTags == null ? List.of() : List.copyOf(themeTags);
+        }
+    }
+
+    /** Public editorial labels for the generated week and current day. */
+    public static final class Theme {
+        @Json(name = "weekly_title") public final String weeklyTitle;
+        @Json(name = "weekly_summary") public final String weeklySummary;
+        @Json(name = "daily_title") public final String dailyTitle;
+        @Json(name = "daily_summary") public final String dailySummary;
+        public final String observance;
+
+        /** Creates decoded theme labels containing no relationship content. */
+        public Theme(String weeklyTitle, String weeklySummary, String dailyTitle,
+                String dailySummary, String observance) {
+            this.weeklyTitle = weeklyTitle;
+            this.weeklySummary = weeklySummary;
+            this.dailyTitle = dailyTitle;
+            this.dailySummary = dailySummary;
+            this.observance = observance;
         }
     }
 
@@ -137,6 +189,7 @@ public final class QuizApiModels {
         public final boolean revealed;
         public final boolean editable;
         public final List<Question> questions;
+        public final Theme theme;
 
         /** Creates a decoded quiz day. */
         public Day(
@@ -156,6 +209,22 @@ public final class QuizApiModels {
             this.revealed = revealed;
             this.editable = editable;
             this.questions = List.copyOf(questions);
+            this.theme = null;
+        }
+
+        /** Creates a decoded 1.3 day with its optional editorial theme. */
+        public Day(String quizDate, String status, int revision, boolean myFinished,
+                boolean partnerFinished, boolean revealed, boolean editable,
+                List<Question> questions, Theme theme) {
+            this.quizDate = quizDate;
+            this.status = status;
+            this.revision = revision;
+            this.myFinished = myFinished;
+            this.partnerFinished = partnerFinished;
+            this.revealed = revealed;
+            this.editable = editable;
+            this.questions = List.copyOf(questions);
+            this.theme = theme;
         }
     }
 
@@ -192,10 +261,11 @@ public final class QuizApiModels {
         @Json(name = "answered_count") public final int answeredCount;
         @Json(name = "custom_count") public final int customCount;
         @Json(name = "rated_count") public final int ratedCount;
+        @Json(name = "daily_theme") public final String dailyTheme;
 
         /** Creates a history item. */
         public HistoryItem(String quizDate, String status, int answeredCount, int customCount) {
-            this(quizDate, status, answeredCount, customCount, 0);
+            this(quizDate, status, answeredCount, customCount, 0, null);
         }
 
         /** Creates a v3 history item with the caller's private rating count. */
@@ -205,11 +275,18 @@ public final class QuizApiModels {
                 int answeredCount,
                 int customCount,
                 int ratedCount) {
+            this(quizDate, status, answeredCount, customCount, ratedCount, null);
+        }
+
+        /** Creates one v4 history item with its optional editorial label. */
+        public HistoryItem(String quizDate, String status, int answeredCount,
+                int customCount, int ratedCount, String dailyTheme) {
             this.quizDate = quizDate;
             this.status = status;
             this.answeredCount = answeredCount;
             this.customCount = customCount;
             this.ratedCount = ratedCount;
+            this.dailyTheme = dailyTheme;
         }
     }
 

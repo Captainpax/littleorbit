@@ -100,6 +100,20 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 - [ ] Copy and restore one protected encrypted backup off-host and preserve the Big Orbit signer on the replacement server. The owner waived both off-host gates until that server is available; local scheduled backup and restore evidence has passed.
 - [x] Publish the immutable 1.2.0 API record at `2026-09-21T12:10:32.956306Z`; verify migration head 0029, legacy-admin removal, v2 denial without a device session, complete and ranged local/public APK downloads, GitHub mirrors, patch notes, RSS, public pages, and healthy logs.
 
+## 1.3.0 — Themed quiz engine and recoverable Big Orbit bootstrap
+
+- [x] Align Little Orbit phone, Wear, API, AI, web, and Big Orbit source on release train 1.3.0 with a checked cross-repository contract; reserve phone code 29, Wear code 21, and Big Orbit code 3 for the first candidate.
+- [x] Move weekly intelligence to Saturday and Sunday at 09:00 `America/Los_Angeles`, with daylight-saving-safe scheduling, a Monday-to-Sunday arc, seven unique daily themes, and no more than two inclusive observance days.
+- [x] Require each general day to contain three themed and two variety questions across one light, two reflective, and two deeper prompts; expose only public editorial metadata through additive `/v4/quizzes` contracts.
+- [x] Add reviewed manifest-owned Markdown retrieval, pgvector-backed bounded chunks, 30-day sanitized public-context fallback, deterministic policy evaluation, durable late-feedback cursors, and content-free degraded-state alerts.
+- [x] Add the one-use 1,825-general plus 365-intimacy reserve and retain exact, trigram, concept-family, and pinned-embedding rejection across the same day, week, and preceding 365 days.
+- [x] Expand Big Orbit with schedule, knowledge, context, reserve, plan, and run observability plus a fixed typed next-week regeneration operation and generic polling alerts.
+- [x] Replace fresh-device MFA proof with terminal `bootstrap-admin <email>` issuance of one hash-only eight-digit PIN; enforce ten-minute expiry, five attempts, one active setup, restricted resumable capability, device-key proof, and first-owner MFA QR enrollment while preserving existing MFA.
+- [x] Simplify both repositories' GitHub workflows to bounded Ubuntu static checks, unit tests, lint, and debug/smoke assembly without hosted PostgreSQL, Ollama, emulators, signing, deployment, or open-ended matrices.
+- [x] Verify full Python tests, cross-language v4 fixtures, quality limits, version contracts, disposable migration rollback/re-upgrade, one-use reserve, and first-MFA bootstrap behavior locally.
+- [ ] Complete physical Big Orbit fresh/returning-device, Little Orbit two-partner quiz/privacy/accessibility, phone/tablet, and phone/Wear upgrade QA. No hardware result is implied by local builds.
+- [ ] Build and inspect exact signed phone, Wear, and Big Orbit candidates; run production backup/migrations, publish immutable metadata and mirrored bytes, and update stable-release pointers only after final verification. Never reuse a failed candidate code or bytes.
+
 ## 1.x — Reliability and reach
 
 - Accessibility and large-text improvements based on real device testing.

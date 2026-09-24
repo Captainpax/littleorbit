@@ -13,7 +13,8 @@ from pydantic import ValidationError
 
 from little_orbit_api.admin_device_models import AdminDevice
 from little_orbit_api.big_orbit_auth import canonical_challenge, verify_device_signature
-from little_orbit_api.big_orbit_schemas import BigOrbitSessionRequest
+from little_orbit_api.big_orbit_bootstrap import new_bootstrap_pin
+from little_orbit_api.big_orbit_schemas import BigOrbitSessionRequest, BootstrapSessionRequest
 from little_orbit_api.main import create_app
 from little_orbit_api.public_context import safe_public_excerpt
 from little_orbit_api.public_context_fetcher import MAX_TEXT_CHARS, _visible_text
@@ -24,6 +25,7 @@ from little_orbit_api.quiz_semantics import (
 )
 from little_orbit_api.quiz_v3_schemas import QuizFeedbackMutation
 from little_orbit_api.review_sanitizer import sanitize_review
+from little_orbit_api.security import qr_png_data_url
 from little_orbit_api.worker import _latest_due_date
 
 
@@ -87,7 +89,7 @@ def test_generation_prompt_has_bounded_public_only_inputs() -> None:
         ["A recent global question?"],
         public_context=["nasa-skywatching: A public night-sky guide"],
     )
-    assert "schema version 3" in prompt
+    assert "schema version 4" in prompt
     assert "A recent global question?" in prompt
     assert "nasa-skywatching" in prompt
     assert "user email" not in prompt.casefold()
@@ -194,6 +196,15 @@ def test_p256_device_signature_is_domain_separated() -> None:
     ).decode()
     assert verify_device_signature(device, "session", challenge_id, challenge, signature)
     assert not verify_device_signature(device, "enrollment", challenge_id, challenge, signature)
+    bootstrap_signature = base64.b64encode(
+        private.sign(
+            canonical_challenge("bootstrap", challenge_id, challenge).encode(),
+            ec.ECDSA(hashes.SHA256()),
+        )
+    ).decode()
+    assert verify_device_signature(
+        device, "bootstrap", challenge_id, challenge, bootstrap_signature
+    )
 
 
 def test_big_orbit_login_requires_exactly_one_complete_device_flow() -> None:
@@ -210,9 +221,35 @@ def test_big_orbit_login_requires_exactly_one_complete_device_flow() -> None:
         )
 
 
+def test_big_orbit_bootstrap_requires_exact_terminal_pin_shape() -> None:
+    payload = {
+        "email": "owner@example.com",
+        "password": "valid-password",
+        "pin": "01234567",
+        "device_label": "Owner phone",
+        "enrollment_public_key": "a" * 90,
+    }
+    assert BootstrapSessionRequest.model_validate(payload).pin == "01234567"
+    with pytest.raises(ValidationError):
+        BootstrapSessionRequest.model_validate({**payload, "pin": "1234567"})
+    with pytest.raises(ValidationError):
+        BootstrapSessionRequest.model_validate({**payload, "pin": "1234567x"})
+    assert new_bootstrap_pin().isdigit()
+    assert len(new_bootstrap_pin()) == 8
+
+
+def test_bootstrap_qr_is_an_inline_png_not_logged_secret_text() -> None:
+    value = qr_png_data_url("otpauth://totp/LittleOrbit:owner?secret=ABC")
+    encoded = value.removeprefix("data:image/png;base64,")
+    assert base64.b64decode(encoded).startswith(b"\x89PNG\r\n\x1a\n")
+
+
 def test_openapi_exposes_only_device_bound_v2_admin_session() -> None:
     schema = create_app().openapi()
     assert not any(path.startswith("/v1/admin") for path in schema["paths"])
     session_path = schema["paths"]["/v2/admin/session"]
     assert set(session_path) == {"post"}
     assert "/v2/admin/action-inbox" in schema["paths"]
+    assert "/v2/admin/bootstrap/session" in schema["paths"]
+    assert "/v2/admin/bootstrap/device-confirm" in schema["paths"]
+    assert "/v2/admin/bootstrap/mfa/confirm" in schema["paths"]

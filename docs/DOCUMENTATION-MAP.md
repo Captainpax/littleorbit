@@ -24,6 +24,14 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `services/ai/AGENTS.md` — model privacy, schema, validation, fallback, and evaluation rules.
 - `services/api/AGENTS.md` — API authorization, transaction, migration, and WSS rules.
 
+## Reviewed AI knowledge
+
+- `services/ai/src/little_orbit_ai/knowledge/depth-ladder.md` — editorial depth definitions and safe progression rules.
+- `services/ai/src/little_orbit_ai/knowledge/feedback-safety.md` — K-anonymous feedback interpretation and prompt-injection boundaries.
+- `services/ai/src/little_orbit_ai/knowledge/inclusive-observances.md` — optional holiday and observance inclusion guidance.
+- `services/ai/src/little_orbit_ai/knowledge/question-writing.md` — reviewed question wording, interaction, and consent guidance.
+- `services/ai/src/little_orbit_ai/knowledge/theme-arcs.md` — coherent weekly and distinct daily theme guidance.
+
 ## Architecture, privacy, and protocol
 
 - `docs/DOCUMENTATION-MAP.md` — this complete Markdown inventory and ownership map.
@@ -72,6 +80,8 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0042-device-bound-big-orbit-administration.md` — separate Android administration, enrolled keys, bound sessions, alerts, and typed jobs.
 - `docs/adr/0043-allowlisted-context-and-testable-encrypted-operations.md` — bounded public context plus scheduled encrypted backup and non-destructive restore evidence.
 - `docs/adr/0044-partner-assigned-relationship-names.md` — shared partner-only names, contact-safe fallbacks, retry semantics, and unpair purge.
+- `docs/adr/0045-themed-retrieval-grounded-weekly-quizzes.md` — local-time weekly arcs, reviewed retrieval, reserve coverage, and semantic memory.
+- `docs/adr/0046-terminal-pin-big-orbit-bootstrap.md` — one-use terminal PINs, restricted setup capabilities, key proof, and first-owner MFA.
 - `docs/adr/0028-isolated-attachment-media-worker.md` — least-privilege scanning, sanitization, atomic publication, and private archive access.
 - `docs/adr/0029-relationship-invalidation-purge-protocol.md` — structured invalidation and generation-ordered phone, widget, and Wear cleanup.
 - `docs/adr/0030-together-time-retention-and-corrections.md` — short raw-coordinate retention, 30-day minute detail, durable totals, and audited corrections.
@@ -108,6 +118,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-1.1.1-2026-09-19.md` — watch crash, controller binding, artifact isolation, emulator, and physical-Wear candidate evidence.
 - `docs/operations/VERIFICATION-1.2.0-2026-09-20.md` — quiz intelligence, Big Orbit, automated checks, emulator evidence, and explicit open release gates.
 - `docs/operations/VERIFICATION-1.2.0-2026-09-21.md` — final signed identities, disposable-stack and device checks, waivers, rollout, backup, and public production evidence.
+- `docs/operations/VERIFICATION-1.3.0-2026-09-23.md` — themed quiz, retrieval, reserve, PIN-bootstrap, CI, and explicit open candidate-gate evidence.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
@@ -139,6 +150,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/releases/1.1.0.md` — managed-watch settings, installer, Together/Countdown/Smooch destinations, target privacy, and complications.
 - `docs/releases/1.1.1.md` — optional watch-hardening candidate, controller binding, isolated QA installer, and release-gate status.
 - `docs/releases/1.2.0.md` — published quiz-intelligence, shared-name, and Big Orbit release identity with verification and explicit waived follow-up.
+- `docs/releases/1.3.0.md` — themed quiz and Big Orbit bootstrap source candidate with intended codes and open signed-release gates.
 <!-- documentation-inventory:end -->
 
 ## Review routing

@@ -15,6 +15,7 @@ from .clock import SystemClock
 from .database import SessionFactory
 from .models import Question, QuestionReport
 from .quiz_learning_service import learn_feedback_week
+from .quiz_observatory_service import quiz_health_flags
 
 
 async def process_quiz_admin_jobs(
@@ -32,7 +33,11 @@ async def process_quiz_admin_jobs(
                 outcome = await learn_feedback_week(job.target_week, client)
                 result: dict[str, object] = {"outcome": outcome}
             else:
-                result = dict(await generate_week(job.target_week))
+                result = dict(
+                    await generate_week(
+                        job.target_week, force=job.kind == "regenerate_quizzes"
+                    )
+                )
             await _finish_job(job.id, "passed", result)
         except Exception:
             await _finish_job(job.id, "failed", {"reason": "job_failed"})
@@ -82,6 +87,41 @@ async def refresh_admin_alerts() -> None:
         "No successful encrypted backup was recorded in the last 26 hours.",
         "/operations/backups",
     )
+    await _refresh_quiz_alerts()
+
+
+async def _refresh_quiz_alerts() -> None:
+    flags = await quiz_health_flags()
+    definitions = (
+        (
+            "reserve_low",
+            "quiz-reserve:low",
+            "quiz_reserve_low",
+            "critical",
+            "Quiz reserve needs replenishment",
+            "Fewer than seven offline quiz days remain in the reviewed reserve.",
+        ),
+        (
+            "context_unavailable",
+            "quiz-context:unavailable",
+            "quiz_context_unavailable",
+            "warning",
+            "Quiz public context is using safe fallback",
+            "At least one allowlisted source has no valid thirty-day snapshot.",
+        ),
+        (
+            "latest_run_degraded",
+            "quiz-run:degraded",
+            "quiz_run_degraded",
+            "warning",
+            "The latest quiz intelligence run degraded",
+            "Review provenance before retrying the allowlisted operation.",
+        ),
+    )
+    for key, dedupe, kind, severity, title, summary in definitions:
+        await _set_admin_alert_condition(
+            flags[key], dedupe, kind, severity, title, summary, "/ai/observatory"
+        )
 
 
 async def upsert_admin_alert(
@@ -155,7 +195,9 @@ async def _claim_quiz_jobs() -> list[AdminJobRequest]:
             await session.scalars(
                 select(AdminJobRequest)
                 .where(
-                    AdminJobRequest.kind.in_(("learn_quizzes", "generate_quizzes")),
+                    AdminJobRequest.kind.in_(
+                        ("learn_quizzes", "generate_quizzes", "regenerate_quizzes")
+                    ),
                     or_(
                         AdminJobRequest.status == "pending",
                         and_(

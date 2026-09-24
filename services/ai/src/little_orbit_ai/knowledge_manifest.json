@@ -1,0 +1,9 @@
+{
+  "documents": [
+    {"key": "question-writing", "path": "knowledge/question-writing.md"},
+    {"key": "depth-ladder", "path": "knowledge/depth-ladder.md"},
+    {"key": "theme-arcs", "path": "knowledge/theme-arcs.md"},
+    {"key": "inclusive-observances", "path": "knowledge/inclusive-observances.md"},
+    {"key": "feedback-safety", "path": "knowledge/feedback-safety.md"}
+  ]
+}

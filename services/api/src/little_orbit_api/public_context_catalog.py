@@ -19,6 +19,11 @@ PUBLIC_CONTEXT_SOURCES = (
         "www.un.org",
     ),
     PublicContextSourceDefinition(
+        "us-federal-holidays",
+        "https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/",
+        "www.opm.gov",
+    ),
+    PublicContextSourceDefinition(
         "nasa-skywatching",
         "https://science.nasa.gov/skywatching",
         "science.nasa.gov",

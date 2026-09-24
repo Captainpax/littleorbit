@@ -127,13 +127,14 @@ async def _upsert_aggregate(
                 question_id=question_id,
                 week_start=week_start,
                 created_at=now,
+                updated_at=now,
                 **values,
             )
         )
         return
     for field, value in values.items():
         setattr(aggregate, field, value)
-    aggregate.created_at = now
+    aggregate.updated_at = now
 
 
 def _monday(value: date) -> date:

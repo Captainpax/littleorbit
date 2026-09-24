@@ -16,7 +16,7 @@ async def live() -> HealthResponse:
     """Return process liveness without touching a dependency."""
 
     return HealthResponse(
-        status="ok", service="api", version="0.1.0", checked_at=SystemClock().now()
+        status="ok", service="api", version="1.3.0", checked_at=SystemClock().now()
     )
 
 
@@ -26,5 +26,5 @@ async def ready(session: AsyncSession = Depends(session_scope)) -> HealthRespons
 
     await session.execute(text("SELECT 1"))
     return HealthResponse(
-        status="ok", service="api", version="0.1.0", checked_at=SystemClock().now()
+        status="ok", service="api", version="1.3.0", checked_at=SystemClock().now()
     )

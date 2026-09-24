@@ -13,7 +13,6 @@ from ..big_orbit_auth import (
     authenticate_admin,
     consume_signed_challenge,
     create_device_challenge,
-    create_enrollment_device,
     credential_valid,
     issue_device_session,
 )
@@ -69,7 +68,7 @@ async def password_session(
     session: AsyncSession = Depends(session_scope),
     settings: Settings = Depends(get_settings),
 ) -> BigOrbitSessionResponse:
-    """Authenticate MFA and bind the resulting session to one exact device key."""
+    """Authenticate MFA and bind a returning session to one approved device key."""
 
     email = normalize_email(str(payload.email))
     await _rate_limit("big-orbit-session", client_ip, email, settings)
@@ -81,30 +80,16 @@ async def password_session(
         payload.recovery_code,
         settings,
     )
-    if payload.enrollment_public_key is not None and payload.device_label is not None:
-        device = await create_enrollment_device(
-            session,
-            account,
-            payload.device_label,
-            payload.enrollment_public_key,
-        )
-        challenge = await create_device_challenge(session, device, "enrollment", settings)
-        enrollment_required = True
-    else:
-        if payload.challenge_id is None:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Device proof is incomplete")
-        device = await _returning_device(session, account, payload)
-        await consume_signed_challenge(
-            session,
-            device,
-            payload.challenge_id,
-            payload.challenge or "",
-            payload.signature or "",
-            "session",
-            settings,
-        )
-        challenge = None
-        enrollment_required = False
+    device = await _returning_device(session, account, payload)
+    await consume_signed_challenge(
+        session,
+        device,
+        payload.challenge_id,
+        payload.challenge,
+        payload.signature,
+        "session",
+        settings,
+    )
     issued = await issue_device_session(session, account, device, settings)
     session.add(_event(account.id, "big_orbit_session", "accepted"))
     await session.commit()
@@ -113,8 +98,7 @@ async def password_session(
         expires_at=issued.expires_at,
         account_id=account.id,
         device_id=device.id,
-        enrollment_required=enrollment_required,
-        enrollment_challenge=challenge,
+        enrollment_required=False,
     )
 
 

@@ -15,6 +15,7 @@ from .routes import (
     attachments,
     auth,
     big_orbit_auth,
+    big_orbit_bootstrap,
     big_orbit_console,
     countdowns,
     couples,
@@ -28,6 +29,7 @@ from .routes import (
     quizzes,
     quizzes_v2,
     quizzes_v3,
+    quizzes_v4,
     relationship_names,
     releases,
     smooches,
@@ -42,7 +44,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="Little Orbit API",
-        version="0.1.0",
+        version="1.3.0",
         docs_url="/docs",
         redoc_url=None,
         openapi_url="/openapi.json",
@@ -68,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(quizzes.router)
     app.include_router(quizzes_v2.router)
     app.include_router(quizzes_v3.router)
+    app.include_router(quizzes_v4.router)
     app.include_router(countdowns.router)
     app.include_router(together_time_legacy.router)
     app.include_router(together_time_v2.v3_router)
@@ -80,6 +83,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(admin_console.router)
     app.include_router(big_orbit_auth.router)
+    app.include_router(big_orbit_bootstrap.router)
     app.include_router(big_orbit_console.router)
     app.include_router(notes.router)
     app.include_router(note_forks.router)

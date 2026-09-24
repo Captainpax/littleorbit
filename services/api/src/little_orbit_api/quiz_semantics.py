@@ -126,13 +126,18 @@ async def is_semantic_duplicate(
     return bool(concept_match)
 
 
-def concept_record(question: Question, value: CandidateSemantics) -> QuestionConcept:
+def concept_record(
+    question: Question, value: CandidateSemantics, item: CandidateQuestion | None = None
+) -> QuestionConcept:
     """Build persistence only after the corresponding question has an ID."""
 
     return QuestionConcept(
         question_id=question.id,
         concept_family=value.family,
         concept_summary=value.summary,
+        depth=item.depth.value if item else "reflective",
+        theme_role=item.theme_role.value if item else "variety",
+        theme_tags=item.theme_tags if item else [],
         prompt_embedding=value.prompt_vector,
         concept_embedding=value.concept_vector,
         embedding_model=value.model,

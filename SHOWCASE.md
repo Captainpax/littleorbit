@@ -131,6 +131,12 @@ chooses the name and avatar shown for you, while you choose theirs. Phone and wi
 confirmed that both members resolve the same two names, contact-shaped input is rejected, and
 the large-text persistent tablet rail keeps every destination readable.
 
+### 1.3 themed quiz and owner-setup implementation
+
+The 1.3 source keeps the established 1.2 visual baseline rather than presenting new concept art as shipped UI. The phone quiz gives the weekly arc and current daily theme their own readable hierarchy above the focused question while keeping answers private until shared reveal. Depth and theme-role metadata guide composition but are not shown as scores or judgments.
+
+Big Orbit's fresh-device screen labels the one-time terminal PIN separately from returning-device MFA. First-owner setup uses a protected QR screen, explicit authenticator confirmation, and one-time recovery-code acknowledgement; malformed QR data fails to a recoverable state. The observatory adds content-free cards for local schedule, reviewed knowledge, context freshness, reserve capacity, weekly themes, and run outcome. These are implementation descriptions; signed 1.3 device captures remain an open release gate.
+
 ## Public website
 
 ![Website landing page concept](docs/assets/web-landing-concept.png)

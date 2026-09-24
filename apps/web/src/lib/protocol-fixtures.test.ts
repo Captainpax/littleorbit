@@ -14,6 +14,7 @@ const contracts = [
   ["v1", "smooch"],
   ["v2", "question-batch"], ["v2", "quiz-day"],
   ["v3", "location-batch"], ["v3", "question-batch"], ["v3", "together-time"],
+  ["v4", "question-batch"], ["v4", "quiz-day"],
 ] as const;
 
 function readJson(file: string): unknown {

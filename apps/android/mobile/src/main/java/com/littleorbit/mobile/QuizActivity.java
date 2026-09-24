@@ -77,6 +77,7 @@ public final class QuizActivity extends OrbitShellActivity {
             binding.retryButton.setVisibility(View.VISIBLE);
             return;
         }
+        renderTheme(state.day);
         renderProgress(state);
         switch (mode) {
             case REVEALED -> renderReveal(state.day);
@@ -88,6 +89,22 @@ public final class QuizActivity extends OrbitShellActivity {
         }
     }
 
+    private void renderTheme(QuizApiModels.Day day) {
+        int visibility = day.theme == null ? View.GONE : View.VISIBLE;
+        binding.weekThemeText.setVisibility(visibility);
+        binding.dayThemeText.setVisibility(visibility);
+        binding.dayThemeSummary.setVisibility(visibility);
+        if (day.theme == null) return;
+        binding.weekThemeText.setText(getString(
+                R.string.quiz_week_theme, day.theme.weeklyTitle));
+        binding.dayThemeText.setText(day.theme.dailyTitle);
+        binding.dayThemeSummary.setText(day.theme.dailySummary);
+        binding.dayThemeText.setContentDescription(getString(
+                R.string.quiz_daily_theme_description,
+                day.theme.dailyTitle,
+                day.theme.dailySummary));
+    }
+
     private void setContentVisible(boolean visible) {
         int value = visible ? View.VISIBLE : View.INVISIBLE;
         binding.questionCard.setVisibility(value);
@@ -97,6 +114,9 @@ public final class QuizActivity extends OrbitShellActivity {
         binding.nextButton.setVisibility(value);
         binding.primaryButton.setVisibility(value);
         binding.reportButton.setVisibility(value);
+        binding.weekThemeText.setVisibility(value);
+        binding.dayThemeText.setVisibility(value);
+        binding.dayThemeSummary.setVisibility(value);
         binding.resultDoneButton.setVisibility(View.GONE);
     }
 

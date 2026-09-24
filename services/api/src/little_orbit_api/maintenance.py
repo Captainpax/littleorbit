@@ -7,7 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .account_deletion import complete_deletion_job
 from .activity_models import ActivityEvent
-from .admin_device_models import AdminDeviceChallenge
+from .admin_device_models import (
+    AdminBootstrapCredential,
+    AdminBootstrapSession,
+    AdminDevice,
+    AdminDeviceChallenge,
+)
 from .attachment_maintenance import (
     delete_attachment_files,
     delete_orphan_files,
@@ -88,7 +93,7 @@ async def purge_expired_records(session: AsyncSession, now: datetime) -> None:
 
 
 async def purge_expired_location_samples(session: AsyncSession, now: datetime) -> None:
-    """Delete raw locations and the remaining bounded maintenance records."""
+    """Delete raw locations, then delegate independent bounded retention groups."""
 
     await session.execute(
         delete(LocationSample).where(
@@ -98,6 +103,13 @@ async def purge_expired_location_samples(session: AsyncSession, now: datetime) -
             )
         )
     )
+    await _purge_expired_security_records(session, now)
+    await _purge_expired_feature_records(session, now)
+
+
+async def _purge_expired_security_records(session: AsyncSession, now: datetime) -> None:
+    """Expire authentication, device-bootstrap, throttle, and diagnostic records."""
+
     await session.execute(
         delete(OneUseToken).where(OneUseToken.expires_at <= now - timedelta(days=7))
     )
@@ -106,9 +118,36 @@ async def purge_expired_location_samples(session: AsyncSession, now: datetime) -
             AdminDeviceChallenge.expires_at <= now - timedelta(days=7)
         )
     )
+    expired_bootstraps = select(AdminBootstrapSession.device_id).where(
+        AdminBootstrapSession.expires_at <= now
+    )
+    await session.execute(
+        update(AdminDevice)
+        .where(
+            AdminDevice.id.in_(expired_bootstraps),
+            AdminDevice.approved_at.is_(None),
+            AdminDevice.revoked_at.is_(None),
+        )
+        .values(revoked_at=now)
+    )
+    await session.execute(
+        delete(AdminBootstrapSession).where(
+            AdminBootstrapSession.expires_at <= now - timedelta(days=7)
+        )
+    )
+    await session.execute(
+        delete(AdminBootstrapCredential).where(
+            AdminBootstrapCredential.expires_at <= now - timedelta(days=7)
+        )
+    )
     await session.execute(delete(Session).where(Session.expires_at <= now - timedelta(days=7)))
     await purge_rate_limit_state(session, now)
     await purge_diagnostics(session, now)
+
+
+async def _purge_expired_feature_records(session: AsyncSession, now: datetime) -> None:
+    """Apply content and operation retention after security-state cleanup."""
+
     await session.execute(
         delete(Note).where(Note.purge_after.is_not(None), Note.purge_after <= now)
     )

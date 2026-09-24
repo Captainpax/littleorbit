@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     admin_session_minutes: int = Field(default=30, ge=5, le=1_440)
     ai_learning_hour_utc: int = Field(default=23, ge=0, le=23)
     ai_generation_hour_utc: int = Field(default=3, ge=0, le=23)
+    ai_schedule_timezone: str = "America/Los_Angeles"
+    ai_learning_local_hour: int = Field(default=9, ge=0, le=23)
+    ai_generation_local_hour: int = Field(default=9, ge=0, le=23)
+    ai_theme_locale: str = Field(default="en-US", min_length=2, max_length=24)
     ai_public_context_enabled: bool = True
     public_context_fetcher_url: str = "http://context-fetcher:8010"
 

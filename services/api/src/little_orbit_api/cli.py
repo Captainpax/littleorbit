@@ -8,7 +8,9 @@ from pathlib import Path
 
 from sqlalchemy import select
 
+from .big_orbit_bootstrap import issue_bootstrap_pin
 from .clock import SystemClock
+from .config import get_settings
 from .database import SessionFactory
 from .models import Account, Couple, CoupleMember, SecurityEvent
 from .note_deduplication import classify_and_archive_duplicates
@@ -22,8 +24,8 @@ from .together_time_service import (
 )
 
 
-async def promote_admin(email: str) -> None:
-    """Promote one existing verified account and record the local operation."""
+async def bootstrap_admin(email: str) -> None:
+    """Promote one verified account and print one ten-minute Big Orbit PIN once."""
 
     async with SessionFactory() as session:
         account = await session.scalar(
@@ -34,17 +36,19 @@ async def promote_admin(email: str) -> None:
         if account is None or account.verified_at is None or account.deleted_at is not None:
             raise RuntimeError("A verified active account with that email was not found")
         account.is_admin = True
+        pin = await issue_bootstrap_pin(session, account, get_settings())
         session.add(
             SecurityEvent(
                 actor_id=account.id,
-                event_type="local_admin_promotion",
+                event_type="local_admin_bootstrap",
                 outcome="accepted",
                 metadata_json={},
                 created_at=SystemClock().now(),
             )
         )
         await session.commit()
-    print("Verified account promoted. Complete MFA enrollment before using the console.")
+    print(f"Big Orbit bootstrap PIN: {pin}")
+    print("This PIN expires in 10 minutes and is shown only once.")
 
 
 async def publish_release(payload: ApkReleaseInput) -> None:
@@ -143,8 +147,8 @@ def main() -> None:
 def _command_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="little-orbit-admin")
     subcommands = parser.add_subparsers(dest="command", required=True)
-    promote = subcommands.add_parser("promote-admin")
-    promote.add_argument("email")
+    bootstrap = subcommands.add_parser("bootstrap-admin")
+    bootstrap.add_argument("email")
     release = subcommands.add_parser("publish-release")
     release.add_argument("--version", required=True)
     release.add_argument("--version-code", required=True, type=int)
@@ -174,8 +178,8 @@ def _command_parser() -> argparse.ArgumentParser:
 
 
 def _dispatch(arguments: argparse.Namespace) -> None:
-    if arguments.command == "promote-admin":
-        asyncio.run(promote_admin(arguments.email))
+    if arguments.command == "bootstrap-admin":
+        asyncio.run(bootstrap_admin(arguments.email))
     if arguments.command == "publish-release":
         asyncio.run(publish_release(_release_payload(arguments)))
     if arguments.command == "deduplicate-notes":

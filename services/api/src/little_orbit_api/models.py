@@ -509,12 +509,13 @@ class GenerationBatch(Base):
     prompt_version: Mapped[str] = mapped_column(String(80), nullable=False)
     parameters: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     validation_results: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
-    candidate_snapshot: Mapped[list[dict[str, object]]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    candidate_snapshot: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
     selected_question_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     fallback_reason: Mapped[str | None] = mapped_column(String(120))
     duration_ms: Mapped[int | None] = mapped_column(Integer)
+    day_theme_id: Mapped[UUID | None] = mapped_column(ForeignKey("quiz_day_themes.id", ondelete="SET NULL"))
+    knowledge_revision: Mapped[str | None] = mapped_column(String(64))
+    context_digest: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -533,10 +534,12 @@ class CuratedBankQuestion(Timestamped, Base):
     option_icons: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     scale_low_label: Mapped[str | None] = mapped_column(String(32))
     scale_high_label: Mapped[str | None] = mapped_column(String(32))
+    concept_family: Mapped[str] = mapped_column(String(80), nullable=False, default="legacy")
+    concept_summary: Mapped[str] = mapped_column(String(180), nullable=False, default="Legacy concept")
+    depth: Mapped[str] = mapped_column(String(16), nullable=False, default="reflective")
+    theme_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    updated_by: Mapped[UUID | None] = mapped_column(
-        ForeignKey("accounts.id", ondelete="SET NULL")
-    )
+    updated_by: Mapped[UUID | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"))
 
 
 class ApkRelease(Timestamped, Base):

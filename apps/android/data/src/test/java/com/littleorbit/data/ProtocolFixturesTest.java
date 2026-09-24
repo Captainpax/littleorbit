@@ -61,6 +61,14 @@ public final class ProtocolFixturesTest {
     }
 
     @Test
+    public void v4QuizFixturesCarryDepthCompositionAndPublicThemes() throws IOException {
+        assertTrue(validQuestionBatchV4(read("v4", "question-batch.valid.json")));
+        assertFalse(validQuestionBatchV4(read("v4", "question-batch.invalid.json")));
+        assertTrue(validQuizDayV4(read("v4", "quiz-day.valid.json")));
+        assertFalse(validQuizDayV4(read("v4", "quiz-day.invalid.json")));
+    }
+
+    @Test
     public void releaseHistoryFixturesKeepPublicMetadataShape() throws IOException {
         assertTrue(validReleaseHistory(readList("release-history.valid.json")));
         assertFalse(validReleaseHistory(readList("release-history.invalid.json")));
@@ -388,6 +396,37 @@ public final class ProtocolFixturesTest {
                 && question.get("options") instanceof List<?> options
                 && question.get("option_icons") instanceof List<?> icons
                 && options.size() == icons.size());
+    }
+
+    private static boolean validQuestionBatchV4(Map<String, Object> value) {
+        Object questions = value.get("questions");
+        if (!"4".equals(value.get("schema_version"))
+                || !(questions instanceof List<?> list)
+                || list.size() != 10) {
+            return false;
+        }
+        return list.stream().allMatch(item -> item instanceof Map<?, ?> question
+                && boundedText(question.get("concept_summary"), 180)
+                && List.of("light", "reflective", "deeper").contains(question.get("depth"))
+                && List.of("themed", "variety").contains(question.get("theme_role"))
+                && question.get("theme_tags") instanceof List<?> tags
+                && tags.size() <= 4);
+    }
+
+    private static boolean validQuizDayV4(Map<String, Object> value) {
+        if (!validQuizDay(value) || !value.containsKey("theme")) return false;
+        Object theme = value.get("theme");
+        boolean validTheme = theme == null || theme instanceof Map<?, ?> details
+                && boundedText(details.get("weekly_title"), 80)
+                && boundedText(details.get("weekly_summary"), 240)
+                && boundedText(details.get("daily_title"), 80)
+                && boundedText(details.get("daily_summary"), 240);
+        return validTheme && ((List<?>) value.get("questions")).stream().allMatch(
+                item -> item instanceof Map<?, ?> question
+                        && List.of("light", "reflective", "deeper")
+                                .contains(question.get("depth"))
+                        && List.of("themed", "variety").contains(question.get("theme_role"))
+                        && question.get("theme_tags") instanceof List<?>);
     }
 
     private static boolean validQuizDay(Map<String, Object> value) {

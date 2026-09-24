@@ -91,20 +91,39 @@ Public sign-in and password proof failures do not use the authenticated-session 
 
 ```mermaid
 sequenceDiagram
-    actor Admin as Owner in Big Orbit
+    actor Console as Trusted server console
+    actor Admin as Owner on fresh Big Orbit device
     participant Key as Android Keystore
     participant API
     participant DB as PostgreSQL
+    Console->>API: bootstrap-admin owner@example.com
+    API->>DB: Invalidate older PIN/setup; store hash with 10-minute expiry
+    API-->>Console: Show one 8-digit PIN once
     Admin->>Key: Create non-exportable P-256 key
-    Admin->>API: Password + current TOTP/recovery + public key
+    Admin->>API: Password + PIN + label + public key
     API->>DB: Commit capped IP + administrator digest counters
-    API->>DB: Lock account/MFA; verify role, password, and replay-safe proof
-    API->>DB: Store public key + five-minute enrollment challenge
-    API-->>Admin: Challenge ID and random challenge
-    Admin->>Key: Sign canonical enrollment challenge
+    API->>DB: Lock account; verify password; consume PIN; create pending device
+    API-->>Admin: Restricted 10-minute setup token
+    Admin->>API: Request bootstrap challenge
+    API-->>Admin: Single-use bootstrap challenge
+    Admin->>Key: Sign canonical bootstrap challenge
     Admin->>API: Challenge + signature
-    API->>DB: Consume challenge; approve device; store credential hash
-    API-->>Admin: Device credential once
+    API->>DB: Consume challenge; prove pending device key
+    alt First owner has no enabled MFA
+        API-->>Admin: TOTP URI + QR PNG
+        Admin->>API: Current 6-digit TOTP
+        API->>DB: Enable MFA; hash recovery codes; approve device
+        API-->>Admin: Recovery codes once + device credential + session
+    else Existing MFA remains enabled
+        API->>DB: Approve device without changing MFA
+        API-->>Admin: Device credential + session
+    end
+    opt Final response is lost before local credential storage
+        Admin->>API: Request a fresh bootstrap challenge within original expiry
+        Admin->>Key: Sign the new challenge with the same key
+        API->>DB: Rotate replacement credential and short session
+        API-->>Admin: Replacement credential + session
+    end
     loop Each session or background rotation
         Admin->>API: Request fresh session challenge
         API-->>Admin: Five-minute single-use challenge
@@ -116,7 +135,7 @@ sequenceDiagram
     API-->>Admin: No relationship content or arbitrary command surface
 ```
 
-The public web app has no `/admin` interface and the final API has no `/v1/admin`. Administrator MFA replacement still requires the current password plus the current factor, keeps the old factor active until confirmation, and revokes earlier sessions after a successful swap. Big Orbit alert acknowledgement is per enrolled device, so one phone cannot consume another owner's action inbox.
+The setup token is a separate restricted capability and cannot read ordinary administrator metadata or queue operations. A fifth wrong PIN invalidates it; a new console PIN expires every older live setup capability, and ordinary expiry revokes a still-pending device. Process death may resume within the original ten-minute window. If completion committed but its response was lost, recovery requires a fresh single-use signature from the same device key before credentials rotate. The public web app has no `/admin` interface and the final API has no `/v1/admin`. Administrator MFA replacement still requires the current password plus the current factor, keeps the old factor active until confirmation, and revokes earlier sessions after a successful swap. Big Orbit alert acknowledgement is per enrolled device, so one phone cannot consume another owner's action inbox.
 
 ## Live notes
 
@@ -235,25 +254,29 @@ flowchart TD
     Feedback --> Linked[Author-readable linked feedback<br/>editable through day 30]
     Linked --> Aggregate{At least 5 distinct accounts<br/>for question and week?}
     Aggregate -->|no| Hold[No admin or AI review surface]
-    Aggregate -->|yes| Saturday[Saturday UTC learning<br/>ratings, tag counts, sanitized reviews]
-    Saturday --> Policy[Strict bounded policy<br/>atomic version activation]
+    Aggregate -->|yes| Saturday[Saturday 09:00 America/Los_Angeles<br/>learn new eligible feedback]
+    Saturday --> Policy[Evaluate bounded policy<br/>activate only on deterministic pass]
+    Saturday --> Theme[Plan one Monday-Sunday arc<br/>7 unique days, at most 2 observances]
     Linked -->|day 30| Unlink[Remove account, couple, and quiz-day links]
     Unlink -->|by day 90| DeleteReview[Hard-delete raw review text]
-    Policy --> Sunday[Sunday UTC generation<br/>next Monday-Sunday]
+    Policy --> Sunday[Sunday 09:00 local generation<br/>next Monday-Sunday]
+    Theme --> Sunday
     Sources[Exact code-owned HTTPS sources] --> Fetcher[Secret-free fetcher<br/>public DNS, no redirects, 64 KiB]
     Fetcher --> Sunday
-    Sunday --> Qwen[Pinned local Qwen model<br/>strict v3 JSON]
+    Knowledge[Reviewed manifest-owned Markdown] --> Chunks[Bounded hashed pgvector chunks]
+    Chunks --> Sunday
+    Sunday --> Qwen[Pinned local Qwen model<br/>strict v4 JSON]
     Qwen --> Validate{Schema, safety, whitespace,<br/>answerability, consent}
     Validate -->|reject| Quarantine[Quarantine with reason codes]
     Validate -->|accept| Semantic{365-day exact + trigram +<br/>concept family + pinned Nomic vectors}
     Semantic -->|duplicate| Quarantine
-    Semantic -->|unique| Select[Balance tone, kind, and category]
-    Bank[Human-reviewed curated bank] -->|outage or shortage| Select
-    Select --> Publish[Exactly 5 global questions per day<br/>plus intimacy alternative]
+    Semantic -->|unique| Select[Exactly 3 themed + 2 variety<br/>1 light + 2 reflective + 2 deeper]
+    Reserve[One-use reviewed reserve<br/>1,825 general + 365 intimacy] -->|outage or shortage| Select
+    Select --> Publish[Exactly 5 global questions per day<br/>plus intimacy alternatives]
     Publish --> Audit[Model digests, prompt/policy versions,<br/>validation and fallback metadata]
 ```
 
-Invalid model output is quarantined rather than repaired. Tabs, line breaks, control characters, non-breaking spaces, repeated horizontal spaces, and leading or trailing whitespace are rejected before publication so hidden layout characters never reach Android. Current plus seven-day curated coverage is maintained independently of the weekly run, so a model, embedding, feedback, or public-context failure cannot leave a quiz day empty. Neither local model receives answers, account/couple identity, notes, custom questions, locations, or relationship history.
+Invalid model output is quarantined rather than repaired. Tabs, line breaks, control characters, non-breaking spaces, repeated horizontal spaces, and leading or trailing whitespace are rejected before publication so hidden layout characters never reach Android. Global concepts are compared within the batch, planned week, and preceding 365 days; formatting changes do not reset memory. Public context may fall back to its latest sanitized snapshot for at most 30 days, after which reviewed knowledge and reserve content keep coverage while Big Orbit receives a content-free alert. Current plus seven-day coverage is maintained independently of the weekly run, so a model, embedding, feedback, or browsing failure cannot leave a quiz day empty. Neither local model receives answers, account/couple identity, notes, custom questions, locations, or relationship history.
 
 ## Daily quiz, custom queue, and reveal
 

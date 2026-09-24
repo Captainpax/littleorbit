@@ -24,39 +24,21 @@ class DeviceChallengeResponse(StrictModel):
 
 
 class BigOrbitSessionRequest(StrictModel):
-    """Password/MFA login plus enrollment or an existing device signature."""
+    """Password/MFA login for one already approved device signature."""
 
     email: EmailStr
     password: Annotated[str, Field(min_length=1, max_length=256)]
     totp_code: Annotated[str | None, Field(default=None, pattern=r"^[0-9]{6}$")]
     recovery_code: Annotated[str | None, Field(default=None, min_length=13, max_length=32)]
-    enrollment_public_key: Annotated[
-        str | None, Field(default=None, min_length=80, max_length=512)
-    ]
-    device_label: Annotated[str | None, Field(default=None, min_length=1, max_length=80)]
-    device_id: UUID | None = None
-    challenge_id: UUID | None = None
-    challenge: Annotated[str | None, Field(default=None, min_length=24, max_length=128)]
-    signature: Annotated[str | None, Field(default=None, min_length=40, max_length=256)]
+    device_id: UUID
+    challenge_id: UUID
+    challenge: Annotated[str, Field(min_length=24, max_length=128)]
+    signature: Annotated[str, Field(min_length=40, max_length=256)]
 
     @model_validator(mode="after")
     def one_device_flow(self) -> "BigOrbitSessionRequest":
-        """Require one complete enrollment or returning-device proof."""
+        """Require one MFA proof; new devices use the PIN bootstrap contract."""
 
-        enrollment = self.enrollment_public_key is not None or self.device_label is not None
-        returning = any(
-            value is not None
-            for value in (self.device_id, self.challenge_id, self.challenge, self.signature)
-        )
-        if enrollment == returning:
-            raise ValueError("provide one complete device flow")
-        if enrollment and (self.enrollment_public_key is None or self.device_label is None):
-            raise ValueError("device enrollment is incomplete")
-        if returning and any(
-            value is None
-            for value in (self.device_id, self.challenge_id, self.challenge, self.signature)
-        ):
-            raise ValueError("device proof is incomplete")
         if bool(self.totp_code) == bool(self.recovery_code):
             raise ValueError("provide exactly one MFA proof")
         return self
@@ -87,6 +69,71 @@ class DeviceEnrollmentResult(StrictModel):
     device_id: UUID
     device_credential: str
     credential_expires_at: datetime
+
+
+class BootstrapSessionRequest(StrictModel):
+    """Password, terminal PIN, and a new Keystore key for one device enrollment."""
+
+    email: EmailStr
+    password: Annotated[str, Field(min_length=1, max_length=256)]
+    pin: Annotated[str, Field(pattern=r"^[0-9]{8}$")]
+    device_label: Annotated[str, Field(min_length=1, max_length=80)]
+    enrollment_public_key: Annotated[str, Field(min_length=80, max_length=512)]
+
+
+class BootstrapMfaEnrollment(StrictModel):
+    """In-memory authenticator enrollment material for a PIN-authorized owner."""
+
+    otpauth_uri: str
+    qr_png_data_url: str
+
+
+class BootstrapSessionResponse(StrictModel):
+    """Restricted setup token plus the first device-possession challenge."""
+
+    setup_token: str
+    expires_at: datetime
+    account_id: UUID
+    device_id: UUID
+    mfa_required: bool
+    challenge: DeviceChallengeResponse
+
+
+class BootstrapStatusResponse(StrictModel):
+    """Resumable non-administrative state for one unexpired bootstrap session."""
+
+    expires_at: datetime
+    account_id: UUID
+    device_id: UUID
+    device_confirmed: bool
+    mfa_required: bool
+    mfa_enrollment: BootstrapMfaEnrollment | None = None
+
+
+class BootstrapCompletion(StrictModel):
+    """Approved device credential and ordinary short session, each returned once."""
+
+    access_token: str
+    expires_at: datetime
+    account_id: UUID
+    device_id: UUID
+    device_credential: str
+    credential_expires_at: datetime
+    recovery_codes: list[str] = Field(default_factory=list)
+
+
+class BootstrapDeviceConfirmResult(StrictModel):
+    """Either the MFA setup step or a completed enrollment for existing MFA."""
+
+    completed: bool
+    status: BootstrapStatusResponse | None = None
+    completion: BootstrapCompletion | None = None
+
+
+class BootstrapMfaConfirm(StrictModel):
+    """First authenticator code for a PIN-authorized initial MFA enrollment."""
+
+    code: Annotated[str, Field(pattern=r"^[0-9]{6}$")]
 
 
 class DeviceSessionRequest(StrictModel):
@@ -140,7 +187,13 @@ class AdminJobMutation(StrictModel):
     """Allowlisted operation; no command, SQL, path, or arbitrary arguments."""
 
     operation_id: UUID
-    kind: Literal["learn_quizzes", "generate_quizzes", "backup", "test_restore"]
+    kind: Literal[
+        "learn_quizzes",
+        "generate_quizzes",
+        "regenerate_quizzes",
+        "backup",
+        "test_restore",
+    ]
     target_week: date | None = None
 
 

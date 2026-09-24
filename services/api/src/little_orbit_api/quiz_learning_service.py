@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
+from little_orbit_ai.learning_eval import policy_rejection_reasons
 from little_orbit_ai.ollama import OllamaClient, OllamaFailure
 from little_orbit_ai.prompt import build_learning_prompt
 from little_orbit_ai.schemas import (
@@ -25,6 +26,7 @@ from .database import SessionFactory
 from .models import Question
 from .quiz_feedback_retention import aggregate_feedback_week
 from .quiz_intelligence_models import (
+    AiLearningCursor,
     AiPolicyVersion,
     AiRun,
     FeedbackWeeklyAggregate,
@@ -45,14 +47,29 @@ async def learn_feedback_week(week_start: date, client: OllamaClient) -> str:
         return "already_claimed"
     try:
         async with SessionFactory() as session:
-            await aggregate_feedback_week(session, week_start, now)
-            signals = await _learning_signals(session, week_start)
+            cursor = await _learning_cursor(session, week_start, now)
+            await _aggregate_since(session, cursor.feedback_updated_through, now)
+            signals = await _learning_signals(
+                session, cursor.feedback_updated_through, now
+            )
             await session.commit()
         if not signals:
+            await _advance_learning_cursor(now)
             await finish_ai_run(run_key, "fallback", {"reason": "no_thresholded_feedback"})
             return "no_feedback"
         policy = await client.learn(build_learning_prompt(signals))
+        rejection_reasons = policy_rejection_reasons(policy, signals)
+        if rejection_reasons:
+            version = await _reject_policy(policy, len(signals), rejection_reasons, now)
+            await finish_ai_run(
+                run_key,
+                "fallback",
+                {"reason": "evaluation_rejected", "reasons": list(rejection_reasons)},
+                version,
+            )
+            return "rejected"
         version = await _activate_policy(policy, len(signals), now)
+        await _advance_learning_cursor(now)
         await finish_ai_run(
             run_key,
             "passed",
@@ -82,14 +99,14 @@ async def active_learning_policy() -> LearningPolicy | None:
 
 
 async def _learning_signals(
-    session: AsyncSession,
-    week_start: date,
+    session: AsyncSession, changed_after: datetime, through: datetime
 ) -> list[LearningQuestionSignal]:
     aggregates = list(
         await session.scalars(
             select(FeedbackWeeklyAggregate).where(
-                FeedbackWeeklyAggregate.week_start == week_start,
                 FeedbackWeeklyAggregate.distinct_accounts >= 5,
+                FeedbackWeeklyAggregate.updated_at > changed_after,
+                FeedbackWeeklyAggregate.updated_at <= through,
             )
         )
     )
@@ -108,14 +125,13 @@ async def _learning_signals(
             select(QuestionConcept).where(QuestionConcept.question_id.in_(question_ids))
         )
     }
-    start = datetime.combine(week_start, time.min, tzinfo=UTC)
-    end = start + timedelta(days=7)
+    start = max(changed_after, through - timedelta(days=30))
     reviews: dict[UUID, list[str]] = defaultdict(list)
     review_rows = await session.execute(
         select(QuestionFeedback.question_id, QuestionFeedback.sanitized_review).where(
             QuestionFeedback.question_id.in_(question_ids),
             QuestionFeedback.updated_at >= start,
-            QuestionFeedback.updated_at < end,
+            QuestionFeedback.updated_at < through,
             QuestionFeedback.review_status == "accepted",
             QuestionFeedback.sanitized_review.is_not(None),
         )
@@ -141,6 +157,48 @@ async def _learning_signals(
             )
         )
     return result
+
+
+async def _learning_cursor(
+    session: AsyncSession, week_start: date, now: datetime
+) -> AiLearningCursor:
+    """Lock or create the carry-forward watermark without advancing it early."""
+
+    record = await session.get(AiLearningCursor, "quiz-feedback", with_for_update=True)
+    if record is not None:
+        return record
+    initial = datetime.combine(week_start, time.min, tzinfo=UTC)
+    record = AiLearningCursor(
+        name="quiz-feedback",
+        feedback_updated_through=max(initial, now - timedelta(days=30)),
+        last_run_at=now,
+    )
+    session.add(record)
+    await session.flush()
+    return record
+
+
+async def _aggregate_since(session: AsyncSession, since: datetime, now: datetime) -> None:
+    """Recompute every touched UTC week so late edits become eligible once thresholded."""
+
+    monday = since.date() - timedelta(days=since.weekday())
+    final = now.date() - timedelta(days=now.weekday())
+    while monday <= final:
+        await aggregate_feedback_week(session, monday, now)
+        monday += timedelta(days=7)
+
+
+async def _advance_learning_cursor(through: datetime) -> None:
+    """Advance only after a no-op or successfully activated policy."""
+
+    async with SessionFactory() as session:
+        record = await session.get(AiLearningCursor, "quiz-feedback", with_for_update=True)
+        if record is None:
+            return
+        if through > record.feedback_updated_through:
+            record.feedback_updated_through = through
+        record.last_run_at = through
+        await session.commit()
 
 
 def _fallback_family(question: Question) -> str:
@@ -183,6 +241,35 @@ async def _activate_policy(policy: LearningPolicy, signal_count: int, now: datet
                 },
                 created_at=now,
                 activated_at=now,
+            )
+        )
+        await session.commit()
+    return version
+
+
+async def _reject_policy(
+    policy: LearningPolicy,
+    signal_count: int,
+    reasons: tuple[str, ...],
+    now: datetime,
+) -> int:
+    """Preserve safe audit metadata without activating failed learned guidance."""
+
+    async with SessionFactory() as session:
+        await session.execute(text("SELECT pg_advisory_xact_lock(12002026)"))
+        current = await session.scalar(select(func.max(AiPolicyVersion.version)))
+        version = int(current or 0) + 1
+        session.add(
+            AiPolicyVersion(
+                version=version,
+                status="rejected",
+                policy_json=policy.model_dump(mode="json"),
+                evaluation_json={
+                    "schema_valid": True,
+                    "thresholded_signal_count": signal_count,
+                    "reasons": list(reasons),
+                },
+                created_at=now,
             )
         )
         await session.commit()

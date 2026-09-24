@@ -2,12 +2,20 @@
 
 import os
 from datetime import date, timedelta
+from uuid import UUID
 
 from little_orbit_ai.embeddings import EmbeddingSettings, OllamaEmbeddingClient
 from little_orbit_ai.ollama import OllamaSettings
 from little_orbit_ai.pipeline import PipelineResult
 from little_orbit_ai.safety import normalized_hash
-from little_orbit_ai.schemas import CandidateQuestion, Category, IconKey, QuestionKind
+from little_orbit_ai.schemas import (
+    CandidateQuestion,
+    Category,
+    IconKey,
+    QuestionDepth,
+    QuestionKind,
+    ThemeRole,
+)
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +28,8 @@ from .models import (
     QuizAnswer,
     QuizDayQuestion,
 )
+from .quiz_intelligence_models import QuizDayTheme
+from .quiz_reserve_service import available_reserve, consume_selected_reserve
 from .quiz_semantics import (
     CandidateSemantics,
     candidate_semantics,
@@ -51,6 +61,7 @@ async def recent_question_prompts(target: date) -> list[str]:
                     Question.publish_date < target,
                 )
                 .order_by(Question.publish_date.desc())
+                .limit(24)
             )
         )
 
@@ -106,11 +117,17 @@ async def curated_bank() -> list[CandidateQuestion] | None:
             option_icons=[IconKey(value) for value in item.option_icons],
             scale_low_label=item.scale_low_label,
             scale_high_label=item.scale_high_label,
+            concept_family=item.concept_family,
+            concept_summary=item.concept_summary,
+            depth=QuestionDepth(item.depth),
+            theme_tags=item.theme_tags,
         )
         for item in records
     ]
-    general_count = sum(not item.intimacy for item in bank)
-    return bank if general_count >= 5 and any(item.intimacy for item in bank) else None
+    reserve = await available_reserve()
+    combined = [*bank, *reserve]
+    general_count = sum(not item.intimacy for item in combined)
+    return combined if general_count >= 5 and any(item.intimacy for item in combined) else None
 
 
 async def persist_pool(
@@ -134,14 +151,26 @@ async def persist_pool(
         ]
         session.add_all(stored)
         await session.flush()
+        await consume_selected_reserve(session, target, candidates)
         session.add_all(
             [
-                concept_record(question, semantics[normalized_hash(question.prompt)])
-                for question in stored
+                concept_record(question, semantics[normalized_hash(question.prompt)], item)
+                for question, item in zip(stored, candidates, strict=True)
             ]
         )
+        theme_id = await session.scalar(
+            select(QuizDayTheme.id).where(QuizDayTheme.local_date == target)
+        )
         session.add(
-            _generation_record(target, result, settings, stored, database_quarantine, duration_ms)
+            _generation_record(
+                target,
+                result,
+                settings,
+                stored,
+                database_quarantine,
+                duration_ms,
+                theme_id,
+            )
         )
         await session.commit()
 
@@ -181,7 +210,11 @@ async def _database_filtered_pool(
     dict[str, CandidateSemantics],
 ]:
     selected, rejected, semantics = await _filter_database_duplicates(
-        session, target, result, embedding_client
+        session,
+        target,
+        result,
+        embedding_client,
+        {item.client_id for item in bank},
     )
     general = [item for item in selected if not item.intimacy][:5]
     intimacy = [item for item in selected if item.intimacy]
@@ -205,6 +238,7 @@ async def _filter_database_duplicates(
     target: date,
     result: PipelineResult,
     embedding_client: OllamaEmbeddingClient,
+    bank_ids: set[str],
 ) -> tuple[
     list[CandidateQuestion],
     list[dict[str, object]],
@@ -217,8 +251,15 @@ async def _filter_database_duplicates(
     for item in proposed:
         value = await candidate_semantics(embedding_client, item)
         same_batch = any(semantics_overlap(value, accepted) for accepted in semantics.values())
-        if same_batch or await is_semantic_duplicate(session, target, item, value):
-            reason = "batch_semantic_duplicate" if same_batch else "database_semantic_duplicate"
+        missing_ai_embedding = value.prompt_vector is None and item.client_id not in bank_ids
+        duplicate = await is_semantic_duplicate(session, target, item, value)
+        if missing_ai_embedding or same_batch or duplicate:
+            if missing_ai_embedding:
+                reason = "embedding_unavailable"
+            elif same_batch:
+                reason = "batch_semantic_duplicate"
+            else:
+                reason = "database_semantic_duplicate"
             rejected.append({"client_id": item.client_id, "reasons": [reason]})
         else:
             selected.append(item)
@@ -244,6 +285,7 @@ async def _fill_from_bank(
 ) -> None:
     used = {normalized_hash(item.prompt) for item in selected}
     for item in _rotated_bank(target, bank):
+        item = _fallback_slot(item, general) if not item.intimacy else item
         if not _needs_bank_item(item, general, intimacy):
             continue
         if normalized_hash(item.prompt) in used:
@@ -255,6 +297,34 @@ async def _fill_from_bank(
             digest = normalized_hash(item.prompt)
             used.add(digest)
             semantics[digest] = value
+
+
+def _fallback_slot(
+    item: CandidateQuestion, general: list[CandidateQuestion]
+) -> CandidateQuestion:
+    """Fill the first missing role and depth from the reviewed daily contract."""
+
+    role_targets = ((ThemeRole.THEMED, 3), (ThemeRole.VARIETY, 2))
+    depth_targets = (
+        (QuestionDepth.LIGHT, 1),
+        (QuestionDepth.REFLECTIVE, 2),
+        (QuestionDepth.DEEPER, 2),
+    )
+    role = next(
+        (value for value, count in role_targets if sum(q.theme_role is value for q in general) < count),
+        ThemeRole.VARIETY,
+    )
+    depth = next(
+        (value for value, count in depth_targets if sum(q.depth is value for q in general) < count),
+        QuestionDepth.DEEPER,
+    )
+    return item.model_copy(
+        update={
+            "theme_role": role,
+            "depth": depth,
+            "theme_tags": item.theme_tags or ["evergreen"],
+        }
+    )
 
 
 def _rotated_bank(target: date, bank: list[CandidateQuestion]) -> list[CandidateQuestion]:
@@ -269,6 +339,7 @@ def _generation_record(
     stored: list[Question],
     database_quarantine: list[dict[str, object]],
     duration_ms: int,
+    day_theme_id: UUID | None,
 ) -> GenerationBatch:
     fallback_reason = result.pool.fallback_reason
     if database_quarantine and fallback_reason is None:
@@ -304,6 +375,9 @@ def _generation_record(
         selected_question_ids=[str(item.id) for item in stored],
         fallback_reason=fallback_reason,
         duration_ms=duration_ms,
+        day_theme_id=day_theme_id,
+        knowledge_revision=result.pool.knowledge_revision,
+        context_digest=result.pool.context_digest,
         created_at=SystemClock().now(),
     )
 

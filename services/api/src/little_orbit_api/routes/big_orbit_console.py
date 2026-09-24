@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..admin_device_models import (
@@ -22,16 +22,14 @@ from ..big_orbit_schemas import (
 from ..clock import SystemClock
 from ..config import Settings, get_settings
 from ..database import session_scope
-from ..models import GenerationBatch, Question, QuestionReport
+from ..models import Question, QuestionReport
 from ..quiz_intelligence_models import (
-    AiPolicyVersion,
-    AiRun,
     AnonymousQuestionReview,
     FeedbackWeeklyAggregate,
-    QuestionConcept,
     QuestionFeedback,
     WebContextSource,
 )
+from ..quiz_observatory_service import observatory_items
 from ..quiz_v3_schemas import QuizFeedbackAggregateView
 from ..schemas import AdminCollectionResponse, PublicMessage
 
@@ -197,62 +195,11 @@ async def quiz_intelligence(
 @router.get("/ai/observatory", response_model=AdminCollectionResponse)
 async def ai_observatory(
     _principal: BigOrbitPrincipal = Depends(current_big_orbit_admin),
-    session: AsyncSession = Depends(session_scope),
     settings: Settings = Depends(get_settings),
 ) -> AdminCollectionResponse:
     """Return model provenance and job health without model inputs or user data."""
 
-    active = await session.scalar(
-        select(AiPolicyVersion)
-        .where(AiPolicyVersion.status == "active")
-        .order_by(AiPolicyVersion.version.desc())
-        .limit(1)
-    )
-    runs = list(
-        await session.scalars(select(AiRun).order_by(AiRun.started_at.desc()).limit(30))
-    )
-    embedded = int(
-        await session.scalar(
-            select(func.count())
-            .select_from(QuestionConcept)
-            .where(QuestionConcept.embedded_at.is_not(None))
-        )
-        or 0
-    )
-    upcoming = int(
-        await session.scalar(
-            select(func.count())
-            .select_from(GenerationBatch)
-            .where(GenerationBatch.publish_date >= SystemClock().now().date())
-        )
-        or 0
-    )
-    items: list[dict[str, object]] = [
-        {
-            "type": "summary",
-            "active_policy_version": active.version if active else None,
-            "active_policy": active.policy_json if active else None,
-            "learning_hour_utc": settings.ai_learning_hour_utc,
-            "generation_hour_utc": settings.ai_generation_hour_utc,
-            "embedded_questions": embedded,
-            "upcoming_days": upcoming,
-        }
-    ]
-    items.extend(
-        {
-            "type": "run",
-            "id": str(run.id),
-            "run_key": run.run_key,
-            "kind": run.kind,
-            "status": run.status,
-            "policy_version": run.policy_version,
-            "summary": run.summary_json,
-            "started_at": run.started_at,
-            "finished_at": run.finished_at,
-        }
-        for run in runs
-    )
-    return AdminCollectionResponse(items=items)
+    return AdminCollectionResponse(items=await observatory_items(settings))
 
 
 @router.post("/jobs", response_model=AdminJobView)
@@ -421,7 +368,11 @@ async def _aggregate_reviews(
 
 
 def _validate_job(payload: AdminJobMutation) -> None:
-    needs_week = payload.kind in {"learn_quizzes", "generate_quizzes"}
+    needs_week = payload.kind in {
+        "learn_quizzes",
+        "generate_quizzes",
+        "regenerate_quizzes",
+    }
     if needs_week != (payload.target_week is not None):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,

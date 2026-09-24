@@ -8,7 +8,13 @@ from typing import Any, cast
 import httpx
 from pydantic import TypeAdapter, ValidationError
 
-from .schemas import CandidateQuestion, GeneratedBatch, GeneratedCandidate, LearningPolicy
+from .schemas import (
+    CandidateQuestion,
+    GeneratedBatch,
+    GeneratedCandidate,
+    LearningPolicy,
+    WeeklyThemePlan,
+)
 
 
 @dataclass(frozen=True)
@@ -119,6 +125,43 @@ class OllamaClient:
         except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
             raise OllamaFailure("Ollama learning output failed strict validation") from exc
 
+    async def plan_week(self, prompt: str) -> WeeklyThemePlan:
+        """Create one strict weekly theme plan through the same pinned local model."""
+
+        request = self._structured_request(prompt, WeeklyThemePlan.model_json_schema(), 1200, 0.35)
+        timeout = httpx.Timeout(self._settings.timeout_seconds)
+        try:
+            async with httpx.AsyncClient(
+                base_url=self._settings.base_url,
+                timeout=timeout,
+                transport=self._transport,
+            ) as client:
+                await self._require_pinned_model(client)
+                response = await client.post("/api/generate", json=request)
+                response.raise_for_status()
+                return WeeklyThemePlan.model_validate_json(response.json()["response"])
+        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
+            raise OllamaFailure("Ollama weekly plan failed strict validation") from exc
+
+    def _structured_request(
+        self, prompt: str, schema: dict[str, object], output_tokens: int, temperature: float
+    ) -> dict[str, object]:
+        """Build the common bounded request without widening the network boundary."""
+
+        return {
+            "model": self._settings.model,
+            "prompt": prompt,
+            "stream": False,
+            "format": schema,
+            "keep_alive": 0,
+            "options": {
+                "num_ctx": self._settings.context_tokens,
+                "num_predict": output_tokens,
+                "temperature": temperature,
+                "top_p": 0.8,
+            },
+        }
+
     async def _require_pinned_model(self, client: httpx.AsyncClient) -> None:
         """Reject a mutable tag whose installed manifest is not the reviewed build."""
 
@@ -164,7 +207,7 @@ def _validate_envelope(payload: object) -> tuple[date, list[object]]:
     if not isinstance(payload, dict) or set(payload) != {"schema_version", "date", "questions"}:
         raise ValueError("generation envelope has unexpected fields")
     values = cast(dict[str, Any], payload)
-    if values["schema_version"] != "3":
+    if values["schema_version"] != "4":
         raise ValueError("generation envelope uses an unsupported schema version")
     date_value = values["date"]
     if not isinstance(date_value, str):

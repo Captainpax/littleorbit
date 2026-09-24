@@ -1,6 +1,6 @@
 """Strict, versioned model-output schemas for public question generation."""
 
-from datetime import date
+from datetime import date, timedelta
 from enum import StrEnum
 from typing import Annotated, Literal
 
@@ -46,6 +46,21 @@ class IconKey(StrEnum):
     SURPRISE = "surprise"
 
 
+class QuestionDepth(StrEnum):
+    """Reviewed emotional-depth ladder used to order each five-question day."""
+
+    LIGHT = "light"
+    REFLECTIVE = "reflective"
+    DEEPER = "deeper"
+
+
+class ThemeRole(StrEnum):
+    """Whether a general question serves the day's theme or deliberate variety."""
+
+    THEMED = "themed"
+    VARIETY = "variety"
+
+
 class CandidateQuestion(BaseModel):
     """One untrusted model candidate before deterministic validation."""
 
@@ -62,6 +77,9 @@ class CandidateQuestion(BaseModel):
     scale_high_label: str | None = Field(default=None, min_length=1, max_length=32)
     concept_family: str = Field(default="", pattern=r"^[a-z0-9-]{0,80}$")
     concept_summary: str = Field(default="", max_length=180)
+    depth: QuestionDepth = QuestionDepth.REFLECTIVE
+    theme_role: ThemeRole = ThemeRole.VARIETY
+    theme_tags: list[str] = Field(default_factory=list, max_length=4)
 
     @model_validator(mode="after")
     def validate_shape(self) -> "CandidateQuestion":
@@ -116,6 +134,9 @@ class GeneratedChoiceQuestion(CandidateQuestion):
     scale_high_label: None = None
     concept_family: str = Field(pattern=r"^[a-z0-9-]{3,80}$")
     concept_summary: str = Field(min_length=8, max_length=180)
+    depth: QuestionDepth
+    theme_role: ThemeRole
+    theme_tags: list[str] = Field(min_length=1, max_length=4)
 
 
 class GeneratedWeightedQuestion(CandidateQuestion):
@@ -128,6 +149,9 @@ class GeneratedWeightedQuestion(CandidateQuestion):
     scale_high_label: str = Field(min_length=1, max_length=32)
     concept_family: str = Field(pattern=r"^[a-z0-9-]{3,80}$")
     concept_summary: str = Field(min_length=8, max_length=180)
+    depth: QuestionDepth
+    theme_role: ThemeRole
+    theme_tags: list[str] = Field(min_length=1, max_length=4)
 
 
 class GeneratedOpenQuestion(CandidateQuestion):
@@ -140,6 +164,9 @@ class GeneratedOpenQuestion(CandidateQuestion):
     scale_high_label: None = None
     concept_family: str = Field(pattern=r"^[a-z0-9-]{3,80}$")
     concept_summary: str = Field(min_length=8, max_length=180)
+    depth: QuestionDepth
+    theme_role: ThemeRole
+    theme_tags: list[str] = Field(min_length=1, max_length=4)
 
 
 GeneratedCandidate = Annotated[
@@ -153,7 +180,7 @@ class GeneratedBatch(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["3"]
+    schema_version: Literal["4"]
     date: date
     questions: list[GeneratedCandidate] = Field(min_length=10, max_length=10)
 
@@ -168,6 +195,48 @@ class PublishedPool(BaseModel):
     model: str
     model_manifest_digest: str
     fallback_reason: str | None = None
+    theme_title: str | None = None
+    theme_summary: str | None = None
+    knowledge_revision: str | None = None
+    context_digest: str | None = None
+
+
+class DayTheme(BaseModel):
+    """One model-proposed day within a server-validated weekly arc."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    date: date
+    title: str = Field(min_length=3, max_length=80)
+    summary: str = Field(min_length=12, max_length=240)
+    observance: str | None = Field(default=None, min_length=3, max_length=120)
+
+
+class WeeklyThemePlan(BaseModel):
+    """Strict next-week plan; dates and observance count remain deterministic gates."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["1"]
+    week_start: date
+    arc_title: str = Field(min_length=3, max_length=80)
+    arc_summary: str = Field(min_length=12, max_length=240)
+    days: list[DayTheme] = Field(min_length=7, max_length=7)
+
+    @model_validator(mode="after")
+    def valid_week(self) -> "WeeklyThemePlan":
+        """Require Monday start, seven ordered dates, unique titles, and two observances."""
+
+        if self.week_start.weekday() != 0:
+            raise ValueError("weekly theme plan must begin on Monday")
+        expected = [self.week_start + timedelta(days=index) for index in range(7)]
+        if [item.date for item in self.days] != expected:
+            raise ValueError("weekly theme dates must be contiguous and ordered")
+        if len({item.title.casefold() for item in self.days}) != 7:
+            raise ValueError("daily theme titles must be unique")
+        if sum(item.observance is not None for item in self.days) > 2:
+            raise ValueError("at most two days may center an observance")
+        return self
 
 
 class LearningQuestionSignal(BaseModel):
@@ -188,16 +257,19 @@ class LearningPolicy(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["1"]
+    schema_version: Literal["1", "2"]
     avoid_concepts: list[str] = Field(max_length=20)
     prefer_categories: dict[Category, float]
     guidance: list[str] = Field(max_length=12)
     review_themes: list[str] = Field(max_length=12)
+    prefer_depths: dict[QuestionDepth, float] = Field(default_factory=dict)
+    theme_guidance: list[str] = Field(default_factory=list, max_length=8)
 
     @model_validator(mode="after")
     def bounded_weights(self) -> "LearningPolicy":
         """Reject policy weights that could overwhelm core safety instructions."""
 
-        if any(value < 0.5 or value > 1.5 for value in self.prefer_categories.values()):
-            raise ValueError("category policy weights must remain between 0.5 and 1.5")
+        weights = [*self.prefer_categories.values(), *self.prefer_depths.values()]
+        if any(value < 0.5 or value > 1.5 for value in weights):
+            raise ValueError("policy weights must remain between 0.5 and 1.5")
         return self
