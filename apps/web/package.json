@@ -18,11 +18,11 @@
     "capture:showcase": "node scripts/capture-showcase.mjs"
   },
   "dependencies": {
-    "@once-ui-system/core": "1.8.4",
-    "next": "16.3.4",
+    "@once-ui-system/core": "1.8.5",
+    "next": "16.3.5",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "sass": "1.104.0",
+    "sass": "1.104.1",
     "sharp": "0.35.4"
   },
   "devDependencies": {
@@ -30,15 +30,15 @@
     "@playwright/test": "1.63.0",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
-    "@types/node": "26.5.0",
-    "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.7",
+    "@types/node": "26.6.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
-    "eslint": "9.39.5",
-    "eslint-config-next": "16.3.4",
-    "jsdom": "30.0.1",
-    "typescript": "6.0.3",
-    "vitest": "5.0.0"
+    "eslint": "10.11.0",
+    "eslint-config-next": "16.3.5",
+    "jsdom": "30.1.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.1"
   }
 }
