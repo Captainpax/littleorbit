@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v1/note-attachment.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operation_id", "file_name", "media_type", "size_bytes", "sha256"],
+  "properties": {
+    "operation_id": { "type": "string", "format": "uuid" },
+    "file_name": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "media_type": {
+      "type": "string",
+      "enum": [
+        "image/jpeg", "image/png", "image/webp", "image/gif",
+        "application/pdf", "text/plain", "text/markdown",
+        "audio/mpeg", "audio/mp4", "audio/ogg", "video/mp4", "video/webm"
+      ]
+    },
+    "size_bytes": { "type": "integer", "minimum": 1, "maximum": 104857600 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

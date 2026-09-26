@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Widget.LittleOrbit.Button.Navigation" parent="Widget.Material3.Button.TextButton">
+        <item name="android:minHeight">52dp</item>
+        <item name="android:gravity">start|center_vertical</item>
+        <item name="android:textColor">@color/orbit_navigation_foreground</item>
+        <item name="backgroundTint">@color/orbit_navigation_background</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="iconTint">@color/orbit_navigation_foreground</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">14dp</item>
+    </style>
+
+    <style name="Widget.LittleOrbit.Button.Context" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:minHeight">52dp</item>
+        <item name="android:gravity">start|center_vertical</item>
+        <item name="android:textColor">@color/cloud</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="strokeColor">@color/orbit_border</item>
+    </style>
+
+    <style name="Widget.LittleOrbit.Button.SettingRow" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:gravity">start|center_vertical</item>
+        <item name="android:textColor">@color/cloud</item>
+        <item name="cornerRadius">18dp</item>
+        <item name="strokeColor">@color/orbit_border</item>
+        <item name="iconTint">@color/lavender_soft</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">14dp</item>
+    </style>
+</resources>

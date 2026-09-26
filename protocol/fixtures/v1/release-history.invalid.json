@@ -1,0 +1,11 @@
+[
+  {
+    "version": "",
+    "version_code": 0,
+    "github_release_url": "http://insecure.example.test",
+    "sha256": "bad",
+    "minimum_android": 20,
+    "release_notes": "",
+    "published_at": "someday"
+  }
+]

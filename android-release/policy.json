@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "product": "little-orbit",
+  "manifest_format": "little_orbit",
+  "certificate_sha256": "43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337",
+  "require_same_version_name": true,
+  "forbidden_markers": [
+    "http://127.0.0.1:18180",
+    "ws://127.0.0.1:18180",
+    "Little Orbit QA",
+    "com.littleorbit.mobile.smoke",
+    "little-orbit-wear-smoke.apk"
+  ],
+  "modules": [
+    {
+      "role": "phone",
+      "package": "com.littleorbit.mobile",
+      "metadata": "apps/android/mobile/build/outputs/apk/release/output-metadata.json",
+      "candidate_name": "little-orbit-phone-unsigned.apk",
+      "release_name": "little-orbit-{version}.apk"
+    },
+    {
+      "role": "wear",
+      "package": "com.littleorbit.mobile",
+      "required_feature": "android.hardware.type.watch",
+      "metadata": "apps/android/wear/build/outputs/apk/release/output-metadata.json",
+      "candidate_name": "little-orbit-wear-unsigned.apk",
+      "release_name": "little-orbit-wear-{version}.apk"
+    }
+  ]
+}

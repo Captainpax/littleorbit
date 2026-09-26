@@ -1,0 +1,7 @@
+{
+  "operation_id": "not-a-uuid",
+  "file_name": "../private.zip",
+  "media_type": "application/zip",
+  "size_bytes": 104857601,
+  "sha256": "short"
+}

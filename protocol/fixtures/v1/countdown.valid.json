@@ -1,0 +1,12 @@
+{
+  "id": "14f70ce2-e253-42c4-9e38-2c64058a1574",
+  "title": "Cabin weekend",
+  "occurs_at": "2026-11-06T07:00:00Z",
+  "timezone": "America/Los_Angeles",
+  "timing_kind": "all_day",
+  "occurs_on": "2026-11-06",
+  "my_reminder_offsets_minutes": [1440, 10080],
+  "notes": "Pack the warm blankets.",
+  "revision": 2,
+  "updated_at": "2026-09-13T20:15:00Z"
+}

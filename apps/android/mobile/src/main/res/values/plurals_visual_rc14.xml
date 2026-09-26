@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="visual_quiz_answers">
+        <item quantity="one">%1$d of 5 answered</item>
+        <item quantity="other">%1$d of 5 answered</item>
+    </plurals>
+    <plurals name="visual_custom_questions">
+        <item quantity="one">%1$d custom question</item>
+        <item quantity="other">%1$d custom questions</item>
+    </plurals>
+    <plurals name="visual_partner_surprises">
+        <item quantity="one">Your partner has %1$d surprise question waiting.</item>
+        <item quantity="other">Your partner has %1$d surprise questions waiting.</item>
+    </plurals>
+    <plurals name="visual_together_summary">
+        <item quantity="one">%1$d day in your orbit\nPaired %2$s\n\nNearby estimate: %3$dh %4$dm\nWithin %6$.0f m · Last processed: %5$s</item>
+        <item quantity="other">%1$d days in your orbit\nPaired %2$s\n\nNearby estimate: %3$dh %4$dm\nWithin %6$.0f m · Last processed: %5$s</item>
+    </plurals>
+</resources>

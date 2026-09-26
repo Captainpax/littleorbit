@@ -1,0 +1,31 @@
+services:
+  gateway:
+    ports: !override
+      - "${ROLLBACK_GATEWAY_BIND_ADDRESS:-127.0.0.1}:${ROLLBACK_GATEWAY_PORT:-18181}:8180"
+
+  api:
+    volumes:
+      - type: bind
+        source: ${ROLLBACK_DATA_ROOT:?set ROLLBACK_DATA_ROOT}/releases
+        target: /var/lib/little-orbit/releases
+        read_only: true
+        bind:
+          create_host_path: false
+      - &rollback-attachments
+        type: bind
+        source: ${ROLLBACK_DATA_ROOT:?set ROLLBACK_DATA_ROOT}/attachments
+        target: /var/lib/little-orbit/attachments
+        bind:
+          create_host_path: false
+
+  attachment-init:
+    volumes:
+      - *rollback-attachments
+
+  worker:
+    volumes:
+      - *rollback-attachments
+
+  media-worker:
+    volumes:
+      - *rollback-attachments

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="16dp"
+    app:cardBackgroundColor="@color/navy_surface"
+    app:cardCornerRadius="22dp"
+    app:strokeColor="@color/orbit_border"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rc14_finish_setup"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+                <TextView
+                    android:id="@+id/setupChecklistSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:accessibilityLiveRegion="polite"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/setupChecklistToggle"
+                style="@style/Widget.LittleOrbit.Button.Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/rc14_setup_collapse" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/setupChecklistDetails"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical">
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/rc14_setup_pairing" android:textColor="@color/cloud" android:textStyle="bold" />
+            <TextView android:id="@+id/setupPairingStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/setupPairingAction" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/rc14_review_pairing" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/rc14_setup_notifications" android:textColor="@color/cloud" android:textStyle="bold" />
+            <TextView android:id="@+id/setupNotificationStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/setupNotificationAction" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/rc14_review_notifications" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/rc14_setup_nearby" android:textColor="@color/cloud" android:textStyle="bold" />
+            <TextView android:id="@+id/setupNearbyStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/setupNearbyAction" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/rc14_review_nearby" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/rc14_setup_widget" android:textColor="@color/cloud" android:textStyle="bold" />
+            <TextView android:id="@+id/setupWidgetStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/setupWidgetAction" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/rc14_add_widget" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/rc14_setup_watch" android:textColor="@color/cloud" android:textStyle="bold" />
+            <TextView android:id="@+id/setupWatchStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/setupWatchAction" style="@style/Widget.LittleOrbit.Button.Outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/rc14_review_watch" />
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v4/quiz-day.schema.json",
+  "title": "Themed privacy-aware quiz day v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["quiz_date", "status", "revision", "my_finished", "partner_finished", "revealed", "editable", "theme", "questions"],
+  "properties": {
+    "quiz_date": {"type": "string", "format": "date"},
+    "status": {"enum": ["not_started", "in_progress", "waiting", "revealed", "expired"]},
+    "revision": {"type": "integer", "minimum": 0},
+    "my_finished": {"type": "boolean"},
+    "partner_finished": {"type": "boolean"},
+    "revealed": {"type": "boolean"},
+    "editable": {"type": "boolean"},
+    "theme": {"oneOf": [{"$ref": "#/$defs/theme"}, {"type": "null"}]},
+    "questions": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"$ref": "#/$defs/question"}}
+  },
+  "$defs": {
+    "icon": {"enum": ["heart", "chat", "home", "meal", "movie", "music", "outdoors", "play", "rest", "star", "travel", "surprise"]},
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "icon_key"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^o[1-6]$"},
+        "label": {"type": "string", "minLength": 1, "maxLength": 64},
+        "icon_key": {"$ref": "#/$defs/icon"}
+      }
+    },
+    "answer": {
+      "oneOf": [
+        {"type": "object", "additionalProperties": false, "required": ["kind", "selected_option_id"], "properties": {"kind": {"const": "single_choice"}, "selected_option_id": {"type": "string", "pattern": "^o[1-6]$"}}},
+        {"type": "object", "additionalProperties": false, "required": ["kind", "selected_option_ids"], "properties": {"kind": {"const": "multiple_choice"}, "selected_option_ids": {"type": "array", "minItems": 1, "maxItems": 6, "uniqueItems": true, "items": {"type": "string", "pattern": "^o[1-6]$"}}}},
+        {"type": "object", "additionalProperties": false, "required": ["kind", "text"], "properties": {"kind": {"const": "free_text"}, "text": {"type": "string", "minLength": 1, "maxLength": 2000}}},
+        {"type": "object", "additionalProperties": false, "required": ["kind", "self_option_id", "guess_option_id"], "properties": {"kind": {"const": "partner_guess"}, "self_option_id": {"type": "string", "pattern": "^o[1-6]$"}, "guess_option_id": {"type": "string", "pattern": "^o[1-6]$"}}},
+        {"type": "object", "additionalProperties": false, "required": ["kind", "ratings"], "properties": {"kind": {"const": "weighted_choice"}, "ratings": {"type": "object", "minProperties": 2, "maxProperties": 6, "patternProperties": {"^o[1-6]$": {"type": "integer", "minimum": 1, "maximum": 5}}, "additionalProperties": false}}},
+        {"type": "object", "additionalProperties": false, "required": ["kind", "rating"], "properties": {"kind": {"const": "weighted_scale"}, "rating": {"type": "integer", "minimum": 1, "maximum": 5}}}
+      ]
+    },
+    "feedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "stars", "tags", "review", "review_status", "editable_until", "updated_at"],
+      "properties": {
+        "revision": {"type": "integer", "minimum": 1},
+        "stars": {"type": "integer", "minimum": 1, "maximum": 5},
+        "tags": {"type": "array", "maxItems": 3, "uniqueItems": true, "items": {"enum": ["fun", "meaningful", "surprising", "clear", "sparked_conversation", "repeated", "too_shallow", "too_intense", "awkward", "irrelevant", "unclear"]}},
+        "review": {"type": ["string", "null"], "maxLength": 300},
+        "review_status": {"enum": ["accepted", "rejected", "consent_required", "none"]},
+        "editable_until": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["weekly_title", "weekly_summary", "daily_title", "daily_summary", "observance"],
+      "properties": {
+        "weekly_title": {"type": "string", "minLength": 3, "maxLength": 80},
+        "weekly_summary": {"type": "string", "minLength": 12, "maxLength": 240},
+        "daily_title": {"type": "string", "minLength": 3, "maxLength": 80},
+        "daily_summary": {"type": "string", "minLength": 12, "maxLength": 240},
+        "observance": {"type": ["string", "null"], "minLength": 3, "maxLength": 120}
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "position", "interaction_version", "kind", "prompt", "category", "intimacy", "options", "scale_low_label", "scale_high_label", "my_answer", "my_answer_revision", "partner_answer", "feedback_eligible", "feedback_editable_until", "my_feedback", "depth", "theme_role", "theme_tags"],
+      "properties": {
+        "id": {"type": "string", "format": "uuid"},
+        "position": {"type": "integer", "minimum": 1, "maximum": 5},
+        "interaction_version": {"type": "integer", "minimum": 1},
+        "kind": {"enum": ["single_choice", "multiple_choice", "free_text", "partner_guess", "weighted_choice", "weighted_scale"]},
+        "prompt": {"type": "string", "minLength": 12, "maxLength": 240},
+        "category": {"enum": ["everyday", "memories", "dreams", "values", "playful", "connection", "intimacy"]},
+        "intimacy": {"type": "boolean"},
+        "options": {"type": "array", "maxItems": 6, "items": {"$ref": "#/$defs/option"}},
+        "scale_low_label": {"type": ["string", "null"], "maxLength": 32},
+        "scale_high_label": {"type": ["string", "null"], "maxLength": 32},
+        "my_answer": {"oneOf": [{"$ref": "#/$defs/answer"}, {"type": "null"}]},
+        "my_answer_revision": {"type": "integer", "minimum": 0},
+        "partner_answer": {"oneOf": [{"$ref": "#/$defs/answer"}, {"type": "null"}]},
+        "feedback_eligible": {"type": "boolean"},
+        "feedback_editable_until": {"type": ["string", "null"], "format": "date-time"},
+        "my_feedback": {"oneOf": [{"$ref": "#/$defs/feedback"}, {"type": "null"}]},
+        "depth": {"enum": ["light", "reflective", "deeper"]},
+        "theme_role": {"enum": ["themed", "variety"]},
+        "theme_tags": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 2, "maxLength": 40}}
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "relationship_id": "aeb31136-e199-4cc5-90ae-a5d07ed22df4",
+  "samples": [
+    {
+      "sample_id": "dfcb6068-2f63-4c1f-a882-b8637c05a8be",
+      "recorded_at": "2026-09-16T18:20:00Z",
+      "latitude": 45.52,
+      "longitude": -122.68,
+      "accuracy_m": 12.5
+    }
+  ]
+}

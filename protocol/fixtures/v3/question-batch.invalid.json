@@ -1,0 +1,7 @@
+{
+  "schema_version": "3",
+  "date": "2026-09-21",
+  "questions": [
+    {"client_id":"missing-concept","kind":"free_text","prompt":"What would feel meaningful to share today?","category":"connection","intimacy":false,"options":[],"option_icons":[],"scale_low_label":null,"scale_high_label":null}
+  ]
+}

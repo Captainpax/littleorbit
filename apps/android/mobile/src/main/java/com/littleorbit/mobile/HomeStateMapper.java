@@ -1,0 +1,67 @@
+package com.littleorbit.mobile;
+
+import com.littleorbit.data.local.DisplayCacheEntity;
+import java.time.Duration;
+import java.time.Instant;
+
+/** Pure mapping from authentication and cache facts to immutable home state. */
+final class HomeStateMapper {
+    private static final Duration FRESHNESS_WINDOW = Duration.ofHours(6);
+
+    private HomeStateMapper() {}
+
+    /** Resolves an empty cache without confusing an authenticated account with a guest. */
+    static HomeScreenState withoutCache(boolean signedIn) {
+        return signedIn
+                ? HomeScreenState.signedInWithoutCache()
+                : HomeScreenState.signedOut();
+    }
+
+    /** Keeps a valid offline cache but never resurrects an invalid local session. */
+    static HomeScreenState afterRefreshFailure(HomeScreenState current, boolean signedIn) {
+        if (!signedIn) return HomeScreenState.signedOut();
+        return current == null || !current.signedIn()
+                ? HomeScreenState.signedInWithoutCache()
+                : current;
+    }
+
+    /** Maps the privacy-limited cache using an injected time for deterministic tests. */
+    static HomeScreenState fromCache(
+            DisplayCacheEntity cache, boolean signedIn, Instant now) {
+        String nearby = formatNearby(cache.nearbySeconds);
+        return new HomeScreenState(
+                "Your little orbit",
+                "Nearby estimate",
+                nearby,
+                cache.nextCountdownTitle,
+                "Open today’s five questions",
+                freshness(cache, now),
+                signedIn,
+                signedIn);
+    }
+
+    private static String formatNearby(long seconds) {
+        long days = seconds / 86_400;
+        long hours = (seconds % 86_400) / 3_600;
+        long minutes = (seconds % 3_600) / 60;
+        if (days > 0) {
+            return days + "d " + hours + "h together · estimate";
+        }
+        return hours + "h " + minutes + "m together · estimate";
+    }
+
+    private static String freshness(DisplayCacheEntity cache, Instant now) {
+        if (cache.cacheSyncedAtEpochMillis == 0
+                || Instant.ofEpochMilli(cache.cacheSyncedAtEpochMillis)
+                        .plus(FRESHNESS_WINDOW).isBefore(now)) {
+            return "Cached data may be stale";
+        }
+        if (cache.nearbyProcessedAtEpochMillis == 0) {
+            return "Nearby estimate has no samples yet";
+        }
+        Instant processed = Instant.ofEpochMilli(cache.nearbyProcessedAtEpochMillis);
+        return processed.plus(FRESHNESS_WINDOW).isBefore(now)
+                ? "Nearby estimate may be stale"
+                : "Updated recently";
+    }
+}

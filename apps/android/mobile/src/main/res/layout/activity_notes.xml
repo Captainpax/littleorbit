@@ -1,0 +1,507 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/background_cosmic"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ScrollView
+            android:id="@+id/libraryScroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:text="@string/our_space"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.Title" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/space_intro"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                <TextView
+                    android:id="@+id/libraryPresenceText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:background="@drawable/card_background_muted"
+                    android:padding="12dp"
+                    android:text="@string/note_presence_solo"
+                    android:textColor="@color/lavender_soft" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/libraryRecoveryCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/navy_surface_muted"
+                    app:cardCornerRadius="18dp"
+                    app:strokeColor="@color/orbit_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/libraryRecoveryText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:accessibilityLiveRegion="polite"
+                            android:text="@string/space_library_unavailable"
+                            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/libraryRetryButton"
+                            style="@style/Widget.LittleOrbit.Button.Outline"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/retry" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <EditText
+                    android:id="@+id/searchInput"
+                    style="@style/Widget.LittleOrbit.Input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:importantForAutofill="no"
+                    android:hint="@string/search_space"
+                    android:imeOptions="actionDone"
+                    android:inputType="text"
+                    android:textColor="@color/cloud"
+                    android:textColorHint="@color/muted" />
+
+                <LinearLayout
+                    android:id="@+id/noteListContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/createButton"
+                    style="@style/Widget.LittleOrbit.Button.Primary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="@string/create_space_document" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="28dp"
+                    android:text="@string/recently_archived"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/archive_undo_hint"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                <LinearLayout
+                    android:id="@+id/archivedNotesContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical" />
+            </LinearLayout>
+        </ScrollView>
+
+        <ScrollView
+            android:id="@+id/editorScroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/backToLibrary"
+                        style="@style/Widget.LittleOrbit.Button.Text"
+                        android:layout_width="52dp"
+                        android:layout_height="48dp"
+                        android:contentDescription="@string/back_to_space"
+                        android:text="@string/rc14_back_symbol" />
+
+                    <EditText
+                        android:id="@+id/titleInput"
+                        style="@style/Widget.LittleOrbit.Input"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:importantForAutofill="no"
+                        android:inputType="textCapSentences"
+                        android:gravity="center"
+                        android:hint="@string/note_title"
+                        android:saveEnabled="false"
+                        android:singleLine="true"
+                        android:textColor="@color/cloud"
+                        android:textColorHint="@color/muted"
+                        android:textSize="21sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/previewTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:saveEnabled="false"
+                        android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/archiveButton"
+                        style="@style/Widget.LittleOrbit.Button.Text"
+                        android:layout_width="52dp"
+                        android:layout_height="48dp"
+                        android:contentDescription="@string/archive_note"
+                        android:text="@string/visual_more_glyph"
+                        android:textSize="24sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/presenceText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/card_background_muted"
+                    android:padding="10dp"
+                    android:text="@string/note_presence_solo"
+                    android:textColor="@color/lavender_soft" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/modeButton"
+                    style="@style/Widget.LittleOrbit.Button.Outline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:contentDescription="@string/edit_markdown"
+                    android:text="@string/edit_markdown" />
+
+
+
+                <EditText
+                    android:id="@+id/bodyInput"
+                    style="@style/Widget.LittleOrbit.Input"
+                    android:layout_width="match_parent"
+                    android:layout_height="340dp"
+                    android:layout_marginTop="10dp"
+                    android:importantForAutofill="no"
+                    android:gravity="top"
+                    android:hint="@string/space_markdown_hint"
+                    android:inputType="textCapSentences|textMultiLine"
+                    android:saveEnabled="false"
+                    android:textColor="@color/cloud"
+                    android:textColorHint="@color/muted"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/previewText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/card_background_feature"
+                    android:linksClickable="true"
+                    android:minHeight="340dp"
+                    android:padding="18dp"
+                    android:saveEnabled="false"
+                    android:textColor="@color/cloud"
+                    android:textSize="17sp"
+                    android:visibility="gone" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/gifPlaybackButton"
+                    style="@style/Widget.LittleOrbit.Button.Outline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:minHeight="48dp"
+                    android:text="@string/pause_animation"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/remoteImageNotice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/remote_images_blocked"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.Body"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/rawHtmlNotice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/raw_html_neutralized"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.Body"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:text="@string/attachments"
+                    android:textAppearance="@style/TextAppearance.LittleOrbit.CardTitle" />
+
+                <LinearLayout
+                    android:id="@+id/attachmentContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/attachmentRecoveryCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/navy_surface_muted"
+                    app:cardCornerRadius="18dp"
+                    app:strokeColor="@color/orbit_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/space_attachments_unavailable"
+                            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/attachmentRetryButton"
+                            style="@style/Widget.LittleOrbit.Button.Outline"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/retry" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:id="@+id/statusText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:accessibilityLiveRegion="polite"
+                    android:textColor="@color/lavender" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/editorRecoveryCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/navy_surface_muted"
+                    app:cardCornerRadius="18dp"
+                    app:strokeColor="@color/orbit_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/editorRecoveryText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:accessibilityLiveRegion="polite"
+                            android:text="@string/note_draft_preserved"
+                            android:textAppearance="@style/TextAppearance.LittleOrbit.Body" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/editorRetryButton"
+                            style="@style/Widget.LittleOrbit.Button.Outline"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/retry" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:id="@+id/conflictCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/card_background"
+                    android:orientation="vertical"
+                    android:padding="14dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/partner_version"
+                        android:textAppearance="@style/TextAppearance.LittleOrbit.Eyebrow" />
+
+                    <TextView
+                        android:id="@+id/serverVersionText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:saveEnabled="false"
+                        android:textColor="@color/cloud" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/reviewMergeButton"
+                        style="@style/Widget.LittleOrbit.Button.Outline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/review_and_merge" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/keepMyVersionButton"
+                        style="@style/Widget.LittleOrbit.Button.Primary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/save_mine_as_copy" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/useServerButton"
+                        style="@style/Widget.LittleOrbit.Button.Outline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/use_shared_version" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/finishMergeButton"
+                        style="@style/Widget.LittleOrbit.Button.Primary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/save_merged_version"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+    <HorizontalScrollView
+                    android:id="@+id/formattingScroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/markdown_dock_background"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="6dp"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/boldButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_bold"
+                            android:text="@string/visual_format_bold_glyph"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/italicButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_italic"
+                            android:text="@string/visual_format_italic_glyph"
+                            android:textStyle="italic" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/headingButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_heading"
+                            android:text="@string/visual_format_heading_glyph" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/listButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="52dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_list"
+                            android:text="@string/visual_format_list_glyph" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/checkButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_checklist"
+                            android:text="@string/visual_format_checklist_glyph" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/linkButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/format_link"
+                            android:text="@" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/attachButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/attach_file"
+                            android:text="@string/visual_add_glyph" />
+
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/formattingMoreButton"
+                            style="@style/Widget.LittleOrbit.Button.Text"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@string/more_formatting"
+                            android:text="@string/visual_more_glyph" />
+                    </LinearLayout>
+                </HorizontalScrollView>
+</LinearLayout>

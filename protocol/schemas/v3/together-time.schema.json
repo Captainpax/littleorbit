@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v3/together-time.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "relationship_id", "home_timezone", "paired_at", "paired_days", "nearby_observed_seconds",
+    "nearby_estimated_seconds", "nearby_provisional_seconds", "server_now",
+    "counting_state", "counting_anchor_at", "counting_live_until",
+    "nearby_last_processed_at", "nearby_confidence", "algorithm_version",
+    "includes_legacy_estimates", "proximity_threshold_m",
+    "location_enabled_by_me", "location_enabled_by_both", "label"
+  ],
+  "properties": {
+    "relationship_id": { "type": "string", "format": "uuid" },
+    "home_timezone": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "paired_at": { "type": "string", "format": "date-time" },
+    "paired_days": { "type": "integer", "minimum": 0 },
+    "nearby_observed_seconds": { "type": "integer", "minimum": 0 },
+    "nearby_estimated_seconds": { "type": "integer", "minimum": 0 },
+    "nearby_provisional_seconds": { "type": "integer", "minimum": 0, "maximum": 300 },
+    "server_now": { "type": "string", "format": "date-time" },
+    "counting_state": {
+      "enum": ["sharing_disabled", "waiting_for_partner", "confirming", "nearby", "apart", "poor_accuracy", "stale"]
+    },
+    "counting_anchor_at": { "$ref": "#/$defs/nullableInstant" },
+    "counting_live_until": { "$ref": "#/$defs/nullableInstant" },
+    "nearby_last_processed_at": { "$ref": "#/$defs/nullableInstant" },
+    "nearby_confidence": { "enum": ["unavailable", "low", "medium", "high"] },
+    "algorithm_version": { "const": 4 },
+    "includes_legacy_estimates": { "type": "boolean" },
+    "proximity_threshold_m": { "type": "number", "minimum": 10, "maximum": 1000 },
+    "location_enabled_by_me": { "type": "boolean" },
+    "location_enabled_by_both": { "type": "boolean" },
+    "label": { "const": "estimate" }
+  },
+  "$defs": {
+    "nullableInstant": {
+      "oneOf": [
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

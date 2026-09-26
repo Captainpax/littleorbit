@@ -1,0 +1,495 @@
+"""Pure chronological proximity decisions for together-time estimates."""
+
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from itertools import pairwise
+from math import asin, cos, radians, sin, sqrt
+from typing import Literal
+
+EARTH_RADIUS_M = 6_371_000.0
+MAX_MUTUAL_EVIDENCE_AGE = timedelta(minutes=5)
+MAX_SAMPLE_SKEW = timedelta(minutes=5)
+MAX_COUNTED_INTERVAL = timedelta(minutes=5)
+MAX_BRIDGED_INTERVAL = timedelta(minutes=20)
+RECOMPUTE_HORIZON = timedelta(hours=23, minutes=45)
+RAW_LOCATION_RETENTION = timedelta(hours=24)
+PRIVACY_MAINTENANCE_INTERVAL = timedelta(minutes=5)
+
+EvidenceState = Literal[
+    "waiting_for_partner",
+    "nearby",
+    "apart",
+    "poor_accuracy",
+    "stale",
+]
+CountingState = Literal[
+    "sharing_disabled",
+    "waiting_for_partner",
+    "confirming",
+    "nearby",
+    "apart",
+    "poor_accuracy",
+    "stale",
+]
+EvidenceKind = Literal[
+    "observed",
+    "bridged",
+    "mixed",
+    "apart",
+    "poor_accuracy",
+    "unverified",
+]
+
+
+@dataclass(frozen=True)
+class Point:
+    """One coordinate and its reported horizontal accuracy."""
+
+    latitude: float
+    longitude: float
+    accuracy_m: float
+
+
+@dataclass(frozen=True)
+class ProximityDecision:
+    """Distance bounds and whether a pair can be counted together."""
+
+    measured_distance_m: float
+    minimum_distance_m: float
+    maximum_distance_m: float
+    together: bool
+    uncertain: bool
+
+
+@dataclass(frozen=True)
+class TimedPoint:
+    """One deduplicated sample used by the deterministic interval algorithm."""
+
+    sample_id: str
+    recorded_at: datetime
+    point: Point
+
+
+@dataclass(frozen=True)
+class EvidenceAnchor:
+    """One chronological two-stream decision after all observations at an instant."""
+
+    recorded_at: datetime
+    state: EvidenceState
+    measured_distance_m: float | None
+    left: TimedPoint | None
+    right: TimedPoint | None
+
+
+@dataclass(frozen=True)
+class MinuteEstimate:
+    """Coordinate-free evidence within one UTC minute."""
+
+    bucket_start: datetime
+    duration_seconds: int
+    estimated_distance_m: float | None
+    evidence_kind: EvidenceKind = "observed"
+    observed_seconds: int = 0
+    bridged_seconds: int = 0
+    unverified_seconds: int = 0
+    apart_seconds: int = 0
+    poor_accuracy_seconds: int = 0
+
+
+@dataclass(frozen=True)
+class ProximityTimeline:
+    """Chronological evidence anchors and their coordinate-free estimates."""
+
+    anchors: tuple[EvidenceAnchor, ...]
+    estimates: tuple[MinuteEstimate, ...]
+
+
+@dataclass(frozen=True)
+class LiveProjection:
+    """Bounded display-only continuation authorized by two-phone evidence."""
+
+    state: CountingState
+    anchor_at: datetime | None
+    live_until: datetime | None
+    mutual_evidence_at: datetime | None
+    provisional_seconds: int
+
+
+def raw_location_expires_at(recorded_at: datetime) -> datetime:
+    """Return an expiry that gives periodic cleanup time before the 24-hour ceiling."""
+
+    if recorded_at.tzinfo is None:
+        raise ValueError("recorded_at must include a timezone offset")
+    return (
+        recorded_at.astimezone(UTC)
+        + RAW_LOCATION_RETENTION
+        - PRIVACY_MAINTENANCE_INTERVAL
+    )
+
+
+def haversine_m(left: Point, right: Point) -> float:
+    """Return great-circle distance in metres for two WGS84-like points."""
+
+    lat1, lat2 = radians(left.latitude), radians(right.latitude)
+    delta_lat = lat2 - lat1
+    delta_lon = radians(right.longitude - left.longitude)
+    value = sin(delta_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(delta_lon / 2) ** 2
+    return 2 * EARTH_RADIUS_M * asin(sqrt(value))
+
+
+def decide_proximity(left: Point, right: Point, threshold_m: float = 100.0) -> ProximityDecision:
+    """Classify a likely-near estimate using distance and both accuracy readings."""
+
+    measured = haversine_m(left, right)
+    uncertainty = left.accuracy_m + right.accuracy_m
+    minimum = max(0.0, measured - uncertainty)
+    maximum = measured + uncertainty
+    definite = maximum <= threshold_m
+    likely = measured <= threshold_m and max(left.accuracy_m, right.accuracy_m) <= threshold_m
+    together = definite or likely
+    uncertain = minimum <= threshold_m < maximum
+    return ProximityDecision(measured, minimum, maximum, together, uncertain)
+
+
+def build_proximity_timeline(
+    left: list[TimedPoint],
+    right: list[TimedPoint],
+    threshold_m: float = 100.0,
+    *,
+    clip_start: datetime | None = None,
+    clip_end: datetime | None = None,
+) -> ProximityTimeline:
+    """Evaluate every observation without discarding faster-stream evidence."""
+
+    events = _group_events(_deduplicate(left), _deduplicate(right))
+    anchors: list[EvidenceAnchor] = []
+    latest_left: TimedPoint | None = None
+    latest_right: TimedPoint | None = None
+    for recorded_at, new_left, new_right in events:
+        latest_left = new_left or latest_left
+        latest_right = new_right or latest_right
+        anchors.append(_anchor(recorded_at, latest_left, latest_right, threshold_m))
+    estimates: dict[datetime, MinuteEstimate] = {}
+    for previous, current in pairwise(anchors):
+        _add_pair_interval(estimates, previous, current, clip_start, clip_end)
+    _add_confirmed_bridges(estimates, anchors, clip_start, clip_end)
+    return ProximityTimeline(
+        tuple(anchors), tuple(estimates[key] for key in sorted(estimates))
+    )
+
+
+def estimate_nearby_minutes(
+    left: list[TimedPoint],
+    right: list[TimedPoint],
+    threshold_m: float = 100.0,
+) -> list[MinuteEstimate]:
+    """Return deterministic minute estimates from chronological two-stream evidence."""
+
+    return [
+        item
+        for item in build_proximity_timeline(left, right, threshold_m).estimates
+        if item.duration_seconds > 0
+    ]
+
+
+def live_projection(
+    timeline: ProximityTimeline, now: datetime, *, sharing_enabled: bool
+) -> LiveProjection:
+    """Authorize a short projection only after two consecutive nearby states."""
+
+    if not timeline.anchors:
+        return _unavailable_projection(sharing_enabled, None)
+    current = timeline.anchors[-1]
+    mutual_at = _mutual_evidence_at(current)
+    if mutual_at is None:
+        return _unavailable_projection(sharing_enabled, None)
+    if not sharing_enabled:
+        return LiveProjection("sharing_disabled", None, None, mutual_at, 0)
+    live_until = mutual_at + MAX_MUTUAL_EVIDENCE_AGE
+    if current.state == "stale" or live_until <= now:
+        return LiveProjection("stale", None, None, mutual_at, 0)
+    if current.state != "nearby":
+        return LiveProjection(current.state, None, None, mutual_at, 0)
+    previous = timeline.anchors[-2] if len(timeline.anchors) > 1 else None
+    if not _confirmed_for_projection(previous, current, now):
+        return LiveProjection("confirming", None, None, mutual_at, 0)
+    projected_until = min(now, live_until)
+    provisional = max(0, int((projected_until - current.recorded_at).total_seconds()))
+    return LiveProjection(
+        "nearby", current.recorded_at, live_until, mutual_at, provisional
+    )
+
+
+def _unavailable_projection(
+    sharing_enabled: bool, mutual_at: datetime | None
+) -> LiveProjection:
+    """Return the non-counting state used before both streams are available."""
+
+    state: CountingState = (
+        "waiting_for_partner" if sharing_enabled else "sharing_disabled"
+    )
+    return LiveProjection(state, None, None, mutual_at, 0)
+
+
+def _mutual_evidence_at(anchor: EvidenceAnchor) -> datetime | None:
+    """Return the older timestamp only when both phones supplied evidence."""
+
+    if anchor.left is None or anchor.right is None:
+        return None
+    return min(anchor.left.recorded_at, anchor.right.recorded_at).astimezone(UTC)
+
+
+def _confirmed_for_projection(
+    previous: EvidenceAnchor | None, current: EvidenceAnchor, now: datetime
+) -> bool:
+    """Require two timely nearby decisions before authorizing visual ticking."""
+
+    return bool(
+        previous is not None
+        and previous.state == "nearby"
+        and current.recorded_at - previous.recorded_at <= MAX_COUNTED_INTERVAL
+        and current.recorded_at <= now
+    )
+
+
+def _deduplicate(samples: list[TimedPoint]) -> list[TimedPoint]:
+    """Choose one stable occurrence of each retry-safe sample ID."""
+
+    unique: dict[str, TimedPoint] = {}
+    for item in sorted(samples, key=lambda value: (value.recorded_at, value.sample_id)):
+        unique.setdefault(item.sample_id, item)
+    return sorted(unique.values(), key=lambda value: (value.recorded_at, value.sample_id))
+
+
+def _group_events(
+    left: list[TimedPoint], right: list[TimedPoint]
+) -> list[tuple[datetime, TimedPoint | None, TimedPoint | None]]:
+    """Group both streams so equal timestamps are classified atomically."""
+
+    grouped: dict[datetime, tuple[list[TimedPoint], list[TimedPoint]]] = {}
+    for side, samples in enumerate((left, right)):
+        for sample in samples:
+            instant = sample.recorded_at.astimezone(UTC)
+            values = grouped.setdefault(instant, ([], []))
+            values[side].append(sample)
+    return [
+        (instant, _best(values[0]), _best(values[1]))
+        for instant, values in sorted(grouped.items())
+    ]
+
+
+def _best(samples: list[TimedPoint]) -> TimedPoint | None:
+    """Choose the most accurate stable sample when one phone reports simultaneously."""
+
+    if not samples:
+        return None
+    return min(samples, key=lambda value: (value.point.accuracy_m, value.sample_id))
+
+
+def _anchor(
+    recorded_at: datetime,
+    left: TimedPoint | None,
+    right: TimedPoint | None,
+    threshold_m: float,
+) -> EvidenceAnchor:
+    """Classify the newest two-person evidence at one observation instant."""
+
+    if left is None or right is None:
+        return EvidenceAnchor(recorded_at, "waiting_for_partner", None, left, right)
+    skew = abs(left.recorded_at - right.recorded_at)
+    older_age = recorded_at - min(left.recorded_at, right.recorded_at)
+    if skew > MAX_SAMPLE_SKEW or older_age > MAX_MUTUAL_EVIDENCE_AGE:
+        return EvidenceAnchor(recorded_at, "stale", None, left, right)
+    decision = decide_proximity(left.point, right.point, threshold_m)
+    if decision.together:
+        state: EvidenceState = "nearby"
+    elif decision.minimum_distance_m > threshold_m:
+        state = "apart"
+    else:
+        state = "poor_accuracy"
+    return EvidenceAnchor(recorded_at, state, decision.measured_distance_m, left, right)
+
+
+def _add_pair_interval(
+    estimates: dict[datetime, MinuteEstimate],
+    previous: EvidenceAnchor,
+    current: EvidenceAnchor,
+    clip_start: datetime | None,
+    clip_end: datetime | None,
+) -> None:
+    """Record direct evidence or an unverified gap between observations."""
+
+    if current.recorded_at <= previous.recorded_at:
+        return
+    start = max(previous.recorded_at, clip_start) if clip_start else previous.recorded_at
+    end = min(current.recorded_at, clip_end) if clip_end else current.recorded_at
+    if end <= start:
+        return
+    kind = _pair_kind(previous, current)
+    distance = _interval_distance(previous, current)
+    _split_minutes(estimates, start, end, distance, kind)
+
+
+def _pair_kind(previous: EvidenceAnchor, current: EvidenceAnchor) -> EvidenceKind:
+    """Classify one chronological interval without assuming missing evidence."""
+
+    gap = current.recorded_at - previous.recorded_at
+    if (
+        previous.state == "nearby"
+        and current.state == "nearby"
+        and gap <= MAX_COUNTED_INTERVAL
+    ):
+        return "observed"
+    if "apart" in {previous.state, current.state}:
+        return "apart"
+    if "poor_accuracy" in {previous.state, current.state}:
+        return "poor_accuracy"
+    return "unverified"
+
+
+def _add_confirmed_bridges(
+    estimates: dict[datetime, MinuteEstimate],
+    anchors: list[EvidenceAnchor],
+    clip_start: datetime | None,
+    clip_end: datetime | None,
+) -> None:
+    """Fill a short unknown gap only after a later strong nearby observation."""
+
+    last_nearby: EvidenceAnchor | None = None
+    blocked = False
+    for current in anchors:
+        if current.state in {"apart", "poor_accuracy"}:
+            last_nearby, blocked = None, True
+            continue
+        if current.state != "nearby":
+            continue
+        if last_nearby is not None and not blocked:
+            gap = current.recorded_at - last_nearby.recorded_at
+            if MAX_COUNTED_INTERVAL < gap <= MAX_BRIDGED_INTERVAL:
+                _add_bridge(estimates, last_nearby, current, clip_start, clip_end)
+        last_nearby, blocked = current, False
+
+
+def _add_bridge(
+    estimates: dict[datetime, MinuteEstimate],
+    previous: EvidenceAnchor,
+    current: EvidenceAnchor,
+    clip_start: datetime | None,
+    clip_end: datetime | None,
+) -> None:
+    """Overlay confirmed estimated time while retaining observed provenance."""
+
+    start = max(previous.recorded_at, clip_start) if clip_start else previous.recorded_at
+    end = min(current.recorded_at, clip_end) if clip_end else current.recorded_at
+    if end <= start:
+        return
+    _split_minutes(
+        estimates,
+        start,
+        end,
+        _interval_distance(previous, current),
+        "bridged",
+    )
+
+
+def _interval_distance(
+    previous: EvidenceAnchor, current: EvidenceAnchor
+) -> float | None:
+    values = [
+        value
+        for value in (previous.measured_distance_m, current.measured_distance_m)
+        if value is not None
+    ]
+    return max(values) if values else None
+
+
+def _split_minutes(
+    estimates: dict[datetime, MinuteEstimate],
+    start: datetime,
+    end: datetime,
+    distance: float | None,
+    kind: EvidenceKind,
+) -> None:
+    """Split evidence without inflating fragments or hiding mixed provenance."""
+
+    cursor = start
+    while cursor < end:
+        minute = cursor.replace(second=0, microsecond=0)
+        segment_end = min(end, minute + timedelta(minutes=1))
+        span_seconds = int((segment_end - cursor).total_seconds())
+        if span_seconds > 0:
+            existing = estimates.get(minute)
+            components = _merged_components(existing, kind, span_seconds)
+            total = min(60, components[0] + components[1])
+            merged_kind = _component_kind(components)
+            merged_distance = _merged_distance(existing, distance)
+            estimates[minute] = MinuteEstimate(
+                minute,
+                total,
+                merged_distance,
+                merged_kind,
+                *components,
+            )
+        cursor = segment_end
+
+
+def _merged_components(
+    existing: MinuteEstimate | None,
+    kind: EvidenceKind,
+    span_seconds: int,
+) -> tuple[int, int, int, int, int]:
+    """Merge one non-overlapping segment or replace an unverified bridge span."""
+
+    values = list(_components(existing))
+    index = {
+        "observed": 0,
+        "bridged": 1,
+        "unverified": 2,
+        "apart": 3,
+        "poor_accuracy": 4,
+    }.get(kind)
+    if index is None:
+        return tuple(values)  # type: ignore[return-value]
+    if kind == "bridged":
+        replaced = min(values[2], span_seconds)
+        values[2] -= replaced
+    values[index] = min(60, values[index] + span_seconds)
+    return tuple(values)  # type: ignore[return-value]
+
+
+def _components(item: MinuteEstimate | None) -> tuple[int, int, int, int, int]:
+    if item is None:
+        return (0, 0, 0, 0, 0)
+    return (
+        item.observed_seconds,
+        item.bridged_seconds,
+        item.unverified_seconds,
+        item.apart_seconds,
+        item.poor_accuracy_seconds,
+    )
+
+
+def _component_kind(values: tuple[int, int, int, int, int]) -> EvidenceKind:
+    names: tuple[EvidenceKind, ...] = (
+        "observed",
+        "bridged",
+        "unverified",
+        "apart",
+        "poor_accuracy",
+    )
+    present = [name for name, seconds in zip(names, values, strict=True) if seconds]
+    return present[0] if len(present) == 1 else "mixed"
+
+
+def _merged_distance(
+    existing: MinuteEstimate | None, incoming: float | None
+) -> float | None:
+    values = [
+        value
+        for value in (
+            existing.estimated_distance_m if existing else None,
+            incoming,
+        )
+        if value is not None
+    ]
+    return max(values) if values else None

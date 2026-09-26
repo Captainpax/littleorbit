@@ -1,0 +1,7 @@
+{
+  "schema_version": "2",
+  "date": "2026-09-13",
+  "questions": [
+    {"client_id":"broken","kind":"weighted_choice","prompt":"How much would each plan help us connect this weekend?","category":"connection","intimacy":false,"options":["Talk","Walk"],"option_icons":[],"scale_low_label":null,"scale_high_label":null}
+  ]
+}

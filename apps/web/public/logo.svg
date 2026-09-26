@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-labelledby="title description">
+  <title id="title">Little Orbit</title>
+  <desc id="description">Two coral hearts connected by lavender orbital paths</desc>
+  <defs>
+    <linearGradient id="heart" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff8f87"/>
+      <stop offset="1" stop-color="#ff625f"/>
+    </linearGradient>
+    <linearGradient id="orbit" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b39cf7"/>
+      <stop offset="1" stop-color="#7664d9"/>
+    </linearGradient>
+  </defs>
+  <circle cx="120" cy="120" r="112" fill="#11182d"/>
+  <ellipse cx="120" cy="120" rx="86" ry="45" fill="none" stroke="url(#orbit)" stroke-width="8" transform="rotate(-26 120 120)"/>
+  <ellipse cx="120" cy="120" rx="86" ry="45" fill="none" stroke="url(#orbit)" stroke-width="8" transform="rotate(26 120 120)" opacity=".72"/>
+  <path d="M120 151 81 113c-22-22 10-57 36-31l3 4 3-4c26-26 58 9 36 31z" fill="url(#heart)"/>
+  <circle cx="42" cy="91" r="7" fill="#ffd369"/>
+  <circle cx="196" cy="154" r="6" fill="#a997ff"/>
+</svg>

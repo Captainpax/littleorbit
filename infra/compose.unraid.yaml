@@ -1,0 +1,94 @@
+services:
+  gateway:
+    restart: "on-failure:5"
+    ports:
+      - "${GATEWAY_BIND_ADDRESS:?set GATEWAY_BIND_ADDRESS}:8180:8180"
+    networks:
+      gateway-api:
+        ipv4_address: ${GATEWAY_CADDY_IP:-10.253.14.2}
+
+  api:
+    environment:
+      TRUSTED_PROXY_IP: ${GATEWAY_CADDY_IP:-10.253.14.2}
+    networks:
+      gateway-api:
+        ipv4_address: ${GATEWAY_API_IP:-10.253.14.3}
+    volumes:
+      - type: bind
+        source: ${LITTLE_ORBIT_DATA_ROOT:?set LITTLE_ORBIT_DATA_ROOT}/releases
+        target: /var/lib/little-orbit/releases
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${LITTLE_ORBIT_DATA_ROOT:?set LITTLE_ORBIT_DATA_ROOT}/attachments
+        target: /var/lib/little-orbit/attachments
+        bind:
+          create_host_path: false
+
+  attachment-init:
+    volumes:
+      - type: bind
+        source: ${LITTLE_ORBIT_DATA_ROOT:?set LITTLE_ORBIT_DATA_ROOT}/attachments
+        target: /var/lib/little-orbit/attachments
+        bind:
+          create_host_path: false
+
+  gpu-lock-init:
+    volumes:
+      - type: bind
+        source: ${GPU_LOCK_HOST_PATH:?set GPU_LOCK_HOST_PATH}
+        target: /run/gpu-coordinator/gpu.lock
+        bind:
+          create_host_path: false
+
+  worker:
+    volumes:
+      - type: bind
+        source: ${LITTLE_ORBIT_DATA_ROOT:?set LITTLE_ORBIT_DATA_ROOT}/attachments
+        target: /var/lib/little-orbit/attachments
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${GPU_LOCK_HOST_PATH:?set GPU_LOCK_HOST_PATH}
+        target: /run/gpu-coordinator/gpu.lock
+        bind:
+          create_host_path: false
+
+  media-worker:
+    volumes:
+      - type: bind
+        source: ${LITTLE_ORBIT_DATA_ROOT:?set LITTLE_ORBIT_DATA_ROOT}/attachments
+        target: /var/lib/little-orbit/attachments
+        bind:
+          create_host_path: false
+
+  clamav:
+    volumes:
+      - type: bind
+        source: ${LITTLE_ORBIT_DATA_ROOT:?set LITTLE_ORBIT_DATA_ROOT}/clamav
+        target: /var/lib/clamav
+        bind:
+          create_host_path: false
+
+  postgres:
+    volumes:
+      - type: bind
+        source: ${LITTLE_ORBIT_DATA_ROOT:?set LITTLE_ORBIT_DATA_ROOT}/postgres
+        target: /var/lib/postgresql/data
+        bind:
+          create_host_path: false
+
+  ollama:
+    volumes:
+      - type: bind
+        source: ${LITTLE_ORBIT_DATA_ROOT:?set LITTLE_ORBIT_DATA_ROOT}/ollama
+        target: /root/.ollama
+        bind:
+          create_host_path: false
+
+networks:
+  gateway-api:
+    ipam:
+      config:
+        - subnet: ${GATEWAY_INTERNAL_SUBNET:-10.253.14.0/28}

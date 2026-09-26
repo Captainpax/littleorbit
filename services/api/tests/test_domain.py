@@ -1,0 +1,216 @@
+"""Pure domain behavior tests for notes and location estimates."""
+
+from datetime import UTC, datetime, timedelta
+
+import pytest
+from pydantic import ValidationError
+
+from little_orbit_api.domain.location import (
+    MAX_BRIDGED_INTERVAL,
+    MAX_MUTUAL_EVIDENCE_AGE,
+    PRIVACY_MAINTENANCE_INTERVAL,
+    RAW_LOCATION_RETENTION,
+    Point,
+    TimedPoint,
+    decide_proximity,
+    estimate_nearby_minutes,
+    raw_location_expires_at,
+)
+from little_orbit_api.domain.notes import Delete, Insert, InvalidEdit, apply_edit, transform
+from little_orbit_api.schemas import CouplePreferencesRequest, RegistrationRequest
+from little_orbit_api.together_time_service import _mutual_sample_freshness, relationship_days
+
+
+def test_note_offsets_count_emoji_as_one_code_point() -> None:
+    assert apply_edit("A🌙B", Delete(position=1, length=1)) == "AB"
+    assert apply_edit("A🌙B", Insert(position=2, text="!")) == "A🌙!B"
+
+
+def test_identical_insert_positions_converge_by_tie_break() -> None:
+    left = Insert(1, "A")
+    right = Insert(1, "B")
+    left_after_right = transform(left, right, incoming_wins_tie=True)
+    right_after_left = transform(right, left, incoming_wins_tie=False)
+    assert apply_edit(apply_edit("xy", right), left_after_right) == "xABy"
+    assert apply_edit(apply_edit("xy", left), right_after_left) == "xABy"
+
+
+def test_out_of_bounds_note_edit_fails_without_mutation() -> None:
+    with pytest.raises(InvalidEdit):
+        apply_edit("small", Delete(4, 2))
+
+
+def test_location_uses_both_accuracy_readings_for_bounded_estimate() -> None:
+    same_place_poor_accuracy = decide_proximity(Point(45, -122, 80), Point(45, -122, 80))
+    same_place_good_accuracy = decide_proximity(Point(45, -122, 5), Point(45, -122, 5))
+    unusable_accuracy = decide_proximity(Point(45, -122, 150), Point(45, -122, 150))
+    assert same_place_poor_accuracy.uncertain
+    assert same_place_poor_accuracy.together
+    assert same_place_good_accuracy.together
+    assert not unusable_accuracy.together
+
+
+def test_raw_location_expiry_leaves_one_cleanup_interval_before_hard_limit() -> None:
+    recorded_at = datetime(2026, 9, 14, 12, 30, tzinfo=UTC)
+
+    expires_at = raw_location_expires_at(recorded_at)
+
+    assert expires_at == recorded_at + RAW_LOCATION_RETENTION - PRIVACY_MAINTENANCE_INTERVAL
+    assert expires_at < recorded_at + timedelta(hours=24)
+
+
+def test_raw_location_expiry_requires_an_absolute_instant() -> None:
+    with pytest.raises(ValueError, match="timezone"):
+        raw_location_expires_at(datetime(2026, 9, 14, 12, 30))
+
+
+def test_nearby_estimate_counts_interval_between_confident_samples() -> None:
+    start = datetime(2026, 9, 12, 10, 2, 30, tzinfo=UTC)
+    left = [_sample("left-a", start), _sample("left-b", start + timedelta(minutes=5))]
+    right = [
+        _sample("right-a", start + timedelta(seconds=20)),
+        _sample("right-b", start + timedelta(minutes=5, seconds=20)),
+    ]
+
+    buckets = estimate_nearby_minutes(left, right)
+
+    assert sum(item.duration_seconds for item in buckets) == 5 * 60
+    assert len({item.bucket_start for item in buckets}) == len(buckets)
+
+
+def test_nearby_estimate_bridges_short_gap_but_not_poor_or_long_gap() -> None:
+    start = datetime(2026, 9, 12, 10, tzinfo=UTC)
+    good = [_sample("a", start), _sample("b", start + timedelta(minutes=6))]
+    too_long = [_sample("e", start), _sample("f", start + timedelta(minutes=21))]
+    poor = [
+        _sample("c", start, accuracy=150),
+        _sample("d", start + timedelta(minutes=6), accuracy=150),
+    ]
+
+    bridged = estimate_nearby_minutes(good, good)
+    assert sum(item.bridged_seconds for item in bridged) == 6 * 60
+    assert estimate_nearby_minutes(too_long, too_long) == []
+    assert estimate_nearby_minutes(good, poor) == []
+
+
+def test_nearby_estimate_bridges_exact_twenty_minute_boundary() -> None:
+    start = datetime(2026, 9, 12, 10, tzinfo=UTC)
+    good = [_sample("a", start), _sample("b", start + MAX_BRIDGED_INTERVAL)]
+
+    buckets = estimate_nearby_minutes(good, good)
+
+    assert sum(item.bridged_seconds for item in buckets) == 20 * 60
+    assert sum(item.duration_seconds for item in buckets) == 20 * 60
+
+
+def test_nearby_estimate_does_not_bridge_intervening_poor_accuracy() -> None:
+    start = datetime(2026, 9, 12, 10, tzinfo=UTC)
+    samples = [
+        _sample("a", start),
+        _sample("poor", start + timedelta(minutes=10), accuracy=150),
+        _sample("b", start + timedelta(minutes=20)),
+    ]
+
+    assert estimate_nearby_minutes(samples, samples) == []
+
+
+def test_intervening_apart_reading_breaks_asymmetric_stream() -> None:
+    start = datetime(2026, 9, 16, 10, tzinfo=UTC)
+    left = [
+        _sample("left-0", start),
+        TimedPoint("left-5", start + timedelta(minutes=5), Point(45, -121.99, 5)),
+        _sample("left-10", start + timedelta(minutes=10)),
+    ]
+    right = [_sample("right-0", start), _sample("right-10", start + timedelta(minutes=10))]
+
+    assert estimate_nearby_minutes(left, right) == []
+
+
+def test_unequal_cadence_is_symmetric() -> None:
+    start = datetime(2026, 9, 16, 10, tzinfo=UTC)
+    fast = [
+        _sample(f"fast-{minute}", start + timedelta(minutes=minute))
+        for minute in (0, 5, 10)
+    ]
+    slow = [
+        _sample(f"slow-{minute}", start + timedelta(minutes=minute))
+        for minute in (0, 10)
+    ]
+
+    forward = estimate_nearby_minutes(fast, slow)
+    reverse = estimate_nearby_minutes(slow, fast)
+
+    assert sum(item.duration_seconds for item in forward) == 10 * 60
+    assert forward == reverse
+
+
+def test_two_minute_and_fifteen_minute_streams_bridge_deterministically() -> None:
+    start = datetime(2026, 9, 16, 10, tzinfo=UTC)
+    fast = [
+        _sample(f"fast-{minute}", start + timedelta(minutes=minute))
+        for minute in range(0, 16, 2)
+    ]
+    slow = [_sample("slow-0", start), _sample("slow-15", start + timedelta(minutes=15))]
+
+    forward = estimate_nearby_minutes(fast, slow)
+    reverse = estimate_nearby_minutes(slow, fast)
+
+    assert sum(item.duration_seconds for item in forward) == 15 * 60
+    assert forward == reverse
+
+
+def test_subsecond_fragment_is_not_inflated() -> None:
+    start = datetime(2026, 9, 16, 10, tzinfo=UTC)
+    end = start + timedelta(milliseconds=500)
+
+    assert estimate_nearby_minutes(
+        [_sample("left-0", start), _sample("left-1", end)],
+        [_sample("right-0", start), _sample("right-1", end)],
+    ) == []
+
+
+def test_evidence_policy_is_explicitly_five_minutes() -> None:
+    assert timedelta(minutes=5) == MAX_MUTUAL_EVIDENCE_AGE
+
+
+def test_location_freshness_requires_current_samples_from_both_members() -> None:
+    first = datetime(2026, 9, 12, 10, tzinfo=UTC)
+    second = first + timedelta(minutes=5)
+    assert _mutual_sample_freshness([[_sample("a", first)], [_sample("b", second)]]) == first
+    assert _mutual_sample_freshness([[_sample("a", first)], []]) is None
+
+
+def test_relationship_age_uses_complete_utc_calendar_days() -> None:
+    now = datetime(2026, 9, 12, 23, 59, tzinfo=UTC)
+    assert relationship_days(now.date() - timedelta(days=10), now) == 10
+    assert relationship_days(None, now) is None
+
+
+def test_preferences_reject_direct_anniversary_mutation() -> None:
+    with pytest.raises(ValidationError):
+        CouplePreferencesRequest.model_validate({"anniversary_date": "2020-01-01"})
+
+
+def _sample(name: str, recorded_at: datetime, accuracy: float = 5) -> TimedPoint:
+    return TimedPoint(name, recorded_at, Point(45, -122, accuracy))
+
+
+def test_registration_honeypot_reaches_neutral_route_logic_but_stays_bounded() -> None:
+    accepted = RegistrationRequest(
+        email="bot@example.com",
+        password="long-enough-password",
+        display_name="Bot",
+        is_adult=True,
+        accepted_terms_version="2026-09-10",
+        website="filled-by-bot",
+    )
+    assert accepted.website == "filled-by-bot"
+    with pytest.raises(ValidationError):
+        RegistrationRequest(
+            email="bot@example.com",
+            password="long-enough-password",
+            display_name="Bot",
+            is_adult=True,
+            accepted_terms_version="2026-09-10",
+            website="x" * 201,
+        )

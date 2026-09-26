@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v1/pairing.schema.json",
+  "title": "Pairing request bodies",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 0
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id"],
+      "properties": {
+        "request_id": { "type": "string", "format": "uuid" }
+      }
+    }
+  ]
+}

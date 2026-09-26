@@ -1,0 +1,11 @@
+{
+  "limits": {
+    "source_file_logical_lines": 500,
+    "python_function_lines": 60,
+    "python_cyclomatic_complexity": 10
+  },
+  "exceptions": [
+    "services/ai/src/little_orbit_ai/pipeline.py:select_pool",
+    "services/api/src/little_orbit_api/routes/quizzes.py:_validate_answer"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "not-a-uuid",
+  "title": "",
+  "occurs_at": "Friday night",
+  "timezone": "",
+  "timing_kind": "timed",
+  "occurs_on": "2026-11-06",
+  "my_reminder_offsets_minutes": [15, 15],
+  "notes": "",
+  "revision": -1,
+  "updated_at": "later"
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lil-orb.pax-kun.com/protocol/v4/question-batch.schema.json",
+  "title": "Themed generated daily question candidates v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "date", "questions"],
+  "properties": {
+    "schema_version": {"const": "4"},
+    "date": {"type": "string", "format": "date"},
+    "questions": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"$ref": "#/$defs/question"}}
+  },
+  "$defs": {
+    "icon": {"enum": ["heart", "chat", "home", "meal", "movie", "music", "outdoors", "play", "rest", "star", "travel", "surprise"]},
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["client_id", "kind", "prompt", "category", "intimacy", "options", "option_icons", "scale_low_label", "scale_high_label", "concept_family", "concept_summary", "depth", "theme_role", "theme_tags"],
+      "properties": {
+        "client_id": {"type": "string", "pattern": "^[a-z0-9-]{3,48}$"},
+        "kind": {"enum": ["single_choice", "multiple_choice", "free_text", "partner_guess", "weighted_choice"]},
+        "prompt": {"type": "string", "minLength": 12, "maxLength": 240},
+        "category": {"enum": ["everyday", "memories", "dreams", "values", "playful", "connection", "intimacy"]},
+        "intimacy": {"type": "boolean"},
+        "options": {"type": "array", "maxItems": 6, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 64}},
+        "option_icons": {"type": "array", "maxItems": 6, "items": {"$ref": "#/$defs/icon"}},
+        "scale_low_label": {"type": ["string", "null"], "minLength": 1, "maxLength": 32},
+        "scale_high_label": {"type": ["string", "null"], "minLength": 1, "maxLength": 32},
+        "concept_family": {"type": "string", "pattern": "^[a-z0-9-]{3,80}$"},
+        "concept_summary": {"type": "string", "minLength": 8, "maxLength": 180},
+        "depth": {"enum": ["light", "reflective", "deeper"]},
+        "theme_role": {"enum": ["themed", "variety"]},
+        "theme_tags": {"type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 2, "maxLength": 40}}
+      },
+      "allOf": [
+        {"if": {"properties": {"kind": {"enum": ["single_choice", "multiple_choice", "partner_guess", "weighted_choice"]}}}, "then": {"properties": {"options": {"minItems": 2}, "option_icons": {"minItems": 2}}}},
+        {"if": {"properties": {"kind": {"const": "free_text"}}}, "then": {"properties": {"options": {"maxItems": 0}, "option_icons": {"maxItems": 0}}}},
+        {"if": {"properties": {"kind": {"const": "weighted_choice"}}}, "then": {"properties": {"scale_low_label": {"type": "string"}, "scale_high_label": {"type": "string"}}}},
+        {"if": {"properties": {"category": {"const": "intimacy"}}}, "then": {"properties": {"intimacy": {"const": true}}}}
+      ]
+    }
+  }
+}

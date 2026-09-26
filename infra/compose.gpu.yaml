@@ -1,0 +1,8 @@
+services:
+  ollama:
+    gpus: all
+  worker:
+    gpus: all
+    environment:
+      GPU_VERIFY_IDLE_PROCESSES: "true"
+      NVIDIA_DRIVER_CAPABILITIES: utility

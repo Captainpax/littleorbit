@@ -1,0 +1,4 @@
+import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
+export const metadata = { title: "Contributors" };
+export default function ContributorsPage() { return <main id="main"><PageIntro eyebrow="Built in the open" title="Curious people are welcome">Little Orbit is a learning project. Careful documentation, accessibility checks, question writing, translations, testing, design, and code all count.</PageIntro><section className="shell contributor-card"><h2>How to help</h2><p>Read the system guide closest to your change, keep pull requests focused, test the failure paths, and describe what you actually verified. Never use real relationship data in examples or fixtures.</p><div className="button-row"><Link className="button" href="/github">Open the repository</Link><Link className="button button-secondary" href="/roadmap">Choose a milestone</Link></div></section></main>; }

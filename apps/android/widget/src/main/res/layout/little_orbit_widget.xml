@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="18dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.12"
+            android:text="@string/widget_brand"
+            android:textColor="#CEC7FF"
+            android:textSize="11sp" />
+        <ImageView
+            android:layout_width="84dp"
+            android:layout_height="40dp"
+            android:contentDescription="@null"
+            android:src="@drawable/widget_planets" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_together"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:autoSizeMaxTextSize="23sp"
+        android:autoSizeMinTextSize="16sp"
+        android:autoSizeStepGranularity="1sp"
+        android:autoSizeTextType="uniform"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="2"
+        android:text="@string/widget_together_unavailable"
+        android:textColor="#F7F6FF"
+        android:textSize="23sp" />
+
+    <TextView
+        android:id="@+id/widget_nearby"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:maxLines="2"
+        android:text="@string/widget_nearby_unavailable"
+        android:textColor="#AEBBD2"
+        android:textSize="11sp" />
+
+    <TextView
+        android:id="@+id/widget_countdown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/widget_countdown"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif"
+        android:maxLines="2"
+        android:padding="10dp"
+        android:text="@string/widget_open_to_refresh"
+        android:textColor="#AEBBD2"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/widget_stale"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.1"
+        android:text="@string/widget_stale"
+        android:textColor="#FFC45B"
+        android:textSize="11sp" />
+
+    <TextView
+        android:id="@+id/widget_refresh"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:minWidth="96dp"
+        android:text="@string/widget_tap_to_refresh"
+        android:textColor="#CEC7FF"
+        android:textSize="11sp" />
+</LinearLayout>
