@@ -4,7 +4,7 @@
 
 This record covers preparation to move Little Orbit from the Windows host at `192.168.50.182` to Unraid at `192.168.50.14`, share the target RTX 4060 cooperatively with Scriptarr, and make `.14` the isolated Android build/signing host.
 
-As of this record, source implementation, the isolated target rehearsal, Scriptarr's lock-aware images and exact-file arbitration checks, and Android signer-custody checks are complete. Scriptarr's live Oracle and Raven containers now mount the required exact lock file. The production database and attachments have **not** been streamed, migration `0032` has **not** been applied to production, Nginx Proxy Manager still points to `.182:8180`, and no `.182` database or attachment volume has been deleted. `.182` remains the live Little Orbit host.
+As of this record, source implementation, the isolated target rehearsal, Scriptarr's lock-aware images and exact-file arbitration checks, Android signer-custody checks, clean `.14` deployment staging, separate schema-0032-compatible `.182` rollback staging, target share bootstrap, and inactive User Scripts installation are complete. Scriptarr's live Oracle and Raven containers now mount the required exact lock file. The production database and attachments have **not** been streamed, migration `0032` has **not** been applied to production, Nginx Proxy Manager still points to `.182:8180`, and no `.182` database or attachment volume has been deleted. `.182` remains the live Little Orbit host.
 
 ## Implemented in source
 
@@ -104,12 +104,14 @@ Production signer-bundle hashes were unchanged, the target's pre-migration histo
 The authenticated Unraid dashboard and terminal showed:
 
 - Unraid 7.3.1, array started, parity reported valid, and no active BTRFS operation at inspection time.
+- The host is currently configured with `USE_DHCP="yes"`; the router-side reservation is not observable from Unraid and still requires operator confirmation before source freeze.
 - Approximately 538 GB free on cache and 227 GB free through the array-backed user share at the latest CLI preflight. Disk 1 was about 90% used and disk 2 about 88% used, so capacity and retention must be rechecked immediately before transfer.
 - Docker Compose 2.40.3, with `jq`, `flock`, and `git` available on the host.
 - No host `age` or Python 3 binary. The bootstrap therefore installs a checksum-pinned `age` binary, while migration Python executes from the source or application container rather than relying on host Python.
 - The route table already assigns `172.30.0.0/16` to `pterodactyl0`; this rejects the earlier `172.30.14.0/28` proposal. `10.253.14.0/28` was not present in the observed route table and is the configured replacement, subject to a final collision check.
 - Scriptarr Oracle, Raven, Moon, Warden, and Sage are healthy after the coordinated image rollout. The corrected Warden is currently identified by a unique local tag plus immutable local image ID because the private registry was unavailable; the prior registry-pinned Warden remains a rollback reference only. Old uncoordinated Oracle and Raven images must not be started once Little Orbit GPU work is enabled.
 - The Little Orbit jump is first in `DOCKER-USER`. Applying the firewall twice alternated only the owned A/B chain, retained the same hash for every unrelated `DOCKER-USER` rule, and left no IPv6 listener. A temporary IPv4 container listener on `.14:8180` was unreachable from `.182`; it and its listener were removed immediately afterward. The allowed `.6` path still requires end-to-end proof when NPM is switched.
+- The authenticated Nginx Proxy Manager table contains one `lil-orb.pax-kun.com` row, still online at `http://192.168.50.182:8180`; no NPM setting has been changed.
 
 No terminal output containing a secret, row value, attachment name, signing password, or precise location was collected for this record.
 
@@ -119,12 +121,15 @@ The first live bootstrap attempt found that `.14`'s persisted array-only backup-
 
 The first inactive User Scripts install also exposed an empty-host no-op bug: an absent `customSchedule.cron` inherited the failed file-test status and made `install` exit nonzero after writing only disabled schedule metadata. The no-file branch now returns explicit success, has a regression test, and a corrected live install reported `installed-inactive`; no Little Orbit cron line or container was activated.
 
+The selected code-only snapshot contains no runtime environment, signer store, backup identity, or SSH key. Its clean rollback and `.14` deployment checkouts have a matching mode-independent blob/path digest. Earlier staging attempts remain preserved as recoverable code-only directories and are not selected for migration.
+
 ## Required before source freeze
 
 - [ ] Recheck the static/DHCP reservation, SSH port 23 host key, temporary migration key, free capacity, NVIDIA runtime, port 8180, IPv6 listeners, and `10.253.14.0/28` availability.
-- [ ] Configure `.14` for exact `America/Los_Angeles`, pass `require_unraid_pacific_timezone`, install the User Scripts,
-  and confirm the daily 08:00 plus Tuesday 07:00 entries. A mismatched configured identifier or effective
-  `/etc/localtime` must make installation and direct wall-clock dispatch fail nonzero.
+- [x] Configure `.14` for exact `America/Los_Angeles`, pass `require_unraid_pacific_timezone`, install the User Scripts
+  in inactive mode, and verify the fixed every-five-minute, daily 08:00, and Tuesday 07:00 Pacific activation
+  templates. A mismatched configured identifier or effective `/etc/localtime` makes installation and direct
+  wall-clock dispatch fail nonzero. Live cron activation remains a post-cutover action.
 - [x] Build and migrate an isolated target project with synthetic state, refresh ClamAV, and pre-pull/verify both pinned Ollama models under the shared lock.
 - [x] Finish Scriptarr's real demand and 900-second idle unload with exclusive residency plus post-unload lock/GPU proof. Lock contention, graceful Oracle fallback, the NVENC wrapper, and service-level durable queue behavior also passed; crash/reboot recovery remains a post-cutover gate.
 - [x] Replace Scriptarr Oracle and Raven's live coordinator-directory mounts with exact `/run/gpu-coordinator/gpu.lock` file binds through the corrected Warden plan; repeat passive-health, exact mount/inode, contention, post-release acquisition, and empty-GPU checks. The earlier full 901-second idle-unload proof used the same stable host inode; the narrower exact-file repetition is recorded above.
@@ -134,7 +139,7 @@ The first inactive User Scripts install also exposed an empty-host no-op bug: an
 - [ ] Confirm both people are off the app and disable `.182` schedules.
 - [ ] Create a fresh ordinary privacy-filtered encrypted backup and pass its restore drill.
 - [ ] Record source commit/image digests, migration head `0031`, privacy-safe table counts including feedback and feedback-operation rows, attachment aggregate digest, and every immutable-release size/hash.
-- [ ] Stage schema-0032-compatible source on `.182` for rollback without starting it.
+- [x] Stage schema-0032-compatible source on `.182` for rollback without starting it.
 
 ## Required for exact transfer and cutover
 
