@@ -35,7 +35,7 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 - Render the signed-in person's relationship name as read-only. Name edits and resets always target the current partner, persist one encrypted stable operation before network use, refresh on revision conflict, and purge both resolved names from phone/Wear caches on sign-out or unpair.
 - Use Android-compatible Java library calls across minSdk 29. Countdown reminders use only the fixed server offsets, treat all-day events as 9:00 AM in their IANA timezone, and reconcile after sync, reboot, app replacement, clock changes, or timezone changes.
 - Calendar export uses a user-approved insert intent. Never request a Google credential, read calendar data, or present the one-way copy as synchronization.
-- Release APKs require all four `ANDROID_SIGNING_*` values, use the same protected key for phone and Wear OS, and must pass `apksigner verify` before publication. Never commit or replace the private release key.
+- Ordinary release APKs require all four `ANDROID_SIGNING_*` values. Only the marker-bound isolated builder under `android-release/` may emit an unsigned candidate; its network-disabled signer uses the same protected key for phone and Wear OS and must pass the pinned `apksigner` identity check plus the Wear hardware-feature check before publication. Linux release containers run by the captured immutable image ID, and bundle custody checks use the no-APK verifier. Never commit or replace the private release key.
 - Build against Android SDK 37 with Java 17 source. Keep target SDK 36 until the Android 17 local-network permission migration is designed and tested.
 - Wireless-ADB pairing uses public Conscrypt APIs and authenticated commands. Never add hidden-API access, log pairing material, trust a pre-command Kadb connection flag, or publish values copied from the wrong module's output metadata.
 - Keep one stable create operation for each new Our Space workspace and persist it synchronously before the first request. Autosave after 800 ms idle and at least every five seconds during continuous typing, serialize create/title/body mutations, and preserve the accepted server identity through process death or a lost response. A newer server revision requires explicit merge, fork-copy, or shared-version recovery.
@@ -62,6 +62,7 @@ Own the Java phone app, shared domain/data libraries, home widget, Wear OS tile,
 ./gradlew :apps:android:mobile:connectedDebugAndroidTest
 .\infra\scripts\build-signed-android.ps1
 .\infra\scripts\build-signed-android.ps1 -ReuseWearApk data\releases\<prior-wear>.apk
+sh android-release/run-release.sh <checkout> <empty-candidate-dir> <empty-signed-dir> <signer.age> <age-identity>
 .\infra\scripts\android-smoke.ps1 -Serial <emulator-serial> -AccountIndex 0 -ResetApp
 ./gradlew -PwearTestBuildType=smoke :apps:android:wear:connectedSmokeAndroidTest
 ./gradlew -PmobileTestBuildType=smoke :apps:android:mobile:connectedSmokeAndroidTest

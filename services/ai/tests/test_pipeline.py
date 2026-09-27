@@ -162,3 +162,41 @@ async def test_changed_model_manifest_is_rejected_before_generation() -> None:
     client = OllamaClient(OllamaSettings(), httpx.MockTransport(handler))
     with pytest.raises(OllamaFailure, match="pinned manifest"):
         await client.generate("Generate a safe batch")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["timeout", "oom"])
+async def test_inference_timeout_and_oom_fail_closed_without_response_details(
+    failure: str,
+) -> None:
+    settings = OllamaSettings()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/tags":
+            return httpx.Response(
+                200,
+                json={
+                    "models": [
+                        {"name": settings.model, "digest": settings.manifest_digest}
+                    ]
+                },
+            )
+        if failure == "timeout":
+            raise httpx.ReadTimeout(
+                "untrusted-timeout-detail",
+                request=request,
+            )
+        return httpx.Response(
+            500,
+            text="CUDA out of memory: untrusted-server-detail",
+            request=request,
+        )
+
+    client = OllamaClient(settings, httpx.MockTransport(handler))
+    with pytest.raises(OllamaFailure) as raised:
+        await client.generate("Generate a safe batch")
+
+    assert str(raised.value) == (
+        "Ollama response failed transport or strict schema validation"
+    )
+    assert "untrusted" not in str(raised.value)

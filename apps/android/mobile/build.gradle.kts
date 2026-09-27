@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.littleorbit.mobile"
     compileSdk = 37
+    buildToolsVersion = "37.0.0"
     testBuildType = providers.gradleProperty("mobileTestBuildType").orElse("debug").get()
     defaultConfig {
         applicationId = "com.littleorbit.mobile"

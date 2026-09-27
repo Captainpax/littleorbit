@@ -19,6 +19,7 @@ from little_orbit_ai.schemas import (
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .ai_work_queue import AiWorkLease, require_current_lease
 from .clock import SystemClock
 from .database import SessionFactory
 from .models import (
@@ -137,10 +138,15 @@ async def persist_pool(
     bank: list[CandidateQuestion],
     duration_ms: int,
     embedding_client: OllamaEmbeddingClient,
-) -> None:
+    *,
+    allow_embeddings: bool = True,
+    lease: AiWorkLease | None = None,
+) -> bool:
+    """Atomically replace one unconsumed pool after its successor is validated."""
+
     async with SessionFactory() as session:
         candidates, database_quarantine, semantics = await _database_filtered_pool(
-            session, target, result, bank, embedding_client
+            session, target, result, bank, embedding_client, allow_embeddings
         )
         bank_ids = {item.client_id for item in bank}
         general_items = [item for item in candidates if not item.intimacy]
@@ -149,6 +155,10 @@ async def persist_pool(
             _question_record(target, item, bank_ids, order.get(item.client_id))
             for item in candidates
         ]
+        await require_current_lease(session, lease)
+        if not await _clear_replaceable_pool(session, target):
+            await session.rollback()
+            return False
         session.add_all(stored)
         await session.flush()
         await consume_selected_reserve(session, target, candidates)
@@ -173,6 +183,38 @@ async def persist_pool(
             )
         )
         await session.commit()
+    return True
+
+
+async def _clear_replaceable_pool(session: AsyncSession, target: date) -> bool:
+    """Delete an old pool only inside the transaction that writes its successor."""
+
+    question_ids = list(
+        await session.scalars(
+            select(Question.id)
+            .where(Question.publish_date == target, Question.couple_id.is_(None))
+            .with_for_update()
+        )
+    )
+    if question_ids:
+        answered = await session.scalar(
+            select(func.count())
+            .select_from(QuizAnswer)
+            .where(QuizAnswer.question_id.in_(question_ids))
+        )
+        materialized = await session.scalar(
+            select(func.count())
+            .select_from(QuizDayQuestion)
+            .where(QuizDayQuestion.question_id.in_(question_ids))
+        )
+        if answered or materialized:
+            return False
+    await session.execute(
+        delete(GenerationBatch).where(GenerationBatch.publish_date == target)
+    )
+    if question_ids:
+        await session.execute(delete(Question).where(Question.id.in_(question_ids)))
+    return True
 
 
 def _question_record(
@@ -204,6 +246,7 @@ async def _database_filtered_pool(
     result: PipelineResult,
     bank: list[CandidateQuestion],
     embedding_client: OllamaEmbeddingClient,
+    allow_embeddings: bool,
 ) -> tuple[
     list[CandidateQuestion],
     list[dict[str, object]],
@@ -215,6 +258,7 @@ async def _database_filtered_pool(
         result,
         embedding_client,
         {item.client_id for item in bank},
+        allow_embeddings,
     )
     general = [item for item in selected if not item.intimacy][:5]
     intimacy = [item for item in selected if item.intimacy]
@@ -227,6 +271,7 @@ async def _database_filtered_pool(
         selected,
         semantics,
         embedding_client,
+        allow_embeddings,
     )
     if len(general) < 5 or not intimacy:
         raise RuntimeError("database duplicate gate exhausted the curated bank")
@@ -239,6 +284,7 @@ async def _filter_database_duplicates(
     result: PipelineResult,
     embedding_client: OllamaEmbeddingClient,
     bank_ids: set[str],
+    allow_embeddings: bool,
 ) -> tuple[
     list[CandidateQuestion],
     list[dict[str, object]],
@@ -249,7 +295,9 @@ async def _filter_database_duplicates(
     semantics: dict[str, CandidateSemantics] = {}
     proposed = [*result.pool.general, *result.pool.intimacy_alternatives]
     for item in proposed:
-        value = await candidate_semantics(embedding_client, item)
+        value = await candidate_semantics(
+            embedding_client, item, allow_embedding=allow_embeddings
+        )
         same_batch = any(semantics_overlap(value, accepted) for accepted in semantics.values())
         missing_ai_embedding = value.prompt_vector is None and item.client_id not in bank_ids
         duplicate = await is_semantic_duplicate(session, target, item, value)
@@ -282,6 +330,7 @@ async def _fill_from_bank(
     selected: list[CandidateQuestion],
     semantics: dict[str, CandidateSemantics],
     embedding_client: OllamaEmbeddingClient,
+    allow_embeddings: bool,
 ) -> None:
     used = {normalized_hash(item.prompt) for item in selected}
     for item in _rotated_bank(target, bank):
@@ -290,7 +339,9 @@ async def _fill_from_bank(
             continue
         if normalized_hash(item.prompt) in used:
             continue
-        value = await candidate_semantics(embedding_client, item)
+        value = await candidate_semantics(
+            embedding_client, item, allow_embedding=allow_embeddings
+        )
         same_batch = any(semantics_overlap(value, accepted) for accepted in semantics.values())
         if not same_batch and not await is_semantic_duplicate(session, target, item, value):
             (intimacy if item.intimacy else general).append(item)
@@ -382,10 +433,17 @@ def _generation_record(
     )
 
 
-async def record_seed_attempt(target: date, result: PipelineResult, duration_ms: int) -> None:
+async def record_seed_attempt(
+    target: date,
+    result: PipelineResult,
+    duration_ms: int,
+    *,
+    lease: AiWorkLease | None = None,
+) -> None:
     """Record a failed AI attempt without disturbing safe curated coverage."""
 
     async with SessionFactory() as session:
+        await require_current_lease(session, lease)
         batch = await session.scalar(
             select(GenerationBatch).where(GenerationBatch.publish_date == target).with_for_update()
         )
@@ -408,28 +466,3 @@ async def is_coverage_seed(target: date) -> bool:
             )
         )
     return fallback_reason == "coverage_seed"
-
-
-async def replace_unanswered_pool(target: date) -> bool:
-    """Remove only a future/global pool that has no answer or day references."""
-
-    async with SessionFactory() as session:
-        ids = select(Question.id).where(
-            Question.publish_date == target, Question.couple_id.is_(None)
-        )
-        answered = await session.scalar(
-            select(func.count()).select_from(QuizAnswer).where(QuizAnswer.question_id.in_(ids))
-        )
-        materialized = await session.scalar(
-            select(func.count())
-            .select_from(QuizDayQuestion)
-            .where(QuizDayQuestion.question_id.in_(ids))
-        )
-        if answered or materialized:
-            return False
-        await session.execute(delete(GenerationBatch).where(GenerationBatch.publish_date == target))
-        await session.execute(
-            delete(Question).where(Question.publish_date == target, Question.couple_id.is_(None))
-        )
-        await session.commit()
-    return True

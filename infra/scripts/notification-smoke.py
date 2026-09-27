@@ -131,6 +131,23 @@ async def send_insert(socket: Any, revision: int, position: int, text: str) -> N
     await await_type(socket, "note.ack")
 
 
+def enable_notification_smoke_preferences(token: str) -> None:
+    request_json(
+        "PATCH",
+        "/notification-preferences",
+        token,
+        {
+            "master_enabled": True,
+            "smooches_enabled": True,
+            "note_editing_enabled": True,
+            "daily_quiz_enabled": True,
+            "countdowns_enabled": True,
+            "together_time_enabled": True,
+            "weekly_summary_enabled": True,
+        },
+    )
+
+
 async def main() -> None:
     """Verify WSS hints, per-device acks, legacy bridging, and note cooldown."""
 
@@ -142,20 +159,7 @@ async def main() -> None:
     register_device(second, second_device)
     acknowledge_all(second, first_device)
     acknowledge_all(second, second_device)
-    request_json(
-        "PATCH",
-        "/notification-preferences",
-        second,
-        {
-            "master_enabled": True,
-            "smooches_enabled": True,
-            "note_editing_enabled": True,
-            "daily_quiz_enabled": True,
-            "countdowns_enabled": True,
-            "together_time_enabled": True,
-            "weekly_summary_enabled": True,
-        },
-    )
+    enable_notification_smoke_preferences(second)
     socket_headers = {"Authorization": f"Bearer {second}", **CLIENT_HEADERS}
     async with websockets.connect(
         f"{WS}/notifications?device_id={first_device}", additional_headers=socket_headers

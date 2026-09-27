@@ -41,7 +41,7 @@ The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch record
 - Public patch notes at `/patch-notes` and a standards-based RSS feed at `/patch-notes.xml`.
 - The separate Java/XML Big Orbit Android console with protected device-key enrollment, actionable global-question reports, service health, bounded account/session and registration controls, K-anonymous quiz intelligence, AI provenance, typed operations, backup evidence, and generic local alerts.
 - Local weekly question intelligence through pinned Ollama generation and embedding models. Feedback learning receives only thresholded, sanitized product feedback; it never receives quiz answers or relationship data.
-- In 1.3 source, Saturday 09:00 local learning and planning creates one seven-day arc with distinct daily themes; Sunday generation publishes three themed and two variety questions per day across an explicit light-to-deeper balance. Reviewed Markdown and allowlisted public context are bounded retrieval inputs, not model fine-tuning.
+- In current source, Saturday 01:00 Pacific learning/planning and Sunday 03:00 generation enter a persistent content-free queue. Shared-GPU contention retries one ordered job per six-hour slot, and successful generation validates and embeds fourteen days of safe coverage. Reviewed Markdown and allowlisted public context are bounded retrieval inputs, not model fine-tuning.
 - A deterministic one-use reserve holds 1,825 general and 365 consent-centered intimacy prompts. Global generated content is checked for same-day, same-week, and preceding-365-day semantic repetition; custom couple questions remain private and exempt.
 - Every fresh Big Orbit device begins with an eight-digit, ten-minute, hash-only PIN printed once by the server CLI, then proves its Android Keystore key. The first owner enrolls MFA from an in-app QR; existing MFA is never replaced by device enrollment.
 
@@ -49,7 +49,7 @@ The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch record
 
 ## Architecture
 
-Android, Wear OS, [Big Orbit](https://github.com/Captainpax/big-orbit), and browsers connect to `https://lil-orb.pax-kun.com`. Nginx Proxy Manager forwards traffic to a single gateway port on the application host. The gateway routes `/api/*` and `/ws/*` to FastAPI and all other paths to Next.js. PostgreSQL, pgvector, Ollama, the worker, and Mailpit remain private to the Compose network. A secret-free context fetcher has a separate bounded egress network and accepts only code-owned HTTPS sources.
+Android, Wear OS, [Big Orbit](https://github.com/Captainpax/big-orbit), and browsers connect to `https://lil-orb.pax-kun.com`. Production now runs on Unraid with one gateway port at `192.168.50.14:8180`, admitted only from Nginx Proxy Manager at `192.168.50.6`. NPM's TLS configuration was preserved; a separately authorized 2026-09-27 correction changed the stale `pax-kun.com` apex A record to the current WAN address, all four authoritative name servers returned it, and a Pixel 8 Pro received API 1.3.0 readiness in Chrome over Wi-Fi. The gateway routes `/api/*` and `/ws/*` to FastAPI and all other paths to Next.js. PostgreSQL, pgvector, Ollama, the worker, and Mailpit remain private to the Compose network. A secret-free context fetcher has a separate bounded egress network and accepts only code-owned HTTPS sources. Little Orbit cooperatively shares the host RTX 4060 through a stable lock with Scriptarr; contention delays queued site-wide AI work without exposing relationship data or preempting another workload. The [Unraid cutover record](docs/operations/VERIFICATION-UNRAID-2026-09-26.md) distinguishes completed server, DNS, phone-Wi-Fi browser, and corrected reboot-recovery checks from still-open authenticated, broader physical-device, active shared-workload, cellular external-WAN, and off-host recovery evidence.
 
 See the [network and logic flows](docs/NETWORK-FLOW.md), [privacy design](docs/PRIVACY.md), and [architecture decisions](docs/adr/) before changing a trust boundary.
 
@@ -57,12 +57,13 @@ See the [network and logic flows](docs/NETWORK-FLOW.md), [privacy design](docs/P
 
 Requirements: Docker Desktop, Compose, Node.js 24+, Python 3.12 or 3.13, Java 17, and Android SDK 37 for Android builds.
 
-```bash
-copy .env.example .env
+```powershell
+Copy-Item .env.example .env
+docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml --profile model-setup run --rm model-init
 docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml up --build
 ```
 
-Then open `http://localhost:8180`. Mailpit is available in the development profile at `http://localhost:8025`. The first Ollama model pull is large and may take several minutes. The base Compose file works on CPU; add `infra/compose.gpu.yaml` on a configured NVIDIA Docker Desktop host.
+Then open `http://localhost:8180`. Mailpit is available in the development profile at `http://localhost:8025`. The explicit first Ollama model pull is large and may take several minutes. If it fails, the stack and safe fourteen-day quiz coverage can still start; queued AI work waits for a later successful model setup. The base Compose file works on CPU; add `infra/compose.gpu.yaml` on a configured NVIDIA Docker Desktop host.
 
 For direct development:
 
@@ -100,6 +101,7 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
 - [Documentation map](docs/DOCUMENTATION-MAP.md)
 - [Latest stable verification record](docs/operations/VERIFICATION-1.3.0-2026-09-23.md)
+- [Unraid migration and cutover record](docs/operations/VERIFICATION-UNRAID-2026-09-26.md)
 - [1.3.0 release notes](docs/releases/1.3.0.md)
 
 ## License and support

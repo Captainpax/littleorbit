@@ -31,9 +31,11 @@ if (-not $pairManifest) {
 }
 $pair = Get-Content -LiteralPath $pairManifest.FullName -Raw | ConvertFrom-Json
 if (
-    $pair.schema_version -ne 1 -or
+    $pair.schema_version -ne 2 -or
     $pair.raw_coordinates_included -ne $false -or
+    $pair.device_health_rows_included -ne $false -or
     $pair.attributable_quiz_feedback_included -ne $false -or
+    $pair.feedback_operation_rows_included -ne $false -or
     $pair.anonymous_review_rows_included -ne $false
 ) {
     throw "The coordinated backup pair manifest is invalid."
@@ -76,16 +78,16 @@ $docker = (Get-Command docker -ErrorAction Stop).Source
 $age = (Get-Command age -ErrorAction Stop).Source
 $composeArguments = @("compose", "--env-file", ".env", "-f", $ComposeFile)
 $verifier = Get-Content -LiteralPath (Join-Path $PSScriptRoot "verify-attachment-backup.py") -Raw
-$createdDatabase = $false
+$cleanupDatabase = $false
 
 Push-Location $repoRoot
 try {
+    $cleanupDatabase = $true
     & (Join-Path $PSScriptRoot "restore-postgres.ps1") `
         -BackupPath $databaseBackup.FullName `
         -ComposeFile $ComposeFile `
         -TargetDatabase $databaseName `
         -IdentityPath $IdentityPath | Out-Null
-    $createdDatabase = $true
 
     $databaseUser = (& $docker @composeArguments exec -T postgres printenv POSTGRES_USER).Trim()
     $validationSql = @"
@@ -128,7 +130,7 @@ THEN 'ok' ELSE 'invalid' END;
     } | ConvertTo-Json
 }
 finally {
-    if ($createdDatabase) {
+    if ($cleanupDatabase) {
         if ($databaseName -notmatch '^little_orbit_drill_[0-9]{14}$') {
             throw "Refusing to remove an unexpected restore-drill database."
         }

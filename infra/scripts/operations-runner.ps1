@@ -2,7 +2,8 @@ param(
     [ValidateSet("pending", "backup", "test_restore")]
     [string]$Mode = "pending",
     [string]$ComposeFile = "infra/compose.yaml",
-    [string]$IdentityPath = (Join-Path $env:LOCALAPPDATA "LittleOrbit/backup-age-identity.txt")
+    [string]$IdentityPath = (Join-Path $env:LOCALAPPDATA "LittleOrbit/backup-age-identity.txt"),
+    [int]$ExclusiveLockTimeoutSeconds = 300
 )
 
 Set-StrictMode -Version Latest
@@ -10,7 +11,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
 $docker = (Get-Command docker -ErrorAction Stop).Source
 $composeArguments = @("compose", "--env-file", ".env", "-f", $ComposeFile)
-$mutex = [Threading.Mutex]::new($false, "Local\LittleOrbitOperationsRunner")
+$mutex = [Threading.Mutex]::new($false, "Global\LittleOrbitOperationsRunner")
 $lockAcquired = $false
 
 function Invoke-DatabaseCommand {
@@ -18,13 +19,15 @@ function Invoke-DatabaseCommand {
 
     $databaseUser = (& $docker @composeArguments exec -T postgres printenv POSTGRES_USER).Trim()
     $databaseName = (& $docker @composeArguments exec -T postgres printenv POSTGRES_DB).Trim()
-    $output = & $docker @composeArguments exec -T postgres psql `
-        --username=$databaseUser --dbname=$databaseName --no-align --tuples-only `
-        --set=ON_ERROR_STOP=1 --command=$Sql
+    $output = $Sql | & $docker @composeArguments exec -T postgres psql `
+        --username=$databaseUser --dbname=$databaseName --no-psqlrc --quiet --no-align --tuples-only `
+        --set=ON_ERROR_STOP=1 --file=-
     if ($LASTEXITCODE -ne 0) {
         throw "The operations database command failed."
     }
-    return ("$output").Trim()
+    foreach ($line in @($output)) {
+        Write-Output ([string]$line).TrimEnd("`r")
+    }
 }
 
 function ConvertTo-SqlJson {
@@ -153,12 +156,50 @@ RETURNING jobs.id::text || '|' || jobs.kind;
     return Invoke-DatabaseCommand $claimSql
 }
 
+function ConvertFrom-PendingJobClaim {
+    param(
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object]$ClaimOutput
+    )
+
+    $lines = @($ClaimOutput)
+    if ($lines.Count -eq 0 -or ($lines.Count -eq 1 -and [string]$lines[0] -eq "")) {
+        return $null
+    }
+    if ($lines.Count -ne 1) {
+        throw "The claimed operations job was malformed."
+    }
+    $pattern = '\A(?<jobId>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\|(?<kind>backup|test_restore)\z'
+    $match = [Text.RegularExpressions.Regex]::Match(
+        [string]$lines[0],
+        $pattern,
+        [Text.RegularExpressions.RegexOptions]::CultureInvariant
+    )
+    if (-not $match.Success) {
+        throw "The claimed operations job was malformed."
+    }
+    return [PSCustomObject]@{
+        JobId = $match.Groups["jobId"].Value
+        Kind = $match.Groups["kind"].Value
+    }
+}
+
 Push-Location $repoRoot
 try {
-    $lockAcquired = $mutex.WaitOne(0)
+    $lockTimeout = if ($Mode -eq "pending") { 0 } else { $ExclusiveLockTimeoutSeconds * 1000 }
+    try {
+        $lockAcquired = $mutex.WaitOne($lockTimeout)
+    }
+    catch [Threading.AbandonedMutexException] {
+        $lockAcquired = $true
+    }
     if (-not $lockAcquired) {
-        Write-Output '{"outcome":"already_running"}'
-        return
+        if ($Mode -eq "pending") {
+            Write-Output '{"outcome":"already_running"}'
+            return
+        }
+        throw "Timed out waiting for the exclusive Little Orbit operations lock."
     }
     $containerId = (& $docker @composeArguments ps -q postgres).Trim()
     if (-not $containerId) {
@@ -182,19 +223,18 @@ WHERE status = 'running' AND created_at < now() - interval '2 hours';
     }
     else {
         for ($index = 0; $index -lt 5; $index++) {
-            $claimed = Get-PendingJob
-            if (-not $claimed) {
+            $claimed = ConvertFrom-PendingJobClaim -ClaimOutput (Get-PendingJob)
+            if ($null -eq $claimed) {
                 break
             }
-            $parts = $claimed.Split('|')
-            if ($parts.Length -ne 2 -or $parts[0] -notmatch '^[0-9a-f-]{36}$') {
+            if ($claimed.Kind -eq "backup") {
+                Invoke-BackupOperation $claimed.JobId
+            }
+            elseif ($claimed.Kind -eq "test_restore") {
+                Invoke-RestoreDrill $claimed.JobId
+            }
+            else {
                 throw "The claimed operations job was malformed."
-            }
-            if ($parts[1] -eq "backup") {
-                Invoke-BackupOperation $parts[0]
-            }
-            elseif ($parts[1] -eq "test_restore") {
-                Invoke-RestoreDrill $parts[0]
             }
         }
     }

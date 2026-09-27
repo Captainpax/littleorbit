@@ -3,6 +3,7 @@ plugins { alias(libs.plugins.android.library) }
 android {
     namespace = "com.littleorbit.widget"
     compileSdk = 37
+    buildToolsVersion = "37.0.0"
     defaultConfig { minSdk = 29 }
     buildFeatures { viewBinding = false }
     compileOptions {

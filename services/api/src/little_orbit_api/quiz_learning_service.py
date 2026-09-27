@@ -21,10 +21,11 @@ from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .ai_work_queue import AiWorkLease, AiWorkLeaseExpired, require_current_lease
 from .clock import SystemClock
 from .database import SessionFactory
 from .models import Question
-from .quiz_feedback_retention import aggregate_feedback_week
+from .quiz_feedback_retention import LINKED_RETENTION, aggregate_feedback_week
 from .quiz_intelligence_models import (
     AiLearningCursor,
     AiPolicyVersion,
@@ -38,51 +39,81 @@ from .quiz_semantics import derived_family
 RUN_TAKEOVER_AFTER = timedelta(hours=2)
 
 
-async def learn_feedback_week(week_start: date, client: OllamaClient) -> str:
+async def learn_feedback_week(
+    week_start: date,
+    client: OllamaClient,
+    *,
+    lease: AiWorkLease | None = None,
+) -> str:
     """Learn and atomically activate one bounded policy, once per UTC week."""
 
     now = SystemClock().now()
     run_key = f"learn:{week_start.isoformat()}"
-    if not await claim_ai_run(run_key, "learning", now):
-        return "already_claimed"
+    if not await claim_ai_run(run_key, "learning", now, lease=lease):
+        if await ai_run_is_finished(run_key):
+            return "already_completed"
+        raise RuntimeError("AI learning run is already active")
     try:
-        async with SessionFactory() as session:
-            cursor = await _learning_cursor(session, week_start, now)
-            await _aggregate_since(session, cursor.feedback_updated_through, now)
-            signals = await _learning_signals(
-                session, cursor.feedback_updated_through, now
-            )
-            await session.commit()
+        signals = await _collect_learning_signals(week_start, now, lease)
         if not signals:
-            await _advance_learning_cursor(now)
-            await finish_ai_run(run_key, "fallback", {"reason": "no_thresholded_feedback"})
+            await _advance_learning_cursor(now, lease)
+            await finish_ai_run(
+                run_key,
+                "fallback",
+                {"reason": "no_thresholded_feedback"},
+                lease=lease,
+            )
             return "no_feedback"
         policy = await client.learn(build_learning_prompt(signals))
         rejection_reasons = policy_rejection_reasons(policy, signals)
         if rejection_reasons:
-            version = await _reject_policy(policy, len(signals), rejection_reasons, now)
+            version = await _reject_policy(
+                policy, len(signals), rejection_reasons, now, lease
+            )
             await finish_ai_run(
                 run_key,
                 "fallback",
                 {"reason": "evaluation_rejected", "reasons": list(rejection_reasons)},
                 version,
+                lease,
             )
             return "rejected"
-        version = await _activate_policy(policy, len(signals), now)
-        await _advance_learning_cursor(now)
+        version = await _activate_policy(policy, len(signals), now, lease)
+        await _advance_learning_cursor(now, lease)
         await finish_ai_run(
             run_key,
             "passed",
             {"signal_count": len(signals), "policy_version": version},
             version,
+            lease,
         )
         return "passed"
     except OllamaFailure:
-        await finish_ai_run(run_key, "fallback", {"reason": "model_unavailable"})
+        await finish_ai_run(
+            run_key, "fallback", {"reason": "model_unavailable"}, lease=lease
+        )
         return "fallback"
     except Exception:
-        await finish_ai_run(run_key, "failed", {"reason": "internal_failure"})
+        await finish_ai_run(
+            run_key, "failed", {"reason": "internal_failure"}, lease=lease
+        )
         raise
+
+
+async def _collect_learning_signals(
+    week_start: date, now: datetime, lease: AiWorkLease | None
+) -> list[LearningQuestionSignal]:
+    """Aggregate and read thresholded signals under the exact queue lease."""
+
+    async with SessionFactory() as session:
+        await require_current_lease(session, lease)
+        cursor = await _learning_cursor(session, week_start, now)
+        await _aggregate_since(session, cursor.feedback_updated_through, now)
+        signals = await _learning_signals(
+            session, cursor.feedback_updated_through, now
+        )
+        await session.commit()
+    return signals
 
 
 async def active_learning_policy() -> LearningPolicy | None:
@@ -125,20 +156,7 @@ async def _learning_signals(
             select(QuestionConcept).where(QuestionConcept.question_id.in_(question_ids))
         )
     }
-    start = max(changed_after, through - timedelta(days=30))
-    reviews: dict[UUID, list[str]] = defaultdict(list)
-    review_rows = await session.execute(
-        select(QuestionFeedback.question_id, QuestionFeedback.sanitized_review).where(
-            QuestionFeedback.question_id.in_(question_ids),
-            QuestionFeedback.updated_at >= start,
-            QuestionFeedback.updated_at < through,
-            QuestionFeedback.review_status == "accepted",
-            QuestionFeedback.sanitized_review.is_not(None),
-        )
-    )
-    for question_id, review in review_rows:
-        if review is not None and len(reviews[question_id]) < 20:
-            reviews[question_id].append(review)
+    reviews = await _learning_reviews(session, aggregates, question_ids, through)
     result: list[LearningQuestionSignal] = []
     for aggregate in aggregates:
         question = questions.get(aggregate.question_id)
@@ -153,10 +171,60 @@ async def _learning_signals(
                 rating_count=aggregate.rating_count,
                 average_stars=aggregate.score_sum / aggregate.rating_count,
                 tag_counts=aggregate.tag_counts,
-                reviews=reviews[question.id],
+                reviews=reviews[(question.id, aggregate.week_start)],
             )
         )
     return result
+
+
+async def _learning_reviews(
+    session: AsyncSession,
+    aggregates: list[FeedbackWeeklyAggregate],
+    question_ids: list[UUID],
+    through: datetime,
+) -> dict[tuple[UUID, date], list[str]]:
+    """Read accepted reviews only from the exact thresholded aggregate weeks."""
+
+    eligible_reviews = {
+        (item.question_id, item.week_start) for item in aggregates
+    }
+    first_week = min(item.week_start for item in aggregates)
+    last_week = max(item.week_start for item in aggregates)
+    review_start = datetime.combine(first_week, time.min, tzinfo=UTC)
+    review_end = datetime.combine(
+        last_week + timedelta(days=7), time.min, tzinfo=UTC
+    )
+    review_rows = await session.execute(
+        select(
+            QuestionFeedback.question_id,
+            QuestionFeedback.updated_at,
+            QuestionFeedback.sanitized_review,
+        ).where(
+            QuestionFeedback.question_id.in_(question_ids),
+            QuestionFeedback.updated_at >= review_start,
+            QuestionFeedback.updated_at < review_end,
+            QuestionFeedback.updated_at < through,
+            QuestionFeedback.review_status == "accepted",
+            QuestionFeedback.sanitized_review.is_not(None),
+        )
+    )
+    return _bucket_learning_reviews(list(review_rows.tuples()), eligible_reviews)
+
+
+def _bucket_learning_reviews(
+    rows: list[tuple[UUID, datetime, str | None]],
+    eligible: set[tuple[UUID, date]],
+) -> dict[tuple[UUID, date], list[str]]:
+    """Keep review text inside the exact K-anonymous UTC aggregate week."""
+
+    reviews: dict[tuple[UUID, date], list[str]] = defaultdict(list)
+    for question_id, updated_at, review in rows:
+        review_date = updated_at.astimezone(UTC).date()
+        week_start = review_date - timedelta(days=review_date.weekday())
+        key = (question_id, week_start)
+        if key in eligible and review is not None and len(reviews[key]) < 20:
+            reviews[key].append(review)
+    return reviews
 
 
 async def _learning_cursor(
@@ -179,19 +247,23 @@ async def _learning_cursor(
 
 
 async def _aggregate_since(session: AsyncSession, since: datetime, now: datetime) -> None:
-    """Recompute every touched UTC week so late edits become eligible once thresholded."""
+    """Reconcile cursor-pending and still-attributable UTC feedback weeks."""
 
-    monday = since.date() - timedelta(days=since.weekday())
+    earliest = min(since, now - LINKED_RETENTION)
+    monday = earliest.date() - timedelta(days=earliest.weekday())
     final = now.date() - timedelta(days=now.weekday())
     while monday <= final:
         await aggregate_feedback_week(session, monday, now)
         monday += timedelta(days=7)
 
 
-async def _advance_learning_cursor(through: datetime) -> None:
+async def _advance_learning_cursor(
+    through: datetime, lease: AiWorkLease | None = None
+) -> None:
     """Advance only after a no-op or successfully activated policy."""
 
     async with SessionFactory() as session:
+        await require_current_lease(session, lease)
         record = await session.get(AiLearningCursor, "quiz-feedback", with_for_update=True)
         if record is None:
             return
@@ -216,11 +288,17 @@ def _fallback_family(question: Question) -> str:
     return derived_family(item)
 
 
-async def _activate_policy(policy: LearningPolicy, signal_count: int, now: datetime) -> int:
+async def _activate_policy(
+    policy: LearningPolicy,
+    signal_count: int,
+    now: datetime,
+    lease: AiWorkLease | None = None,
+) -> int:
     digest = hashlib.sha256(
         json.dumps(policy.model_dump(mode="json"), sort_keys=True).encode()
     ).hexdigest()
     async with SessionFactory() as session:
+        await require_current_lease(session, lease)
         await session.execute(text("SELECT pg_advisory_xact_lock(12002026)"))
         await session.execute(
             update(AiPolicyVersion)
@@ -252,10 +330,12 @@ async def _reject_policy(
     signal_count: int,
     reasons: tuple[str, ...],
     now: datetime,
+    lease: AiWorkLease | None = None,
 ) -> int:
     """Preserve safe audit metadata without activating failed learned guidance."""
 
     async with SessionFactory() as session:
+        await require_current_lease(session, lease)
         await session.execute(text("SELECT pg_advisory_xact_lock(12002026)"))
         current = await session.scalar(select(func.max(AiPolicyVersion.version)))
         version = int(current or 0) + 1
@@ -276,10 +356,17 @@ async def _reject_policy(
     return version
 
 
-async def claim_ai_run(run_key: str, kind: str, now: datetime) -> bool:
+async def claim_ai_run(
+    run_key: str,
+    kind: str,
+    now: datetime,
+    *,
+    lease: AiWorkLease | None = None,
+) -> bool:
     """Claim one idempotent scheduled run, taking over only after two hours."""
 
     async with SessionFactory() as session:
+        await require_current_lease(session, lease)
         inserted = await session.scalar(
             insert(AiRun)
             .values(
@@ -312,22 +399,38 @@ async def claim_ai_run(run_key: str, kind: str, now: datetime) -> bool:
     return True
 
 
+async def ai_run_is_finished(run_key: str) -> bool:
+    """Return whether one idempotent run has a durable terminal outcome."""
+
+    async with SessionFactory() as session:
+        status = await session.scalar(
+            select(AiRun.status).where(AiRun.run_key == run_key)
+        )
+    return status in {"passed", "fallback"}
+
+
 async def finish_ai_run(
     run_key: str,
     status: str,
     summary: dict[str, object],
     policy_version: int | None = None,
-) -> None:
+    lease: AiWorkLease | None = None,
+) -> bool:
     """Finish one claimed run with content-free operational metadata."""
 
     async with SessionFactory() as session:
+        try:
+            await require_current_lease(session, lease)
+        except AiWorkLeaseExpired:
+            return False
         record = await session.scalar(
             select(AiRun).where(AiRun.run_key == run_key).with_for_update()
         )
         if record is None:
-            return
+            return False
         record.status = status
         record.summary_json = summary
         record.policy_version = policy_version
         record.finished_at = SystemClock().now()
         await session.commit()
+    return True

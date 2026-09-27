@@ -41,7 +41,7 @@ function Register-LittleOrbitTask {
     Get-ScheduledTask -TaskName "$TaskPrefix $Name" -ErrorAction Stop | Out-Null
 }
 
-$daily = New-ScheduledTaskTrigger -Daily -At "06:00"
+$daily = New-ScheduledTaskTrigger -Daily -At "08:00"
 $weekly = New-ScheduledTaskTrigger -Weekly -WeeksInterval 1 -DaysOfWeek Tuesday -At "07:00"
 $pending = New-ScheduledTaskTrigger `
     -Once `

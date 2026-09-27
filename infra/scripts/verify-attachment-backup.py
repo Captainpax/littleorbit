@@ -7,6 +7,7 @@ import json
 from pathlib import PurePosixPath
 import sys
 import tarfile
+from typing import IO
 
 BUFFER_SIZE = 1024 * 1024
 MAX_MANIFEST_BYTES = 8 * 1024 * 1024
@@ -23,6 +24,29 @@ def safe_payload_path(name: str) -> str:
     return PurePosixPath(*value.parts[1:]).as_posix()
 
 
+def _manifest(member: tarfile.TarInfo, source: IO[bytes] | None) -> list[dict[str, object]]:
+    if source is None or not member.isfile() or member.size > MAX_MANIFEST_BYTES:
+        raise RuntimeError("attachment manifest is invalid")
+    parsed = json.loads(source.read().decode("utf-8"))
+    if not isinstance(parsed, list):
+        raise RuntimeError("attachment manifest is invalid")
+    return parsed
+
+
+def _payload_evidence(
+    member: tarfile.TarInfo, source: IO[bytes] | None
+) -> dict[str, object]:
+    if source is None or not member.isfile():
+        raise RuntimeError("attachment archive contains a non-regular payload")
+    relative = safe_payload_path(member.name)
+    digest = hashlib.sha256()
+    count = 0
+    while chunk := source.read(BUFFER_SIZE):
+        digest.update(chunk)
+        count += len(chunk)
+    return {"path": relative, "bytes": count, "sha256": digest.hexdigest()}
+
+
 def verify() -> None:
     """Verify every streamed byte against the terminal archive manifest."""
 
@@ -32,22 +56,9 @@ def verify() -> None:
         for member in archive:
             source = archive.extractfile(member)
             if member.name == "manifest.json":
-                if source is None or not member.isfile() or member.size > MAX_MANIFEST_BYTES:
-                    raise RuntimeError("attachment manifest is invalid")
-                parsed = json.loads(source.read().decode("utf-8"))
-                if not isinstance(parsed, list):
-                    raise RuntimeError("attachment manifest is invalid")
-                expected = parsed
+                expected = _manifest(member, source)
                 continue
-            if source is None or not member.isfile():
-                raise RuntimeError("attachment archive contains a non-regular payload")
-            relative = safe_payload_path(member.name)
-            digest = hashlib.sha256()
-            count = 0
-            while chunk := source.read(BUFFER_SIZE):
-                digest.update(chunk)
-                count += len(chunk)
-            observed.append({"path": relative, "bytes": count, "sha256": digest.hexdigest()})
+            observed.append(_payload_evidence(member, source))
     if expected is None or observed != expected:
         raise RuntimeError("attachment archive integrity check failed")
 

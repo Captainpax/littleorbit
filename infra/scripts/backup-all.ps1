@@ -68,7 +68,7 @@ try {
         throw "The coordinated backup pair manifest already exists."
     }
     $pair = [ordered]@{
-        schema_version = 1
+        schema_version = 2
         created_at = (Get-Date).ToUniversalTime().ToString("o")
         database = [ordered]@{
             path = Get-WorkspaceRelativePath $repoRoot $databasePath
@@ -81,7 +81,9 @@ try {
             sha256 = (Get-FileHash -LiteralPath $attachmentPath -Algorithm SHA256).Hash.ToLowerInvariant()
         }
         raw_coordinates_included = $false
+        device_health_rows_included = $false
         attributable_quiz_feedback_included = $false
+        feedback_operation_rows_included = $false
         anonymous_review_rows_included = $false
     }
     $pair | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $pairPartial -Encoding utf8

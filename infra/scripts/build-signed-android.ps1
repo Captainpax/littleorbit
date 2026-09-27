@@ -12,6 +12,7 @@ $SigningNames = @(
     "ANDROID_SIGNING_KEY_ALIAS",
     "ANDROID_SIGNING_KEY_PASSWORD"
 )
+$ExpectedCertificateSha256 = "43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337"
 
 function Import-AllowlistedEnvironment([string]$Path, [string[]]$Names) {
     foreach ($line in Get-Content -LiteralPath $Path) {
@@ -55,6 +56,15 @@ function Read-VersionCode([string]$Aapt, [string]$Apk) {
         throw "Wear APK package identity or version code is invalid."
     }
     return [int]$Matches[1]
+}
+
+function Assert-WearFeature([string]$Aapt, [string]$Apk) {
+    $badging = & $Aapt dump badging $Apk
+    if ($LASTEXITCODE -ne 0) { throw "Wear APK metadata could not be read." }
+    $watch = $badging | Where-Object {
+        $_ -match "^\s*uses-feature:\s+name='android\.hardware\.type\.watch'\s*$"
+    } | Select-Object -First 1
+    if (-not $watch) { throw "Wear APK does not require android.hardware.type.watch." }
 }
 
 function Assert-NoQaMaterial([string]$Apk) {
@@ -185,6 +195,7 @@ $wearVersionCode = if ($ReuseWearApk) {
     }
     [int]$wearMetadata.elements[0].versionCode
 }
+Assert-WearFeature $aapt $wearSource
 Assert-NoQaMaterial $phoneSource
 Assert-NoQaMaterial $wearSource
 $phoneDestination = Join-Path $outputPath "little-orbit-$versionName.apk"
@@ -193,6 +204,9 @@ $phone = Publish-Apk $phoneSource $phoneDestination $apkSigner
 $wear = Publish-Apk $wearSource $wearDestination $apkSigner
 if ($phone.CertificateSha256 -ne $wear.CertificateSha256) {
     throw "Phone and Wear APKs were signed by different certificates."
+}
+if ($phone.CertificateSha256.ToLowerInvariant() -ne $ExpectedCertificateSha256) {
+    throw "The APK signer does not match Little Orbit's pinned release certificate."
 }
 
 $releaseManifest = [ordered]@{

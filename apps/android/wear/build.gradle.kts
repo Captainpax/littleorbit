@@ -3,6 +3,7 @@ plugins { alias(libs.plugins.android.application) }
 android {
     namespace = "com.littleorbit.wear"
     compileSdk = 37
+    buildToolsVersion = "37.0.0"
     testBuildType = providers.gradleProperty("wearTestBuildType").orElse("debug").get()
     defaultConfig {
         applicationId = "com.littleorbit.mobile"

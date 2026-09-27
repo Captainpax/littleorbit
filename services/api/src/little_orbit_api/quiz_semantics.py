@@ -51,18 +51,23 @@ def semantics_overlap(left: CandidateSemantics, right: CandidateSemantics) -> bo
 async def candidate_semantics(
     client: OllamaEmbeddingClient,
     item: CandidateQuestion,
+    *,
+    allow_embedding: bool = True,
 ) -> CandidateSemantics:
     """Derive stable metadata and embed it without exposing any user data."""
 
     family = item.concept_family or derived_family(item)
     summary = item.concept_summary or item.prompt.rstrip("?")
-    try:
-        vectors = await client.embed(
-            [f"search_document: {item.prompt}", f"search_document: {summary}"]
-        )
-        prompt_vector, concept_vector = vectors
-    except OllamaFailure:
+    if not allow_embedding:
         prompt_vector, concept_vector = None, None
+    else:
+        try:
+            vectors = await client.embed(
+                [f"search_document: {item.prompt}", f"search_document: {summary}"]
+            )
+            prompt_vector, concept_vector = vectors
+        except OllamaFailure:
+            prompt_vector, concept_vector = None, None
     return CandidateSemantics(
         family=family,
         summary=summary[:180],

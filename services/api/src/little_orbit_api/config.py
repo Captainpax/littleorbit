@@ -46,11 +46,17 @@ class Settings(BaseSettings):
     admin_mfa_enrollment_minutes: int = Field(default=10, ge=5, le=60)
     session_minutes: int = Field(default=43_200, ge=30, le=525_600)
     admin_session_minutes: int = Field(default=30, ge=5, le=1_440)
-    ai_learning_hour_utc: int = Field(default=23, ge=0, le=23)
-    ai_generation_hour_utc: int = Field(default=3, ge=0, le=23)
     ai_schedule_timezone: str = "America/Los_Angeles"
-    ai_learning_local_hour: int = Field(default=9, ge=0, le=23)
-    ai_generation_local_hour: int = Field(default=9, ge=0, le=23)
+    ai_learning_local_hour: int = Field(default=1, ge=0, le=23)
+    ai_generation_local_hour: int = Field(default=3, ge=0, le=23)
+    ai_coverage_days: int = Field(default=14, ge=14, le=31)
+    ai_work_retry_hours: int = Field(default=6, ge=1, le=24)
+    ai_work_max_runtime_seconds: int = Field(default=6_600, ge=300, le=7_000)
+    ai_lease_heartbeat_seconds: int = Field(default=60, ge=15, le=600)
+    ai_lease_stale_minutes: int = Field(default=120, ge=30, le=120)
+    gpu_lock_path: Path = Path("data/gpu/gpu.lock")
+    gpu_release_timeout_seconds: int = Field(default=120, ge=5, le=600)
+    gpu_verify_idle_processes: bool = False
     ai_theme_locale: str = Field(default="en-US", min_length=2, max_length=24)
     ai_public_context_enabled: bool = True
     public_context_fetcher_url: str = "http://context-fetcher:8010"

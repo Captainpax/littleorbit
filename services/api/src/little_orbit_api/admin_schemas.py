@@ -22,10 +22,10 @@ class AdminEnrollmentStart(StrictModel):
 
     @model_validator(mode="after")
     def one_current_factor(self) -> "AdminEnrollmentStart":
-        """Reject ambiguous proofs without requiring one for first enrollment."""
+        """Require exactly one current proof; first enrollment uses PIN bootstrap."""
 
-        if self.current_totp_code and self.current_recovery_code:
-            raise ValueError("provide one current MFA proof")
+        if bool(self.current_totp_code) == bool(self.current_recovery_code):
+            raise ValueError("provide exactly one current MFA proof")
         return self
 
 
@@ -34,6 +34,7 @@ class AdminEnrollmentChallenge(StrictModel):
 
     otpauth_uri: str
     qr_svg_data_url: str
+    qr_png_data_url: str
 
 
 class AdminEnrollmentConfirm(StrictModel):

@@ -172,7 +172,8 @@ class AdminJobRequest(Base):
     __table_args__ = (
         UniqueConstraint("requested_by", "operation_id", name="uq_admin_job_operation"),
         CheckConstraint(
-            "kind IN ('learn_quizzes', 'generate_quizzes', 'backup', 'test_restore')",
+            "kind IN ('learn_quizzes', 'generate_quizzes', 'regenerate_quizzes', "
+            "'backup', 'test_restore')",
             name="ck_admin_job_kind",
         ),
         CheckConstraint(

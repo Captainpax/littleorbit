@@ -27,4 +27,3 @@ Generated global content is rejected when it repeats a same-day, same-week, or p
 - Big Orbit may show content-free schedule, knowledge, context, reserve, theme, and run health and may request a typed future-week regeneration.
 - Repository-owned knowledge becomes production input and therefore requires ordinary code review, hashing, documentation inventory, and release review.
 - The model remains replaceable and local; no user or relationship data is added to retrieval, browsing, embeddings, or prompts.
-

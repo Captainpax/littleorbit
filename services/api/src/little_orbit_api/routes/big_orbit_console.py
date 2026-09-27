@@ -1,9 +1,11 @@
 """Privacy-limited action inbox, quiz intelligence, and typed operations API."""
 
 from datetime import UTC, datetime, time, timedelta
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..admin_device_models import (
@@ -210,16 +212,11 @@ async def request_job(
 ) -> AdminJobView:
     """Queue only a known operation; arbitrary commands and SQL are impossible."""
 
-    existing = await session.scalar(
-        select(AdminJobRequest).where(
-            AdminJobRequest.requested_by == principal.account.id,
-            AdminJobRequest.operation_id == payload.operation_id,
-        )
+    existing = await _job_for_operation(
+        session, principal.account.id, payload.operation_id
     )
     if existing is not None:
-        if existing.kind != payload.kind or existing.target_week != payload.target_week:
-            raise HTTPException(status.HTTP_409_CONFLICT, "Operation ID was already used")
-        return _job_view(existing)
+        return _replay_job(existing, payload)
     _validate_job(payload)
     record = AdminJobRequest(
         operation_id=payload.operation_id,
@@ -231,9 +228,18 @@ async def request_job(
         result_json={},
         created_at=SystemClock().now(),
     )
-    session.add(record)
+    try:
+        async with session.begin_nested():
+            session.add(record)
+            await session.flush()
+    except IntegrityError:
+        existing = await _job_for_operation(
+            session, principal.account.id, payload.operation_id
+        )
+        if existing is None:
+            raise
+        return _replay_job(existing, payload)
     await session.commit()
-    await session.refresh(record)
     return _job_view(record)
 
 
@@ -380,6 +386,26 @@ def _validate_job(payload: AdminJobMutation) -> None:
         )
     if payload.target_week and payload.target_week.weekday() != 0:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Target week must be Monday")
+
+
+async def _job_for_operation(
+    session: AsyncSession,
+    requested_by: UUID,
+    operation_id: UUID,
+) -> AdminJobRequest | None:
+    record: AdminJobRequest | None = await session.scalar(
+        select(AdminJobRequest).where(
+            AdminJobRequest.requested_by == requested_by,
+            AdminJobRequest.operation_id == operation_id,
+        )
+    )
+    return record
+
+
+def _replay_job(record: AdminJobRequest, payload: AdminJobMutation) -> AdminJobView:
+    if record.kind != payload.kind or record.target_week != payload.target_week:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Operation ID was already used")
+    return _job_view(record)
 
 
 def _job_view(record: AdminJobRequest) -> AdminJobView:

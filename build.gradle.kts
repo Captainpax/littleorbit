@@ -1,5 +1,6 @@
 import com.android.build.api.dsl.ApplicationExtension
 import org.gradle.api.GradleException
+import java.io.File
 
 plugins {
     base
@@ -23,11 +24,14 @@ val signingEnvironment = listOf(
     "ANDROID_SIGNING_KEY_PASSWORD",
 ).associateWith { providers.environmentVariable(it).orNull }
 val missingSigningValues = signingEnvironment.filterValues { it.isNullOrBlank() }.keys
+val isolatedUnsignedReleaseBuilder =
+    providers.environmentVariable("LITTLE_ORBIT_ISOLATED_UNSIGNED_BUILDER").orNull == "1" &&
+        File("/opt/little-orbit-android-builder").isFile
 
 subprojects {
     pluginManager.withPlugin("com.android.application") {
         extensions.configure<ApplicationExtension> {
-            if (missingSigningValues.isEmpty()) {
+            if (missingSigningValues.isEmpty() && !isolatedUnsignedReleaseBuilder) {
                 val releaseSigning = signingConfigs.create("release") {
                     storeFile = rootProject.file(
                         signingEnvironment.getValue("ANDROID_SIGNING_STORE_FILE")!!,
@@ -45,7 +49,7 @@ subprojects {
         }
         tasks.configureEach {
             val packagesRelease = name in setOf("assembleRelease", "bundleRelease", "packageRelease")
-            if (packagesRelease && missingSigningValues.isNotEmpty()) {
+            if (packagesRelease && missingSigningValues.isNotEmpty() && !isolatedUnsignedReleaseBuilder) {
                 doFirst {
                     throw GradleException(
                         "Release signing is incomplete: ${missingSigningValues.sorted().joinToString()}",
@@ -57,7 +61,7 @@ subprojects {
 }
 
 tasks.wrapper {
-    gradleVersion = "9.4.1"
+    gradleVersion = "9.7.1"
     distributionType = Wrapper.DistributionType.BIN
-    distributionSha256Sum = "2ab2958f2a1e51120c326cad6f385153bb11ee93b3c216c5fccebfdfbb7ec6cb"
+    distributionSha256Sum = "acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a"
 }

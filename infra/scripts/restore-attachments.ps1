@@ -45,7 +45,9 @@ try {
         -SourceFile $age `
         -SourceArguments @("--decrypt", "--identity", $IdentityPath, $resolvedBackup) `
         -DestinationFile $docker `
-        -DestinationArguments ($composeArguments + @("run", "--rm", "-T", "--no-deps", "--entrypoint", "python", "attachment-init", "-c", $restoreScript))
+        -DestinationArguments ($composeArguments + @(
+            "run", "--rm", "-T", "--no-deps", "--user", "65532:65532",
+            "--entrypoint", "python", "attachment-init", "-c", $restoreScript))
     Write-Output $resolvedBackup
 }
 finally {

@@ -80,8 +80,10 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0042-device-bound-big-orbit-administration.md` — separate Android administration, enrolled keys, bound sessions, alerts, and typed jobs.
 - `docs/adr/0043-allowlisted-context-and-testable-encrypted-operations.md` — bounded public context plus scheduled encrypted backup and non-destructive restore evidence.
 - `docs/adr/0044-partner-assigned-relationship-names.md` — shared partner-only names, contact-safe fallbacks, retry semantics, and unpair purge.
-- `docs/adr/0045-themed-retrieval-grounded-weekly-quizzes.md` — local-time weekly arcs, reviewed retrieval, reserve coverage, and semantic memory.
+- `docs/adr/0045-themed-retrieval-grounded-weekly-quizzes.md` — original local-time weekly arc, reviewed retrieval, reserve coverage, and semantic-memory decision; scheduling and coverage horizon are superseded by ADR 0047.
 - `docs/adr/0046-terminal-pin-big-orbit-bootstrap.md` — one-use terminal PINs, restricted setup capabilities, key proof, and first-owner MFA.
+- `docs/adr/0047-unraid-persistence-gpu-and-signing-isolation.md` — direct-pool persistence, exact host streaming, cooperative GPU arbitration, local-only recovery, and isolated Android signing.
+- `docs/adr/0048-device-bound-administrator-mfa-replacement.md` — Big-Orbit-only factor rotation, exact approved-device sessions, bootstrap-only first MFA, and same-device replacement sessions.
 - `docs/adr/0028-isolated-attachment-media-worker.md` — least-privilege scanning, sanitization, atomic publication, and private archive access.
 - `docs/adr/0029-relationship-invalidation-purge-protocol.md` — structured invalidation and generation-ordered phone, widget, and Wear cleanup.
 - `docs/adr/0030-together-time-retention-and-corrections.md` — short raw-coordinate retention, 30-day minute detail, durable totals, and audited corrections.
@@ -91,7 +93,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 
 ## Operations and verification
 
-- `docs/operations/BACKUP-RESTORE.md` — PostgreSQL and immutable release recovery.
+- `docs/operations/BACKUP-RESTORE.md` — encrypted PostgreSQL/attachment backups, restore drills, and the exact-host-migration boundary.
 - `docs/operations/DEPLOYMENT.md` — production Compose, NPM, firewall, and release runbook.
 - `docs/operations/LOCAL-DEVELOPMENT.md` — local stack, updater, Wear installer, and photo development.
 - `docs/operations/WEAR-INSTALLER.md` — user flow and physical-device verification checklist.
@@ -119,6 +121,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-1.2.0-2026-09-20.md` — quiz intelligence, Big Orbit, automated checks, emulator evidence, and explicit open release gates.
 - `docs/operations/VERIFICATION-1.2.0-2026-09-21.md` — final signed identities, disposable-stack and device checks, waivers, rollout, backup, and public production evidence.
 - `docs/operations/VERIFICATION-1.3.0-2026-09-23.md` — themed quiz, retrieval, reserve, PIN-bootstrap, signed artifacts, production rollout, and deferred physical-device evidence.
+- `docs/operations/VERIFICATION-UNRAID-2026-09-26.md` — source and rehearsal evidence, the 2026-09-27 live Unraid stream/cutover, local target backup/restore proof, and the authenticated, physical-device, external-WAN, reboot, and off-host gates that remain open.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes

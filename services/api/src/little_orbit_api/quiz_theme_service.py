@@ -11,6 +11,7 @@ from little_orbit_ai.prompt import build_week_plan_prompt
 from little_orbit_ai.schemas import DayTheme, LearningPolicy, WeeklyThemePlan
 from sqlalchemy import select, text
 
+from .ai_work_queue import AiWorkLease, require_current_lease
 from .clock import SystemClock
 from .database import SessionFactory
 from .quiz_intelligence_models import AiPolicyVersion, QuizDayTheme, QuizWeekPlan
@@ -35,6 +36,7 @@ async def plan_quiz_week(
     *,
     timezone: str,
     locale: str,
+    lease: AiWorkLease | None = None,
 ) -> str:
     """Create exactly one validated plan, falling back without weakening its shape."""
 
@@ -50,7 +52,7 @@ async def plan_quiz_week(
         plan = _fallback_plan(week_start)
         outcome = "fallback"
     digest = _source_digest(policy, public_context, knowledge)
-    await _persist_plan(plan, timezone, locale, digest)
+    await _persist_plan(plan, timezone, locale, digest, lease)
     return outcome
 
 
@@ -87,10 +89,13 @@ async def quiz_week_planned(week_start: date) -> bool:
     return await _plan_exists(week_start)
 
 
-async def mark_week_published(week_start: date) -> None:
+async def mark_week_published(
+    week_start: date, *, lease: AiWorkLease | None = None
+) -> None:
     """Advance the plan only after all seven daily pools have safe coverage."""
 
     async with SessionFactory() as session:
+        await require_current_lease(session, lease)
         record = await session.scalar(
             select(QuizWeekPlan)
             .where(QuizWeekPlan.week_start == week_start)
@@ -112,10 +117,15 @@ async def _plan_exists(week_start: date) -> bool:
 
 
 async def _persist_plan(
-    plan: WeeklyThemePlan, timezone: str, locale: str, source_digest: str
+    plan: WeeklyThemePlan,
+    timezone: str,
+    locale: str,
+    source_digest: str,
+    lease: AiWorkLease | None = None,
 ) -> None:
     now = SystemClock().now()
     async with SessionFactory() as session:
+        await require_current_lease(session, lease)
         await session.execute(text("SELECT pg_advisory_xact_lock(13002026)"))
         if await session.scalar(
             select(QuizWeekPlan.id).where(QuizWeekPlan.week_start == plan.week_start)

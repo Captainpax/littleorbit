@@ -11,13 +11,14 @@ Copy `.env.example` to `.env` and replace every `change-me`, `replace-`, and pla
 
 ```powershell
 docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml config
+docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml --profile model-setup run --rm model-init
 docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml up --build
 Invoke-WebRequest http://localhost:8180/api/v1/health/ready
 ```
 
 Open `http://localhost:8180` for the website and `http://localhost:8025` for development email. Stop containers with `docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml stop`; do not delete volumes during routine work.
 
-The first model initialization downloads roughly 2.5 GB. Add `-f infra/compose.gpu.yaml` only after NVIDIA container support works in Docker Desktop. CPU fallback is slower but retains curated-question coverage.
+The explicit `model-setup` run downloads roughly 2.5 GB. A failed pull does not prevent the worker from maintaining safe coverage without Ollama; model-backed work remains queued until setup succeeds. Add `-f infra/compose.gpu.yaml` only after NVIDIA container support works in Docker Desktop. CPU inference is slower but retains curated-question coverage.
 
 ## RC14 API security checks
 
@@ -67,7 +68,7 @@ cd ..\big-orbit
 .\gradlew.bat test lintSmoke assembleSmoke
 ```
 
-The smoke package is `com.littleorbit.bigorbit.smoke`, visibly labeled **Big Orbit QA**, and targets only the isolated loopback smoke API. Validate package/version/label and absence of production signing metadata before installing it. Initial device enrollment requires a disposable administrator with current MFA; never use production recovery codes in screenshots or test logs. Revoke the smoke device and delete the disposable account after testing.
+The smoke package is `com.littleorbit.bigorbit.smoke`, visibly labeled **Big Orbit QA**, and targets only the isolated loopback smoke API. Validate package/version/label and absence of production signing metadata before installing it. After the disposable paired accounts exist, `python infra/scripts/prepare_big_orbit_smoke.py` uses the supported terminal-PIN/P-256 bootstrap, enables the first factor, immediately revokes its ephemeral Python device, and writes the disposable owner/TOTP material only to ignored mode-`0600` `.inspect/big-orbit-smoke-admin.json`. The PIN and factor values are not printed. Never use production recovery codes in screenshots or test logs. Revoke every smoke device and delete the disposable account after testing.
 
 The context fetcher may be tested only with its fixed source keys. Cover redirects, loopback/private/link-local DNS, oversized bodies, wrong media types, timeouts, script/style removal, instruction-shaped text, 30-day snapshots, and unavailable-source fallback. Do not add an arbitrary-URL debug endpoint.
 
@@ -91,7 +92,7 @@ docker compose --env-file .env -f infra/compose.yaml exec api `
   python -m little_orbit_api.cli bootstrap-admin owner@example.com
 ```
 
-The eight-digit PIN is printed once, expires after ten minutes, and must never enter a screenshot, shell transcript committed to Git, test fixture, or log. Generating another PIN invalidates the earlier PIN and every unfinished setup for that owner. Validate wrong PIN, fifth failure, expiry, process restart, device proof, first-owner QR/TOTP, recovery-code acknowledgement, and existing-MFA preservation. A bootstrap token must receive denial from every ordinary `/v2/admin` route.
+The eight-digit PIN is printed once, expires after ten minutes, and must never enter a screenshot, shell transcript committed to Git, test fixture, or log. Generating another PIN invalidates the earlier PIN and every unfinished setup for that owner. Validate wrong PIN, fifth failure, expiry, process restart, device proof, first-owner PNG/SVG QR/TOTP, recovery-code acknowledgement, and existing-MFA preservation. A bootstrap token must receive denial from every ordinary `/v2/admin` route. Separately test enabled-factor replacement from an exact approved-device Big Orbit session: require password plus exactly one current factor, reject an ordinary account token, confirm through the same session, revoke every earlier administrator session, and bind the replacement session to the same device. First-factor enrollment through the replacement routes must fail.
 
 The reviewed knowledge set lives under `services/ai/src/little_orbit_ai/knowledge/` and is allowlisted by `knowledge_manifest.json`. Add or edit a file only with prompt-safety review and tests for stable hashing, bounded chunks, and retrieval. Do not point retrieval at arbitrary repository paths or user uploads. Reserve templates are code-owned, deterministic, and one-use in the database; never reset production consumption to make generation appear healthy.
 

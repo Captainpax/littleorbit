@@ -1,9 +1,11 @@
 """Typed Big Orbit job execution and content-free alert synthesis."""
 
-from datetime import timedelta
+from datetime import date, timedelta
+from typing import Protocol
+from uuid import UUID
 
 from little_orbit_ai.ollama import OllamaClient
-from sqlalchemy import and_, delete, or_, select
+from sqlalchemy import delete, select
 
 from .admin_device_models import (
     AdminAlert,
@@ -11,45 +13,73 @@ from .admin_device_models import (
     AdminJobRequest,
     BackupRun,
 )
+from .ai_work_queue import AiWorkLease
 from .clock import SystemClock
 from .database import SessionFactory
 from .models import Question, QuestionReport
+from .quiz_intelligence_models import AiWorkItem
 from .quiz_learning_service import learn_feedback_week
 from .quiz_observatory_service import quiz_health_flags
 
 
-async def process_quiz_admin_jobs(
-    client: OllamaClient,
-    generate_week,
-) -> int:
-    """Claim and execute allowlisted quiz jobs; host backup jobs remain separate."""
+class GenerateWeek(Protocol):
+    """Bounded generation callable accepted by the admin job runner."""
 
-    jobs = await _claim_quiz_jobs()
-    for job in jobs:
-        try:
-            if job.target_week is None:
-                raise RuntimeError("quiz job target week is missing")
-            if job.kind == "learn_quizzes":
-                outcome = await learn_feedback_week(job.target_week, client)
-                result: dict[str, object] = {"outcome": outcome}
-            else:
-                result = dict(
-                    await generate_week(
-                        job.target_week, force=job.kind == "regenerate_quizzes"
-                    )
+    async def __call__(
+        self,
+        week_start: date,
+        *,
+        force: bool = False,
+        lease: AiWorkLease | None = None,
+    ) -> dict[str, int]: ...
+
+
+async def process_quiz_admin_job(
+    lease: AiWorkLease,
+    client: OllamaClient,
+    generate_week: GenerateWeek,
+) -> bool:
+    """Execute one exact allowlisted job while its GPU lease is still current."""
+
+    job = await _claim_quiz_job(lease)
+    if job is None:
+        return True
+    try:
+        if job.target_week is None:
+            raise RuntimeError("quiz job target week is missing")
+        if job.kind == "learn_quizzes":
+            outcome = await learn_feedback_week(
+                job.target_week, client, lease=lease
+            )
+            result: dict[str, object] = {"outcome": outcome}
+        else:
+            result = dict(
+                await generate_week(
+                    job.target_week,
+                    force=job.kind == "regenerate_quizzes",
+                    lease=lease,
                 )
-            await _finish_job(job.id, "passed", result)
-        except Exception:
-            await _finish_job(job.id, "failed", {"reason": "job_failed"})
+            )
+        if not await _finish_job(job.id, "passed", result, lease):
+            raise RuntimeError("AI work lease expired before job completion")
+        return True
+    except Exception:
+        still_current = await _finish_job(
+            job.id,
+            "pending",
+            {"reason": "retry_scheduled"},
+            lease,
+        )
+        if still_current:
             await upsert_admin_alert(
                 f"admin-job:{job.id}",
                 "admin_job_failed",
                 "warning",
                 "An operations job needs attention",
-                f"The allowlisted {job.kind} job failed. Open Operations to retry.",
+                f"The allowlisted {job.kind} job failed and will retry.",
                 "/operations",
             )
-    return len(jobs)
+        raise
 
 
 async def refresh_admin_alerts() -> None:
@@ -187,54 +217,49 @@ async def _set_admin_alert_condition(
         await session.commit()
 
 
-async def _claim_quiz_jobs() -> list[AdminJobRequest]:
+async def _claim_quiz_job(lease: AiWorkLease) -> AdminJobRequest | None:
+    """Lock the queue row before its linked admin job and verify the lease token."""
+
     now = SystemClock().now()
-    stale = now - timedelta(hours=2)
     async with SessionFactory() as session:
-        records = list(
-            await session.scalars(
-                select(AdminJobRequest)
-                .where(
-                    AdminJobRequest.kind.in_(
-                        ("learn_quizzes", "generate_quizzes", "regenerate_quizzes")
-                    ),
-                    or_(
-                        AdminJobRequest.status == "pending",
-                        and_(
-                            AdminJobRequest.status == "running",
-                            or_(
-                                AdminJobRequest.started_at.is_(None),
-                                AdminJobRequest.started_at <= stale,
-                            ),
-                        ),
-                    ),
-                )
-                .order_by(AdminJobRequest.created_at)
-                .limit(5)
-                .with_for_update(skip_locked=True)
-            )
-        )
-        for record in records:
-            record.status = "running"
-            record.started_at = now
-            record.finished_at = None
-            record.result_json = {}
+        queue = await session.get(AiWorkItem, lease.id, with_for_update=True)
+        if queue is None or queue.lease_token != lease.token:
+            return None
+        record = await session.get(AdminJobRequest, lease.id, with_for_update=True)
+        if record is None or record.status in {"passed", "cancelled"}:
+            return None
+        if record.kind not in {
+            "learn_quizzes",
+            "generate_quizzes",
+            "regenerate_quizzes",
+        }:
+            raise RuntimeError("GPU queue referenced a non-AI admin job")
+        record.status = "running"
+        record.started_at = now
+        record.finished_at = None
+        record.result_json = {}
         await session.commit()
-        for record in records:
-            session.expunge(record)
-    return records
+        session.expunge(record)
+    return record
 
 
 async def _finish_job(
-    job_id,
+    job_id: UUID,
     status: str,
     result: dict[str, object],
-) -> None:
+    lease: AiWorkLease,
+) -> bool:
+    """Finish only while the same opaque queue lease remains authoritative."""
+
     async with SessionFactory() as session:
+        queue = await session.get(AiWorkItem, lease.id, with_for_update=True)
+        if queue is None or queue.lease_token != lease.token:
+            return False
         record = await session.get(AdminJobRequest, job_id, with_for_update=True)
         if record is None:
-            return
+            return False
         record.status = status
         record.result_json = result
-        record.finished_at = SystemClock().now()
+        record.finished_at = SystemClock().now() if status != "pending" else None
         await session.commit()
+    return True

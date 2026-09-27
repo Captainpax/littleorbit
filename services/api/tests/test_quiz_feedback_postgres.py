@@ -27,6 +27,7 @@ from little_orbit_api.models import (  # noqa: E402
     QuizDayQuestion,
 )
 from little_orbit_api.quiz_feedback_retention import (  # noqa: E402
+    aggregate_feedback_week,
     enforce_feedback_retention,
 )
 from little_orbit_api.quiz_feedback_service import (  # noqa: E402
@@ -35,6 +36,7 @@ from little_orbit_api.quiz_feedback_service import (  # noqa: E402
 )
 from little_orbit_api.quiz_intelligence_models import (  # noqa: E402
     AnonymousQuestionReview,
+    FeedbackWeeklyAggregate,
     QuestionFeedback,
     QuestionFeedbackOperation,
     QuizFeedbackRollout,
@@ -207,6 +209,50 @@ async def test_closed_window_unlinks_identity_and_hard_deletes_review() -> None:
         assert await session.scalar(
             select(func.count()).select_from(AnonymousQuestionReview)
         ) == 0
+
+
+async def test_weekly_recompute_removes_aggregate_after_k_gate_drops() -> None:
+    member, actor, question, day = await _feedback_fixture()
+    now = datetime.now(UTC)
+    week_start = now.date() - timedelta(days=now.weekday())
+    async with SessionFactory() as session:
+        await put_feedback(
+            session,
+            member,
+            actor.id,
+            day.quiz_date,
+            question.id,
+            QuizFeedbackMutation(
+                operation_id=uuid4(),
+                expected_revision=0,
+                stars=5,
+                tags=["clear"],
+            ),
+        )
+        session.add(
+            FeedbackWeeklyAggregate(
+                question_id=question.id,
+                week_start=week_start,
+                rating_count=5,
+                distinct_accounts=5,
+                score_sum=25,
+                tag_counts={"clear": 5},
+                themes=["clear"],
+                created_at=now - timedelta(days=1),
+                updated_at=now - timedelta(days=1),
+            )
+        )
+        await session.commit()
+
+        assert await aggregate_feedback_week(session, week_start, now) == 0
+        await session.commit()
+
+        assert await session.scalar(
+            select(FeedbackWeeklyAggregate.id).where(
+                FeedbackWeeklyAggregate.question_id == question.id,
+                FeedbackWeeklyAggregate.week_start == week_start,
+            )
+        ) is None
 
 
 async def test_wrong_or_custom_question_does_not_disclose_existence() -> None:

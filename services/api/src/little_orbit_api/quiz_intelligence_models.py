@@ -209,6 +209,40 @@ class AiRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class AiWorkItem(Base):
+    """Content-free, lease-fenced work waiting for the shared GPU."""
+
+    __tablename__ = "ai_work_queue"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('weekly_learning', 'weekly_generation', "
+            "'admin_learning', 'admin_generation', 'admin_regeneration')",
+            name="ck_ai_work_kind",
+        ),
+        CheckConstraint("attempt_count >= 0", name="ck_ai_work_attempt_count"),
+        CheckConstraint(
+            "lease_token IS NULL OR heartbeat_at IS NOT NULL",
+            name="ck_ai_work_lease_heartbeat",
+        ),
+        Index("ix_ai_work_due", "next_attempt_at", "scheduled_at"),
+        Index(
+            "uq_ai_work_weekly_schedule",
+            "kind",
+            "scheduled_at",
+            unique=True,
+            postgresql_where=text("kind IN ('weekly_learning', 'weekly_generation')"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    lease_token: Mapped[UUID | None] = mapped_column(Uuid)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class QuestionReserve(Base):
     """Versioned, unassigned question used only for atomic safe fallback."""
 

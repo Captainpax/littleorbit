@@ -1,9 +1,12 @@
 """FastAPI application factory and route assembly."""
 
+from urllib.parse import urlsplit
+
 from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from .client_compatibility import AndroidCompatibilityMiddleware
+from .config import Settings, get_settings
 from .notes_hub import NoteConnectionHub
 from .notification_hub import NotificationConnectionHub
 from .routes import (
@@ -39,9 +42,10 @@ from .routes import (
 )
 
 
-def create_app() -> FastAPI:
+def create_app(settings: Settings | None = None) -> FastAPI:
     """Create the Little Orbit ASGI application without hidden side effects."""
 
+    runtime = settings or get_settings()
     app = FastAPI(
         title="Little Orbit API",
         version="1.3.0",
@@ -53,13 +57,7 @@ def create_app() -> FastAPI:
     app.state.notification_connections = NotificationConnectionHub()
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=[
-            "lil-orb.pax-kun.com",
-            "192.168.50.182",
-            "localhost",
-            "127.0.0.1",
-            "api",
-        ],
+        allowed_hosts=_trusted_hosts(runtime),
     )
     app.add_middleware(AndroidCompatibilityMiddleware)
     app.include_router(health.router)
@@ -92,6 +90,15 @@ def create_app() -> FastAPI:
     app.include_router(archive_attachments.router)
     app.include_router(smooches.router)
     return app
+
+
+def _trusted_hosts(settings: Settings) -> list[str]:
+    """Allow only the configured public origin and bounded local service names."""
+
+    hostname = urlsplit(settings.public_base_url).hostname
+    if hostname is None:
+        raise ValueError("PUBLIC_BASE_URL must be an absolute URL with a hostname")
+    return list(dict.fromkeys((hostname, "localhost", "127.0.0.1", "api")))
 
 
 app = create_app()
