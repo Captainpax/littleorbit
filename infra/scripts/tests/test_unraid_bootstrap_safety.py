@@ -70,6 +70,33 @@ def test_bootstrap_requires_exact_unraid_mounts() -> None:
     assert 'require_fixed_root "${GPU_ROOT}" /mnt/cache/gpu-coordinator' in content
 
 
+@pytest.mark.skipif(BASH is None, reason="a functioning Bash is unavailable")
+def test_bootstrap_repairs_only_the_secrets_root_metadata(tmp_path: Path) -> None:
+    """Share creation cannot leave the root-only secrets directory owned by nobody."""
+
+    trace = tmp_path / "trace"
+    result = run_bash(
+        'export LITTLE_ORBIT_SECRET_ROOT="$2"; trace="$3"; source "$1"; '
+        'chown() { printf "chown:%s\\n" "$*" >>"$trace"; }; '
+        'chmod() { printf "chmod:%s\\n" "$*" >>"$trace"; }; '
+        "stat() { printf 'directory:0:0:700\\n'; }; "
+        "prepare_secret_root",
+        (SCRIPT_DIR / "unraid-bootstrap.sh").resolve().as_posix(),
+        tmp_path.resolve().as_posix(),
+        trace.resolve().as_posix(),
+    )
+    assert result.returncode == 0, result.stderr
+    assert trace.read_text(encoding="utf-8").splitlines() == [
+        f"chown:--no-dereference 0:0 {tmp_path.resolve().as_posix()}",
+        f"chmod:0700 {tmp_path.resolve().as_posix()}",
+    ]
+    helper = script("unraid-bootstrap.sh").split(
+        "prepare_secret_root() {", maxsplit=1
+    )[1].split("\n}", maxsplit=1)[0]
+    assert "chown -R" not in helper and "--recursive" not in helper
+    assert '"directory:0:0:700"' in helper
+
+
 def test_bootstrap_fences_every_share_export_and_placement() -> None:
     """Little Orbit shares are unique, local-only, and pinned to reviewed storage."""
 

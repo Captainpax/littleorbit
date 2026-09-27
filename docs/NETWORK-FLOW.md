@@ -2,7 +2,7 @@
 
 The Mermaid diagrams in this document are the editable architecture source of truth. The overview PNG is a reader-friendly concept and must be regenerated when its flow changes.
 
-The external-routing diagram shows the configured Unraid target. [`VERIFICATION-UNRAID-2026-09-26.md`](operations/VERIFICATION-UNRAID-2026-09-26.md) is the authority for whether the live Nginx Proxy Manager upstream has actually moved from `.182` to `.14`.
+The external-routing diagram shows the live Unraid route after the 2026-09-27 cutover. [`VERIFICATION-UNRAID-2026-09-26.md`](operations/VERIFICATION-UNRAID-2026-09-26.md) records the completed `.182` to `.14` stream and Nginx Proxy Manager switch, plus the authenticated, device, external-WAN, and reboot checks that remain open.
 
 ![Little Orbit network and logic overview](assets/network-flow-overview.png)
 
@@ -42,6 +42,8 @@ flowchart TD
 ```
 
 Only gateway port 8180 is published by Compose, bound specifically to `192.168.50.14`. An owned, idempotent `DOCKER-USER` chain admits that original destination only from Nginx Proxy Manager at `192.168.50.6`, rejects other sources, preserves unrelated rules, and refuses startup when IPv6 exposes the port. The worker waits for API health so migrations finish before maintenance or scheduled generation can query the new schema.
+
+The live Caddy-to-Next.js hop uses private port 3014. During cutover, API routes stayed healthy while web routes returned `502` because a pre-existing Scriptarr `DOCKER-USER` rule rejected port 3000. Restoring Little Orbit's reserved 3014 hop fixed the web route without changing or flushing Scriptarr's rules. LAN TLS validation used NPM listener 18443, which maps to the same NPM HTTPS path as WAN 443 because this router does not provide LAN hairpin access; it did not change the public origin or application port.
 
 Caddy trusts incoming `X-Forwarded-For` only when its immediate peer is `192.168.50.6`. It overwrites a private `X-Little-Orbit-Client-IP` header before proxying to FastAPI. FastAPI accepts that private header only from Caddy's fixed `gateway-api` address, validates it as exactly one IP address, and does not enable Uvicorn's generic proxy-header trust. Compose reserves `10.253.14.2` for Caddy and `10.253.14.3` for FastAPI; the target's Pterodactyl bridge already owns `172.30.0.0/16`. Direct or malformed values fall back to the socket peer for throttling. Allowed HTTP hosts derive the public name from `PUBLIC_BASE_URL` and retain only that name, localhost/loopback, and the internal `api` service name; direct readiness uses `Host: lil-orb.pax-kun.com`.
 

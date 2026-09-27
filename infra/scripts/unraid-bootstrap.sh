@@ -330,12 +330,27 @@ configure_shares() {
 create_layout() {
   install -d -m 0750 "${DATA_ROOT}" "${DEPLOY_ROOT}" "${BACKUP_ROOT}" "${TOOL_ROOT}"
   install -d -m 0700 "${SECRET_ROOT}"
+  prepare_secret_root
   install -d -m 0700 -o 999 -g 70 "${DATA_ROOT}/postgres"
   install -d -m 0750 -o 65532 -g 65532 "${DATA_ROOT}/attachments"
   install -d -m 0755 "${DATA_ROOT}/releases" "${DATA_ROOT}/ollama"
   install -d -m 0755 -o 1000 -g 1000 "${DATA_ROOT}/clamav"
   prepare_backup_placement_sentinel
   prepare_gpu_lock
+}
+
+prepare_secret_root() {
+  [[ -d "${SECRET_ROOT}" && ! -L "${SECRET_ROOT}" ]] || {
+    echo "The runtime secrets root must be a real directory." >&2
+    exit 78
+  }
+  chown --no-dereference 0:0 "${SECRET_ROOT}"
+  chmod 0700 "${SECRET_ROOT}"
+  [[ "$(stat -c '%F:%u:%g:%a' "${SECRET_ROOT}")" == \
+    "directory:0:0:700" ]] || {
+    echo "The runtime secrets root ownership or mode is unsafe." >&2
+    exit 78
+  }
 }
 
 prepare_backup_placement_sentinel() {

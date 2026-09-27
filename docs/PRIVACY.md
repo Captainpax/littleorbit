@@ -2,7 +2,7 @@
 
 Little Orbit is designed around two people sharing deliberately. It does not sell personal data, display advertising, or use answers or relationship activity to train or personalize AI. The 1.3 AI pipeline creates the same calendar-based question pool for the service. It may learn from separately consented, sanitized question-quality feedback only after K-anonymity thresholds are met; it never receives quiz answers or account, couple, note, location, or relationship data.
 
-This document describes published 1.3 product behavior and the current source's operational privacy boundaries. The Unraid verification record separates source readiness from pending live deployment. A production privacy notice and legal review remain operational requirements for future changed data use.
+This document describes published 1.3 product behavior and the current source's operational privacy boundaries. The Unraid verification record covers the completed application-cold live migration and distinguishes it from still-open authenticated, physical-device, external-WAN, and reboot evidence. A production privacy notice and legal review remain operational requirements for future changed data use.
 
 ## Data and purpose
 
@@ -102,7 +102,7 @@ At most two days may center an inclusive observance. Generation uses pinned Nomi
 
 Sanitized public-context snapshots may be used for at most 30 days after retrieval. When no current or permitted snapshot exists, generation continues from reviewed Markdown and reserve content and emits a content-free owner alert. Context snapshots, knowledge chunks, reserve state, weekly themes, and run provenance contain no account or relationship identifiers.
 
-Coordinated PostgreSQL backups exclude raw coordinates, collection-health snapshots, attributable feedback, feedback-operation records, and anonymous raw reviews. Aggregate counts and learned policy may be backed up because they cannot be linked to an account or couple. Attachment bytes remain encrypted relationship content and follow the bounded backup policy. The first Unraid layout stores encrypted backup pairs on its parity array but not on another host, so loss of that server remains an open recovery risk.
+Coordinated PostgreSQL backups exclude raw coordinates, collection-health snapshots, attributable feedback, feedback-operation records, and anonymous raw reviews. Aggregate counts and learned policy may be backed up because they cannot be linked to an account or couple. Attachment bytes remain encrypted relationship content and follow the bounded backup policy. The first live target backup and networkless schema-0032 restore drill confirmed those exclusions and explicitly recorded `off_host_copy=false`. The Unraid layout stores encrypted backup pairs on its parity array but not on another host, so loss of that server remains an open recovery risk.
 
 The one-time host migration is deliberately different from a reusable backup: while every application writer is stopped, the complete logical database and frozen attachments stream directly over host-key-pinned SSH into an empty target. That exact transfer preserves active sessions and rows that privacy-filtered backups intentionally omit, but the migration command cannot name or retain an output archive. Temporary attachment verification occurs only inside target staging before atomic promotion. Logs and the verification record contain counts and digests, never row content, filenames, secrets, or precise locations.
 

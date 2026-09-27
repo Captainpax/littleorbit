@@ -20,6 +20,19 @@ def test_postgres_health_waits_for_final_tcp_server() -> None:
     assert "pg_isready -h 127.0.0.1" in content
 
 
+def test_role_bootstrap_keeps_passwords_out_of_process_arguments() -> None:
+    """Database role credentials enter psql through stdin-only variables."""
+
+    content = COMPOSE_PATH.read_text(encoding="utf-8")
+    extension = content.split("x-database-role-service:", maxsplit=1)[1].split(
+        "\nservices:", maxsplit=1
+    )[0]
+    for variable in ("api", "worker", "media", "backup"):
+        assert f"\\getenv {variable}_password POSTGRES_{variable.upper()}_PASSWORD" in extension
+        assert f"--set={variable}_password" not in extension
+    assert "} | psql --set=ON_ERROR_STOP=1" in extension
+
+
 def test_backup_resumes_and_checks_every_exact_writer_before_success() -> None:
     """A backup cannot pass with a missing or unhealthy mutation service."""
 

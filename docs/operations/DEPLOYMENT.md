@@ -102,6 +102,44 @@ curl --fail -H 'Host: lil-orb.pax-kun.com' \
   http://192.168.50.14:8180/api/v1/health/ready
 ```
 
+Keep the private Caddy-to-Next.js hop on Little Orbit's reserved port 3014. This host already has a Scriptarr-owned `DOCKER-USER` rejection for port 3000; do not weaken or flush that rule to make Little Orbit work. If `/api/*` stays healthy while web routes return an empty `502`, verify that Caddy and the web container both use 3014 and then recreate only the affected Little Orbit gateway after the web peer is healthy.
+
+### Database child-role rotation
+
+Run database credential rotation only from the reviewed checkout, as root, with shell tracing disabled:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-rotate-database-roles.sh rotate
+```
+
+The command holds the same host-wide operations lock as startup, backup, restore, and migration work. It rotates only
+the API, worker, media, and backup roles; the PostgreSQL owner password and owner URL remain byte-for-byte unchanged.
+Four independent 256-bit hexadecimal passwords replace the four `POSTGRES_*` child-role values and the three matching
+application URLs. Passwords reach the existing `database-bootstrap` stdin path and the independent PostgreSQL probes
+through stdin, never a command argument. The command closes the gateway and mutation services first, proves every new
+role works and every old role receives an exact authentication rejection, prepares the firewall, and only then recreates
+and verifies the gateway.
+
+Credential probes must connect to host `postgres` across the private Compose network. The PostgreSQL image explicitly
+trusts loopback connections during local administration, so `127.0.0.1` cannot prove password acceptance or rejection;
+the private service address reaches the SCRAM rule. Do not weaken this boundary or reinterpret a network failure as an
+authentication rejection.
+
+The root-only secrets directory must be an exact root-owned mode-`0700` directory; bootstrap repairs that directory
+itself without recursively changing any secret file. During rotation, fixed mode-`0600` old/new environment snapshots
+and an atomic, content-free `preparing` journal make interruption recoverable. A successful run removes credential
+snapshots and leaves only `state=committed` plus a random operation identifier. If the command is interrupted or reports
+that recovery is required, do not hand-edit `runtime.env` or restart the gateway. Run:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-rotate-database-roles.sh recover
+```
+
+Recovery restores the old environment and child-role passwords, recreates and verifies the internal services, prepares
+and verifies the firewall, and reopens the gateway only after every restored credential succeeds. A failed rollback
+keeps the gateway closed and retains the root-only snapshot plus `preparing` journal for another reviewed recovery.
+Neither success nor recovery output contains a database credential or connection URL.
+
 ## Migration preflight
 
 Do not change live routing until every item is recorded in a new verification entry:
@@ -145,7 +183,7 @@ The command first proves that target attachment and release storage are empty. I
 
 1. Run the target migration container and require Alembic head `0032`.
 2. Validate database roles/grants, exact pre/post counts, attachment aggregate digest, and immutable release sizes/hashes without inspecting content.
-3. Apply and inspect the firewall while the target gateway is still stopped. The Unraid overlay uses an `on-failure` policy rather than daemon-start restart for the gateway, so a reboot cannot publish it before the post-Docker User Script restores the firewall.
+3. Apply and inspect the firewall while the target gateway is still stopped. The Unraid overlay disables Docker-managed gateway restarts; only the post-Docker User Script may launch it after restoring and verifying the firewall. This avoids the reboot-time publication window observed when Docker treated a daemon-shutdown Caddy exit as eligible for `on-failure` recovery.
 4. Start API, workers, web, and gateway in dependency order through the fixed launcher. Require readiness with `Host: lil-orb.pax-kun.com`.
 5. Change Nginx Proxy Manager only after the firewall and readiness checks pass.
 6. Remove the temporary migration authorization only after transfer and rollback prerequisites have been recorded.
@@ -221,6 +259,8 @@ Create one proxy host for `lil-orb.pax-kun.com`:
 Keep `REGISTRATION_OPEN=false` while Mailpit is the configured SMTP service. Open registration only after an external SMTP delivery test confirms that verification and password-reset links use the public HTTPS origin.
 
 Change only the upstream address from `.182` to `.14`; keep public DNS, certificate, and TLS settings unchanged. Test website pages, `/patch-notes`, `/patch-notes.xml`, `/.well-known/assetlinks.json`, `/api/v1/health/ready`, a real WebSocket upgrade, signup email delivery, and certificate renewal/recovery. Enable HSTS only after those checks and a rollback path succeed. The live NPM change is an explicit deployment action; screenshots or a saved draft are not proof that traffic works.
+
+On the current LAN, router hairpin access to public port 443 is unavailable. For an internal test of the same NPM HTTPS path, resolve `lil-orb.pax-kun.com:18443` to `192.168.50.6` and keep the public hostname for TLS; NPM's LAN listener 18443 maps to the WAN-443 path. This is a diagnostic mapping, not a different public origin, and it does not replace an external cellular/WAN check.
 
 ## Restart recovery
 

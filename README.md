@@ -49,7 +49,7 @@ The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch record
 
 ## Architecture
 
-Android, Wear OS, [Big Orbit](https://github.com/Captainpax/big-orbit), and browsers connect to `https://lil-orb.pax-kun.com`. The Unraid production profile binds a single gateway port at `192.168.50.14:8180` for Nginx Proxy Manager at `192.168.50.6`; the final upstream switch is tracked separately from source readiness. The gateway routes `/api/*` and `/ws/*` to FastAPI and all other paths to Next.js. PostgreSQL, pgvector, Ollama, the worker, and Mailpit remain private to the Compose network. A secret-free context fetcher has a separate bounded egress network and accepts only code-owned HTTPS sources. Once enabled, the target profile makes Little Orbit cooperatively share the host RTX 4060 through a stable lock; contention delays queued site-wide AI work without exposing relationship data or preempting another workload.
+Android, Wear OS, [Big Orbit](https://github.com/Captainpax/big-orbit), and browsers connect to `https://lil-orb.pax-kun.com`. Production now runs on Unraid with one gateway port at `192.168.50.14:8180`, admitted only from Nginx Proxy Manager at `192.168.50.6`; public DNS and TLS remain unchanged. The gateway routes `/api/*` and `/ws/*` to FastAPI and all other paths to Next.js. PostgreSQL, pgvector, Ollama, the worker, and Mailpit remain private to the Compose network. A secret-free context fetcher has a separate bounded egress network and accepts only code-owned HTTPS sources. Little Orbit cooperatively shares the host RTX 4060 through a stable lock with Scriptarr; contention delays queued site-wide AI work without exposing relationship data or preempting another workload. The [Unraid cutover record](docs/operations/VERIFICATION-UNRAID-2026-09-26.md) distinguishes the completed server checks from still-open authenticated, device, WAN, and reboot evidence.
 
 See the [network and logic flows](docs/NETWORK-FLOW.md), [privacy design](docs/PRIVACY.md), and [architecture decisions](docs/adr/) before changing a trust boundary.
 
@@ -101,7 +101,7 @@ Little Orbit collects only what a selected feature needs. AI question generation
 - [Backup and restore](docs/operations/BACKUP-RESTORE.md)
 - [Documentation map](docs/DOCUMENTATION-MAP.md)
 - [Latest stable verification record](docs/operations/VERIFICATION-1.3.0-2026-09-23.md)
-- [Unraid migration readiness record](docs/operations/VERIFICATION-UNRAID-2026-09-26.md)
+- [Unraid migration and cutover record](docs/operations/VERIFICATION-UNRAID-2026-09-26.md)
 - [1.3.0 release notes](docs/releases/1.3.0.md)
 
 ## License and support

@@ -1,6 +1,6 @@
 # Encrypted state backup and restore
 
-Little Orbit has two coordinated mutable stores: PostgreSQL metadata and private attachment bytes. Signed APKs in `/mnt/cache/little-orbit-live/releases/` are immutable deployment artifacts and must be copied and verified separately. The Unraid production profile keeps live state on direct cache-pool paths and writes only encrypted, privacy-filtered backup pairs to the parity array; the migration verification record is the authority for when that profile becomes live.
+Little Orbit has two coordinated mutable stores: PostgreSQL metadata and private attachment bytes. Signed APKs in `/mnt/cache/little-orbit-live/releases/` are immutable deployment artifacts and must be copied and verified separately. The live Unraid production profile keeps state on direct cache-pool paths and writes only encrypted, privacy-filtered backup pairs to the parity array; the migration verification record captures the 2026-09-27 cutover and first target restore drill.
 
 ## Protect the age identity
 

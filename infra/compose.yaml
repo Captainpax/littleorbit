@@ -21,15 +21,17 @@ x-database-role-service: &database-role-service
   command:
     - sh
     - -ec
-    - >-
-      psql --set=ON_ERROR_STOP=1
-      --set=database_name="$$PGDATABASE"
-      --set=owner_role="$$PGUSER"
-      --set=api_password="$$POSTGRES_API_PASSWORD"
-      --set=worker_password="$$POSTGRES_WORKER_PASSWORD"
-      --set=media_password="$$POSTGRES_MEDIA_PASSWORD"
-      --set=backup_password="$$POSTGRES_BACKUP_PASSWORD"
-      --file=/bootstrap-roles.sql
+    - |
+      {
+        printf '%s\n' \
+          '\getenv database_name PGDATABASE' \
+          '\getenv owner_role PGUSER' \
+          '\getenv api_password POSTGRES_API_PASSWORD' \
+          '\getenv worker_password POSTGRES_WORKER_PASSWORD' \
+          '\getenv media_password POSTGRES_MEDIA_PASSWORD' \
+          '\getenv backup_password POSTGRES_BACKUP_PASSWORD'
+        cat /bootstrap-roles.sql
+      } | psql --set=ON_ERROR_STOP=1
   volumes:
     - ./postgres/bootstrap-roles.sql:/bootstrap-roles.sql:ro
   networks:

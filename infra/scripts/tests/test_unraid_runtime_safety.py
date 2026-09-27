@@ -99,6 +99,10 @@ def test_startup_rechecks_exposure_and_stops_gateway_on_failure() -> None:
     """The gateway cannot remain published after a failed post-start boundary check."""
 
     content = script("unraid-user-script.sh")
+    unraid = (COMPOSE_PATH.parent / "compose.unraid.yaml").read_text(encoding="utf-8")
+    gateway = unraid.split("  gateway:", maxsplit=1)[1].split("\n\n  api:", maxsplit=1)[0]
+    assert 'restart: "no"' in gateway
+    assert "on-failure" not in gateway
     start = content.split("start_stack_fail_closed() {", maxsplit=1)[1]
     assert start.count('bash "${SCRIPT_DIR}/unraid-firewall.sh"') >= 1
     assert start.count("stop_gateway_after_failed_startup") >= 2
@@ -179,6 +183,7 @@ def test_every_stateful_leaf_uses_the_shared_operations_mutex() -> None:
     firewall = script("unraid-firewall.sh")
     installer = script("unraid-install-user-scripts.sh")
     stack = script("unraid-stack.sh")
+    rotation = script("unraid-rotate-database-roles.sh")
     assert '"/var/lock/little-orbit-operations.lock"' in helper
     assert "LITTLE_ORBIT_OPERATIONS_LOCK_FD" in helper
     assert "flock --wait" in helper and "flock --nonblock" in helper
@@ -188,6 +193,8 @@ def test_every_stateful_leaf_uses_the_shared_operations_mutex() -> None:
     assert dispatcher.count('"outcome":"already_running"') == 1
     assert "acquire_little_orbit_operations_lock wait 300" in backup
     assert "acquire_little_orbit_operations_lock wait 300" in restore
+    assert 'source "${SCRIPT_DIR}/unraid-operation-lock.sh"' in rotation
+    assert "acquire_little_orbit_operations_lock wait 300" in rotation
     for content in (startup, bootstrap, firewall, installer):
         assert "unraid-operation-lock.sh" in content
         assert "acquire_little_orbit_operations_lock wait 300" in content

@@ -1,6 +1,8 @@
 services:
   gateway:
-    restart: "on-failure:5"
+    # Only the post-Docker User Script may publish the gateway after it has
+    # restored and verified the NPM-only DOCKER-USER boundary.
+    restart: "no"
     ports:
       - "${GATEWAY_BIND_ADDRESS:?set GATEWAY_BIND_ADDRESS}:8180:8180"
     networks:

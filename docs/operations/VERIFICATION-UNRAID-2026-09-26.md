@@ -1,10 +1,10 @@
-# Unraid migration verification record — 2026-09-26
+# Unraid migration verification record — 2026-09-26 to 2026-09-27
 
 ## Scope and current state
 
-This record covers preparation to move Little Orbit from the Windows host at `192.168.50.182` to Unraid at `192.168.50.14`, share the target RTX 4060 cooperatively with Scriptarr, and make `.14` the isolated Android build/signing host.
+This record covers preparation and the live application-cold move of Little Orbit from the Windows host at `192.168.50.182` to Unraid at `192.168.50.14`, cooperative use of the target RTX 4060 with Scriptarr, and use of `.14` as the isolated Android build/signing host.
 
-As of this record, source implementation, the isolated target rehearsal, Scriptarr's lock-aware images and exact-file arbitration checks, Android signer-custody checks, clean `.14` deployment staging, separate schema-0032-compatible `.182` rollback staging, target share bootstrap, and inactive User Scripts installation are complete. Scriptarr's live Oracle and Raven containers now mount the required exact lock file. The production database and attachments have **not** been streamed, migration `0032` has **not** been applied to production, Nginx Proxy Manager still points to `.182:8180`, and no `.182` database or attachment volume has been deleted. `.182` remains the live Little Orbit host.
+As of 2026-09-27, the direct database, attachment, and immutable-release stream is committed; production is at migration `0032`; Nginx Proxy Manager points to `.14:8180`; and `.14` is the authoritative writer. Public pages, readiness, release metadata, complete and ranged APK delivery, forwarded-client identity, ClamAV health, schedule activation, the shared lock inode, empty Ollama/VRAM state, child-role credential rotation, and fresh local encrypted backup/restore drills have passed the checks recorded below. The old `.182` writer services remain stopped, and no `.182` database or attachment volume has been deleted. Existing authenticated sessions, authenticated WSS, Big Orbit behavior, SMTP and notification delivery, authorized attachment reads, physical-device QA, external cellular/WAN reachability, and final reboot recovery remain open; this record does not claim those checks passed.
 
 ## Implemented in source
 
@@ -24,7 +24,7 @@ The following checks passed before this record was written:
 
 | Check | Result |
 |---|---|
-| `python -m pytest infra/scripts/tests -q` | 132 passed; one capability skip |
+| `python -m pytest infra/scripts/tests -q` | 150 passed; one capability skip |
 | Full API/AI suite with disposable PostgreSQL 17/pgvector | 259 passed; one Windows symbolic-link capability skip; 22 warnings |
 | Direct-migration split suite | 81 passed |
 | Restart-safe migration recovery contract | 23 passed |
@@ -127,13 +127,60 @@ Immediately before the source freeze, the three `.182` production schedules were
 
 The first real pre-freeze attachment inventory then found that the isolated one-shot command had been given `migration_inventory.py` without its local security dependency. File hashing now lives in a self-contained one-shot module, while the host-only database/security comparison remains separate. Captured subprocess output is decoded explicitly as UTF-8 rather than the Windows locale. An isolated-process regression and the live read-only helper both passed: schema head `0031`, 74 public tables, one feedback row, one feedback-operation row, one attachment of 353,543 bytes with aggregate SHA-256 `03bb5db2e663c8fb94ce9b437f4cd99dd284f7470f7221960353722f54e89395`, and all immutable release sizes/hashes were emitted without content inspection. The exact frozen inventory remains the authority for transfer comparison.
 
-## Required before source freeze
+## Live transfer and cutover evidence — 2026-09-27
 
-- [ ] Recheck the static/DHCP reservation, SSH port 23 host key, temporary migration key, free capacity, NVIDIA runtime, port 8180, IPv6 listeners, and `10.253.14.0/28` availability.
+The application-cold direct migration completed without retaining a full database or attachment archive. Every source writer remained stopped after commit. The destination reached Alembic head `0032` with 75 public tables; the complete source/destination table inventory, normalized roles/grants, one feedback row, one feedback-operation row, attachment evidence, and immutable-release evidence matched under the migration verifier. The destination retained one attachment of 353,543 bytes with aggregate SHA-256 `03bb5db2e663c8fb94ce9b437f4cd99dd284f7470f7221960353722f54e89395`. All 53 immutable release files matched their frozen source sizes and hashes. The new content-free `ai_work_queue` began empty as required.
+
+The target started its dependencies and writers through the fixed base/GPU/Unraid launcher. Every long-running service with a configured health check was healthy, target-local readiness with `Host: lil-orb.pax-kun.com` returned `200`, and only `192.168.50.14:8180` was published. The owned `DOCKER-USER` boundary admitted `.6`, rejected a direct `.182` request by timeout, exposed no IPv6 listener, and left the content hash of unrelated filter rules unchanged.
+
+The single Nginx Proxy Manager row for `lil-orb.pax-kun.com` changed only its forward address from `192.168.50.182` to `192.168.50.14`; scheme HTTP, port 8180, certificate, WebSocket support, exploit blocking, and other settings were preserved. This LAN cannot hairpin the router's public port 443, so post-cutover TLS checks used NPM's LAN listener at `.6:18443`, which maps to the same NPM HTTPS path as WAN port 443 while retaining the public hostname and certificate. Through that listener all of these returned `200`:
+
+- `/`
+- `/status`
+- `/patch-notes`
+- `/patch-notes.xml`
+- `/.well-known/assetlinks.json`
+- `/download`
+- `/api/v1/health/ready`
+- `/api/v1/releases/current`
+
+Three independent external check-host nodes timed out for Little Orbit, and the same three nodes timed out for the unchanged `pax-kun.com` control. The LAN's observed WAN egress address was `67.185.205.68`, while the DNS A result used by `pax-kun.com` and the `lil-orb` CNAME resolved to `67.185.206.35`. External WAN validation is therefore blocked by stale DNS outside the `.14` NPM-upstream change. No DNS change was authorized or made, and the external-network gate remains open.
+
+Current release metadata remained version 1.3.0, phone code 29, with the expected first-party phone and Wear URLs. Complete downloads through the same NPM TLS listener reproduced the immutable phone size 37,696,175 bytes and SHA-256 `c5c879d458719e3ed27e5bdda38823d839600141ca08ff0d8967356df0d623e9`, plus Wear size 14,737,944 bytes and SHA-256 `0f0f0f221d80bbb5fc9db70773d8980b5b40136251df2fe4e64c8b3530e985cf`. Independent 1,024-byte requests returned `206 Partial Content`, exact total `Content-Range` values, matching checksum headers, and immutable cache headers for both artifacts.
+
+The first web-surface probe returned an empty `502` while API readiness remained `200`. Read-only tracing localized the fault to the Caddy-to-web hop: a pre-existing Scriptarr `DOCKER-USER` rule rejects port 3000. Little Orbit's private web hop was repaired to use its reserved port 3014, the gateway was recreated, and the complete matrix above then passed. No Scriptarr rule was changed or flushed.
+
+A content-free forwarded-identity probe from client `.182` through NPM `.6` proved that Caddy accepted forwarding only from its expected `.6` peer and FastAPI resolved the original client as `.182`. An unauthenticated WSS upgrade reached the application and failed closed with `403`; no authenticated WSS session was exercised, so authenticated socket continuity remains open.
+
+The stable GPU lock remained inode `3177412` at the host and inside the Little Orbit worker, Ollama, Scriptarr Oracle, and Scriptarr Raven consumers. Ollama reported no loaded model and the host GPU process view was empty after cutover. This proves the exact shared-file boundary and empty post-cutover state, not a simultaneous live Little Orbit/Scriptarr workload. ClamAV was healthy. The Pacific User Scripts entries were activated only after `.14` became authoritative: pending typed operations every five minutes, encrypted backup daily at 08:00, and restore drill Tuesday at 07:00.
+
+The fresh target backup completed at `20260927-134838` with this exact local encrypted pair and manifest:
+
+- `/mnt/user/little-orbit-backups/postgres/little-orbit-20260927-134838.dump.age`
+- `/mnt/user/little-orbit-backups/attachments/little-orbit-attachments-20260927-134838.tar.age`
+- `/mnt/user/little-orbit-backups/manifests/little-orbit-pair-20260927-134838.json`
+
+The networkless restore drill selected that pair, reached schema `0032`, matched pair-manifest SHA-256 `67a3f82f62d5ad22cb2c810ebbd3090643bff425b65222da5ab563253a412879`, and confirmed that raw coordinates, collection-health snapshots, attributable feedback, feedback operations, and anonymous raw reviews were absent. Its evidence records `off_host_copy=false`; the passing drill is local recovery evidence only.
+
+An operational process inspection exposed the API, worker, media, and backup PostgreSQL role passwords because the earlier bootstrap passed them as `psql --set` command arguments. No owner password was present in that command. All four child credentials were therefore treated as compromised. The bootstrap now sends them through `\getenv` definitions on psql stdin, and the retained one-shot command contains no password argument. The secrets share root was also corrected from Unraid's share ownership to exact root:root mode `0700`; `runtime.env` remains a single-link root:root mode-`0600` file.
+
+The checked-in host-locked rotation command exercised its rollback boundary twice before commit. The first pre-mutation attempt rejected a zero-byte secure staging file because GNU `stat` described it as a `regular empty file`; the empty file was removed and production never changed. The second attempt installed new roles internally but rolled back before publication because its verifier used PostgreSQL's explicitly trusted loopback rule. The corrected verifier crosses the private Compose network through host `postgres`, where SCRAM is required, and tests forbid a return to loopback. Final operation `ccb5efb6b867d9d5164e933dac002017` committed after new-accept, old-reject, new-accept checks for all four roles, firewall preparation, gateway recreation, and post-start firewall verification. A separate stdin-only probe using the frozen `.182` values confirmed all four retired credentials are rejected. The content-free journal is `state=committed`, credential staging is absent, the gateway restart policy is `no`, and direct plus NPM-path readiness both return `200`.
+
+The post-rotation target backup completed at `20260927-151434`:
+
+- `/mnt/user/little-orbit-backups/postgres/little-orbit-20260927-151434.dump.age`
+- `/mnt/user/little-orbit-backups/attachments/little-orbit-attachments-20260927-151434.tar.age`
+- `/mnt/user/little-orbit-backups/manifests/little-orbit-pair-20260927-151434.json`
+
+Its networkless restore drill reached schema `0032`, verified the private-row exclusions and attachment manifest, and matched pair-manifest SHA-256 `d3be4284fc2bb480239493fe5e6adf749942f1b808e71492ba066db7f3ec9dda`. It also records `off_host_copy=false` and does not close the off-host recovery gate.
+
+## Pre-freeze gates and evidence
+
+- [ ] Independently confirm the router-side `.14` reservation. The reservation was not observable from Unraid; the SSH port 23 host key and temporary key, capacity, NVIDIA runtime, port 8180, IPv6 listeners, and `10.253.14.0/28` availability were rechecked before freeze.
 - [x] Configure `.14` for exact `America/Los_Angeles`, pass `require_unraid_pacific_timezone`, install the User Scripts
   in inactive mode, and verify the fixed every-five-minute, daily 08:00, and Tuesday 07:00 Pacific activation
   templates. A mismatched configured identifier or effective `/etc/localtime` makes installation and direct
-  wall-clock dispatch fail nonzero. Live cron activation remains a post-cutover action.
+  wall-clock dispatch fail nonzero. The inspected entries were activated after cutover.
 - [x] Build and migrate an isolated target project with synthetic state, refresh ClamAV, and pre-pull/verify both pinned Ollama models under the shared lock.
 - [x] Finish Scriptarr's real demand and 900-second idle unload with exclusive residency plus post-unload lock/GPU proof. Lock contention, graceful Oracle fallback, the NVENC wrapper, and service-level durable queue behavior also passed; crash/reboot recovery remains a post-cutover gate.
 - [x] Replace Scriptarr Oracle and Raven's live coordinator-directory mounts with exact `/run/gpu-coordinator/gpu.lock` file binds through the corrected Warden plan; repeat passive-health, exact mount/inode, contention, post-release acquisition, and empty-GPU checks. The earlier full 901-second idle-unload proof used the same stable host inode; the narrower exact-file repetition is recorded above.
@@ -142,24 +189,29 @@ The first real pre-freeze attachment inventory then found that the isolated one-
 - [x] Complete disposable-key end-to-end signing for Little Orbit and Big Orbit plus wrong-store-password, wrong-key-password, wrong-alias, wrong-certificate, redaction, independent metadata, and zero-residue cleanup checks on `.14`, with the final negative-verifier Docker caveat recorded above.
 - [x] Confirm both people are off the app and disable `.182` schedules.
 - [x] Create a fresh ordinary privacy-filtered encrypted backup and pass its restore drill.
-- [ ] Record source commit/image digests, migration head `0031`, privacy-safe table counts including feedback and feedback-operation rows, attachment aggregate digest, and every immutable-release size/hash.
+- [x] Record source commit/image digests, migration head `0031`, privacy-safe table counts including feedback and feedback-operation rows, attachment aggregate digest, and every immutable-release size/hash.
 - [x] Stage schema-0032-compatible source on `.182` for rollback without starting it.
 
-## Required for exact transfer and cutover
+## Exact transfer and cutover
 
-- [ ] Require an empty target database and attachment staging area.
-- [ ] Stop every source writer and direct-stream the complete logical database, frozen attachments, and immutable releases through pinned SSH without retaining the streams.
-- [ ] Match exact pre/post row counts, attachment digest, release sizes/hashes, roles/grants, and Alembic head `0032`.
-- [ ] Start target dependencies in order and pass readiness with `Host: lil-orb.pax-kun.com`.
-- [ ] Apply and inspect the NPM-only `DOCKER-USER` rule; prove another LAN source and IPv6 cannot reach port 8180.
-- [ ] Change only Nginx Proxy Manager's upstream from `.182:8180` to `.14:8180`.
-- [ ] Verify public HTTPS/WSS, existing sessions, Big Orbit enrollment/session behavior, SMTP, first-party notifications, authorized attachments, ClamAV, full/ranged APK downloads, and forwarded-client identity.
-- [ ] Prove no simultaneous Little Orbit Ollama/embedding, Scriptarr LocalAI, or Raven NVENC GPU processes.
+- [x] Require an empty target database and attachment staging area.
+- [x] Stop every source writer and direct-stream the complete logical database, frozen attachments, and immutable releases through pinned SSH without retaining the streams.
+- [x] Match exact pre/post row counts, attachment digest, release sizes/hashes, roles/grants, and Alembic head `0032`.
+- [x] Start target dependencies in order and pass readiness with `Host: lil-orb.pax-kun.com`.
+- [x] Apply and inspect the NPM-only `DOCKER-USER` rule; reject another LAN source, expose no IPv6 listener, and preserve unrelated rules.
+- [x] Change only Nginx Proxy Manager's upstream address from `.182` to `.14`, preserving HTTP port 8180 and the other proxy-host settings.
+- [x] Verify the six public web routes, API readiness and release metadata, ClamAV, complete/ranged phone and Wear APK delivery, forwarded-client identity, and an unauthenticated WSS upgrade that reached the application and failed closed with `403`.
+- [x] Confirm the same inode `3177412` in every named GPU consumer and an empty Ollama/VRAM state after cutover.
+- [ ] Verify both existing sessions, authenticated WSS, Big Orbit enrollment/session behavior, SMTP, first-party notifications, and authorized attachment reads.
+- [ ] Exercise Little Orbit GPU generation/embedding against live Scriptarr contention and prove no simultaneous Ollama, LocalAI, or NVENC process. Exact-file contention and idle-unload behavior passed before cutover, but the empty post-cutover state is not an active shared-workload test.
+- [ ] Verify the public origin from an external cellular/WAN path after a separately authorized DNS correction. Three external nodes timed out for both Little Orbit and the unchanged `pax-kun.com` control; current WAN egress is `67.185.205.68` while DNS resolves to `67.185.206.35`. No DNS change was authorized or made during cutover.
 
 ## Required after cutover
 
-- [ ] Produce a fresh target encrypted backup and pass the local Tuesday-style restore drill.
+- [x] Produce a fresh target encrypted backup and pass the local Tuesday-style restore drill at schema `0032` with the required privacy exclusions.
+- [x] Rotate the four exposed child database roles through the host-locked command, independently reject every retired value, and pass a fresh post-rotation backup and restore drill.
 - [ ] Reboot `.14` and reverify array/Docker ordering, Compose health, firewall persistence, schedules, GPU lock behavior, and public service health.
+- [ ] Complete the deferred physical-device and two-person migration QA; current server and emulator evidence does not imply those observations.
 - [ ] Establish and restore an encrypted off-host runtime copy. The Unraid parity-array backup remains local-only evidence until then.
 
 Before `.14` accepts a write, rollback is an NPM upstream reversal plus restarting the frozen source. After a target write, `.182` is stale: the explicit reverse-stream command must restore current `.14` state into the separate fresh `little-orbit-rollback` project and match table, schema, attachment, and release evidence before that project can be considered for traffic. The old `little-orbit` project must never restart. Deleting its database or attachment volumes requires a separate explicit destructive approval; this implementation request is not that approval.
