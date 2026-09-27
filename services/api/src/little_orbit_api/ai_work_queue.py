@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .admin_device_models import AdminJobRequest
 from .config import Settings
@@ -34,6 +35,10 @@ class AiWorkLease:
     kind: str
     scheduled_at: datetime
     token: UUID
+
+
+class AiWorkLeaseExpired(RuntimeError):
+    """Raised before a transaction can commit under a replaced queue token."""
 
 
 def latest_due_date(
@@ -226,6 +231,18 @@ async def lease_is_current(lease: AiWorkLease) -> bool:
             select(AiWorkItem.lease_token).where(AiWorkItem.id == lease.id)
         )
     return token == lease.token
+
+
+async def require_current_lease(
+    session: AsyncSession, lease: AiWorkLease | None
+) -> None:
+    """Lock and fence the queue row inside the transaction applying a result."""
+
+    if lease is None:
+        return
+    record = await session.get(AiWorkItem, lease.id, with_for_update=True)
+    if record is None or record.lease_token != lease.token:
+        raise AiWorkLeaseExpired("AI work lease expired before result commit")
 
 
 async def _fenced_update(

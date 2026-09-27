@@ -34,6 +34,15 @@ services:
         bind:
           create_host_path: false
 
+  backup-attachment-reader:
+    volumes:
+      - type: bind
+        source: ${LITTLE_ORBIT_DATA_ROOT:?set LITTLE_ORBIT_DATA_ROOT}/attachments
+        target: /var/lib/little-orbit/attachments
+        read_only: true
+        bind:
+          create_host_path: false
+
   gpu-lock-init:
     volumes:
       - type: bind

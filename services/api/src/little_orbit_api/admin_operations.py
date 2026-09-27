@@ -26,7 +26,11 @@ class GenerateWeek(Protocol):
     """Bounded generation callable accepted by the admin job runner."""
 
     async def __call__(
-        self, week_start: date, *, force: bool = False
+        self,
+        week_start: date,
+        *,
+        force: bool = False,
+        lease: AiWorkLease | None = None,
     ) -> dict[str, int]: ...
 
 
@@ -44,32 +48,37 @@ async def process_quiz_admin_job(
         if job.target_week is None:
             raise RuntimeError("quiz job target week is missing")
         if job.kind == "learn_quizzes":
-            outcome = await learn_feedback_week(job.target_week, client)
+            outcome = await learn_feedback_week(
+                job.target_week, client, lease=lease
+            )
             result: dict[str, object] = {"outcome": outcome}
         else:
             result = dict(
                 await generate_week(
-                    job.target_week, force=job.kind == "regenerate_quizzes"
+                    job.target_week,
+                    force=job.kind == "regenerate_quizzes",
+                    lease=lease,
                 )
             )
         if not await _finish_job(job.id, "passed", result, lease):
             raise RuntimeError("AI work lease expired before job completion")
         return True
     except Exception:
-        await _finish_job(
+        still_current = await _finish_job(
             job.id,
             "pending",
             {"reason": "retry_scheduled"},
             lease,
         )
-        await upsert_admin_alert(
-            f"admin-job:{job.id}",
-            "admin_job_failed",
-            "warning",
-            "An operations job needs attention",
-            f"The allowlisted {job.kind} job failed and will retry.",
-            "/operations",
-        )
+        if still_current:
+            await upsert_admin_alert(
+                f"admin-job:{job.id}",
+                "admin_job_failed",
+                "warning",
+                "An operations job needs attention",
+                f"The allowlisted {job.kind} job failed and will retry.",
+                "/operations",
+            )
         raise
 
 

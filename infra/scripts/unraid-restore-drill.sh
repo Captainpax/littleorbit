@@ -8,9 +8,11 @@ readonly IDENTITY_PATH="${LITTLE_ORBIT_BACKUP_IDENTITY:-/mnt/cache/little-orbit-
 readonly AGE_BIN="${LITTLE_ORBIT_AGE_BIN:-/mnt/cache/little-orbit-tools/bin/age}"
 readonly PAIR_PATH="$(find "${BACKUP_ROOT}/manifests" -maxdepth 1 -type f \
   -name 'little-orbit-pair-*.json' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2-)"
-readonly DATABASE_NAME="little_orbit_drill_$(date -u +%Y%m%d%H%M%S)"
-created_database=false
-database_user=""
+readonly DATABASE_NAME="little_orbit_drill"
+readonly DATABASE_USER="drill_owner"
+drill_container=""
+
+source "${SCRIPT_DIR}/unraid-operation-lock.sh"
 
 stack() {
   bash "${STACK}" "$@"
@@ -27,24 +29,15 @@ unraid_storage_ready() {
   [[ "${user}" == "/mnt/user shfs fuse.shfs" ]]
 }
 
-valid_drill_name() {
-  [[ "$1" =~ ^little_orbit_drill_[0-9]{14}$ ]]
-}
-
-drop_drill_database() {
-  local name="$1" force="${2:-false}" arguments=()
-  valid_drill_name "${name}" || return 78
-  [[ -n "${database_user}" ]] || return 70
-  [[ "${force}" == true ]] && arguments+=(--force)
-  stack exec -T postgres dropdb --username="${database_user}" \
-    --maintenance-db=postgres --if-exists "${arguments[@]}" "${name}" >/dev/null
-}
-
 cleanup() {
-  if [[ "${created_database}" == true ]]; then
-    drop_drill_database "${DATABASE_NAME}" true || return 70
-    created_database=false
+  local container="${drill_container}"
+  [[ -n "${container}" ]] || return 0
+  [[ "${container}" =~ ^[0-9a-f]{12,64}$ ]] || return 70
+  docker rm --force "${container}" >/dev/null || return 70
+  if docker inspect "${container}" >/dev/null 2>&1; then
+    return 70
   fi
+  drill_container=""
 }
 
 finish() {
@@ -55,26 +48,6 @@ finish() {
     status=70
   fi
   exit "${status}"
-}
-
-remove_stale_drill_databases() {
-  local listing name active
-  listing="$(stack exec -T postgres psql --username="${database_user}" \
-    --dbname=postgres --no-psqlrc --no-align --tuples-only --field-separator='|' \
-    --set=ON_ERROR_STOP=1 --command="SELECT d.datname,
-      EXISTS (SELECT 1 FROM pg_stat_activity a WHERE a.datname = d.datname)
-      FROM pg_database d
-      WHERE d.datname ~ '^little_orbit_drill_[0-9]{14}$'
-      ORDER BY d.datname;")" || return 1
-  while IFS='|' read -r name active; do
-    [[ -n "${name}" ]] || continue
-    valid_drill_name "${name}" || return 78
-    [[ "${active}" == f ]] || {
-      echo "Refusing to remove an active restore-drill database: ${name}" >&2
-      return 69
-    }
-    drop_drill_database "${name}" false || return 70
-  done <<<"${listing//$'\r'/}"
 }
 
 resolve_entry() {
@@ -103,7 +76,10 @@ validate_pair() {
     exit 66
   }
   jq -e '
-    .schema_version == 2 and
+    .schema_version == 3 and
+    (.retained_table_counts | type == "object" and length > 0 and
+      all(to_entries[]; (.key | type == "string") and
+        (.value | type == "number" and floor == . and . >= 0))) and
     .raw_coordinates_included == false and
     .device_health_rows_included == false and
     .attributable_quiz_feedback_included == false and
@@ -113,21 +89,58 @@ validate_pair() {
     echo "The coordinated backup pair manifest is invalid." >&2
     exit 78
   }
-  [[ -f "${IDENTITY_PATH}" ]] || { echo "The age identity is unavailable." >&2; exit 66; }
+  [[ -f "${IDENTITY_PATH}" && ! -L "${IDENTITY_PATH}" \
+    && "$(stat -c '%u:%g:%a' "${IDENTITY_PATH}")" == 0:0:600 ]] || {
+    echo "The age identity must be a root:root mode 0600 regular file." >&2
+    exit 66
+  }
+}
+
+start_drill_database() {
+  local shape data_tmpfs health deadline
+  drill_container="$(stack --profile tools run -d --rm --no-deps restore-drill-postgres \
+    | tr -d '\r')"
+  [[ "${drill_container}" =~ ^[0-9a-f]{12,64}$ ]] || {
+    echo "The isolated restore database did not return one container id." >&2
+    exit 69
+  }
+  shape="$(docker inspect --format \
+    '{{.HostConfig.NetworkMode}}|{{.HostConfig.ReadonlyRootfs}}|{{.Config.User}}' \
+    "${drill_container}")"
+  data_tmpfs="$(docker inspect --format \
+    '{{index .HostConfig.Tmpfs "/var/lib/postgresql/data"}}' "${drill_container}")"
+  [[ "${shape}" == "none|true|999:70" \
+    && ",${data_tmpfs}," == *",size=4g,"* \
+    && ",${data_tmpfs}," == *",mode=0700,"* \
+    && ",${data_tmpfs}," == *",uid=999,"* \
+    && ",${data_tmpfs}," == *",gid=70,"* ]] || {
+    echo "The isolated restore database runtime boundary changed." >&2
+    exit 78
+  }
+  deadline=$((SECONDS + 120))
+  while true; do
+    health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' \
+      "${drill_container}")"
+    [[ "${health}" == healthy ]] && return 0
+    [[ "${health}" != unhealthy && "${health}" != missing ]] || break
+    ((SECONDS < deadline)) || break
+    sleep 2
+  done
+  echo "The isolated restore database did not become healthy." >&2
+  exit 69
 }
 
 restore_database() {
   local backup="$1"
-  stack exec -T postgres createdb --username="${database_user}" "${DATABASE_NAME}"
-  created_database=true
   "${AGE_BIN}" --decrypt --identity "${IDENTITY_PATH}" "${backup}" | \
-    stack exec -T postgres pg_restore --no-owner --exit-on-error --single-transaction \
-      --username="${database_user}" --dbname="${DATABASE_NAME}"
+    docker exec -i "${drill_container}" pg_restore --no-owner --no-acl \
+      --exit-on-error --single-transaction --username="${DATABASE_USER}" \
+      --dbname="${DATABASE_NAME}"
 }
 
 verify_database() {
-  local result
-  result="$(stack exec -T postgres psql --username="${database_user}" \
+  local result actual expected
+  result="$(docker exec "${drill_container}" psql --username="${DATABASE_USER}" \
     --dbname="${DATABASE_NAME}" --no-psqlrc --no-align --tuples-only \
     --set=ON_ERROR_STOP=1 \
     --command="SELECT CASE WHEN
@@ -145,35 +158,62 @@ verify_database() {
       (SELECT count(*) FROM public.anonymous_question_reviews) = 0
       THEN 'ok' ELSE 'invalid' END;" | tr -d '\r')"
   [[ "${result}" == "ok" ]] || { echo "Restored database validation failed." >&2; exit 65; }
+  actual="$(docker exec "${drill_container}" psql --username="${DATABASE_USER}" \
+    --dbname="${DATABASE_NAME}" --no-psqlrc --no-align --tuples-only \
+    --set=ON_ERROR_STOP=1 --command="
+      WITH table_counts AS (
+        SELECT tablename,
+          ((xpath('/row/count/text()', query_to_xml(
+            format('SELECT count(*) AS count FROM %I.%I', schemaname, tablename),
+            false, true, '')))[1]::text)::bigint AS row_count
+        FROM pg_tables WHERE schemaname = 'public'
+      )
+      SELECT jsonb_object_agg(tablename, row_count ORDER BY tablename)
+      FROM table_counts;" | tr -d '\r')"
+  actual="$(jq -c -S . <<<"${actual}")"
+  expected="$(jq -c -S .retained_table_counts "${PAIR_PATH}")"
+  [[ "${actual}" == "${expected}" ]] || {
+    echo "Restored retained-table counts do not match the backup snapshot." >&2
+    exit 65
+  }
 }
 
 verify_attachments() {
   local backup="$1" verifier
   verifier="$(<"${SCRIPT_DIR}/verify-attachment-backup.py")"
   "${AGE_BIN}" --decrypt --identity "${IDENTITY_PATH}" "${backup}" | \
-    stack run --rm -T --no-deps --entrypoint python attachment-init -c "${verifier}"
+    stack --profile tools run --rm -T --no-deps --entrypoint python \
+      backup-attachment-verifier -c "${verifier}"
 }
 
 main() {
   local database_backup attachment_backup
+  acquire_little_orbit_operations_lock wait 300 || {
+    echo "Operations lock wait timed out." >&2
+    return 75
+  }
   [[ -x "${AGE_BIN}" ]]; command -v jq >/dev/null; command -v sha256sum >/dev/null
   command -v findmnt >/dev/null; command -v mountpoint >/dev/null
-  command -v flock >/dev/null
+  command -v flock >/dev/null; command -v realpath >/dev/null; command -v stat >/dev/null
   unraid_storage_ready || {
     echo "The exact Unraid cache and user-share mounts are unavailable." >&2
     exit 69
+  }
+  [[ "${BACKUP_ROOT}" == /mnt/user/little-orbit-backups \
+    && -d "${BACKUP_ROOT}" && ! -L "${BACKUP_ROOT}" \
+    && "$(realpath -e "${BACKUP_ROOT}")" == /mnt/user/little-orbit-backups ]] || {
+    echo "Backup root must be a real directory on the dedicated array share." >&2
+    exit 78
   }
   exec 8>/var/lock/little-orbit-restore-drill.lock
   flock --nonblock 8 || { echo "Another restore drill is active." >&2; exit 69; }
   trap finish EXIT
   validate_pair
-  database_user="$(stack exec -T postgres printenv POSTGRES_USER | tr -d '\r')"
-  [[ -n "${database_user}" ]] || { echo "PostgreSQL user is unavailable." >&2; exit 69; }
-  remove_stale_drill_databases
   database_backup="$(resolve_entry database)"
   attachment_backup="$(resolve_entry attachments)"
   verify_entry database "${database_backup}"
   verify_entry attachments "${attachment_backup}"
+  start_drill_database
   restore_database "${database_backup}"
   verify_database
   verify_attachments "${attachment_backup}"

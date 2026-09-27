@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+import runpy
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
@@ -40,7 +42,6 @@ async def test_weekday_coverage_seeds_fourteen_days_without_embeddings(
     monkeypatch.setattr(worker, "curated_bank", AsyncMock(return_value=[]))
     monkeypatch.setattr(worker, "load_curated_bank", Mock(return_value=[object()]))
     monkeypatch.setattr(worker, "pool_exists", AsyncMock(return_value=False))
-    monkeypatch.setattr(worker, "replace_unanswered_pool", AsyncMock(return_value=True))
     monkeypatch.setattr(worker, "recent_question_prompts", AsyncMock(return_value=[]))
     monkeypatch.setattr(worker, "theme_for_date", AsyncMock(return_value=None))
     monkeypatch.setattr(worker, "select_pool", Mock(return_value=object()))
@@ -51,6 +52,41 @@ async def test_weekday_coverage_seeds_fourteen_days_without_embeddings(
 
     assert stored.await_count == 14
     assert all(call.kwargs["allow_embeddings"] is False for call in stored.await_args_list)
+
+
+async def test_force_regeneration_preserves_existing_pool_until_atomic_swap(
+    monkeypatch,
+) -> None:
+    improve = AsyncMock(return_value=False)
+    persist = AsyncMock()
+    monkeypatch.setattr(worker, "theme_for_date", AsyncMock(return_value=None))
+    monkeypatch.setattr(
+        worker,
+        "retrieve_knowledge",
+        AsyncMock(return_value=SimpleNamespace(revision="reviewed", snippets=[])),
+    )
+    monkeypatch.setattr(worker, "pool_exists", AsyncMock(return_value=True))
+    monkeypatch.setattr(worker, "persist_pool", persist)
+    monkeypatch.setattr(worker, "_improve_seeded_pool", improve)
+
+    result = await worker._generate_question_day(
+        date(2026, 10, 5),
+        True,
+        Mock(),
+        OllamaSettings(),
+        [],
+        [],
+        Mock(),
+        None,
+        Mock(digest="context"),
+        None,
+    )
+
+    assert result is False
+    persist.assert_not_awaited()
+    improve.assert_awaited_once()
+    call = improve.await_args
+    assert call is not None and call.args[1] is True
 
 
 async def test_gpu_file_lock_precedes_queue_and_ai_run_claim(
@@ -75,8 +111,9 @@ async def test_gpu_file_lock_precedes_queue_and_ai_run_claim(
         trace.append("ai_run_claim")
         return True
 
-    async def generate(_week, *, force=False):
+    async def generate(_week, *, force=False, lease=None):
         assert active[0] and force is False
+        assert lease is not None
         return {
             "generated_days": 7,
             "fallback_days": 0,
@@ -266,3 +303,24 @@ def test_trusted_host_comes_from_public_base_url_not_old_lan_address() -> None:
     assert allowed.status_code == 200
     assert old_host.status_code == 400
     assert new_host.status_code == 400
+
+
+def test_gpu_queue_downgrade_cancels_unrepresentable_regeneration_jobs() -> None:
+    migration = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "0032_gpu_work_queue.py"
+    )
+    namespace = runpy.run_path(str(migration))
+    operations = Mock()
+    downgrade = namespace["downgrade"]
+    downgrade.__globals__["op"] = operations
+
+    downgrade()
+
+    names = [item[0] for item in operations.method_calls]
+    assert names[:3] == ["drop_constraint", "execute", "create_check_constraint"]
+    statement = str(operations.execute.call_args.args[0])
+    assert "WHERE kind = 'regenerate_quizzes'" in statement
+    assert "THEN 'cancelled'" in statement

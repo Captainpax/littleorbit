@@ -11,6 +11,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
+from .ai_work_queue import AiWorkLease, require_current_lease
 from .clock import SystemClock
 from .config import Settings, get_settings
 from .database import SessionFactory
@@ -43,6 +44,8 @@ async def load_public_context(settings: Settings | None = None) -> list[str]:
 
 async def load_public_context_bundle(
     settings: Settings | None = None,
+    *,
+    lease: AiWorkLease | None = None,
 ) -> PublicContextBundle:
     """Fetch exact sources and use only snapshots younger than thirty days on outage."""
 
@@ -79,7 +82,9 @@ async def load_public_context_bundle(
                 excerpt = safe_public_excerpt(item.text)
                 if excerpt is not None:
                     snippets.append(f"{source.key}: {excerpt}")
-                    await _store_snapshot(source.key, source.url, excerpt)
+                    await _store_snapshot(
+                        source.key, source.url, excerpt, lease=lease
+                    )
             except (httpx.HTTPError, ValueError):
                 LOGGER.warning("Allowlisted public context source %s was unavailable", source.key)
                 fallback = await _latest_snapshot(source.key)
@@ -90,12 +95,19 @@ async def load_public_context_bundle(
     return PublicContextBundle(snippets, digest, tuple(stale))
 
 
-async def _store_snapshot(source_key: str, source_url: str, excerpt: str) -> None:
+async def _store_snapshot(
+    source_key: str,
+    source_url: str,
+    excerpt: str,
+    *,
+    lease: AiWorkLease | None = None,
+) -> None:
     """Persist sanitized public text only; raw fetched bytes never enter the database."""
 
     now = SystemClock().now()
     digest = hashlib.sha256(excerpt.encode()).hexdigest()
     async with SessionFactory() as session:
+        await require_current_lease(session, lease)
         await session.execute(
             insert(WebContextSnapshot)
             .values(

@@ -2,6 +2,7 @@
 
 from collections import Counter, defaultdict
 from datetime import UTC, date, datetime, time, timedelta
+from uuid import UUID
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,21 +65,43 @@ async def aggregate_feedback_week(
     week_start: date,
     now: datetime,
 ) -> int:
-    """Upsert threshold-ready, identity-free totals for one UTC feedback week."""
+    """Reconcile threshold-ready, identity-free totals for one UTC feedback week."""
 
     start = datetime.combine(week_start, time.min, tzinfo=UTC)
     end = start + timedelta(days=7)
     rows = await _feedback_rows(session, start, end)
-    grouped: dict[object, list[QuestionFeedback]] = defaultdict(list)
+    grouped: dict[UUID, list[QuestionFeedback]] = defaultdict(list)
     for feedback, question in rows:
         grouped[question.id].append(feedback)
+    eligible = {
+        question_id: (records, len({record.account_id for record in records}))
+        for question_id, records in grouped.items()
+        if len({record.account_id for record in records}) >= MINIMUM_AGGREGATE_ACCOUNTS
+    }
+    existing = {
+        record.question_id: record
+        for record in await session.scalars(
+            select(FeedbackWeeklyAggregate)
+            .where(FeedbackWeeklyAggregate.week_start == week_start)
+            .with_for_update()
+        )
+    }
+    for question_id, aggregate in existing.items():
+        if question_id not in eligible:
+            await session.delete(aggregate)
     changed = 0
-    for question_id, records in grouped.items():
-        accounts = {record.account_id for record in records}
-        if len(accounts) < MINIMUM_AGGREGATE_ACCOUNTS:
-            continue
-        await _upsert_aggregate(session, question_id, week_start, now, records, len(accounts))
-        changed += 1
+    for question_id, (records, account_count) in eligible.items():
+        changed += int(
+            await _upsert_aggregate(
+                session,
+                question_id,
+                week_start,
+                now,
+                records,
+                account_count,
+                existing.get(question_id),
+            )
+        )
     return changed
 
 
@@ -93,6 +116,7 @@ async def _feedback_rows(
             QuestionFeedback.updated_at < end,
             Question.couple_id.is_(None),
         )
+        .with_for_update(of=QuestionFeedback)
     )
     return list(result.tuples())
 
@@ -104,22 +128,20 @@ async def _upsert_aggregate(
     now: datetime,
     records: list[QuestionFeedback],
     account_count: int,
-) -> None:
+    aggregate: FeedbackWeeklyAggregate | None,
+) -> bool:
     tag_counts = Counter(tag for record in records for tag in record.tags)
-    aggregate = await session.scalar(
-        select(FeedbackWeeklyAggregate)
-        .where(
-            FeedbackWeeklyAggregate.question_id == question_id,
-            FeedbackWeeklyAggregate.week_start == week_start,
-        )
-        .with_for_update()
-    )
     values = {
         "rating_count": len(records),
         "distinct_accounts": account_count,
         "score_sum": sum(record.stars for record in records),
         "tag_counts": dict(sorted(tag_counts.items())),
-        "themes": [tag for tag, _ in tag_counts.most_common(5)],
+        "themes": [
+            tag
+            for tag, _count in sorted(
+                tag_counts.items(), key=lambda item: (-item[1], item[0])
+            )[:5]
+        ],
     }
     if aggregate is None:
         session.add(
@@ -131,10 +153,19 @@ async def _upsert_aggregate(
                 **values,
             )
         )
-        return
+        return True
+    source_changed = any(
+        record.updated_at > aggregate.updated_at for record in records
+    )
+    values_changed = any(
+        getattr(aggregate, field) != value for field, value in values.items()
+    )
+    if not source_changed and not values_changed:
+        return False
     for field, value in values.items():
         setattr(aggregate, field, value)
     aggregate.updated_at = now
+    return True
 
 
 def _monday(value: date) -> date:

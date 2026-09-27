@@ -1,8 +1,11 @@
 """Little Orbit 1.2 feedback, scheduling, and prompt safety tests."""
 
 import base64
-from datetime import UTC, date, datetime
-from uuid import uuid4
+from datetime import UTC, date, datetime, timedelta
+from types import SimpleNamespace
+from typing import cast
+from unittest.mock import AsyncMock
+from uuid import UUID, uuid4
 
 import pytest
 from cryptography.hazmat.primitives import hashes, serialization
@@ -10,7 +13,9 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from little_orbit_ai.prompt import build_prompt
 from little_orbit_ai.schemas import CandidateQuestion, Category, QuestionKind
 from pydantic import ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from little_orbit_api import quiz_feedback_retention, quiz_learning_service
 from little_orbit_api.admin_device_models import AdminDevice
 from little_orbit_api.big_orbit_auth import canonical_challenge, verify_device_signature
 from little_orbit_api.big_orbit_bootstrap import new_bootstrap_pin
@@ -18,6 +23,8 @@ from little_orbit_api.big_orbit_schemas import BigOrbitSessionRequest, Bootstrap
 from little_orbit_api.main import create_app
 from little_orbit_api.public_context import safe_public_excerpt
 from little_orbit_api.public_context_fetcher import MAX_TEXT_CHARS, _visible_text
+from little_orbit_api.quiz_feedback_retention import aggregate_feedback_week
+from little_orbit_api.quiz_learning_service import _aggregate_since, _bucket_learning_reviews
 from little_orbit_api.quiz_semantics import (
     CandidateSemantics,
     derived_family,
@@ -27,6 +34,150 @@ from little_orbit_api.quiz_v3_schemas import QuizFeedbackMutation
 from little_orbit_api.review_sanitizer import sanitize_review
 from little_orbit_api.security import qr_png_data_url
 from little_orbit_api.worker import _latest_due_date
+
+
+def test_learning_reviews_cannot_cross_their_k_anonymous_week() -> None:
+    question_id = uuid4()
+    first_week = date(2026, 9, 7)
+    second_week = first_week + timedelta(days=7)
+    rows: list[tuple[UUID, datetime, str | None]] = [
+        (
+            question_id,
+            datetime(2026, 9, 8, 12, tzinfo=UTC),
+            "Eligible five-account-week review",
+        ),
+        (
+            question_id,
+            datetime(2026, 9, 15, 12, tzinfo=UTC),
+            "Under-threshold later review",
+        ),
+    ]
+
+    reviews = _bucket_learning_reviews(rows, {(question_id, first_week)})
+
+    assert reviews[(question_id, first_week)] == [
+        "Eligible five-account-week review"
+    ]
+    assert reviews[(question_id, second_week)] == []
+
+
+@pytest.mark.parametrize("account_count", [0, 4])
+async def test_feedback_recomputation_removes_stale_below_threshold_aggregate(
+    monkeypatch, account_count: int
+) -> None:
+    question_id = uuid4()
+    week_start = date(2026, 9, 7)
+    stale = SimpleNamespace(question_id=question_id)
+    feedback_rows = [
+        (
+            SimpleNamespace(account_id=uuid4(), tags=[]),
+            SimpleNamespace(id=question_id),
+        )
+        for _ in range(account_count)
+    ]
+    delete = AsyncMock()
+    session = cast(
+        AsyncSession,
+        SimpleNamespace(
+            scalars=AsyncMock(return_value=[stale]),
+            delete=delete,
+        ),
+    )
+    monkeypatch.setattr(
+        quiz_feedback_retention,
+        "_feedback_rows",
+        AsyncMock(return_value=feedback_rows),
+    )
+
+    changed = await aggregate_feedback_week(
+        session,
+        week_start,
+        datetime(2026, 9, 14, tzinfo=UTC),
+    )
+
+    assert changed == 0
+    delete.assert_awaited_once_with(stale)
+
+
+@pytest.mark.parametrize(
+    ("latest_offset", "expected_changed"),
+    [(timedelta(minutes=-1), 0), (timedelta(minutes=1), 1)],
+)
+async def test_feedback_recomputation_replays_only_after_a_late_edit(
+    monkeypatch,
+    latest_offset: timedelta,
+    expected_changed: int,
+) -> None:
+    question_id = uuid4()
+    week_start = date(2026, 9, 7)
+    aggregated_at = datetime(2026, 9, 10, 12, tzinfo=UTC)
+    through = datetime(2026, 9, 14, tzinfo=UTC)
+    aggregate = SimpleNamespace(
+        question_id=question_id,
+        rating_count=5,
+        distinct_accounts=5,
+        score_sum=20,
+        tag_counts={"clear": 5},
+        themes=["clear"],
+        updated_at=aggregated_at,
+    )
+    feedback_rows = [
+        (
+            SimpleNamespace(
+                account_id=uuid4(),
+                stars=4,
+                tags=["clear"],
+                updated_at=aggregated_at + (latest_offset if index == 0 else timedelta(minutes=-1)),
+            ),
+            SimpleNamespace(id=question_id),
+        )
+        for index in range(5)
+    ]
+    delete = AsyncMock()
+    session = cast(
+        AsyncSession,
+        SimpleNamespace(
+            scalars=AsyncMock(return_value=[aggregate]),
+            delete=delete,
+        ),
+    )
+    monkeypatch.setattr(
+        quiz_feedback_retention,
+        "_feedback_rows",
+        AsyncMock(return_value=feedback_rows),
+    )
+
+    changed = await aggregate_feedback_week(session, week_start, through)
+
+    assert changed == expected_changed
+    assert aggregate.updated_at == (through if expected_changed else aggregated_at)
+    delete.assert_not_awaited()
+
+
+async def test_learning_reconciles_every_still_attributable_feedback_week(
+    monkeypatch,
+) -> None:
+    cursor = datetime(2026, 9, 26, 8, tzinfo=UTC)
+    now = datetime(2026, 10, 3, 8, tzinfo=UTC)
+    reconciled: list[date] = []
+
+    async def record_week(
+        _session: AsyncSession, week_start: date, _through: datetime
+    ) -> int:
+        reconciled.append(week_start)
+        return 0
+
+    monkeypatch.setattr(quiz_learning_service, "aggregate_feedback_week", record_week)
+
+    await _aggregate_since(cast(AsyncSession, SimpleNamespace()), cursor, now)
+
+    assert reconciled == [
+        date(2026, 8, 31),
+        date(2026, 9, 7),
+        date(2026, 9, 14),
+        date(2026, 9, 21),
+        date(2026, 9, 28),
+    ]
 
 
 def test_feedback_contract_bounds_stars_tags_and_review() -> None:

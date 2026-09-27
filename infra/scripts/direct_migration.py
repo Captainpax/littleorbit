@@ -5,17 +5,23 @@ from __future__ import annotations
 import argparse
 from collections.abc import Mapping, Sequence
 import json
-import os
-from pathlib import Path, PurePosixPath
-import shlex
+from pathlib import Path
 import subprocess
 import sys
-from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import migration_inventory as inventory
+import migration_local as local_state
+import migration_remote as remote
+import migration_recovery as recovery
+import migration_restart as restart
 import migration_safety as safety
 import migration_transport as transport
+import migration_coordination as coordination
+import migration_artifacts as artifacts
+import migration_database as database
+import migration_evidence as evidence
+import migration_target as target_state
 
 run_checked = transport.run_checked
 pipe_commands = transport.pipe_commands
@@ -23,21 +29,45 @@ pipe_commands = transport.pipe_commands
 LEGACY_HOST = "192.168.50.182"
 UNRAID_HOST = "192.168.50.14"
 UNRAID_SSH_PORT = 23
+UNRAID_STACK = "/mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-stack.sh"
 UNRAID_SECRET_ROOT = "/mnt/cache/little-orbit-secrets"
 UNRAID_ENV = f"{UNRAID_SECRET_ROOT}/runtime.env"
 UNRAID_BACKUP_IDENTITY = f"{UNRAID_SECRET_ROOT}/backup-age-identity.txt"
-UNRAID_LIVE_ROOT = "/mnt/cache/little-orbit-live"
-UNRAID_ATTACHMENT_ROOT = f"{UNRAID_LIVE_ROOT}/attachments"
-UNRAID_RELEASE_ROOT = f"{UNRAID_LIVE_ROOT}/releases"
-ROLLBACK_PROJECT = "little-orbit-rollback"
-ROLLBACK_VOLUME = f"{ROLLBACK_PROJECT}_postgres-data"
+LOCAL_DOCKER_HOST = local_state.LOCAL_DOCKER_HOST
+ROLLBACK_PROJECT = local_state.ROLLBACK_PROJECT
 ATTACHMENT_CONTAINER_ROOT = "/var/lib/little-orbit/attachments"
-RELEASE_CONTAINER_ROOT = "/var/lib/little-orbit/releases"
 WRITER_SERVICES = ("gateway", "api", "worker", "media-worker", "context-fetcher")
+FORWARD_BUILD_SERVICES = (
+    "api", "web", "worker", "media-worker", "context-fetcher", "attachment-init",
+    "backup-attachment-reader", "backup-attachment-verifier", "migrate",
+)
 CONFIRMATIONS = {
     "forward": "forward-.182-to-.14-users-offline",
     "rollback": "post-write-rollback-.14-to-.182-users-offline",
+    "recover-forward": "recover-interrupted-forward-.14-state",
+    "recover-rollback": "recover-interrupted-rollback-.182-state",
 }
+
+
+class MigrationFailure(RuntimeError):
+    """A migration failure with content-free recovery evidence."""
+
+    def __init__(self, recovery: Mapping[str, str]) -> None:
+        super().__init__("direct migration failed; inspect structured recovery status")
+        self.recovery = dict(recovery)
+
+
+class MigrationRun:
+    def __init__(self, source: str, destination: str) -> None:
+        self.source = source
+        self.destination = destination
+        self.writers: tuple[str, ...] = ()
+        self.guard: target_state.TargetGuard | None = None
+        self.source_mount: artifacts.AttachmentMount | None = None
+        self.attachments: str | Path | None = None
+        self.releases: str | Path | None = None
+        self.freeze_attempted = False
+        self.destination_owned = False
 
 
 def parser() -> argparse.ArgumentParser:
@@ -54,7 +84,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--backup-identity", type=Path)
     value.add_argument(
         "--unraid-stack",
-        default="/mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-stack.sh",
+        default=UNRAID_STACK,
     )
     value.add_argument("--local-env", type=Path, default=Path(".env"))
     value.add_argument("--local-release-root", type=Path, default=Path("data/releases"))
@@ -63,48 +93,15 @@ def parser() -> argparse.ArgumentParser:
     return value
 
 
-def local_production_stack(args: argparse.Namespace, *values: str) -> list[str]:
-    return [
-        "docker", "compose", "--project-name", "little-orbit",
-        "--env-file", str(args.local_env), "-f", "infra/compose.yaml", *values,
-    ]
-
-
-def rollback_environment(args: argparse.Namespace) -> dict[str, str]:
-    values = os.environ.copy()
-    values["ROLLBACK_DATA_ROOT"] = str(args.rollback_data_root.resolve())
-    values["LITTLE_ORBIT_ENV_FILE"] = str(args.local_env.resolve())
-    values["ROLLBACK_GATEWAY_BIND_ADDRESS"] = "127.0.0.1"
-    values["ROLLBACK_GATEWAY_PORT"] = "18181"
-    values["GATEWAY_INTERNAL_SUBNET"] = "10.253.182.0/28"
-    values["GATEWAY_CADDY_IP"] = "10.253.182.2"
-    values["GATEWAY_API_IP"] = "10.253.182.3"
-    return values
-
-
-def local_rollback_stack(args: argparse.Namespace, *values: str) -> list[str]:
-    return [
-        "docker", "compose", "--project-name", ROLLBACK_PROJECT,
-        "--env-file", str(args.local_env), "-f", "infra/compose.yaml",
-        "-f", "infra/compose.rollback.yaml", *values,
-    ]
-
-
-def ssh_prefix(args: argparse.Namespace) -> list[str]:
-    return [
-        "ssh", "-T", "-p", str(args.unraid_port), "-i", str(args.ssh_identity),
-        "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
-        "-o", f"UserKnownHostsFile={args.known_hosts}",
-        f"{args.unraid_user}@{args.unraid_host}",
-    ]
-
-
-def remote_stack(args: argparse.Namespace, *values: str) -> str:
-    return " ".join(shlex.quote(item) for item in ("bash", args.unraid_stack, *values))
-
-
-def remote_shell(script: str) -> str:
-    return f"sh -ec {shlex.quote(script)}"
+local_production_stack = local_state.local_production_stack
+local_docker_environment = local_state.local_docker_environment
+rollback_environment = local_state.rollback_environment
+local_rollback_stack = local_state.local_rollback_stack
+ssh_prefix = remote.ssh_prefix
+remote_stack = remote.remote_stack
+remote_shell = remote.remote_shell
+migration_remote_shell = remote.migration_remote_shell
+exclusive_remote_shell = remote.exclusive_remote_shell
 
 
 def stack_command(args: argparse.Namespace, location: str, *values: str) -> list[str]:
@@ -118,10 +115,16 @@ def stack_command(args: argparse.Namespace, location: str, *values: str) -> list
 
 
 def stack_environment(args: argparse.Namespace, location: str) -> Mapping[str, str] | None:
-    return rollback_environment(args) if location == "local-rollback" else None
+    if location == "local-rollback":
+        return rollback_environment(args)
+    if location == "local-production":
+        return local_docker_environment(args)
+    return None
 
 
 def validate_arguments(args: argparse.Namespace) -> None:
+    if args.unraid_user != "root" or args.unraid_stack != UNRAID_STACK:
+        raise ValueError("Unraid root user and fixed stack launcher are required")
     safety.validate_arguments(
         args, confirmations=CONFIRMATIONS, legacy_host=LEGACY_HOST,
         unraid_host=UNRAID_HOST, unraid_port=UNRAID_SSH_PORT,
@@ -137,65 +140,34 @@ def run_stack(
     )
 
 
-def assert_empty_database(args: argparse.Namespace, location: str) -> None:
-    """Require every public table in the destination database to be empty."""
-
-    sql = (
-        "DO $migration$ DECLARE item record; populated boolean; BEGIN "
-        "FOR item IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP "
-        "EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I.%I LIMIT 1)', "
-        "'public', item.tablename) INTO populated; IF populated THEN "
-        "RAISE EXCEPTION 'destination database is not empty'; END IF; END LOOP; "
-        "END $migration$; SELECT 'empty';"
-    )
-    observed = run_stack(args, location, "exec", "-T", "postgres", "sh", "-ec", _psql(sql), capture=True)
-    if observed.strip() != "empty":
-        raise RuntimeError("destination database did not prove empty")
-
-
-def _psql(sql: str) -> str:
-    return (
-        'psql --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --quiet '
-        f"--tuples-only --no-align --set=ON_ERROR_STOP=1 --command={shlex.quote(sql)}"
-    )
+def _database_runtime() -> database.Runtime:
+    return database.Runtime(run_stack, stack_command, stack_environment, pipe_commands)
 
 
 def prepare_database(args: argparse.Namespace, location: str) -> None:
     """Start only PostgreSQL and bootstrap its fixed application roles."""
 
-    run_stack(args, location, "up", "-d", "--wait", "postgres")
-    assert_empty_database(args, location)
-    run_stack(args, location, "run", "--rm", "-T", "database-bootstrap")
+    database.prepare_database(_database_runtime(), args, location)
+
+
+def assert_no_unexpected_database_sessions(args: argparse.Namespace, location: str) -> None:
+    """Require the frozen source database to have no other client session."""
+
+    database.assert_no_unexpected_database_sessions(
+        _database_runtime(), args, location,
+    )
 
 
 def database_inventory(args: argparse.Namespace, location: str) -> dict[str, object]:
     """Read exact public table counts and Alembic heads."""
 
-    raw = run_stack(
-        args, location, "exec", "-T", "postgres", "sh", "-ec",
-        _psql(inventory.DATABASE_INVENTORY_SQL), capture=True,
-    )
-    return inventory.parse_database_inventory(raw)
+    return database.database_inventory(_database_runtime(), args, location)
 
 
 def stream_database(args: argparse.Namespace, source: str, destination: str) -> None:
     """Stream a complete custom dump into one fresh database transaction."""
 
-    dump = (
-        'pg_dump --format=custom --no-owner --username="$POSTGRES_USER" '
-        '"$POSTGRES_DB"'
-    )
-    restore = (
-        "pg_restore --clean --if-exists --no-owner --single-transaction "
-        '--exit-on-error --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"'
-    )
-    producer = stack_command(args, source, "exec", "-T", "postgres", "sh", "-ec", dump)
-    consumer = stack_command(args, destination, "exec", "-T", "postgres", "sh", "-ec", restore)
-    pipe_commands(
-        producer, consumer, source_env=stack_environment(args, source),
-        destination_env=stack_environment(args, destination),
-    )
-    run_stack(args, destination, "run", "--rm", "-T", "database-bootstrap")
+    database.stream_database(_database_runtime(), args, source, destination)
 
 
 def running_writers(args: argparse.Namespace, location: str) -> tuple[str, ...]:
@@ -211,249 +183,126 @@ def running_writers(args: argparse.Namespace, location: str) -> tuple[str, ...]:
     return tuple(service for service in WRITER_SERVICES if service in observed)
 
 
-def assert_local_production_stopped(args: argparse.Namespace) -> None:
-    """Never let rollback reuse or mutate the stale production project."""
+def prove_local_environment_provenance(
+    args: argparse.Namespace, source: str,
+) -> safety.ProvenLocalSecrets:
+    return local_state.prove_local_environment_provenance(
+        args, source, run_checked, _artifact_runtime(args),
+    )
 
-    del args
-    running = run_checked([
-        "docker", "ps", "--filter", "label=com.docker.compose.project=little-orbit",
-        "--format", "{{.ID}}",
-    ], capture=True)
-    if running:
-        raise RuntimeError("the old little-orbit project must be completely stopped")
+
+def assert_local_release_mount(args: argparse.Namespace) -> None:
+    local_state.assert_local_release_mount(args, run_checked, run_stack)
+
+
+def assert_local_production_stopped(args: argparse.Namespace) -> None:
+    local_state.assert_local_production_stopped(args, run_checked)
 
 
 def assert_fresh_rollback_project(args: argparse.Namespace) -> None:
-    """Reject stale containers or a pre-existing rollback database volume."""
+    local_state.assert_fresh_rollback_project(args, run_checked)
 
-    del args
-    containers = run_checked([
-        "docker", "ps", "-aq", "--filter",
-        f"label=com.docker.compose.project={ROLLBACK_PROJECT}",
-    ], capture=True)
-    if containers:
-        raise RuntimeError("rollback project already has containers")
-    result = subprocess.run(
-        ["docker", "volume", "inspect", ROLLBACK_VOLUME], text=True,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+
+def stream_secret(args: argparse.Namespace, source: bytes, target: str, suffix: bytes = b"") -> None:
+    artifacts.stream_secret(_artifact_runtime(args), args, source, target, suffix)
+
+
+def transfer_forward_secrets(
+    args: argparse.Namespace, proven: safety.ProvenLocalSecrets,
+) -> None:
+    if proven.backup_identity is None:
+        raise RuntimeError("proven backup identity is unavailable")
+    stream_secret(
+        args, proven.environment, UNRAID_ENV, artifacts.UNRAID_RUNTIME_OVERRIDES,
     )
-    if result.returncode == 0:
-        raise RuntimeError("rollback PostgreSQL volume already exists")
+    stream_secret(args, proven.backup_identity, UNRAID_BACKUP_IDENTITY)
 
 
-def assert_empty_unraid_storage(args: argparse.Namespace) -> None:
-    """Require existing, empty live directories before forward staging."""
-
-    guards: list[str] = []
-    for path in (UNRAID_ATTACHMENT_ROOT, UNRAID_RELEASE_ROOT):
-        quoted = shlex.quote(path)
-        guards.extend((f"test -d {quoted}", f"test -z \"$(find {quoted} -mindepth 1 -maxdepth 1 -print -quit)\""))
-    run_checked([*ssh_prefix(args), remote_shell("; ".join(guards))])
-
-
-def stream_secret(args: argparse.Namespace, source: Path, target: str, suffix: bytes = b"") -> None:
-    """Install one root-only Unraid secret atomically without logging it."""
-
-    if target not in {UNRAID_ENV, UNRAID_BACKUP_IDENTITY}:
-        raise ValueError("secret target is not allowlisted")
-    name = Path(target).name
-    temporary = f"{UNRAID_SECRET_ROOT}/.{name}.XXXXXX"
-    script = (
-        f"umask 077; install -d -m 0700 {shlex.quote(UNRAID_SECRET_ROOT)}; "
-        f"temporary=$(mktemp {shlex.quote(temporary)}); trap 'rm -f -- \"$temporary\"' EXIT; "
-        f"cat > \"$temporary\"; test -s \"$temporary\"; chmod 0600 \"$temporary\"; "
-        f"if test -e {shlex.quote(target)}; then cmp -s \"$temporary\" {shlex.quote(target)} || exit 78; "
-        f"rm -f -- \"$temporary\"; else mv -- \"$temporary\" {shlex.quote(target)}; fi; trap - EXIT"
+def _artifact_runtime(args: argparse.Namespace) -> artifacts.Runtime:
+    return artifacts.Runtime(
+        run=run_checked, run_stack=run_stack, stack_command=stack_command,
+        stack_environment=stack_environment, ssh_prefix=ssh_prefix,
+        remote_shell=lambda script: migration_remote_shell(args, script),
+        pipe=pipe_commands,
+        send_file=transport.send_file, send_tar=transport.send_tar,
+        receive_release_tar=transport.receive_release_tar,
+        remove_tree=transport.remove_tree,
     )
-    transport.send_file([*ssh_prefix(args), remote_shell(script)], source, suffix)
-
-
-def transfer_forward_secrets(args: argparse.Namespace) -> None:
-    """Transfer existing secrets plus fixed Unraid host-only settings."""
-
-    overrides = (
-        b"\nLITTLE_ORBIT_ENV=production\nGATEWAY_BIND_ADDRESS=192.168.50.14\n"
-        b"GATEWAY_INTERNAL_SUBNET=10.253.14.0/28\nGATEWAY_CADDY_IP=10.253.14.2\n"
-        b"GATEWAY_API_IP=10.253.14.3\nLITTLE_ORBIT_DATA_ROOT=/mnt/cache/little-orbit-live\n"
-        b"RELEASE_STORAGE_ROOT=/mnt/cache/little-orbit-live/releases\n"
-        b"GPU_COORDINATOR_ROOT=/mnt/cache/gpu-coordinator\n"
-        b"GPU_LOCK_HOST_PATH=/mnt/cache/gpu-coordinator/gpu.lock\nGPU_COORDINATOR_GID=2000\n"
-        b"LITTLE_ORBIT_BACKUP_ROOT=/mnt/user/little-orbit-backups\n"
-        b"LITTLE_ORBIT_ENV_FILE=/mnt/cache/little-orbit-secrets/runtime.env\n"
-        b"GPU_LOCK_PATH=/run/gpu-coordinator/gpu.lock\nGPU_VERIFY_IDLE_PROCESSES=true\n"
-    )
-    stream_secret(args, args.local_env, UNRAID_ENV, overrides)
-    stream_secret(args, args.backup_identity, UNRAID_BACKUP_IDENTITY)
 
 
 def create_remote_staging(args: argparse.Namespace, kind: str, owner: str) -> str:
-    """Create a validated sibling staging directory on the Unraid cache pool."""
-
-    prefix = f".{kind}-migration-"
-    template = f"{UNRAID_LIVE_ROOT}/{prefix}XXXXXX"
-    script = (
-        f"umask 077; staging=$(mktemp -d {shlex.quote(template)}); "
-        f"chown {shlex.quote(owner)} \"$staging\"; printf '%s\\n' \"$staging\""
-    )
-    path = run_checked([*ssh_prefix(args), remote_shell(script)], capture=True)
-    if PurePosixPath(path).parent != PurePosixPath(UNRAID_LIVE_ROOT) or not PurePosixPath(path).name.startswith(prefix):
-        raise RuntimeError("Unraid returned an invalid staging path")
-    return path
+    return artifacts.create_remote_staging(_artifact_runtime(args), args, kind, owner)
 
 
 def create_local_staging(args: argparse.Namespace, kind: str) -> Path:
-    """Create a private sibling stage inside the explicit rollback root."""
-
-    path = Path(args.rollback_data_root) / f".{kind}-migration-{uuid4().hex}"
-    path.mkdir(mode=0o700)
-    return path
-
-
-def _program(name: str) -> str:
-    """Read a reviewed migration helper for an in-container one-shot."""
-
-    return (Path(__file__).resolve().parent / name).read_text(encoding="utf-8")
-
-
-def attachment_command(
-    args: argparse.Namespace, location: str, program: str, *,
-    stage: str | Path | None = None, restore: bool = False,
-) -> list[str]:
-    """Build an attachment stream, restore, or inventory one-shot."""
-
-    values = ["run", "--rm", "-T", "--no-deps"]
-    if stage is not None:
-        values.extend(("--volume", f"{stage}:{ATTACHMENT_CONTAINER_ROOT}"))
-    if restore:
-        values.extend(("--user", "0:0" if location == "local-rollback" else "65532:65532"))
-        values.extend(("--env", "LITTLE_ORBIT_ATTACHMENT_RESTORE_MODE=stage"))
-    values.extend(("--entrypoint", "python", "attachment-init", "-c", program))
-    if not restore:
-        values.extend(("attachments", ATTACHMENT_CONTAINER_ROOT))
-    return stack_command(args, location, *values)
+    return artifacts.create_local_staging(args, kind)
 
 
 def attachment_inventory(
     args: argparse.Namespace, location: str, stage: str | Path | None = None,
+    source_mount: artifacts.AttachmentMount | None = None,
 ) -> inventory.AttachmentInventory:
-    """Read aggregate-only attachment evidence from a live or staged root."""
+    return artifacts.attachment_inventory(
+        _artifact_runtime(args), args, location, stage, source_mount,
+    )
 
-    command = attachment_command(args, location, _program("migration_inventory.py"), stage=stage)
-    raw = run_checked(command, capture=True, env=stack_environment(args, location))
-    return inventory.parse_attachment_inventory(raw)
+
+def prove_source_attachment_mount(
+    args: argparse.Namespace, location: str,
+) -> artifacts.AttachmentMount:
+    return artifacts.prove_source_attachment_mount(_artifact_runtime(args), args, location)
 
 
 def stream_attachments(
     args: argparse.Namespace, source: str, destination: str, stage: str | Path,
+    source_mount: artifacts.AttachmentMount,
 ) -> None:
-    """Stream verified attachment bytes into a disposable sibling directory."""
-
-    producer = attachment_command(args, source, _program("stream-attachment-backup.py"))
-    consumer = attachment_command(
-        args, destination, _program("restore-attachment-backup.py"),
-        stage=stage, restore=True,
+    artifacts.stream_attachments(
+        _artifact_runtime(args), args, source, destination, stage, source_mount,
     )
-    pipe_commands(
-        producer, consumer, source_env=stack_environment(args, source),
-        destination_env=stack_environment(args, destination),
-    )
-    if destination == "local-rollback":
-        run_stack(
-            args, destination, "run", "--rm", "-T", "--no-deps", "--user", "0:0",
-            "--volume", f"{stage}:{ATTACHMENT_CONTAINER_ROOT}", "--entrypoint", "sh",
-            "attachment-init", "-ec", f"chown -R 65532:65532 {ATTACHMENT_CONTAINER_ROOT}",
-        )
 
 
 def stream_forward_releases(args: argparse.Namespace, stage: str) -> None:
-    """Stream immutable `.182` release bytes into Unraid sibling staging."""
-
-    destination = [*ssh_prefix(args), f"tar -xpf - -C {shlex.quote(stage)}"]
-    transport.send_tar(destination, args.local_release_root)
+    artifacts.stream_forward_releases(_artifact_runtime(args), args, stage)
 
 
 def stream_rollback_releases(args: argparse.Namespace, stage: Path) -> None:
-    """Safely extract immutable Unraid release bytes into local sibling staging."""
-
-    source = [*ssh_prefix(args), f"tar -cpf - -C {shlex.quote(UNRAID_RELEASE_ROOT)} ."]
-    transport.receive_release_tar(source, stage)
+    artifacts.stream_rollback_releases(_artifact_runtime(args), args, stage)
 
 
 def release_inventory_at(
     args: argparse.Namespace, location: str, stage: str | Path | None = None,
 ) -> dict[str, dict[str, object]]:
-    """Read immutable release size/hash evidence from host or container."""
-
-    if location == "local-production":
-        return inventory.release_inventory(args.local_release_root)
-    if location == "local-rollback":
-        if stage is None:
-            raise ValueError("rollback release inventory requires a staging path")
-        return inventory.release_inventory(Path(stage))
-    values = ["run", "--rm", "-T", "--no-deps"]
-    if stage is not None:
-        values.extend(("--volume", f"{stage}:{RELEASE_CONTAINER_ROOT}:ro"))
-    values.extend((
-        "--entrypoint", "python", "api", "-c", _program("migration_inventory.py"),
-        "releases", RELEASE_CONTAINER_ROOT,
-    ))
-    raw = run_stack(args, "unraid", *values, capture=True)
-    return inventory.parse_release_inventory(raw)
+    return artifacts.release_inventory_at(_artifact_runtime(args), args, location, stage)
 
 
-def seal_staging(args: argparse.Namespace, location: str, attachments: str | Path, releases: str | Path) -> None:
-    """Apply final ownership and read-only release modes before promotion."""
-
-    if location == "unraid":
-        quoted = shlex.quote(str(releases))
-        script = f"find {quoted} -type d -exec chmod 0555 {{}} +; find {quoted} -type f -exec chmod 0444 {{}} +"
-        run_checked([*ssh_prefix(args), remote_shell(script)])
-        return
-    for path in sorted(Path(releases).rglob("*"), reverse=True):
-        path.chmod(0o555 if path.is_dir() else 0o444)
-    Path(releases).chmod(0o555)
+def seal_staging(
+    args: argparse.Namespace, location: str, attachments: str | Path,
+    releases: str | Path,
+) -> None:
+    artifacts.seal_staging(_artifact_runtime(args), args, location, attachments, releases)
 
 
-def promote_remote(args: argparse.Namespace, attachments: str, releases: str) -> None:
-    """Rename complete sibling trees over empty live directories."""
-
-    attachment_target = shlex.quote(UNRAID_ATTACHMENT_ROOT)
-    release_target = shlex.quote(UNRAID_RELEASE_ROOT)
-    attachment_stage = shlex.quote(attachments)
-    release_stage = shlex.quote(releases)
-    guards = (
-        f"test -z \"$(find {attachment_target} -mindepth 1 -maxdepth 1 -print -quit)\"; "
-        f"test -z \"$(find {release_target} -mindepth 1 -maxdepth 1 -print -quit)\"; "
-    )
-    promote = (
-        f"mv -T -- {attachment_stage} {attachment_target}; "
-        f"if mv -T -- {release_stage} {release_target}; then :; "
-        f"else mv -T -- {attachment_target} {attachment_stage}; exit 1; fi"
-    )
-    run_checked([*ssh_prefix(args), remote_shell(guards + promote)])
+def promote_remote(
+    args: argparse.Namespace, attachments: str, releases: str,
+    guard: target_state.TargetGuard,
+) -> None:
+    artifacts.promote_remote(_artifact_runtime(args), args, attachments, releases, guard)
 
 
 def promote_local(args: argparse.Namespace, attachments: Path, releases: Path) -> None:
-    """Atomically rename complete staged trees into the absent rollback paths."""
-
-    attachment_target = args.rollback_data_root / "attachments"
-    release_target = args.rollback_data_root / "releases"
-    if attachment_target.exists() or release_target.exists():
-        raise RuntimeError("rollback destination paths must remain absent before promotion")
-    os.replace(attachments, attachment_target)
-    try:
-        os.replace(releases, release_target)
-    except BaseException:
-        os.replace(attachment_target, attachments)
-        raise
+    artifacts.promote_local(args, attachments, releases)
 
 
-def source_inventory(args: argparse.Namespace, location: str) -> inventory.MigrationInventory:
+def source_inventory(
+    args: argparse.Namespace, location: str,
+    source_mount: artifacts.AttachmentMount,
+) -> inventory.MigrationInventory:
     """Capture frozen source evidence before streaming begins."""
 
     return inventory.MigrationInventory(
         database_inventory(args, location),
-        attachment_inventory(args, location),
+        attachment_inventory(args, location, source_mount=source_mount),
         release_inventory_at(args, location),
     )
 
@@ -470,76 +319,37 @@ def staged_inventory(
     )
 
 
-def remove_remote_staging(args: argparse.Namespace, path: str) -> None:
-    """Remove only an allowlisted, unpromoted Unraid sibling stage."""
-
-    value = PurePosixPath(path)
-    allowed = (".attachments-migration-", ".releases-migration-")
-    if value.parent != PurePosixPath(UNRAID_LIVE_ROOT) or not value.name.startswith(allowed):
-        return
-    run_checked([*ssh_prefix(args), remote_shell(f"rm -rf -- {shlex.quote(path)}")])
-
-
 def clean_rollback_destination(args: argparse.Namespace) -> None:
-    run_stack(args, "local-rollback", "down", "--volumes", "--remove-orphans")
-    root = args.rollback_data_root.resolve()
-    for child in root.iterdir():
-        resolved = child.resolve()
-        if resolved.parent != root:
-            raise RuntimeError("rollback cleanup escaped the dedicated root")
-        allowed = child.name in {"attachments", "releases"} or child.name.startswith(
-            (".attachments-migration-", ".releases-migration-")
-        )
-        if not allowed:
-            raise RuntimeError("rollback cleanup found an unexpected path")
-        if child.is_dir() and not child.is_symlink():
-            transport.remove_tree(child)
-        else:
-            child.unlink()
+    artifacts.clean_rollback_destination(_artifact_runtime(args), args)
 
 
-def prepare_forward(args: argparse.Namespace) -> tuple[str, str, tuple[str, ...]]:
-    """Prepare the empty Unraid destination before the source freeze."""
+def prepare_forward(
+    args: argparse.Namespace, proven: safety.ProvenLocalSecrets,
+) -> tuple[str, str]:
+    """Initialize the already-proven fresh Unraid destination."""
 
-    writers = running_writers(args, "local-production")
-    assert_empty_unraid_storage(args)
-    transfer_forward_secrets(args)
+    transfer_forward_secrets(args, proven)
+    run_stack(args, "unraid", "build", *FORWARD_BUILD_SERVICES)
     prepare_database(args, "unraid")
-    attachments = create_remote_staging(args, "attachments", "65532:65532")
-    try:
-        releases = create_remote_staging(args, "releases", "root:root")
-    except BaseException:
-        remove_remote_staging(args, attachments)
-        raise
-    return attachments, releases, writers
-
-
-def prepare_rollback(args: argparse.Namespace) -> tuple[Path, Path, tuple[str, ...]]:
-    """Prepare a fresh isolated `.182` destination before freezing Unraid."""
-
-    assert_local_production_stopped(args)
-    assert_fresh_rollback_project(args)
-    try:
-        run_stack(args, "local-rollback", "build", "attachment-init")
-        prepare_database(args, "local-rollback")
-        writers = running_writers(args, "unraid")
-        attachments = create_local_staging(args, "attachments")
-        releases = create_local_staging(args, "releases")
-    except BaseException as error:
-        try:
-            clean_rollback_destination(args)
-        except Exception as cleanup_error:
-            error.add_note(f"rollback preparation cleanup also failed: {cleanup_error}")
-        raise
-    return attachments, releases, writers
-
-
-def _migration_locations(direction: str) -> tuple[str, str]:
-    return (
-        ("local-production", "unraid")
-        if direction == "forward"
-        else ("unraid", "local-rollback")
+    target_state.assert_only_postgres_running(
+        run_checked, ssh_prefix(args), lambda script: migration_remote_shell(args, script),
+        run_stack, args,
     )
+    attachments = create_remote_staging(args, "attachments", "65532:65532")
+    releases = create_remote_staging(args, "releases", "root:root")
+    return attachments, releases
+
+
+def prepare_rollback(args: argparse.Namespace) -> tuple[Path, Path]:
+    target_state.assert_source_release_mount(
+        run_checked, ssh_prefix(args), lambda script: migration_remote_shell(args, script),
+        run_stack, args,
+    )
+    run_stack(args, "local-rollback", "build", "attachment-init")
+    prepare_database(args, "local-rollback")
+    attachments = create_local_staging(args, "attachments")
+    releases = create_local_staging(args, "releases")
+    return attachments, releases
 
 
 def _stream_releases(args: argparse.Namespace, releases: str | Path) -> None:
@@ -549,83 +359,258 @@ def _stream_releases(args: argparse.Namespace, releases: str | Path) -> None:
         stream_rollback_releases(args, Path(releases))
 
 
-def _promote(args: argparse.Namespace, attachments: str | Path, releases: str | Path) -> None:
+def _promote(
+    args: argparse.Namespace, attachments: str | Path, releases: str | Path,
+    guard: target_state.TargetGuard | None,
+) -> None:
     if args.direction == "forward":
-        promote_remote(args, str(attachments), str(releases))
+        if guard is None:
+            raise RuntimeError("forward promotion requires a target guard")
+        promote_remote(args, str(attachments), str(releases), guard)
     else:
         promote_local(args, Path(attachments), Path(releases))
 
 
+def restart_source_writers(
+    args: argparse.Namespace, source: str, writers: tuple[str, ...],
+) -> None:
+    """Restart exactly the preflight writers and prove each is ready."""
+
+    restart.restart_source_writers(args, source, writers, run_stack)
+
+
 def _recover_failure(
     args: argparse.Namespace, source: str, writers: tuple[str, ...],
-    attachments: str | Path, releases: str | Path, error: BaseException,
-) -> None:
-    try:
-        run_stack(args, source, "start", *writers)
-    except Exception as restart_error:
-        error.add_note(f"source writer restart also failed: {restart_error}")
-    try:
-        if args.direction == "forward":
-            remove_remote_staging(args, str(attachments))
-            remove_remote_staging(args, str(releases))
-        else:
-            clean_rollback_destination(args)
-    except Exception as cleanup_error:
-        error.add_note(f"migration cleanup also failed: {cleanup_error}")
-
-
-def execute_migration(args: argparse.Namespace) -> None:
-    """Freeze, stream, verify, promote, and leave the old source frozen."""
-
-    validate_arguments(args)
-    source, destination = _migration_locations(args.direction)
-    attachments, releases, writers = (
-        prepare_forward(args) if args.direction == "forward" else prepare_rollback(args)
+    guard: target_state.TargetGuard | None, freeze_attempted: bool,
+    destination_owned: bool,
+    exclusion: coordination.MigrationExclusion | None = None,
+) -> dict[str, str]:
+    runtime = recovery.Runtime(
+        run=run_checked, ssh_prefix=ssh_prefix,
+        migration_shell=migration_remote_shell,
+        exclusive_shell=exclusive_remote_shell,
+        restart_source=restart_source_writers,
+        clean_rollback=clean_rollback_destination,
     )
+    return recovery.recover_failure(
+        runtime, args, source, writers, guard, freeze_attempted,
+        destination_owned, exclusion,
+    )
+
+
+def _prepare_run(args: argparse.Namespace, run: MigrationRun) -> None:
+    run.writers = running_writers(args, run.source)
+    run.source_mount = prove_source_attachment_mount(args, run.source)
+    proven = prove_local_environment_provenance(args, run.source)
+    if args.direction == "forward":
+        assert_local_release_mount(args)
+        run.guard = target_state.new_guard()
+        target_state.begin_fresh_target(
+            run_checked, ssh_prefix(args),
+            lambda script: migration_remote_shell(args, script), run.guard,
+        )
+        run.attachments, run.releases = prepare_forward(args, proven)
+        return
+    assert_local_production_stopped(args)
+    assert_fresh_rollback_project(args)
+    run.guard = target_state.new_guard()
+    target_state.begin_rollback(
+        run_checked, ssh_prefix(args),
+        lambda script: migration_remote_shell(args, script), run.guard,
+    )
+    run.destination_owned = True
+    run.attachments, run.releases = prepare_rollback(args)
+
+
+def _freeze_and_stream(
+    args: argparse.Namespace, run: MigrationRun,
+) -> tuple[inventory.MigrationInventory, inventory.MigrationInventory]:
+    if run.source_mount is None or run.attachments is None or run.releases is None:
+        raise RuntimeError("migration staging is incomplete")
+    run.freeze_attempted = True
+    run_stack(args, run.source, "stop", *WRITER_SERVICES)
+    assert_no_unexpected_database_sessions(args, run.source)
+    active_ai = inventory.parse_active_ai(run_stack(
+        args, run.source, "exec", "-T", "postgres", "sh", "-ec",
+        database.psql(inventory.ACTIVE_AI_SQL), capture=True,
+    ))
+    if any(active_ai.values()):
+        raise RuntimeError(
+            f"source has active AI work: {json.dumps(active_ai, sort_keys=True)}"
+        )
+    before = source_inventory(args, run.source, run.source_mount)
+    stream_database(args, run.source, run.destination)
+    stream_attachments(
+        args, run.source, run.destination, run.attachments, run.source_mount,
+    )
+    _stream_releases(args, run.releases)
+    seal_staging(args, run.destination, run.attachments, run.releases)
+    after = staged_inventory(args, run.destination, run.attachments, run.releases)
+    inventory.assert_destination_matching(before, after, args.direction)
+    assert_no_unexpected_database_sessions(args, run.source)
+    inventory.assert_matching(
+        before, source_inventory(args, run.source, run.source_mount),
+    )
+    return before, after
+
+
+def _commit_run(
+    args: argparse.Namespace, run: MigrationRun,
+    exclusion: coordination.MigrationExclusion | None,
+) -> None:
+    if run.attachments is None or run.releases is None:
+        raise RuntimeError("migration staging is incomplete")
+    if exclusion is not None:
+        exclusion.assert_held()
+    _promote(args, run.attachments, run.releases, run.guard)
+    if args.direction == "rollback":
+        if run.guard is None:
+            raise RuntimeError("rollback promotion requires a target guard")
+        if exclusion is not None:
+            exclusion.assert_held()
+        target_state.mark_rollback_committed(
+            run_checked, ssh_prefix(args),
+            lambda script: migration_remote_shell(args, script), run.guard,
+        )
+
+
+def execute_migration(
+    args: argparse.Namespace,
+    exclusion: coordination.MigrationExclusion | None = None,
+) -> dict[str, object]:
+    validate_arguments(args)
+    source, destination = evidence.migration_locations(args.direction)
+    run = MigrationRun(source, destination)
     try:
-        run_stack(args, source, "stop", *WRITER_SERVICES)
-        active_ai = inventory.parse_active_ai(run_stack(
-            args, source, "exec", "-T", "postgres", "sh", "-ec",
-            _psql(inventory.ACTIVE_AI_SQL), capture=True,
-        ))
-        if any(active_ai.values()):
-            raise RuntimeError(f"source has active AI work: {json.dumps(active_ai, sort_keys=True)}")
-        before = source_inventory(args, source)
-        stream_database(args, source, destination)
-        stream_attachments(args, source, destination, attachments)
-        _stream_releases(args, releases)
-        seal_staging(args, destination, attachments, releases)
-        after = staged_inventory(args, destination, attachments, releases)
-        inventory.assert_matching(before, after)
-        _promote(args, attachments, releases)
+        _prepare_run(args, run)
+        before, after = _freeze_and_stream(args, run)
+        _commit_run(args, run, exclusion)
     except BaseException as error:
-        _recover_failure(args, source, writers, attachments, releases, error)
-        raise
-    evidence = {
-        "outcome": "streamed-and-matched", "direction": args.direction,
-        "source": {"host": LEGACY_HOST if source == "local-production" else UNRAID_HOST,
-                   "inventory": before.serializable()},
-        "destination": {"host": UNRAID_HOST if destination == "unraid" else LEGACY_HOST,
-                        "project": "little-orbit" if destination == "unraid" else ROLLBACK_PROJECT,
-                        "inventory": after.serializable()},
-        "source_writers": "stopped", "inventories_match": True,
+        recovered = _recover_failure(
+            args, run.source, run.writers, run.guard, run.freeze_attempted,
+            run.destination_owned, exclusion,
+        )
+        raise MigrationFailure(recovered) from error
+    return evidence.success_evidence(
+        direction=args.direction,
+        source=run.source,
+        destination=run.destination,
+        before=before,
+        after=after,
+        legacy_host=LEGACY_HOST,
+        unraid_host=UNRAID_HOST,
+        rollback_project=ROLLBACK_PROJECT,
+    )
+
+
+def _recover_interrupted_forward(
+    args: argparse.Namespace, exclusion: coordination.MigrationExclusion,
+) -> dict[str, object]:
+    exclusion.assert_held()
+    phase, cleanup = target_state.recover_interrupted_forward(
+        run_checked, ssh_prefix(args),
+        lambda script: migration_remote_shell(args, script),
+    )
+    source_status = "frozen" if phase == "committed" else "unchanged"
+    if phase == "forward-cleaned":
+        exclusion.assert_held()
+        restart_source_writers(args, "local-production", WRITER_SERVICES)
+        exclusion.assert_held()
+        target_state.complete_interrupted_forward(
+            run_checked, ssh_prefix(args),
+            lambda script: migration_remote_shell(args, script),
+        )
+        source_status = "healthy"
+    return {
+        "outcome": "recovery-complete", "direction": args.direction,
+        "target_phase": phase, "target_cleanup": cleanup,
+        "source_writers": source_status,
     }
-    print(json.dumps(evidence, sort_keys=True))
+
+
+def _recover_interrupted_rollback(
+    args: argparse.Namespace, exclusion: coordination.MigrationExclusion,
+) -> dict[str, object]:
+    exclusion.assert_held()
+    phase = target_state.read_interrupted_rollback_phase(
+        run_checked, ssh_prefix(args),
+        lambda script: migration_remote_shell(args, script),
+    )
+    if phase == "rollback-committed":
+        return {
+            "outcome": "recovery-complete", "direction": args.direction,
+            "target_phase": phase, "target_cleanup": "preserved",
+            "source_writers": "frozen",
+        }
+    assert_local_production_stopped(args)
+    exclusion.assert_held()
+    clean_rollback_destination(args)
+    exclusion.assert_held()
+    restart_source_writers(args, "unraid", WRITER_SERVICES)
+    if phase == "rollback-preparing":
+        exclusion.assert_held()
+        target_state.complete_interrupted_rollback(
+            run_checked, ssh_prefix(args),
+            lambda script: migration_remote_shell(args, script),
+        )
+    return {
+        "outcome": "recovery-complete", "direction": args.direction,
+        "target_phase": phase, "target_cleanup": "erased",
+        "source_writers": "healthy",
+    }
+
+
+def execute_recovery(
+    args: argparse.Namespace, exclusion: coordination.MigrationExclusion,
+) -> dict[str, object]:
+    validate_arguments(args)
+    if args.direction == "recover-forward":
+        return _recover_interrupted_forward(args, exclusion)
+    if args.direction == "recover-rollback":
+        return _recover_interrupted_rollback(args, exclusion)
+    raise ValueError("recovery requires a recovery-only direction")
+
+
+def _write_failure(value: str) -> None:
+    try:
+        print(value, file=sys.stderr)
+    except OSError:
+        pass
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the selected migration direction without a retained raw archive."""
 
+    evidence: dict[str, object] | None = None
     try:
         args = parser().parse_args(argv)
         validate_arguments(args)
         safety.require_routed_local_host(
             LEGACY_HOST, args.unraid_host, args.unraid_port,
         )
-        execute_migration(args)
-    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
-        print(f"migration failed: {error}", file=sys.stderr)
+        with coordination.MigrationExclusion(
+            run=run_checked, ssh=ssh_prefix(args), shell=remote_shell,
+        ) as exclusion:
+            args.migration_lock_token = exclusion.token
+            if args.direction.startswith("recover-"):
+                evidence = execute_recovery(args, exclusion)
+            else:
+                evidence = execute_migration(args, exclusion)
+    except MigrationFailure as error:
+        _write_failure(json.dumps({
+            "outcome": "failed", "recovery": error.recovery,
+        }, sort_keys=True))
         return 1
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+        if evidence is None:
+            _write_failure(f"migration failed: {error}")
+            return 1
+        _write_failure("migration committed; coordination cleanup reported an error")
+    assert evidence is not None
+    try:
+        print(json.dumps(evidence, sort_keys=True))
+    except OSError:
+        _write_failure("migration committed; success output was unavailable")
     return 0
 
 

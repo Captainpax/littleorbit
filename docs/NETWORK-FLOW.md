@@ -266,18 +266,21 @@ flowchart TD
     Feedback --> Linked[Author-readable linked feedback<br/>editable through day 30]
     Linked --> Aggregate{At least 5 distinct accounts<br/>for question and week?}
     Aggregate -->|no| Hold[No admin or AI review surface]
-    Aggregate -->|yes| LearningJob[Queue content-free learning/planning job<br/>eligible Saturday 01:00 America/Los_Angeles]
+    Aggregate -->|yes| Eligible[Thresholded feedback becomes eligible]
+    Saturday[Schedule learning/planning job<br/>eligible Saturday 01:00 America/Los_Angeles] --> LearningJob[Queue content-free learning/planning job]
+    LearningJob --> Queue
     Sunday[Schedule generation job<br/>eligible Sunday 03:00 local] --> Queue
-    LearningJob --> Queue[Persistent content-free queue]
+    Queue[Persistent content-free queue]
     Queue --> Slot[Oldest eligible job<br/>one Little Orbit start per six-hour slot]
     Slot --> Lock{Shared GPU lock and VRAM clear?}
     Lock -->|busy| Retry[Advance next-attempt by six hours<br/>no AI run claim or false failure]
     Retry --> Queue
     Lock -->|acquired| Claim{Lease-fenced job kind}
-    Claim -->|learning/planning| Learn[Consume only newly eligible<br/>K-anonymous feedback]
-    Learn --> Policy[Evaluate bounded policy<br/>activate only on deterministic pass]
-    Learn --> Theme[Plan fourteen days of safe coverage<br/>distinct days, at most 2 observances per week]
-    Policy --> FinishLearning[Commit only with current lease token]
+    Claim -->|learning/planning| LearningGate{Any newly eligible<br/>K-anonymous feedback?}
+    Eligible --> LearningGate
+    LearningGate -->|yes| Policy[Evaluate bounded policy<br/>activate only on deterministic pass]
+    LearningGate -->|no| Theme[Plan fourteen days of safe coverage<br/>distinct days, at most 2 observances per week]
+    Policy --> Theme
     Theme --> FinishLearning
     Linked -->|day 30| Unlink[Remove account, couple, and quiz-day links]
     Unlink -->|by day 90| DeleteReview[Hard-delete raw review text]

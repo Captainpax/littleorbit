@@ -28,7 +28,19 @@ from little_orbit_api.ai_work_queue import (  # noqa: E402
 )
 from little_orbit_api.config import Settings  # noqa: E402
 from little_orbit_api.database import SessionFactory, engine  # noqa: E402
-from little_orbit_api.quiz_intelligence_models import AiRun, AiWorkItem  # noqa: E402
+from little_orbit_api.models import Question  # noqa: E402
+from little_orbit_api.quiz_generation_pool_service import (  # noqa: E402
+    _clear_replaceable_pool,
+)
+from little_orbit_api.quiz_intelligence_models import (  # noqa: E402
+    AiRun,
+    AiWorkItem,
+    QuizWeekPlan,
+)
+from little_orbit_api.quiz_theme_service import (  # noqa: E402
+    _fallback_plan,
+    _persist_plan,
+)
 
 
 @pytest_asyncio.fixture(autouse=True, loop_scope="session")
@@ -38,11 +50,29 @@ async def clean_database() -> AsyncIterator[None]:
         await connection.execute(
             text("DELETE FROM ai_runs WHERE run_key = 'generate:2026-09-28'")
         )
+        await connection.execute(
+            text("DELETE FROM quiz_day_themes WHERE local_date BETWEEN '2035-01-01' AND '2035-01-07'")
+        )
+        await connection.execute(
+            text("DELETE FROM quiz_week_plans WHERE week_start = '2035-01-01'")
+        )
+        await connection.execute(
+            text("DELETE FROM questions WHERE publish_date = '2040-01-01'")
+        )
     yield
     async with engine.begin() as connection:
         await connection.execute(text("TRUNCATE TABLE ai_work_queue"))
         await connection.execute(
             text("DELETE FROM ai_runs WHERE run_key = 'generate:2026-09-28'")
+        )
+        await connection.execute(
+            text("DELETE FROM quiz_day_themes WHERE local_date BETWEEN '2035-01-01' AND '2035-01-07'")
+        )
+        await connection.execute(
+            text("DELETE FROM quiz_week_plans WHERE week_start = '2035-01-01'")
+        )
+        await connection.execute(
+            text("DELETE FROM questions WHERE publish_date = '2040-01-01'")
         )
 
 
@@ -166,3 +196,87 @@ async def test_completed_legacy_generation_does_not_consume_first_queue_slot() -
     learning = next(item for item in records if item.kind == WEEKLY_LEARNING)
     assert generation.next_attempt_at is None
     assert learning.next_attempt_at is not None
+
+
+async def test_stale_token_cannot_commit_a_theme_plan_result() -> None:
+    """The queue row is fenced inside the transaction that writes AI output."""
+
+    now = datetime(2035, 1, 6, 10, tzinfo=UTC)
+    async with SessionFactory() as session:
+        session.add(
+            AiWorkItem(
+                kind=WEEKLY_LEARNING,
+                scheduled_at=now,
+                next_attempt_at=now,
+                attempt_count=0,
+            )
+        )
+        await session.commit()
+    stale = await claim_due_work(
+        now,
+        stale_after=timedelta(hours=2),
+        minimum_gap=timedelta(0),
+    )
+    assert stale is not None
+    assert await retry_work(stale, now, timedelta(0))
+    current = await claim_due_work(
+        now,
+        stale_after=timedelta(hours=2),
+        minimum_gap=timedelta(0),
+    )
+    assert current is not None and current.id == stale.id
+    plan = _fallback_plan(datetime(2035, 1, 1, tzinfo=UTC).date())
+
+    with pytest.raises(RuntimeError, match="expired before result commit"):
+        await _persist_plan(
+            plan,
+            "America/Los_Angeles",
+            "en-US",
+            "stale-fence-test",
+            stale,
+        )
+    async with SessionFactory() as session:
+        assert await session.scalar(
+            select(QuizWeekPlan.id).where(QuizWeekPlan.week_start == plan.week_start)
+        ) is None
+
+    await _persist_plan(
+        plan,
+        "America/Los_Angeles",
+        "en-US",
+        "current-fence-test",
+        current,
+    )
+    async with SessionFactory() as session:
+        assert await session.scalar(
+            select(QuizWeekPlan.id).where(QuizWeekPlan.week_start == plan.week_start)
+        ) is not None
+
+
+async def test_pool_delete_rolls_back_when_successor_write_fails() -> None:
+    target = datetime(2040, 1, 1, tzinfo=UTC).date()
+    original = Question(
+        publish_date=target,
+        kind="free_text",
+        prompt="What calm moment would you like to revisit together?",
+        category="memories",
+        intimacy=False,
+        options=[],
+        option_icons=[],
+        interaction_version=2,
+        display_order=1,
+        surprise=True,
+        source="curated",
+        normalized_hash="a" * 64,
+    )
+    async with SessionFactory() as session:
+        session.add(original)
+        await session.commit()
+        original_id = original.id
+
+    async with SessionFactory() as session:
+        assert await _clear_replaceable_pool(session, target)
+        await session.rollback()  # Simulate successor validation or insert failure.
+
+    async with SessionFactory() as session:
+        assert await session.get(Question, original_id) is not None

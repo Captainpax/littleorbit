@@ -5,39 +5,15 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 import hashlib
 import json
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import sys
 import tarfile
-from typing import Any, IO
+from typing import Any, IO, cast
+
+import migration_security as security
 
 BUFFER_SIZE = 1024 * 1024
-DATABASE_INVENTORY_SQL = """
-WITH table_counts AS (
-    SELECT tablename,
-           ((xpath(
-               '/row/count/text()',
-               query_to_xml(
-                   format('SELECT count(*) AS count FROM %I.%I', schemaname, tablename),
-                   false,
-                   true,
-                   ''
-               )
-           ))[1]::text)::bigint AS row_count
-      FROM pg_tables
-     WHERE schemaname = 'public'
-), counts AS (
-    SELECT COALESCE(
-               jsonb_object_agg(tablename, row_count ORDER BY tablename),
-               '{}'::jsonb
-           ) AS value
-      FROM table_counts
-), heads AS (
-    SELECT COALESCE(jsonb_agg(version_num ORDER BY version_num), '[]'::jsonb) AS value
-      FROM alembic_version
-)
-SELECT jsonb_build_object('tables', counts.value, 'schema_heads', heads.value)
-  FROM counts CROSS JOIN heads;
-""".strip()
+DATABASE_INVENTORY_SQL = security.DATABASE_INVENTORY_SQL
 ACTIVE_AI_SQL = """
 SELECT jsonb_build_object(
     'ai_runs_running', (SELECT count(*) FROM ai_runs WHERE status = 'running'),
@@ -134,21 +110,7 @@ def release_inventory(root: Path) -> dict[str, dict[str, object]]:
 def parse_database_inventory(raw: str) -> dict[str, object]:
     """Validate PostgreSQL's JSON inventory before comparing it."""
 
-    parsed: Any = json.loads(raw)
-    if not isinstance(parsed, dict):
-        raise RuntimeError("database inventory is not an object")
-    tables = parsed.get("tables")
-    heads = parsed.get("schema_heads")
-    if not isinstance(tables, dict) or not all(
-        isinstance(name, str) and isinstance(count, int) and count >= 0
-        for name, count in tables.items()
-    ):
-        raise RuntimeError("database table counts are invalid")
-    if not isinstance(heads, list) or not heads or not all(
-        isinstance(head, str) and head for head in heads
-    ):
-        raise RuntimeError("database schema head is invalid")
-    return {"tables": dict(sorted(tables.items())), "schema_heads": sorted(heads)}
+    return security.parse_database_inventory(raw)
 
 
 def parse_active_ai(raw: str) -> dict[str, int]:
@@ -232,21 +194,60 @@ def assert_matching(source: MigrationInventory, destination: MigrationInventory)
         raise RuntimeError("source and destination migration inventories differ")
 
 
+def assert_destination_matching(
+    source: MigrationInventory, destination: MigrationInventory, direction: str,
+) -> None:
+    """Allow only the reviewed 0031-to-0032 forward schema transition."""
+
+    if direction == "rollback":
+        assert_matching(source, destination)
+        return
+    if direction != "forward":
+        raise ValueError("unknown migration inventory direction")
+    if source.attachments != destination.attachments or source.releases != destination.releases:
+        raise RuntimeError("source and destination migration inventories differ")
+    source_database = source.database
+    destination_database = destination.database
+    if source_database["schema_heads"] != ["0031"] or destination_database["schema_heads"] != ["0032"]:
+        raise RuntimeError("forward migration schema transition is not 0031 to 0032")
+    source_security = cast(dict[str, object], source_database["security"])
+    destination_security = cast(dict[str, object], destination_database["security"])
+    if source_security != security.without_object(destination_security, "ai_work_queue"):
+        raise RuntimeError("forward migration database security inventories differ")
+    source_tables = cast(dict[str, int], source_database["tables"]).copy()
+    destination_tables = cast(dict[str, int], destination_database["tables"]).copy()
+    if destination_tables.pop("ai_work_queue", None) != 0 or source_tables != destination_tables:
+        raise RuntimeError("forward migration table counts are not exact")
+
+
 def extract_release_archive(stream: IO[bytes], root: Path) -> None:
     """Extract regular release files from a stream without trusting tar paths."""
 
+    resolved_root = root.resolve()
     with tarfile.open(fileobj=stream, mode="r|*") as archive:
         for member in archive:
             value = PurePosixPath(member.name)
+            windows_value = PureWindowsPath(member.name)
             parts = tuple(part for part in value.parts if part != ".")
-            if value.is_absolute() or ".." in parts:
+            if (
+                value.is_absolute()
+                or windows_value.is_absolute()
+                or bool(windows_value.drive)
+                or "\\" in member.name
+                or ".." in parts
+            ):
                 raise RuntimeError("release stream contains an unsafe path")
             if member.isdir():
-                (root.joinpath(*parts)).mkdir(parents=True, exist_ok=True)
+                directory = root.joinpath(*parts).resolve()
+                if resolved_root != directory and resolved_root not in directory.parents:
+                    raise RuntimeError("release stream escaped its staging root")
+                directory.mkdir(parents=True, exist_ok=True)
                 continue
             if not member.isfile() or not parts:
                 raise RuntimeError("release stream contains a non-regular entry")
-            target = root.joinpath(*parts)
+            target = root.joinpath(*parts).resolve()
+            if resolved_root not in target.parents:
+                raise RuntimeError("release stream escaped its staging root")
             target.parent.mkdir(parents=True, exist_ok=True)
             source = archive.extractfile(member)
             if source is None:

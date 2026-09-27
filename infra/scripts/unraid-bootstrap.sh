@@ -12,6 +12,21 @@ readonly TOOL_ROOT="${LITTLE_ORBIT_TOOL_ROOT:-/mnt/cache/little-orbit-tools}"
 readonly AGE_VERSION="1.3.2"
 readonly AGE_SHA256="cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10"
 readonly SHARE_CONFIG_ROOT="/boot/config/shares"
+readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+source "${SCRIPT_DIR}/unraid-operation-lock.sh"
+
+require_fixed_root() {
+  local value="$1" expected="$2" label="$3"
+  [[ "${value}" == "${expected}" ]] || {
+    echo "${label} must use the fixed reviewed Unraid path." >&2
+    exit 78
+  }
+  [[ ! -L "${value}" && (! -e "${value}" || -d "${value}") ]] || {
+    echo "${label} must be a real directory, not a link or file." >&2
+    exit 78
+  }
+}
 
 require_unraid_mount() {
   local path="$1" expected_source="$2" expected_fstype="$3"
@@ -43,11 +58,23 @@ require_target() {
     echo "The exact Unraid cache and user-share mounts must be available." >&2
     exit 78
   }
+  require_fixed_root "${DATA_ROOT}" /mnt/cache/little-orbit-live "Live data root"
+  require_fixed_root "${DEPLOY_ROOT}" /mnt/cache/little-orbit-deploy "Deploy root"
+  require_fixed_root "${SECRET_ROOT}" /mnt/cache/little-orbit-secrets "Secret root"
+  require_fixed_root "${BACKUP_ROOT}" /mnt/user/little-orbit-backups "Backup root"
+  require_fixed_root "${GPU_ROOT}" /mnt/cache/gpu-coordinator "GPU coordinator root"
+  require_fixed_root "${TOOL_ROOT}" /mnt/cache/little-orbit-tools "Tool root"
 }
 
 configure_share() {
   local name="$1" use_cache="$2" pool="$3" description="$4" target temporary
   target="${SHARE_CONFIG_ROOT}/${name}.cfg"
+  require_unambiguous_share_config "${name}" "${target}"
+  if [[ -e "${target}" || -L "${target}" ]]; then
+    upgrade_legacy_non_nfs_share "${target}" "${name}" "${use_cache}" "${pool}"
+    validate_share_config "${target}" "${name}" "${use_cache}" "${pool}"
+    return
+  fi
   temporary="$(mktemp "${SHARE_CONFIG_ROOT}/.${name}.XXXXXX")"
   {
     printf 'shareComment="%s"\n' "${description}"
@@ -57,31 +84,213 @@ configure_share() {
     printf 'shareCOW="auto"\nshareExport="-"\nshareCaseSensitive="auto"\n'
     printf 'shareSecurity="private"\nshareReadList=""\nshareWriteList=""\n'
     printf 'shareVolsizelimit=""\n'
+    printf 'shareExportNFS="-"\nshareExportNFSFsid="0"\n'
+    printf 'shareSecurityNFS="private"\nshareHostListNFS=""\n'
   } >"${temporary}"
-  if [[ -f "${target}" ]]; then
-    rm -f -- "${temporary}"
-    grep -Fqx -- "shareUseCache=\"${use_cache}\"" "${target}" &&
-      grep -Fqx -- "shareCachePool=\"${pool}\"" "${target}" &&
-      grep -Fqx -- 'shareExport="-"' "${target}" &&
-      grep -Fqx -- 'shareSecurity="private"' "${target}" || {
-        echo "Existing share configuration violates the required storage/export policy: ${name}" >&2
-        exit 78
-      }
-    return
-  fi
   chmod 0600 "${temporary}"
   mv -- "${temporary}" "${target}"
+  validate_share_config "${target}" "${name}" "${use_cache}" "${pool}"
+}
+
+upgrade_legacy_non_nfs_share() {
+  local target="$1" name="$2" use_cache="$3" pool="$4" temporary
+  [[ -f "${target}" && ! -L "${target}" ]] || {
+    echo "The ${name} share configuration must be one regular file, not a link." >&2
+    exit 78
+  }
+  reject_duplicate_share_settings "${target}" "${name}"
+  require_share_setting "${target}" "${name}" shareUseCache "${use_cache}"
+  require_share_setting "${target}" "${name}" shareCachePool "${pool}"
+  require_share_setting "${target}" "${name}" shareCachePool2 ""
+  require_share_setting "${target}" "${name}" shareExport "-"
+  require_share_setting "${target}" "${name}" shareSecurity "private"
+  if grep -Eq '^[[:space:]]*share(ExportNFS|SecurityNFS)[[:space:]]*=' "${target}"; then
+    return
+  fi
+  temporary="$(mktemp "${SHARE_CONFIG_ROOT}/.${name}.upgrade.XXXXXX")"
+  cp -- "${target}" "${temporary}"
+  if [[ -s "${temporary}" && -n "$(tail -c 1 -- "${temporary}")" ]]; then
+    printf '\n' >>"${temporary}"
+  fi
+  printf 'shareExportNFS="-"\nshareSecurityNFS="private"\n' >>"${temporary}"
+  chmod 0600 "${temporary}"
+  mv -f -- "${temporary}" "${target}"
+}
+
+require_unambiguous_share_config() {
+  local name="$1" target="$2" config_root="${3:-${SHARE_CONFIG_ROOT}}"
+  local candidate filename match_count=0
+  for candidate in "${config_root}"/*; do
+    [[ -e "${candidate}" || -L "${candidate}" ]] || continue
+    filename="${candidate##*/}"
+    [[ "${filename,,}" == "${name,,}.cfg" ]] || continue
+    match_count=$((match_count + 1))
+    [[ "${candidate}" == "${target}" ]] || {
+      echo "Ambiguous share configuration name for ${name}: ${filename}" >&2
+      exit 78
+    }
+  done
+  [[ "${match_count}" -le 1 ]] || {
+    echo "Duplicate share configurations found for ${name}." >&2
+    exit 78
+  }
+}
+
+reject_duplicate_share_settings() {
+  local target="$1" name="$2"
+  awk '
+    /^[[:space:]]*[[:alpha:]_][[:alnum:]_]*[[:space:]]*=/ {
+      key = $0
+      sub(/=.*/, "", key)
+      gsub(/[[:space:]]/, "", key)
+      key = tolower(key)
+      if (++seen[key] > 1) exit 1
+    }
+  ' "${target}" || {
+    echo "Duplicate settings make the ${name} share configuration ambiguous." >&2
+    exit 78
+  }
+}
+
+require_share_setting() {
+  local target="$1" name="$2" key="$3" expected="$4" count
+  count="$(awk -v key="${key}" '
+    {
+      line = $0
+      sub(/^[[:space:]]*/, "", line)
+      if (substr(line, 1, length(key)) == key) {
+        tail = substr(line, length(key) + 1)
+        if (tail ~ /^[[:space:]]*=/) count++
+      }
+    }
+    END { print count + 0 }
+  ' "${target}")"
+  [[ "${count}" == "1" ]] &&
+    grep -Fqx -- "${key}=\"${expected}\"" "${target}" || {
+      echo "The ${name} share has an ambiguous or unsafe ${key} setting." >&2
+      exit 78
+    }
+}
+
+validate_share_config() {
+  local target="$1" name="$2" use_cache="$3" pool="$4"
+  [[ -f "${target}" && ! -L "${target}" ]] || {
+    echo "The ${name} share configuration must be one regular file, not a link." >&2
+    exit 78
+  }
+  reject_duplicate_share_settings "${target}" "${name}"
+  require_share_setting "${target}" "${name}" shareUseCache "${use_cache}"
+  require_share_setting "${target}" "${name}" shareCachePool "${pool}"
+  require_share_setting "${target}" "${name}" shareCachePool2 ""
+  require_share_setting "${target}" "${name}" shareExport "-"
+  require_share_setting "${target}" "${name}" shareSecurity "private"
+  require_share_setting "${target}" "${name}" shareExportNFS "-"
+  require_share_setting "${target}" "${name}" shareSecurityNFS "private"
+}
+
+require_array_disk_mount() {
+  local storage_root="$1" storage_name="$2" record target source fstype number
+  mountpoint --quiet -- "${storage_root}" || return 1
+  record="$(findmnt --noheadings --raw --mountpoint "${storage_root}" \
+    --output TARGET,SOURCE,FSTYPE)" || return 1
+  read -r target source fstype <<<"${record}"
+  [[ "${target}" == "${storage_root}" ]] || return 1
+  number="${storage_name#disk}"
+  case "${fstype}" in
+    xfs|btrfs)
+      [[ "${source}" =~ ^/dev/(mapper/)?md${number}(p1)?$ ]]
+      ;;
+    zfs)
+      [[ "${source}" == "${storage_name}" || "${source}" == "${storage_name}/"* ]]
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+audit_share_placement() {
+  local name="$1" policy="$2" mount_root="${3:-/mnt}" check_mounts="${4:-true}"
+  local candidate physical_name storage_root storage_name allowed
+  for storage_root in "${mount_root}"/*; do
+    [[ -d "${storage_root}" || -L "${storage_root}" ]] || continue
+    storage_name="${storage_root##*/}"
+    [[ "${storage_name}" != "user" && "${storage_name}" != "user0" ]] || continue
+    for candidate in "${storage_root}"/*; do
+      [[ -e "${candidate}" || -L "${candidate}" ]] || continue
+      physical_name="${candidate##*/}"
+      [[ "${physical_name,,}" == "${name,,}" ]] || continue
+      [[ "${physical_name}" == "${name}" ]] || {
+        echo "The ${name} share has an ambiguous physical name: ${physical_name}" >&2
+        exit 78
+      }
+      allowed="false"
+      if [[ "${policy}" == "cache" && "${storage_name}" == "cache" ]]; then
+        allowed="true"
+      elif [[ "${policy}" == "array" && "${storage_name}" =~ ^disk[0-9]+$ ]]; then
+        allowed="true"
+      fi
+      [[ "${allowed}" == "true" && -d "${candidate}" && ! -L "${candidate}" ]] || {
+        echo "The ${name} share has data on the forbidden ${storage_name} tier." >&2
+        exit 78
+      }
+      if [[ "${policy}" == "array" && "${check_mounts}" == "true" ]]; then
+        require_array_disk_mount "${storage_root}" "${storage_name}" || {
+          echo "The ${name} share is under an unverified array mount." >&2
+          exit 78
+        }
+      fi
+    done
+  done
+}
+
+audit_all_share_placements() {
+  local name
+  for name in little-orbit-live little-orbit-deploy little-orbit-secrets \
+    gpu-coordinator little-orbit-tools; do
+    audit_share_placement "${name}" cache
+  done
+  audit_share_placement little-orbit-backups array
+}
+
+verify_share_placement() {
+  local name="$1" policy="$2" mount_root="${3:-/mnt}" check_mounts="${4:-true}"
+  local candidate found="false"
+  audit_share_placement "${name}" "${policy}" "${mount_root}" "${check_mounts}"
+  if [[ "${policy}" == "cache" ]]; then
+    [[ -d "${mount_root}/cache/${name}" && ! -L "${mount_root}/cache/${name}" ]] || {
+      echo "The ${name} share is missing from the reviewed cache pool." >&2
+      exit 78
+    }
+    return
+  fi
+  for candidate in "${mount_root}"/disk[0-9]*/"${name}"; do
+    [[ -d "${candidate}" && ! -L "${candidate}" ]] || continue
+    found="true"
+  done
+  [[ "${policy}" == "array" && "${found}" == "true" ]] || {
+    echo "The ${name} share is not physically present on an array disk." >&2
+    exit 78
+  }
+}
+
+verify_all_share_placements() {
+  local name
+  for name in little-orbit-live little-orbit-deploy little-orbit-secrets \
+    gpu-coordinator little-orbit-tools; do
+    verify_share_placement "${name}" cache
+  done
+  verify_share_placement little-orbit-backups array
 }
 
 configure_shares() {
-  [[ -d "${SHARE_CONFIG_ROOT}" ]] || {
-    echo "Unraid share configuration is unavailable." >&2
+  [[ -d "${SHARE_CONFIG_ROOT}" && ! -L "${SHARE_CONFIG_ROOT}" ]] || {
+    echo "Unraid share configuration must be an available real directory." >&2
     exit 69
   }
   configure_share little-orbit-live only cache "Little Orbit direct-pool live state"
   configure_share little-orbit-deploy only cache "Little Orbit deployment source"
   configure_share little-orbit-secrets only cache "Little Orbit root-only runtime secrets"
   configure_share gpu-coordinator only cache "Content-free shared GPU coordination"
+  configure_share little-orbit-tools only cache "Little Orbit pinned host tools"
   configure_share little-orbit-backups no "" "Little Orbit encrypted array backups"
 }
 
@@ -92,7 +301,31 @@ create_layout() {
   install -d -m 0750 -o 65532 -g 65532 "${DATA_ROOT}/attachments"
   install -d -m 0755 "${DATA_ROOT}/releases" "${DATA_ROOT}/ollama"
   install -d -m 0755 -o 1000 -g 1000 "${DATA_ROOT}/clamav"
+  prepare_backup_placement_sentinel
   prepare_gpu_lock
+}
+
+prepare_backup_placement_sentinel() {
+  local sentinel="${BACKUP_ROOT}/.array-placement"
+  [[ ! -L "${sentinel}" ]] || {
+    echo "The backup placement sentinel cannot be a symbolic link." >&2
+    exit 78
+  }
+  if [[ ! -e "${sentinel}" ]]; then
+    (umask 0077; set -o noclobber; printf 'little-orbit-array-only\n' >"${sentinel}") || {
+      echo "Could not create the backup placement sentinel." >&2
+      exit 73
+    }
+  fi
+  [[ "$(stat -c '%F:%u:%g:%a:%h' "${sentinel}")" == \
+    "regular file:0:0:600:1" ]] || {
+    echo "The backup placement sentinel metadata is unsafe." >&2
+    exit 78
+  }
+  [[ "$(<"${sentinel}")" == "little-orbit-array-only" ]] || {
+    echo "The backup placement sentinel content is invalid." >&2
+    exit 78
+  }
 }
 
 prepare_gpu_lock() {
@@ -152,8 +385,20 @@ install_age() (
   install -m 0755 "${temporary}/age/age-keygen" "${TOOL_ROOT}/bin/age-keygen"
 )
 
-require_target
-configure_shares
-create_layout
-install_age
-printf '{"outcome":"initialized","address":"%s"}\n' "${EXPECTED_ADDRESS}"
+main() {
+  acquire_little_orbit_operations_lock wait 300 || {
+    echo "Operations lock wait timed out." >&2
+    return 75
+  }
+  require_target
+  audit_all_share_placements
+  configure_shares
+  create_layout
+  verify_all_share_placements
+  install_age
+  printf '{"outcome":"initialized","address":"%s"}\n' "${EXPECTED_ADDRESS}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

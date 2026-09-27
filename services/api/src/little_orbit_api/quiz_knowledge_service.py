@@ -12,6 +12,7 @@ from little_orbit_ai.knowledge import (
 from little_orbit_ai.ollama import OllamaFailure
 from sqlalchemy import select, update
 
+from .ai_work_queue import AiWorkLease, require_current_lease
 from .clock import SystemClock
 from .database import SessionFactory
 from .quiz_intelligence_models import AiKnowledgeChunk
@@ -26,7 +27,9 @@ class KnowledgeContext:
     semantic: bool
 
 
-async def sync_reviewed_knowledge(client: OllamaEmbeddingClient) -> str:
+async def sync_reviewed_knowledge(
+    client: OllamaEmbeddingClient, *, lease: AiWorkLease | None = None
+) -> str:
     """Embed a changed corpus before atomically replacing its active revision."""
 
     chunks = load_knowledge_chunks()
@@ -43,6 +46,7 @@ async def sync_reviewed_knowledge(client: OllamaEmbeddingClient) -> str:
     vectors = await _embed_chunks(client, chunks)
     now = SystemClock().now()
     async with SessionFactory() as session:
+        await require_current_lease(session, lease)
         await session.execute(update(AiKnowledgeChunk).values(active=False))
         for item, vector in zip(chunks, vectors, strict=True):
             existing = await session.scalar(

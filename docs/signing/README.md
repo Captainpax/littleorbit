@@ -97,6 +97,17 @@ that one-level drill root in addition to the production checkout; it does not br
 production source path. Patch the disposable policy to its throwaway certificate and use distinct
 unpublished version codes. Never pass the production signer bundle to a disposable drill.
 
+The 2026-09-26 `.14` rehearsal completed disposable Little Orbit phone/Wear and Big Orbit signing,
+independent package/version/Wear-feature inspection, wrong store password, key password, alias,
+and certificate rejection, secret redaction, production-bundle immutability, and zero-residue
+cleanup without signing a production APK. Docker container creation wedged after an unrelated
+concurrent build during the final negative matrix, so those verifier-only cases used the exact
+OpenJDK 17 runtime and compiled
+verifier class from each captured signer's read-only image layer; the full end-to-end signing runs
+used the hardened network-disabled containers. Exact image IDs, artifact hashes, and the bounded
+caveat are recorded in the
+[`2026-09-26 Unraid verification record`](../operations/VERIFICATION-UNRAID-2026-09-26.md).
+
 The runner decrypts only into `/dev/shm/little-orbit-signing/little-orbit.<run-id>`, supplies passwords to
 `apksigner` through mounted files, and deletes that tmpfs directory on success, failure, or signal.
 It refuses a dirty checkout or non-empty output directory. The signed output includes separate

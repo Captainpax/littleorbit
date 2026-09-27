@@ -42,10 +42,10 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 ## Commands and required tests
 
 ```bash
-docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml config
+docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml config --quiet
 docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml --profile model-setup run --rm model-init
 docker compose --env-file .env -f infra/compose.yaml -f infra/compose.dev.yaml up --build
-infra/scripts/unraid-stack.sh config
+bash infra/scripts/unraid-stack.sh validate
 curl --fail http://localhost:8180/api/v1/health/live
 docker compose --env-file .env -f infra/compose.yaml exec postgres pg_isready -U little_orbit
 .\infra\scripts\smoke-stack.ps1 up

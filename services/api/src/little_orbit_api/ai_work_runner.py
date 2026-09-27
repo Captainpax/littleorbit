@@ -44,12 +44,22 @@ LOGGER = logging.getLogger(__name__)
 
 class GenerateWeek(Protocol):
     async def __call__(
-        self, week_start: date, *, force: bool = False
+        self,
+        week_start: date,
+        *,
+        force: bool = False,
+        lease: AiWorkLease | None = None,
     ) -> dict[str, int]: ...
 
 
 class PrepareWeek(Protocol):
-    async def __call__(self, week_start: date, settings: Settings) -> None: ...
+    async def __call__(
+        self,
+        week_start: date,
+        settings: Settings,
+        *,
+        lease: AiWorkLease | None = None,
+    ) -> None: ...
 
 
 async def run_ai_work_cycle(
@@ -169,11 +179,13 @@ async def _execute_work(
         ZoneInfo(settings.ai_schedule_timezone)
     ).date()
     if lease.kind == WEEKLY_LEARNING:
-        await learn_feedback_week(local_date - timedelta(days=5), OllamaClient(model_settings))
-        await prepare_week(local_date + timedelta(days=2), settings)
-        if not await lease_is_current(lease):
-            raise RuntimeError("AI work lease expired during weekly planning")
-        await prepare_week(local_date + timedelta(days=9), settings)
+        await learn_feedback_week(
+            local_date - timedelta(days=5),
+            OllamaClient(model_settings),
+            lease=lease,
+        )
+        await prepare_week(local_date + timedelta(days=2), settings, lease=lease)
+        await prepare_week(local_date + timedelta(days=9), settings, lease=lease)
         return
     if lease.kind == WEEKLY_GENERATION:
         await _run_generation_horizon(
@@ -195,15 +207,13 @@ async def _run_generation_horizon(
 ) -> None:
     run_key = f"generate:{week_start.isoformat()}"
     now = SystemClock().now()
-    if not await claim_ai_run(run_key, "generation", now):
+    if not await claim_ai_run(run_key, "generation", now, lease=lease):
         if await ai_run_is_finished(run_key):
             return
         raise RuntimeError("AI generation run is already active")
     try:
-        first = await generate_week(week_start)
-        if not await lease_is_current(lease):
-            raise RuntimeError("AI work lease expired during generation")
-        second = await generate_week(week_start + timedelta(days=7))
+        first = await generate_week(week_start, lease=lease)
+        second = await generate_week(week_start + timedelta(days=7), lease=lease)
         summary = _merge_generation_summaries(first, second)
         status = (
             "passed"
@@ -213,9 +223,11 @@ async def _run_generation_horizon(
         )
         if not await lease_is_current(lease):
             raise RuntimeError("AI work lease expired during generation")
-        await finish_ai_run(run_key, status, summary)
+        await finish_ai_run(run_key, status, summary, lease=lease)
     except Exception:
-        await finish_ai_run(run_key, "failed", {"reason": "internal_failure"})
+        await finish_ai_run(
+            run_key, "failed", {"reason": "internal_failure"}, lease=lease
+        )
         raise
 
 

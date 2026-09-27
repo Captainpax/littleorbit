@@ -17,6 +17,9 @@ readonly PAIR_PATH="${MANIFEST_DIR}/little-orbit-pair-${TIMESTAMP}.json"
 readonly WRITER_SERVICES=(api worker media-worker)
 writer_ids=()
 resume_required=false
+retained_table_counts=""
+
+source "${SCRIPT_DIR}/unraid-operation-lock.sh"
 
 stack() {
   bash "${STACK}" "$@"
@@ -39,6 +42,8 @@ require_tools() {
   command -v sha256sum >/dev/null
   command -v findmnt >/dev/null
   command -v mountpoint >/dev/null
+  command -v realpath >/dev/null
+  command -v stat >/dev/null
   unraid_storage_ready || {
     echo "The exact Unraid cache and user-share mounts are unavailable." >&2
     exit 69
@@ -47,11 +52,22 @@ require_tools() {
     echo "Backup root must be the dedicated Unraid array share." >&2
     exit 78
   }
+  [[ -d "${BACKUP_ROOT}" && ! -L "${BACKUP_ROOT}" \
+    && "$(realpath -e "${BACKUP_ROOT}")" == /mnt/user/little-orbit-backups ]] || {
+    echo "Backup root must be a real directory on the dedicated array share." >&2
+    exit 78
+  }
+  [[ -f "${ENV_FILE}" && ! -L "${ENV_FILE}" \
+    && "$(stat -c '%u:%g:%a' "${ENV_FILE}")" == 0:0:600 ]] || {
+    echo "Runtime secrets must remain a root:root mode 0600 regular file." >&2
+    exit 78
+  }
 }
 
 read_recipient() {
   local value
-  value="$(sed -n 's/^BACKUP_AGE_RECIPIENT=//p' "${ENV_FILE}" | tail -n 1)"
+  value="$(tr -d '\r' <"${ENV_FILE}" \
+    | sed -n 's/^BACKUP_AGE_RECIPIENT=//p' | tail -n 1)"
   value="${value%\"}"; value="${value#\"}"
   [[ "${value}" =~ ^age1[023456789acdefghjklmnpqrstuvwxyz]{58}$ ]] || {
     echo "The backup age recipient is missing or invalid." >&2
@@ -140,11 +156,37 @@ encrypt_attachments() {
   local recipient="$1" partial="${ATTACHMENT_PATH}.partial" stream_script
   stream_script="$(<"${SCRIPT_DIR}/stream-attachment-backup.py")"
   rm -f -- "${partial}"
-  stack run --rm -T --no-deps --entrypoint python \
-    attachment-init -c "${stream_script}" | \
+  stack --profile tools run --rm -T --no-deps --entrypoint python \
+    backup-attachment-reader -c "${stream_script}" | \
     "${AGE_BIN}" --encrypt --recipient "${recipient}" --output "${partial}"
   [[ "$(stat -c %s "${partial}")" -ge 512 ]] || return 1
   mv -- "${partial}" "${ATTACHMENT_PATH}"
+}
+
+capture_retained_table_counts() {
+  local user database raw
+  user="$(stack exec -T postgres printenv POSTGRES_USER | tr -d '\r')"
+  database="$(stack exec -T postgres printenv POSTGRES_DB | tr -d '\r')"
+  [[ -n "${user}" && -n "${database}" ]] || return 69
+  raw="$(stack exec -T postgres psql --username="${user}" --dbname="${database}" \
+    --no-psqlrc --no-align --tuples-only --set=ON_ERROR_STOP=1 --command="
+      WITH table_counts AS (
+        SELECT tablename,
+          ((xpath('/row/count/text()', query_to_xml(
+            format('SELECT count(*) AS count FROM %I.%I', schemaname, tablename),
+            false, true, '')))[1]::text)::bigint AS row_count
+        FROM pg_tables WHERE schemaname = 'public'
+      )
+      SELECT jsonb_object_agg(tablename,
+        CASE WHEN tablename IN ('location_samples','together_device_health',
+          'question_feedback','question_feedback_operations','anonymous_question_reviews')
+        THEN 0 ELSE row_count END ORDER BY tablename)
+      FROM table_counts;" | tr -d '\r')"
+  retained_table_counts="$(jq -c -e '
+    type == "object" and length > 0 and
+    all(to_entries[]; (.key | type == "string") and
+      (.value | type == "number" and floor == . and . >= 0))
+  ' <<<"${raw}" >/dev/null && jq -c -S . <<<"${raw}")" || return 65
 }
 
 write_sidecars() {
@@ -153,10 +195,12 @@ write_sidecars() {
   attachment_hash="$(sha256sum "${ATTACHMENT_PATH}" | cut -d' ' -f1)"
   jq -n --arg created_at "$(date -u +%FT%TZ)" --arg file "$(basename "${DATABASE_PATH}")" \
     --arg hash "${db_hash}" --argjson bytes "$(stat -c %s "${DATABASE_PATH}")" \
+    --argjson retained_table_counts "${retained_table_counts}" \
     '{kind:"little-orbit-postgres",created_at:$created_at,encrypted_file:$file,
       encrypted_bytes:$bytes,encrypted_sha256:$hash,raw_location_rows_included:false,
       device_health_rows_included:false,attributable_quiz_feedback_included:false,
-      feedback_operation_rows_included:false,anonymous_review_rows_included:false}' \
+      feedback_operation_rows_included:false,anonymous_review_rows_included:false,
+      retained_table_counts:$retained_table_counts}' \
     >"${DATABASE_PATH}.json.partial"
   mv -- "${DATABASE_PATH}.json.partial" "${DATABASE_PATH}.json"
   jq -n --arg created_at "$(date -u +%FT%TZ)" --arg file "$(basename "${ATTACHMENT_PATH}")" \
@@ -176,9 +220,11 @@ write_pair_manifest() {
     --arg attachments "attachments/$(basename "${ATTACHMENT_PATH}")" \
     --arg attachment_hash "$(sha256sum "${ATTACHMENT_PATH}" | cut -d' ' -f1)" \
     --argjson attachment_bytes "$(stat -c %s "${ATTACHMENT_PATH}")" \
-    '{schema_version:2,created_at:$created_at,
+    --argjson retained_table_counts "${retained_table_counts}" \
+    '{schema_version:3,created_at:$created_at,
       database:{path:$db,bytes:$db_bytes,sha256:$db_hash},
       attachments:{path:$attachments,bytes:$attachment_bytes,sha256:$attachment_hash},
+      retained_table_counts:$retained_table_counts,
       raw_coordinates_included:false,device_health_rows_included:false,
       attributable_quiz_feedback_included:false,feedback_operation_rows_included:false,
       anonymous_review_rows_included:false}' >"${partial}"
@@ -192,11 +238,16 @@ prune_old_pairs() {
 
 main() {
   local recipient
+  acquire_little_orbit_operations_lock wait 300 || {
+    echo "Operations lock wait timed out." >&2
+    return 75
+  }
   require_tools
   install -d -m 0750 "${DATABASE_DIR}" "${ATTACHMENT_DIR}" "${MANIFEST_DIR}"
   recipient="$(read_recipient)"
   trap finish EXIT
   pause_writers
+  capture_retained_table_counts
   encrypt_database "${recipient}"
   encrypt_attachments "${recipient}"
   write_sidecars

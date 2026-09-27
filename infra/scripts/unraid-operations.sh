@@ -4,7 +4,8 @@ set -euo pipefail
 readonly MODE="${1:-pending}"
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly STACK="${SCRIPT_DIR}/unraid-stack.sh"
-readonly LOCK_PATH="${LITTLE_ORBIT_OPERATIONS_LOCK:-/var/lock/little-orbit-operations.lock}"
+
+source "${SCRIPT_DIR}/unraid-operation-lock.sh"
 
 stack() {
   bash "${STACK}" "$@"
@@ -107,12 +108,19 @@ run_pending() {
 }
 
 main() {
-  install -d -m 0755 "$(dirname "${LOCK_PATH}")"
-  exec 9>"${LOCK_PATH}"
+  local lock_status
   if [[ "${MODE}" == pending ]]; then
-    flock -n 9 || { echo '{"outcome":"already_running"}'; return 0; }
+    acquire_little_orbit_operations_lock nonblocking || {
+      lock_status=$?
+      [[ "${lock_status}" == 75 ]] || return "${lock_status}"
+      echo '{"outcome":"already_running"}'
+      return 0
+    }
   else
-    flock -w 300 9 || { echo "Operations lock wait timed out." >&2; return 75; }
+    acquire_little_orbit_operations_lock wait 300 || {
+      echo "Operations lock wait timed out." >&2
+      return 75
+    }
   fi
   db_sql "UPDATE admin_job_requests SET status='failed',result_json='{\"reason\":\"runner_interrupted\"}'::json,
     finished_at=now() WHERE status='running' AND kind IN ('backup','test_restore')

@@ -64,6 +64,17 @@ def downgrade() -> None:
     """Remove GPU scheduling state and restore the earlier admin vocabulary."""
 
     op.drop_constraint("ck_admin_job_kind", "admin_job_requests", type_="check")
+    op.execute(
+        sa.text(
+            "UPDATE admin_job_requests "
+            "SET kind = 'generate_quizzes', "
+            "status = CASE WHEN status IN ('pending', 'running') "
+            "THEN 'cancelled' ELSE status END, "
+            "finished_at = CASE WHEN status IN ('pending', 'running') "
+            "THEN COALESCE(finished_at, CURRENT_TIMESTAMP) ELSE finished_at END "
+            "WHERE kind = 'regenerate_quizzes'"
+        )
+    )
     op.create_check_constraint(
         "ck_admin_job_kind",
         "admin_job_requests",

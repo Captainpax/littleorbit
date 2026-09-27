@@ -1,6 +1,6 @@
 # Home deployment runbook
 
-Public availability depends on Unraid, home power, internet service, the router, and the separate Nginx Proxy Manager host remaining online. This topology is suitable for learning and a small service only after security, backup, and device release gates pass. The target production host is Unraid at `192.168.50.14`; Nginx Proxy Manager remains at `192.168.50.6` and public DNS/TLS remain unchanged.
+After cutover, public availability will depend on Unraid, home power, internet service, the router, and the separate Nginx Proxy Manager host remaining online. This topology is suitable for learning and a small service only after security, backup, and device release gates pass. The target production host is Unraid at `192.168.50.14`; Nginx Proxy Manager remains at `192.168.50.6` and public DNS/TLS remain unchanged.
 
 ## Unraid production layout
 
@@ -12,10 +12,11 @@ Use these non-exported paths. Do not place the live database or attachments bene
 | `/mnt/cache/little-orbit-deploy/` | Clean source checkout and fixed launcher | Non-exported; no runtime secrets or signer plaintext |
 | `/mnt/cache/little-orbit-secrets/` | Root-only runtime environment and backup age identity | Mode `0700`; never commit, print, or mount into unrelated containers |
 | `/mnt/cache/gpu-coordinator/` | Stable `gpu.lock` inode and content-free diagnostics | Shared GID, sticky/setgid directory `3770`, root-owned single-link lock `0660`; never replace the inode during metadata updates |
+| `/mnt/cache/little-orbit-tools/` | Checksum-pinned host-only tools such as `age` | Non-exported cache-only share; never add it to production container mounts |
 | `/mnt/cache/vault/little-orbit/android-signing/` | Separately encrypted Little Orbit and Big Orbit signer bundles | Outside production Compose; decrypt only into tmpfs for one-shot signing |
 | `/mnt/user/little-orbit-backups/` | Encrypted, privacy-filtered database/attachment pairs | Array-only share; local recovery, not off-host disaster recovery |
 
-Run `infra/scripts/unraid-bootstrap.sh` as root on the verified `.14` host to create the layout and install the checksum-pinned `age` binary. The script refuses another host and refuses to create state unless `/mnt/cache` is the expected BTRFS device mount and `/mnt/user` is the exact `shfs` mount; mere root-filesystem directories do not pass. Configure the Unraid shares as non-exported and exclude the live PostgreSQL and attachment directories from generic appdata backup/snapshot jobs.
+Run `infra/scripts/unraid-bootstrap.sh` as root on the verified `.14` host to create the layout and install the checksum-pinned `age` binary. The script refuses another host and refuses to create state unless `/mnt/cache` is the expected BTRFS device mount and `/mnt/user` is the exact `shfs` mount; mere root-filesystem directories do not pass. It requires SMB and NFS export to be disabled, may add the two missing NFS-disable keys to an otherwise exact legacy share configuration, and rejects partial or conflicting NFS policy. It also writes a root-owned mode-`0600` content-free `.array-placement` sentinel through `/mnt/user/little-orbit-backups/` so an empty backup share materializes on an array disk and can pass the physical-placement audit. Do not remove that sentinel. Exclude the live PostgreSQL and attachment directories from generic appdata backup/snapshot jobs.
 
 Keep the root-only runtime environment at `/mnt/cache/little-orbit-secrets/runtime.env`. In addition to normal production secrets, it must resolve these deployment values:
 
@@ -45,27 +46,54 @@ Do not choose `172.30.14.0/28`: the target's Pterodactyl bridge owns `172.30.0.0
 The launcher always applies Compose in this order:
 
 ```bash
-/mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-stack.sh config
-/mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-stack.sh up -d
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-stack.sh validate
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh startup
 ```
 
-That resolves `compose.yaml`, then `compose.gpu.yaml`, then `compose.unraid.yaml`. Under the [Docker Compose merge rules](https://docs.docker.com/reference/compose-file/merge/), relative paths still resolve from the base Compose project while target-keyed volume mounts in the Unraid override replace their base counterparts. Inspect the rendered configuration and require that only `192.168.50.14:8180` is published. PostgreSQL, API, web, Ollama, ClamAV, media, mail, and context-fetcher ports must remain private.
+The quiet validation resolves `compose.yaml`, then `compose.gpu.yaml`, then `compose.unraid.yaml` without printing expanded environment values. Production starts always go through the fail-closed dispatcher so the firewall is installed before publication and the gateway is stopped after any boundary failure. Under the [Docker Compose merge rules](https://docs.docker.com/reference/compose-file/merge/), relative paths still resolve from the base Compose project while target-keyed volume mounts in the Unraid override replace their base counterparts. The launcher discards ambient overrides for every fixed production setting and validates the effective port model; the post-start firewall check also verifies the running Docker bindings. Never print the rendered Compose model because it contains expanded secrets. Require that only `192.168.50.14:8180` is published. PostgreSQL, API, web, Ollama, ClamAV, media, mail, and context-fetcher ports must remain private.
 
 ## Unraid startup, firewall, and schedules
 
-Create Unraid User Scripts only after the array and Docker are available. Each entry calls the fixed dispatcher rather than reconstructing a Compose command:
+Before installing the schedules, set Unraid's host timezone to `America/Los_Angeles` in **Settings > Date and Time**.
+The installer requires both `/boot/config/ident.cfg` to name that exact IANA timezone and the effective
+`/etc/localtime` bytes to match its installed zoneinfo file. It fails before changing User Scripts if either check is
+unavailable or mismatched; setting only a process `TZ` variable is not sufficient. Verify and install after the array
+and Docker are available:
 
 ```bash
-/mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh startup
-/mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh pending
-/mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh backup
-/mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh test_restore
+source /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-timezone.sh
+require_unraid_pacific_timezone
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-install-user-scripts.sh install
+```
+
+The default `install` mode writes the fixed wrappers but keeps startup and every cron entry disabled. This is the only
+mode allowed before traffic has moved. After successful cutover validation, activate the already inspected entries
+explicitly:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-install-user-scripts.sh activate-after-cutover
+```
+
+Do not activate `.14` while `.182` schedules are enabled or before `.14` is the authoritative writer.
+
+Each installed entry calls the fixed dispatcher rather than reconstructing a Compose command:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh startup
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh pending
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh backup
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh test_restore
 ```
 
 - `startup`: after array/Docker startup; verifies the exact mounts, applies the firewall, creates/validates paths, starts the exact stack, and rechecks the firewall/IPv6 boundary. A failed start or post-start check stops the gateway.
 - `pending`: every five minutes; runs allowlisted Big Orbit operations. A concurrent runner may return successful `already_running` only for this mode.
 - `backup`: daily at 08:00 `America/Los_Angeles`; a lock collision waits up to five minutes and then fails nonzero.
 - `test_restore`: Tuesday at 07:00 `America/Los_Angeles`; it uses the same bounded lock behavior.
+
+The dispatcher repeats the timezone check before every scheduled `backup` or `test_restore`, so later host drift fails
+that run nonzero instead of silently executing Pacific wall-clock protection jobs at the wrong local time. The
+five-minute `pending` runner remains interval-based, and queued typed operations are not reinterpreted as wall-clock
+schedules.
 
 The idempotent firewall script owns only its alternating `LITTLE_ORBIT_GATEWAY_A` and `LITTLE_ORBIT_GATEWAY_B` chains. It fully prepares the inactive chain before inserting it at the front of `DOCKER-USER`, then retires the previous chain, so a failed refresh remains fail-closed. It uses conntrack original-destination matching to accept source `192.168.50.6` for original target `192.168.50.14:8180`, rejects every other source for that destination, and returns unrelated traffic to the existing `DOCKER-USER` rules. It never flushes DMS or other rules. Startup fails if an IPv6 listener exposes port 8180. From `.6`, validate readiness with the real public host header; from another LAN peer, verify the direct request is rejected:
 
@@ -89,7 +117,7 @@ Do not change live routing until every item is recorded in a new verification en
 The worker deliberately does not depend on model installation: safe fourteen-day coverage must start even when the registry or Ollama is unavailable. Pre-pull and verify the two pinned model digests explicitly before enabling GPU work:
 
 ```bash
-/mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-stack.sh \
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-stack.sh \
   --profile model-setup run --rm model-init
 ```
 
@@ -113,7 +141,7 @@ python infra/scripts/direct_migration.py `
   --confirm forward-.182-to-.14-users-offline
 ```
 
-The command first proves that target attachment and release storage are empty. It then streams the runtime environment plus fixed target-only path values—including the exact `/mnt/cache/gpu-coordinator/gpu.lock` bind—and the backup identity into root-only files; an existing file is accepted only when its bytes already match and is never overwritten. It starts only target PostgreSQL, requires every public target table to be empty, and only then freezes the source. Before promotion it compares source and destination inventories containing every public base-table count and Alembic head, attachment file count/total bytes/aggregate digest without exposing paths, and every immutable release path/size/hash. Its final JSON contains both inventories as cutover evidence. On success, the source writers deliberately remain stopped. Then:
+The command first proves that target attachment and release storage are empty. It then streams the runtime environment plus fixed target-only path values—including the exact `/mnt/cache/gpu-coordinator/gpu.lock` bind—and the backup identity into root-only files; an existing file is accepted only when its bytes already match and is never overwritten. Before freezing `.182`, it builds every target-local application and migration image needed by the transfer or later startup without starting target writers. It starts only target PostgreSQL, requires every public target table to be empty, and only then freezes the source. Before promotion it compares source and destination inventories containing every public base-table count and Alembic head, normalized role attributes/memberships, database/schema/object/default ACLs, attachment file count/total bytes/aggregate digest without exposing paths, and every immutable release path/size/hash. A static least-privilege gate rejects extra role membership or grants; forward migration permits only the reviewed empty `ai_work_queue` table and its fixed API/worker/backup privileges. Its final JSON contains both inventories as cutover evidence. On success, the source writers deliberately remain stopped. Then:
 
 1. Run the target migration container and require Alembic head `0032`.
 2. Validate database roles/grants, exact pre/post counts, attachment aggregate digest, and immutable release sizes/hashes without inspecting content.
@@ -154,7 +182,7 @@ python infra/scripts/direct_migration.py `
   --confirm post-write-rollback-.14-to-.182-users-offline
 ```
 
-Rollback rejects a backup identity argument and never copies or overwrites `.182` secrets. It requires the old production project to be fully stopped, refuses an existing `little-orbit-rollback` container or PostgreSQL volume, builds the updated attachment image, and starts a fresh `little-orbit-rollback_postgres-data` volume. After it freezes the exact `.14` writers, the same single-transaction database restore, sibling-tree verification, and content-free inventory comparison run in reverse. A failure restarts exactly the previously running `.14` writers and removes only the dedicated rollback project/data; success deliberately leaves `.14` writers stopped.
+Rollback rejects a backup identity argument and never copies or overwrites `.182` secrets. It requires the old production project to be fully stopped, refuses an existing `little-orbit-rollback` container or PostgreSQL volume, and records a durable `rollback-preparing` journal on `.14` before any local destination mutation. It then builds the updated attachment image and starts a fresh `little-orbit-rollback_postgres-data` volume. After it freezes the exact `.14` writers, the same single-transaction database restore, sibling-tree verification, and content-free inventory comparison run in reverse. Local promotion is followed by a durable `rollback-committed` transition while both host locks remain held. A pre-commit failure removes only the dedicated rollback project/data, restarts and proves the exact `.14` writers, and restores the forward-committed journal; a committed rollback preserves the local target and keeps `.14` frozen.
 
 The recovery override binds only `127.0.0.1:18181` by default. Validate the restored API, sessions, attachments, releases, roles, and Alembic head in that isolated project before exposing it. Every later Compose invocation must retain the same project, base/override order, environment file, and non-secret recovery values:
 
@@ -195,6 +223,24 @@ Keep `REGISTRATION_OPEN=false` while Mailpit is the configured SMTP service. Ope
 Change only the upstream address from `.182` to `.14`; keep public DNS, certificate, and TLS settings unchanged. Test website pages, `/patch-notes`, `/patch-notes.xml`, `/.well-known/assetlinks.json`, `/api/v1/health/ready`, a real WebSocket upgrade, signup email delivery, and certificate renewal/recovery. Enable HSTS only after those checks and a rollback path succeed. The live NPM change is an explicit deployment action; screenshots or a saved draft are not proof that traffic works.
 
 ## Restart recovery
+
+If forward migration is interrupted, do not start either copy manually. With schedules still disabled and the same pinned SSH inputs, run the recovery-only direction:
+
+```powershell
+python infra/scripts/direct_migration.py `
+  --direction recover-forward `
+  --local-host 192.168.50.182 `
+  --unraid-host 192.168.50.14 `
+  --unraid-port 23 `
+  --ssh-identity C:\protected\little-orbit-migration-ed25519 `
+  --known-hosts C:\protected\little-orbit-migration-known-hosts `
+  --local-env .env `
+  --confirm recover-interrupted-forward-.14-state
+```
+
+Under the shared local/remote migration exclusion, `preparing` removes only the fixed `.14` target copy and becomes a durable restart-required journal before `.182` is started and proved healthy. `committed` preserves `.14` and never starts `.182`; an absent journal is a no-op. Malformed or foreign state refuses recovery.
+
+For an interrupted reverse migration, retain the fully stopped old `little-orbit` project and the exact fenced rollback root, then use `--direction recover-rollback` with confirmation `recover-interrupted-rollback-.182-state` and the same `--rollback-data-root`. `rollback-preparing` removes only the dedicated rollback project and allowlisted root children, restarts and proves `.14`, then restores its forward-committed journal. `rollback-committed` preserves the promoted `.182` copy and never restarts `.14`. A legacy forward-committed marker permits the same cleanup/restart path; malformed, absent, or foreign state fails closed.
 
 The Unraid startup User Script runs only after the array and Docker are available. Reboot the host, then verify the `.14` address, direct cache mounts, NPM-only firewall scope, absent IPv6 listener, all health checks, public HTTPS, WSS, email, worker schedules, and one curated fallback pool while Ollama is stopped.
 
@@ -509,7 +555,7 @@ Before migration, create and verify a coordinated encrypted database/attachment 
 
 The 1.3 coordinator uses a workspace-bounded relative-path helper compatible with the documented Windows PowerShell 5.1 invocation as well as PowerShell 7. Treat encrypted component files without a completed pair manifest as incomplete and never select them for restore.
 
-Verify Saturday at 01:00 `America/Los_Angeles` makes one cursor-bounded learning/planning job eligible and Sunday at 03:00 makes generation eligible. Under contention, require persistent six-hour retries without an `AiRun` claim or false failure; successful generation must publish only after fourteen days satisfy schema, theme/depth composition, safety, embedding, and semantic checks. Inspect Big Orbit for content-free queue, reserve-low, stale-context, and failed/fallback-run alerts. The typed regeneration action may replace only future unanswered global pools.
+The published 1.3.0 baseline used Saturday/Sunday 09:00 Pacific and one planned week, as recorded in its immutable release evidence. For the current Unraid migration source, verify Saturday at 01:00 `America/Los_Angeles` makes one cursor-bounded learning/planning job eligible and Sunday at 03:00 makes generation eligible. Under contention, require persistent six-hour retries without an `AiRun` claim or false failure; successful generation must publish only after fourteen days satisfy schema, theme/depth composition, safety, embedding, and semantic checks. Inspect Big Orbit for content-free queue, reserve-low, stale-context, and failed/fallback-run alerts. The typed regeneration action may replace only future unanswered global pools.
 
 For every fresh Big Orbit device, run `python -m little_orbit_api.cli bootstrap-admin <email>` inside the trusted API environment and transfer the displayed PIN out of band. Do not store it in a deployment log. Confirm five wrong attempts and ten-minute expiry fail closed, a second PIN revokes the first unfinished setup, and bootstrap bearer tokens cannot call normal administrator routes. On the first owner, complete QR-based TOTP and retain recovery codes securely; on later devices, confirm existing MFA material is unchanged. Keep at least one tested recovery path before revoking an older device.
 

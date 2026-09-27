@@ -6,7 +6,7 @@ Date: 2026-09-26
 
 ## Context
 
-Little Orbit's production stack previously ran on a Windows host at
+Little Orbit's production stack currently runs on a Windows host at
 `192.168.50.182`. The Unraid server at `192.168.50.14` has the durable cache
 pool, parity array, and RTX 4060 needed for the application, but the GPU is
 also used by Scriptarr. Moving the stack must preserve every production row,

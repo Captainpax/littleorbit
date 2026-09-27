@@ -4,6 +4,9 @@ set -euo pipefail
 readonly MODE="${1:-}"
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
+source "${SCRIPT_DIR}/unraid-timezone.sh"
+source "${SCRIPT_DIR}/unraid-operation-lock.sh"
+
 runtime_mounts_ready() {
   local cache user
   mountpoint --quiet -- /mnt/cache && mountpoint --quiet -- /mnt/user || return 1
@@ -28,8 +31,23 @@ wait_for_runtime() {
 }
 
 stop_gateway_after_failed_startup() {
-  if ! bash "${SCRIPT_DIR}/unraid-stack.sh" stop gateway; then
+  local -a gateway_ids=()
+  if ! docker info >/dev/null 2>&1; then
+    echo "Docker is unavailable while closing the Little Orbit gateway." >&2
+    return 69
+  fi
+  mapfile -t gateway_ids < <(docker ps --quiet \
+    --filter label=com.docker.compose.project=little-orbit \
+    --filter label=com.docker.compose.service=gateway)
+  if ((${#gateway_ids[@]} > 0)) && ! docker stop "${gateway_ids[@]}" >/dev/null; then
     echo "Little Orbit gateway could not be stopped after startup verification failed." >&2
+    return 70
+  fi
+  if docker ps --quiet \
+    --filter label=com.docker.compose.project=little-orbit \
+    --filter label=com.docker.compose.service=gateway | grep -q .; then
+    echo "Little Orbit gateway remains active after fail-closed cleanup." >&2
+    return 70
   fi
 }
 
@@ -44,14 +62,40 @@ start_stack_fail_closed() {
   fi
 }
 
+run_startup() {
+  local status
+  acquire_little_orbit_operations_lock wait 300 || {
+    echo "Operations lock wait timed out." >&2
+    return 75
+  }
+  wait_for_runtime || {
+    status=$?
+    stop_gateway_after_failed_startup || return 70
+    return "${status}"
+  }
+  bash "${SCRIPT_DIR}/unraid-firewall.sh" --prepare || {
+    status=$?
+    stop_gateway_after_failed_startup || return 70
+    return "${status}"
+  }
+  bash "${SCRIPT_DIR}/unraid-bootstrap.sh" || {
+    status=$?
+    stop_gateway_after_failed_startup || return 70
+    return "${status}"
+  }
+  start_stack_fail_closed
+}
+
 case "${MODE}" in
   startup)
-    wait_for_runtime
-    bash "${SCRIPT_DIR}/unraid-firewall.sh"
-    bash "${SCRIPT_DIR}/unraid-bootstrap.sh"
-    start_stack_fail_closed
+    run_startup
     ;;
-  pending|backup|test_restore)
+  pending)
+    wait_for_runtime
+    exec bash "${SCRIPT_DIR}/unraid-operations.sh" "${MODE}"
+    ;;
+  backup|test_restore)
+    require_unraid_pacific_timezone
     wait_for_runtime
     exec bash "${SCRIPT_DIR}/unraid-operations.sh" "${MODE}"
     ;;

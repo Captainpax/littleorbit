@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
 $docker = (Get-Command docker -ErrorAction Stop).Source
 $composeArguments = @("compose", "--env-file", ".env", "-f", $ComposeFile)
-$mutex = [Threading.Mutex]::new($false, "Local\LittleOrbitOperationsRunner")
+$mutex = [Threading.Mutex]::new($false, "Global\LittleOrbitOperationsRunner")
 $lockAcquired = $false
 
 function Invoke-DatabaseCommand {

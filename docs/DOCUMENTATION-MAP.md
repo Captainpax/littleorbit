@@ -120,7 +120,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/operations/VERIFICATION-1.2.0-2026-09-20.md` — quiz intelligence, Big Orbit, automated checks, emulator evidence, and explicit open release gates.
 - `docs/operations/VERIFICATION-1.2.0-2026-09-21.md` — final signed identities, disposable-stack and device checks, waivers, rollout, backup, and public production evidence.
 - `docs/operations/VERIFICATION-1.3.0-2026-09-23.md` — themed quiz, retrieval, reserve, PIN-bootstrap, signed artifacts, production rollout, and deferred physical-device evidence.
-- `docs/operations/VERIFICATION-UNRAID-2026-09-26.md` — source implementation, read-only target preflight, and explicitly pending live migration, GPU, recovery, signing, and cutover evidence.
+- `docs/operations/VERIFICATION-UNRAID-2026-09-26.md` — source implementation, target rehearsal, live shared-GPU and signer-custody evidence, plus explicitly pending migration, recovery, and cutover gates.
 - `docs/signing/README.md` — public certificate identity and private-key handling.
 
 ## Immutable release notes
