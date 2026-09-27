@@ -78,16 +78,16 @@ $docker = (Get-Command docker -ErrorAction Stop).Source
 $age = (Get-Command age -ErrorAction Stop).Source
 $composeArguments = @("compose", "--env-file", ".env", "-f", $ComposeFile)
 $verifier = Get-Content -LiteralPath (Join-Path $PSScriptRoot "verify-attachment-backup.py") -Raw
-$createdDatabase = $false
+$cleanupDatabase = $false
 
 Push-Location $repoRoot
 try {
+    $cleanupDatabase = $true
     & (Join-Path $PSScriptRoot "restore-postgres.ps1") `
         -BackupPath $databaseBackup.FullName `
         -ComposeFile $ComposeFile `
         -TargetDatabase $databaseName `
         -IdentityPath $IdentityPath | Out-Null
-    $createdDatabase = $true
 
     $databaseUser = (& $docker @composeArguments exec -T postgres printenv POSTGRES_USER).Trim()
     $validationSql = @"
@@ -130,7 +130,7 @@ THEN 'ok' ELSE 'invalid' END;
     } | ConvertTo-Json
 }
 finally {
-    if ($createdDatabase) {
+    if ($cleanupDatabase) {
         if ($databaseName -notmatch '^little_orbit_drill_[0-9]{14}$') {
             throw "Refusing to remove an unexpected restore-drill database."
         }

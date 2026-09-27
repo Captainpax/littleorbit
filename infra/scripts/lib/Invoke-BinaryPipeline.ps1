@@ -67,9 +67,20 @@ function Invoke-BinaryPipeline {
     $source.StartInfo = $sourceInfo
     $destination = [Diagnostics.Process]::new()
     $destination.StartInfo = $destinationInfo
+    $destinationInput = $null
     try {
-        if (-not $destination.Start()) {
-            throw "Could not start destination process '$DestinationFile'."
+        # Windows PowerShell 5.1 otherwise prefixes the redirected binary stdin
+        # with a UTF-8 BOM when Process.Start creates StandardInput.
+        $originalInputEncoding = [Console]::InputEncoding
+        try {
+            [Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
+            if (-not $destination.Start()) {
+                throw "Could not start destination process '$DestinationFile'."
+            }
+            $destinationInput = $destination.StandardInput
+        }
+        finally {
+            [Console]::InputEncoding = $originalInputEncoding
         }
         $destinationError = $destination.StandardError.ReadToEndAsync()
         if (-not $source.Start()) {
@@ -77,8 +88,8 @@ function Invoke-BinaryPipeline {
         }
         $sourceError = $source.StandardError.ReadToEndAsync()
 
-        $source.StandardOutput.BaseStream.CopyTo($destination.StandardInput.BaseStream)
-        $destination.StandardInput.Close()
+        $source.StandardOutput.BaseStream.CopyTo($destinationInput.BaseStream)
+        $destinationInput.Close()
         $source.WaitForExit()
         $destination.WaitForExit()
         $sourceMessage = $sourceError.GetAwaiter().GetResult().Trim()
@@ -96,7 +107,9 @@ function Invoke-BinaryPipeline {
         }
         if (-not $destination.HasExited) {
             try {
-                $destination.StandardInput.Close()
+                if ($destinationInput) {
+                    $destinationInput.Close()
+                }
             }
             catch {
                 # The child may already have closed its stdin after reporting an error.

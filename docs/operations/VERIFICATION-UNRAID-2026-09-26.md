@@ -24,7 +24,7 @@ The following checks passed before this record was written:
 
 | Check | Result |
 |---|---|
-| `python -m pytest infra/scripts/tests -q` | 127 passed; one capability skip |
+| `python -m pytest infra/scripts/tests -q` | 130 passed; one capability skip |
 | Full API/AI suite with disposable PostgreSQL 17/pgvector | 259 passed; one Windows symbolic-link capability skip; 22 warnings |
 | Direct-migration split suite | 81 passed |
 | Restart-safe migration recovery contract | 23 passed |
@@ -123,6 +123,8 @@ The first inactive User Scripts install also exposed an empty-host no-op bug: an
 
 The selected code-only snapshot contains no runtime environment, signer store, backup identity, or SSH key. Its clean rollback and `.14` deployment checkouts have a matching mode-independent blob/path digest. Earlier staging attempts remain preserved as recoverable code-only directories and are not selected for migration.
 
+Immediately before the source freeze, the three `.182` production schedules were disabled and verified not running. The first fresh backup attempt exposed Windows PowerShell 5.1 native-argument removal of JSON quotes in the operations runner; database commands now stream SQL through `psql` stdin. The first restore attempt then exposed the .NET Framework redirected-stdin UTF-8 preamble corrupting otherwise binary-safe PostgreSQL and attachment streams. The shared binary pipeline now creates destination stdin under a BOM-free encoding, and restore cleanup is armed before the restore command can fail. The exact leaked disposable database from that failed attempt was removed after name and count validation. A newly generated encrypted pair passed two restore drills with matching pair-manifest SHA-256 `7fc7cb833f1373aa94b9d4f202157190b0ff454c3e52c3555945c917bf83ab95`; schema, excluded private rows, and the attachment manifest verified, no drill database remained, and public-host source readiness returned HTTP 200. The earlier failed run remains visible as failed operational evidence and is not treated as a valid drill.
+
 ## Required before source freeze
 
 - [ ] Recheck the static/DHCP reservation, SSH port 23 host key, temporary migration key, free capacity, NVIDIA runtime, port 8180, IPv6 listeners, and `10.253.14.0/28` availability.
@@ -136,8 +138,8 @@ The selected code-only snapshot contains no runtime environment, signer store, b
 - [x] Run Little Orbit API/AI tests, Ruff, mypy, web checks/tests/build, Android unit/lint tasks, Compose checks, backup/restore safety tests, and Android release-helper tests.
 - [x] Verify Pacific daylight-saving boundaries, ordered six-hour retry persistence, contention before `AiRun` claim, stale-lease fencing, administrator AI queueing, fourteen-day coverage, and timeout/OOM handling in focused tests.
 - [x] Complete disposable-key end-to-end signing for Little Orbit and Big Orbit plus wrong-store-password, wrong-key-password, wrong-alias, wrong-certificate, redaction, independent metadata, and zero-residue cleanup checks on `.14`, with the final negative-verifier Docker caveat recorded above.
-- [ ] Confirm both people are off the app and disable `.182` schedules.
-- [ ] Create a fresh ordinary privacy-filtered encrypted backup and pass its restore drill.
+- [x] Confirm both people are off the app and disable `.182` schedules.
+- [x] Create a fresh ordinary privacy-filtered encrypted backup and pass its restore drill.
 - [ ] Record source commit/image digests, migration head `0031`, privacy-safe table counts including feedback and feedback-operation rows, attachment aggregate digest, and every immutable-release size/hash.
 - [x] Stage schema-0032-compatible source on `.182` for rollback without starting it.
 
