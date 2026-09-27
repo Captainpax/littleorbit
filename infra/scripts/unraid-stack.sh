@@ -92,7 +92,7 @@ sanitize_process_environment() {
   local name
   while IFS= read -r name; do
     case "${name}" in
-      HOME|LANG|LC_*|LOGNAME|PATH|SHELL|TERM|TMPDIR|TZ|USER|LITTLE_ORBIT_MIGRATION_LOCK_TOKEN)
+      HOME|LANG|LC_*|LOGNAME|PATH|SHELL|TERM|TMPDIR|TZ|USER|LITTLE_ORBIT_MIGRATION_LOCK_TOKEN|LITTLE_ORBIT_OPERATIONS_LOCK_FD)
         ;;
       *) unset "${name}" ;;
     esac

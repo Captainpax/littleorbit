@@ -150,6 +150,10 @@ def test_compose_validation_is_quiet_and_secret_safe() -> None:
     )
     assert 'unset "${RUNTIME_ENV_KEYS[@]}"' in launcher
     assert "sanitize_process_environment" in launcher
+    assert (
+        "LITTLE_ORBIT_MIGRATION_LOCK_TOKEN|LITTLE_ORBIT_OPERATIONS_LOCK_FD"
+        in launcher
+    )
     assert "inventory_runtime_keys" in launcher
     assert "unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PATH_SEPARATOR" in launcher
     assert "COMPOSE_PROFILES" in launcher and "COMPOSE_ENV_FILES" in launcher
