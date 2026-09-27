@@ -2,7 +2,7 @@
 
 Little Orbit is designed around two people sharing deliberately. It does not sell personal data, display advertising, or use answers or relationship activity to train or personalize AI. The 1.3 AI pipeline creates the same calendar-based question pool for the service. It may learn from separately consented, sanitized question-quality feedback only after K-anonymity thresholds are met; it never receives quiz answers or account, couple, note, location, or relationship data.
 
-This document describes published 1.3 product behavior and the current source's operational privacy boundaries. The Unraid verification record covers the completed application-cold live migration, corrected reboot recovery, and authorized DNS correction while distinguishing those checks from still-open authenticated, broader physical-device, and cellular external-WAN evidence. A production privacy notice and legal review remain operational requirements for future changed data use.
+This document describes published 1.3 product behavior and the current source's operational privacy boundaries. The Unraid verification record covers the completed application-cold live migration, corrected reboot recovery, authorized DNS correction, one existing authenticated app session, and its pre-reload WSS connection while distinguishing those checks from the still-open second-session, post-reload WSS reconnect, broader physical-device, and cellular external-WAN evidence. A production privacy notice and legal review remain operational requirements for future changed data use.
 
 ## Data and purpose
 
