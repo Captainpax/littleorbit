@@ -4,7 +4,7 @@
 
 This record covers preparation and the live application-cold move of Little Orbit from the Windows host at `192.168.50.182` to Unraid at `192.168.50.14`, cooperative use of the target RTX 4060 with Scriptarr, and use of `.14` as the isolated Android build/signing host.
 
-As of 2026-09-27, the direct database, attachment, and immutable-release stream is committed; production is at migration `0032`; Nginx Proxy Manager points to `.14:8180`; and `.14` is the authoritative writer. Public pages, readiness, release metadata, complete and ranged APK delivery, forwarded-client identity, ClamAV health, schedule activation, corrected fail-closed reboot recovery, the shared lock inode, empty Ollama/VRAM state, a live Oracle/LocalAI exclusive-residency and idle-unload cycle, child-role credential rotation, fresh local encrypted backup/restore drills, authoritative DNS correction, one existing authenticated Android session, and existing Gmail STARTTLS/authentication have passed the checks recorded below. That phone opened an authenticated notification WSS connection before the final code-only reload and produced authenticated `200` traffic afterward. The old `.182` writer services remain stopped, and no `.182` database or attachment volume has been deleted. The second existing session, a post-reload authenticated WSS reconnect, Big Orbit enrollment/session/TOTP behavior, Gmail credential rotation and ordinary delivery, first-party notification delivery, authorized attachment reads, Little Orbit generation or embedding while Scriptarr owns the GPU, real Raven durable queue/resume behavior, broader physical-device QA, external cellular/WAN reachability, router-side `.14` reservation confirmation, and off-host recovery remain open; this record does not claim those checks passed.
+As of 2026-09-27, the direct database, attachment, and immutable-release stream is committed; production is at migration `0032`; Nginx Proxy Manager points to `.14:8180`; and `.14` is the authoritative writer. Public pages, readiness, release metadata, complete and ranged APK delivery, forwarded-client identity, ClamAV health, schedule activation, corrected fail-closed reboot recovery, the shared lock inode, empty Ollama/VRAM state, a live Oracle/LocalAI exclusive-residency and idle-unload cycle, child-role credential rotation, fresh local encrypted backup/restore drills, authoritative DNS correction, one existing authenticated Android session, and existing-credential Gmail STARTTLS, authentication, and content-free mailbox delivery have passed the checks recorded below. That phone opened an authenticated notification WSS connection before the final code-only reload and produced authenticated `200` traffic afterward. The old `.182` writer services remain stopped, and no `.182` database or attachment volume has been deleted. The second existing session, a post-reload authenticated WSS reconnect, Big Orbit enrollment/session/TOTP behavior, Gmail credential rotation and post-rotation ordinary application delivery, first-party notification delivery, authorized attachment reads, Little Orbit generation or embedding while Scriptarr owns the GPU, real Raven durable queue/resume behavior, broader physical-device QA, external cellular/WAN reachability, router-side `.14` reservation confirmation, and off-host recovery remain open; this record does not claim those checks passed.
 
 ## Implemented in deployed source
 
@@ -299,6 +299,25 @@ or router-side `.14` reservation confirmation. It also did not repeat a host
 reboot; the separately recorded corrected reboot-recovery evidence above
 remains authoritative.
 
+## Current-credential SMTP receipt acceptance — 2026-09-27
+
+After the shared-GPU pass, a one-shot process inside the running production
+worker loaded its existing Gmail settings and called the same SMTP adapter used
+by ordinary delivery. It addressed a content-free message to the configured
+SMTP username in memory and reported success for opaque probe ID
+`20260927T205700Z`. Protected inspection of the configured Gmail mailbox found
+exactly one matching message in Inbox, All Mail, and Sent, and none in Spam.
+No mailbox address, credential, or message body was printed.
+
+The probe bypassed the application database deliberately: it created no mail
+outbox row, recovery token, or temporary host file. It therefore proves that
+the current credential and production SMTP adapter reached the configured
+mailbox, but not the HTTP verification/recovery route, encrypted outbox,
+worker-polling path, or public fragment link. The owner-generated app-password
+rotation and a post-rotation receipt through the ordinary application flow
+remain open. The old Google credential must remain active until that two-phase
+rotation reaches its separately verified commit point.
+
 ## Pre-freeze gates and evidence
 
 - [ ] Independently confirm the router-side `.14` reservation. The reservation was not observable from Unraid; the SSH port 23 host key and temporary key, capacity, NVIDIA runtime, port 8180, IPv6 listeners, and `10.253.14.0/28` availability were rechecked before freeze.
@@ -328,7 +347,7 @@ remains authoritative.
 - [x] Verify the six public web routes, API readiness and release metadata, ClamAV, complete/ranged phone and Wear APK delivery, forwarded-client identity, and an unauthenticated WSS upgrade that reached the application and failed closed with `403`.
 - [x] Confirm the same inode `3177412` in every named GPU consumer and an empty Ollama/VRAM state after cutover.
 - [x] Verify one existing physical Android session against the exact published APK, including authenticated HTTPS and an accepted/open notification WSS before the code-only reload; verify authenticated `200` traffic again after the reload without inspecting relationship content.
-- [ ] Verify the second existing session, a post-reload authenticated WSS reconnect, Big Orbit enrollment/session behavior, a rotated Gmail credential plus ordinary delivery, first-party notification delivery, and an authorized attachment read. Existing STARTTLS and authentication passed without sending a message.
+- [ ] Verify the second existing session, a post-reload authenticated WSS reconnect, Big Orbit enrollment/session behavior, a rotated Gmail credential plus ordinary application delivery, first-party notification delivery, and an authorized attachment read. The existing Gmail credential passed STARTTLS/authentication and a content-free adapter self-send with protected mailbox receipt; that does not close the rotation or post-rotation ordinary-flow gates.
 - [x] Exercise a current post-cutover Scriptarr Oracle/LocalAI workload through the exact shared lock and prove exclusive GPU residency, no Ollama/FFmpeg overlap, continuous lock ownership, idle unload, unchanged lock metadata, and post-unload acquisition.
 - [ ] Exercise Little Orbit GPU generation/embedding while live Scriptarr owns the GPU, and exercise a real Raven durable queue/resume path. The current Oracle/LocalAI active-workload proof and host-held Raven exit-`75` boundary do not establish either behavior.
 - [ ] Verify the public origin from an external cellular/WAN path. The separately authorized apex A correction from `67.185.206.35` to current WAN `67.185.205.68` is complete: all four authoritative name servers answered the new value, and the Pixel 8 Pro passed browser plus authenticated-app checks over Wi-Fi. Those checks do not substitute for a cellular external-network request.
