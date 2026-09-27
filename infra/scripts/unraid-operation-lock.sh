@@ -187,6 +187,7 @@ hold_little_orbit_migration_lock() {
   trap "remove_little_orbit_migration_holder '${token}'" EXIT
   printf 'little-orbit-migration-locked\n'
   while IFS= read -r value; do
+    value="${value%$'\r'}"
     [[ "${value}" == ping ]] || { status=76; break; }
     printf 'little-orbit-migration-alive\n'
   done

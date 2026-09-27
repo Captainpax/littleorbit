@@ -210,6 +210,14 @@ def test_migration_capability_is_tied_to_the_live_lock_inode() -> None:
     assert "export DOCKER_HOST=unix:///var/run/docker.sock" in helper
 
 
+def test_migration_heartbeat_accepts_windows_crlf() -> None:
+    """The Windows controller's text pipe cannot invalidate a live SSH lock."""
+
+    helper = script("unraid-operation-lock.sh")
+    assert "value=\"${value%$'\\r'}\"" in helper
+    assert '[[ "${value}" == ping ]]' in helper
+
+
 def test_background_mutation_services_have_real_health_checks() -> None:
     """Backup restart readiness never accepts a merely running worker."""
 
