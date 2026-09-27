@@ -104,6 +104,16 @@ def qr_svg_data_url(value: str) -> str:
     return f"data:image/svg+xml;base64,{encoded}"
 
 
+def qr_png_data_url(value: str) -> str:
+    """Render an authenticator value as an in-memory PNG usable by Android ImageView."""
+
+    image = qrcode.make(value)
+    output = BytesIO()
+    image.save(output)
+    encoded = base64.b64encode(output.getvalue()).decode()
+    return f"data:image/png;base64,{encoded}"
+
+
 def verify_totp(secret: str, code: str, now: datetime, last_counter: int | None) -> int | None:
     """Verify with one-window clock skew and reject replayed counters."""
 

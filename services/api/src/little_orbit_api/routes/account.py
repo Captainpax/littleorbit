@@ -25,7 +25,7 @@ from ..models import (
     Session,
     TogetherBucket,
 )
-from ..profile_models import RelationshipAvatar
+from ..profile_models import RelationshipAvatar, RelationshipName
 from ..relationship_service import end_active_relationship, lock_accounts
 from ..schemas import AccountDeletionRequest, AccountDeletionResponse, AccountExportResponse
 from ..security import verify_password
@@ -60,8 +60,15 @@ async def _relationship_export(
             )
         )
     )
+    names = list(
+        await session.scalars(
+            select(RelationshipName).where(
+                RelationshipName.couple_id == membership.couple_id
+            )
+        )
+    )
     return _relationship_payload(
-        membership, notes, countdowns, answers, smooches, avatars, int(total or 0)
+        membership, notes, countdowns, answers, smooches, avatars, names, int(total or 0)
     )
 
 
@@ -72,6 +79,7 @@ def _relationship_payload(
     answers: list[QuizAnswer],
     smooches: list[Smooch],
     avatars: list[RelationshipAvatar],
+    names: list[RelationshipName],
     together_seconds: int,
 ) -> dict[str, object]:
     return {
@@ -83,40 +91,62 @@ def _relationship_payload(
             for item in notes
         ],
         "countdowns": [
-            {
-                "id": str(item.id),
-                "title": item.title,
-                "occurs_at": item.occurs_at,
-                "timezone": item.timezone,
-                "timing_kind": item.timing_kind,
-                "occurs_on": item.occurs_on,
-                "notes": item.notes,
-                "deleted_at": item.deleted_at,
-            }
-            for item in countdowns
+            _countdown_export(item) for item in countdowns
         ],
         "quiz_answers": [
-            {
-                "question_id": str(item.question_id),
-                "account_id": str(item.account_id),
-                "answer": item.answer,
-                "submitted_at": item.submitted_at,
-            }
-            for item in answers
+            _quiz_answer_export(item) for item in answers
         ],
         "estimated_together_seconds": together_seconds,
         "smooches": [_smooch_export(item) for item in smooches],
         "relationship_avatars": [
-            {
-                "subject_account_id": str(item.subject_account_id),
-                "assigned_by_account_id": str(item.assigned_by_account_id),
-                "media_type": "image/webp",
-                "sha256": item.sha256,
-                "revision": item.revision,
-                "base64": b64encode(item.image_webp).decode("ascii"),
-            }
-            for item in avatars
+            _avatar_export(item) for item in avatars
         ],
+        "relationship_names": [
+            _relationship_name_export(item) for item in names
+        ],
+    }
+
+
+def _countdown_export(item: Countdown) -> dict[str, object]:
+    return {
+        "id": str(item.id),
+        "title": item.title,
+        "occurs_at": item.occurs_at,
+        "timezone": item.timezone,
+        "timing_kind": item.timing_kind,
+        "occurs_on": item.occurs_on,
+        "notes": item.notes,
+        "deleted_at": item.deleted_at,
+    }
+
+
+def _quiz_answer_export(item: QuizAnswer) -> dict[str, object]:
+    return {
+        "question_id": str(item.question_id),
+        "account_id": str(item.account_id),
+        "answer": item.answer,
+        "submitted_at": item.submitted_at,
+    }
+
+
+def _avatar_export(item: RelationshipAvatar) -> dict[str, object]:
+    return {
+        "subject_account_id": str(item.subject_account_id),
+        "assigned_by_account_id": str(item.assigned_by_account_id),
+        "media_type": "image/webp",
+        "sha256": item.sha256,
+        "revision": item.revision,
+        "base64": b64encode(item.image_webp).decode("ascii"),
+    }
+
+
+def _relationship_name_export(item: RelationshipName) -> dict[str, object]:
+    return {
+        "subject_account_id": str(item.subject_account_id),
+        "assigned_by_account_id": str(item.assigned_by_account_id),
+        "assigned_name": item.assigned_name,
+        "revision": item.revision,
+        "updated_at": item.updated_at,
     }
 
 

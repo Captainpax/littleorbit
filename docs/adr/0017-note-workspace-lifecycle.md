@@ -2,6 +2,11 @@
 
 Status: Accepted for RC10
 
+The save lifecycle in this decision is superseded by
+[ADR 0038](0038-single-flight-note-autosave-and-explicit-forks.md). The note,
+presence, authorization, archive, and foreground-directory decisions below
+remain active.
+
 ## Context
 
 One shared document could not represent lists, plans, and ongoing thoughts cleanly. Multiple observer sockets also made one account appear as two present partners.

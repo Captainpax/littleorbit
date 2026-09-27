@@ -368,6 +368,7 @@ class TogetherSummaryV3(StrictModel):
     """Observed nearby time plus a bounded two-phone live projection."""
 
     relationship_id: UUID
+    home_timezone: str
     paired_at: datetime
     paired_days: int
     nearby_observed_seconds: int
@@ -396,21 +397,30 @@ class TogetherSummaryV3(StrictModel):
 
 
 class TogetherHistoryDay(StrictModel):
-    """One UTC day of coordinate-free nearby history."""
+    """One shared-home calendar day of coordinate-free nearby history."""
 
     day: date
+    day_timezone: str = "UTC"
+    day_length_seconds: int = 86_400
     estimated_seconds: int
+    observed_seconds: int = 0
+    bridged_seconds: int = 0
+    unverified_seconds: int = 0
+    apart_seconds: int = 0
+    poor_accuracy_seconds: int = 0
     corrected: bool
-    estimate_method: Literal["legacy_v2", "mixed", "current_v3", "corrected"]
+    estimate_method: Literal[
+        "legacy_v2", "mixed", "current_v3", "current_v4", "corrected"
+    ]
     revision: int = 0
     corrected_by_display_name: str | None = None
     correction_reason: str | None = None
 
 
 class TogetherDayCorrectionRequest(StrictModel):
-    """Optimistic, attributable correction to one completed UTC day."""
+    """Optimistic, attributable correction to one completed shared-home day."""
 
-    estimated_seconds: int = Field(ge=0, le=86_400)
+    estimated_seconds: int = Field(ge=0, le=90_000)
     expected_revision: int = Field(ge=0)
     reason: Annotated[StrictText, Field(min_length=3, max_length=240)]
 

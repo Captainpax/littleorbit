@@ -62,6 +62,8 @@ public final class HomeActivityPanel {
             case "countdown_created" -> event.partnerDisplayName + " added" + target;
             case "countdown_updated" -> event.partnerDisplayName + " updated" + target;
             case "quiz_submitted" -> event.partnerDisplayName + " finished the quiz";
+            case "relationship_name_changed" ->
+                    event.partnerDisplayName + " updated a shared name";
             case "quiz_revealed" -> "Your quiz answers are ready together";
             default -> "Your shared orbit changed";
         };

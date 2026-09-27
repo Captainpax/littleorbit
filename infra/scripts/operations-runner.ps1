@@ -1,0 +1,248 @@
+param(
+    [ValidateSet("pending", "backup", "test_restore")]
+    [string]$Mode = "pending",
+    [string]$ComposeFile = "infra/compose.yaml",
+    [string]$IdentityPath = (Join-Path $env:LOCALAPPDATA "LittleOrbit/backup-age-identity.txt"),
+    [int]$ExclusiveLockTimeoutSeconds = 300
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
+$docker = (Get-Command docker -ErrorAction Stop).Source
+$composeArguments = @("compose", "--env-file", ".env", "-f", $ComposeFile)
+$mutex = [Threading.Mutex]::new($false, "Global\LittleOrbitOperationsRunner")
+$lockAcquired = $false
+
+function Invoke-DatabaseCommand {
+    param([Parameter(Mandatory = $true)][string]$Sql)
+
+    $databaseUser = (& $docker @composeArguments exec -T postgres printenv POSTGRES_USER).Trim()
+    $databaseName = (& $docker @composeArguments exec -T postgres printenv POSTGRES_DB).Trim()
+    $output = $Sql | & $docker @composeArguments exec -T postgres psql `
+        --username=$databaseUser --dbname=$databaseName --no-psqlrc --quiet --no-align --tuples-only `
+        --set=ON_ERROR_STOP=1 --file=-
+    if ($LASTEXITCODE -ne 0) {
+        throw "The operations database command failed."
+    }
+    foreach ($line in @($output)) {
+        Write-Output ([string]$line).TrimEnd("`r")
+    }
+}
+
+function ConvertTo-SqlJson {
+    param([Parameter(Mandatory = $true)][hashtable]$Value)
+
+    return (($Value | ConvertTo-Json -Compress).Replace("'", "''"))
+}
+
+function Start-RunRecord {
+    param([string]$Kind, [string]$JobId)
+
+    $runId = [Guid]::NewGuid().ToString()
+    $jobValue = if ($JobId) { "'$JobId'::uuid" } else { "NULL" }
+    $sql = @"
+INSERT INTO backup_runs
+    (id, job_request_id, kind, status, destination, details_json, created_at)
+VALUES
+    ('$runId'::uuid, $jobValue, '$Kind', 'running', 'local_encrypted', '{}'::json, now());
+"@
+    Invoke-DatabaseCommand $sql | Out-Null
+    return $runId
+}
+
+function Complete-RunRecord {
+    param(
+        [string]$RunId,
+        [string]$Status,
+        [string]$ManifestDigest,
+        [hashtable]$Details,
+        [string]$Destination = "local_encrypted"
+    )
+
+    $json = ConvertTo-SqlJson $Details
+    $digestValue = if ($ManifestDigest) { "'$ManifestDigest'" } else { "NULL" }
+    Invoke-DatabaseCommand @"
+UPDATE backup_runs
+SET status = '$Status', destination = '$Destination', manifest_sha256 = $digestValue,
+    details_json = '$json'::json, finished_at = now()
+WHERE id = '$RunId'::uuid;
+"@ | Out-Null
+}
+
+function Complete-Job {
+    param([string]$JobId, [string]$Status, [hashtable]$Result)
+
+    if (-not $JobId) {
+        return
+    }
+    $json = ConvertTo-SqlJson $Result
+    Invoke-DatabaseCommand @"
+UPDATE admin_job_requests
+SET status = '$Status', result_json = '$json'::json, finished_at = now()
+WHERE id = '$JobId'::uuid AND status = 'running';
+"@ | Out-Null
+}
+
+function Invoke-BackupOperation {
+    param([string]$JobId)
+
+    $runId = Start-RunRecord "backup" $JobId
+    try {
+        $raw = & (Join-Path $PSScriptRoot "backup-all.ps1") -ComposeFile $ComposeFile
+        $result = (($raw | Out-String).Trim() | ConvertFrom-Json)
+        $digest = (Get-FileHash -LiteralPath $result.pair_manifest -Algorithm SHA256).Hash.ToLowerInvariant()
+        $databaseBytes = (Get-Item -LiteralPath $result.database).Length
+        $attachmentBytes = (Get-Item -LiteralPath $result.attachments).Length
+        $details = @{
+            database_bytes = $databaseBytes
+            attachment_bytes = $attachmentBytes
+            off_host_copy = [bool]$result.off_host_copy
+            coordinated_pair = $true
+            private_feedback_included = $false
+            raw_coordinates_included = $false
+        }
+        $destination = if ($result.off_host_copy) { "local_and_offhost" } else { "local_encrypted" }
+        Complete-RunRecord $runId "passed" $digest $details $destination
+        Complete-Job $JobId "passed" @{ outcome = "backup_completed" }
+    }
+    catch {
+        Complete-RunRecord $runId "failed" "" @{ reason = "backup_failed" }
+        Complete-Job $JobId "failed" @{ reason = "backup_failed" }
+        throw
+    }
+}
+
+function Invoke-RestoreDrill {
+    param([string]$JobId)
+
+    $runId = Start-RunRecord "test_restore" $JobId
+    try {
+        $raw = & (Join-Path $PSScriptRoot "test-restore-latest.ps1") `
+            -ComposeFile $ComposeFile -IdentityPath $IdentityPath
+        $result = (($raw | Out-String).Trim() | ConvertFrom-Json)
+        $digest = [string]$result.pair_manifest_sha256
+        $details = @{
+            database_schema = "verified"
+            excluded_private_rows = "verified_empty"
+            attachment_manifest = "verified"
+        }
+        Complete-RunRecord $runId "passed" $digest $details
+        Complete-Job $JobId "passed" @{ outcome = "restore_drill_completed" }
+    }
+    catch {
+        Complete-RunRecord $runId "failed" "" @{ reason = "restore_drill_failed" }
+        Complete-Job $JobId "failed" @{ reason = "restore_drill_failed" }
+        throw
+    }
+}
+
+function Get-PendingJob {
+    $claimSql = @"
+WITH candidate AS (
+    SELECT id
+    FROM admin_job_requests
+    WHERE status = 'pending' AND kind IN ('backup', 'test_restore')
+    ORDER BY created_at
+    FOR UPDATE SKIP LOCKED
+    LIMIT 1
+)
+UPDATE admin_job_requests AS jobs
+SET status = 'running', started_at = now()
+FROM candidate
+WHERE jobs.id = candidate.id
+RETURNING jobs.id::text || '|' || jobs.kind;
+"@
+    return Invoke-DatabaseCommand $claimSql
+}
+
+function ConvertFrom-PendingJobClaim {
+    param(
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object]$ClaimOutput
+    )
+
+    $lines = @($ClaimOutput)
+    if ($lines.Count -eq 0 -or ($lines.Count -eq 1 -and [string]$lines[0] -eq "")) {
+        return $null
+    }
+    if ($lines.Count -ne 1) {
+        throw "The claimed operations job was malformed."
+    }
+    $pattern = '\A(?<jobId>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\|(?<kind>backup|test_restore)\z'
+    $match = [Text.RegularExpressions.Regex]::Match(
+        [string]$lines[0],
+        $pattern,
+        [Text.RegularExpressions.RegexOptions]::CultureInvariant
+    )
+    if (-not $match.Success) {
+        throw "The claimed operations job was malformed."
+    }
+    return [PSCustomObject]@{
+        JobId = $match.Groups["jobId"].Value
+        Kind = $match.Groups["kind"].Value
+    }
+}
+
+Push-Location $repoRoot
+try {
+    $lockTimeout = if ($Mode -eq "pending") { 0 } else { $ExclusiveLockTimeoutSeconds * 1000 }
+    try {
+        $lockAcquired = $mutex.WaitOne($lockTimeout)
+    }
+    catch [Threading.AbandonedMutexException] {
+        $lockAcquired = $true
+    }
+    if (-not $lockAcquired) {
+        if ($Mode -eq "pending") {
+            Write-Output '{"outcome":"already_running"}'
+            return
+        }
+        throw "Timed out waiting for the exclusive Little Orbit operations lock."
+    }
+    $containerId = (& $docker @composeArguments ps -q postgres).Trim()
+    if (-not $containerId) {
+        throw "PostgreSQL is not running."
+    }
+    Invoke-DatabaseCommand @"
+UPDATE admin_job_requests
+SET status = 'failed', result_json = '{"reason":"runner_interrupted"}'::json, finished_at = now()
+WHERE status = 'running' AND kind IN ('backup', 'test_restore')
+    AND started_at < now() - interval '2 hours';
+UPDATE backup_runs
+SET status = 'failed', details_json = '{"reason":"runner_interrupted"}'::json, finished_at = now()
+WHERE status = 'running' AND created_at < now() - interval '2 hours';
+"@ | Out-Null
+
+    if ($Mode -eq "backup") {
+        Invoke-BackupOperation ""
+    }
+    elseif ($Mode -eq "test_restore") {
+        Invoke-RestoreDrill ""
+    }
+    else {
+        for ($index = 0; $index -lt 5; $index++) {
+            $claimed = ConvertFrom-PendingJobClaim -ClaimOutput (Get-PendingJob)
+            if ($null -eq $claimed) {
+                break
+            }
+            if ($claimed.Kind -eq "backup") {
+                Invoke-BackupOperation $claimed.JobId
+            }
+            elseif ($claimed.Kind -eq "test_restore") {
+                Invoke-RestoreDrill $claimed.JobId
+            }
+            else {
+                throw "The claimed operations job was malformed."
+            }
+        }
+    }
+}
+finally {
+    Pop-Location
+    if ($lockAcquired) {
+        $mutex.ReleaseMutex()
+    }
+    $mutex.Dispose()
+}

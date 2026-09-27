@@ -40,6 +40,8 @@ class ValidationResult:
 def normalize_question(text: str) -> str:
     """Normalize question text for stable exact duplicate detection."""
 
+    # This derived form is only for comparison and hashing. The publishable text is
+    # never repaired, so reviewers can audit exactly what the model produced.
     folded = unicodedata.normalize("NFKC", text).casefold()
     return " ".join(re.sub(r"[^\w\s]", " ", folded).split())
 
@@ -68,8 +70,11 @@ def validate_candidate(candidate: CandidateQuestion, recent: list[str]) -> Valid
     """Apply deterministic safety and answerability gates to one candidate."""
 
     normalized = normalize_question(candidate.prompt)
+    # Accumulate every applicable reason instead of stopping at the first failure;
+    # quarantine records then explain the full deterministic decision.
     reasons = _content_reasons(candidate, normalized)
     reasons.extend(_interaction_reasons(candidate, normalized))
+    reasons.extend(_concept_reasons(candidate))
     if _has_layout_whitespace(candidate):
         reasons.append("layout_whitespace")
     if is_near_duplicate(candidate.prompt, recent):
@@ -80,11 +85,14 @@ def validate_candidate(candidate: CandidateQuestion, recent: list[str]) -> Valid
 def _has_layout_whitespace(candidate: CandidateQuestion) -> bool:
     """Reject invisible or repeated spacing before content reaches any client."""
 
+    # Reject the whole candidate rather than normalizing visible fields. Silent
+    # cleanup would make stored validation evidence differ from published content.
     values = [
         candidate.prompt,
         *candidate.options,
         candidate.scale_low_label or "",
         candidate.scale_high_label or "",
+        candidate.concept_summary,
     ]
     for value in values:
         if value != value.strip() or "  " in value:
@@ -97,6 +105,8 @@ def _has_layout_whitespace(candidate: CandidateQuestion) -> bool:
 
 def _invalid_layout_character(character: str) -> bool:
     codepoint = ord(character)
+    # Unicode separator characters can look like ordinary spaces while producing
+    # inconsistent layouts across Android and web clients.
     hidden_space = character != " " and (
         character.isspace() or unicodedata.category(character) == "Zs"
     )
@@ -120,6 +130,21 @@ def _content_reasons(candidate: CandidateQuestion, normalized: str) -> list[str]
         term in normalized for term in ("must", "should agree", "owe your partner")
     ):
         reasons.append("missing_consent_boundary")
+    return reasons
+
+
+def _concept_reasons(candidate: CandidateQuestion) -> list[str]:
+    """Keep semantic metadata safe because it returns to later model prompts."""
+
+    normalized = normalize_question(candidate.concept_summary)
+    reasons: list[str] = []
+    if any(re.search(pattern, normalized) for patterns in UNSAFE_PATTERNS.values() for pattern in patterns):
+        reasons.append("unsafe_concept_metadata")
+    if any(
+        value in normalized
+        for value in ("ignore previous", "system prompt", "developer message", "tool call")
+    ):
+        reasons.append("instruction_in_concept_metadata")
     return reasons
 
 

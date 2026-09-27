@@ -180,6 +180,15 @@ def test_mfa_replacement_schema_rejects_two_current_factors() -> None:
         )
 
 
+def test_mfa_replacement_schema_requires_a_current_factor() -> None:
+    with pytest.raises(ValidationError):
+        AdminEnrollmentStart(
+            password="password",
+            current_totp_code=None,
+            current_recovery_code=None,
+        )
+
+
 def test_pending_mfa_challenge_expires_without_replacing_current_factor() -> None:
     now = datetime.now(UTC)
     record = AdminMfa(

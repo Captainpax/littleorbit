@@ -3,11 +3,9 @@
 import asyncio
 import os
 from datetime import UTC, date, datetime, timedelta
-from urllib.parse import parse_qs, urlparse
 from uuid import UUID, uuid4
 
 import httpx
-import pyotp
 import pytest
 import pytest_asyncio
 from sqlalchemy import func, inspect, select, text
@@ -25,7 +23,6 @@ from little_orbit_api.database import Base, SessionFactory, engine  # noqa: E402
 from little_orbit_api.main import create_app  # noqa: E402
 from little_orbit_api.models import (  # noqa: E402
     Account,
-    AdminMfa,
     Couple,
     CoupleMember,
     DeletionJob,
@@ -47,11 +44,7 @@ from little_orbit_api.rate_limit import (  # noqa: E402
     consume_rate_limits,
     purge_rate_limit_state,
 )
-from little_orbit_api.security import (  # noqa: E402
-    encrypt_totp_secret,
-    hash_password,
-    hash_token,
-)
+from little_orbit_api.security import hash_password, hash_token  # noqa: E402
 
 
 @pytest_asyncio.fixture(autouse=True, loop_scope="session")
@@ -205,88 +198,6 @@ async def test_password_reset_and_rotation_cannot_leave_a_live_session() -> None
             .where(Session.account_id == account.id, Session.revoked_at.is_(None))
         )
         assert active == 0
-
-
-async def _seed_enrolled_admin(bearer: str, recovery: str) -> None:
-    settings = get_settings()
-    assert settings.totp_encryption_key is not None
-    now = datetime.now(UTC)
-    admin = _account("admin@example.com", admin=True)
-    current_secret = pyotp.random_base32()
-    async with SessionFactory() as session:
-        session.add_all(
-            [
-                admin,
-                _session(admin.id, bearer),
-                AdminMfa(
-                    account_id=admin.id,
-                    encrypted_secret=encrypt_totp_secret(
-                        current_secret, settings.totp_encryption_key.get_secret_value()
-                    ),
-                    recovery_hashes=[
-                        hash_token(recovery, settings.token_pepper.get_secret_value())
-                    ],
-                    enabled_at=now,
-                    created_at=now,
-                    updated_at=now,
-                ),
-            ]
-        )
-        await session.commit()
-
-
-async def _replace_admin_factor(
-    bearer: str, recovery: str
-) -> tuple[httpx.Response, httpx.Response, httpx.Response, httpx.Response]:
-    headers = {"Authorization": f"Bearer {bearer}"}
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=create_app()), base_url="http://localhost"
-    ) as client:
-        rejected = await client.post(
-            "/v1/admin/mfa/start",
-            headers=headers,
-            json={"password": "valid-password-123"},
-        )
-        started = await client.post(
-            "/v1/admin/mfa/start",
-            headers=headers,
-            json={"password": "valid-password-123", "current_recovery_code": recovery},
-        )
-        secret = parse_qs(urlparse(started.json()["otpauth_uri"]).query)["secret"][0]
-        confirmed = await client.post(
-            "/v1/admin/mfa/confirm",
-            headers=headers,
-            json={"code": pyotp.TOTP(secret).now()},
-        )
-        config = await client.get(
-            "/v1/admin/configuration",
-            headers={"Authorization": f"Bearer {confirmed.json()['access_token']}"},
-        )
-    return rejected, started, confirmed, config
-
-
-async def test_mfa_replacement_needs_old_factor_then_revokes_sessions() -> None:
-    settings = get_settings()
-    bearer = "c" * 40
-    recovery = "current-recovery-code"
-    await _seed_enrolled_admin(bearer, recovery)
-    rejected, started, confirmed, config = await _replace_admin_factor(bearer, recovery)
-
-    assert rejected.status_code == 401
-    assert started.status_code == 200
-    assert confirmed.status_code == 200
-    assert config.status_code == 200
-    serialized = config.text
-    assert "database_url" not in serialized
-    assert "token_pepper" not in serialized
-    assert "private-password" not in serialized
-    async with SessionFactory() as session:
-        old = await session.scalar(
-            select(Session).where(
-                Session.token_hash == hash_token(bearer, settings.token_pepper.get_secret_value())
-            )
-        )
-        assert old is not None and old.revoked_at is not None
 
 
 async def test_suspended_pending_partner_cannot_be_confirmed() -> None:

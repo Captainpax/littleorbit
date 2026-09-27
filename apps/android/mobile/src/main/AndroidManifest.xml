@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
@@ -27,6 +28,12 @@
             android:name=".ForegroundLocationService"
             android:exported="false"
             android:foregroundServiceType="location" />
+        <service android:name=".MobileWearBridgeService" android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/little-orbit/watch/" />
+            </intent-filter>
+        </service>
         <receiver
             android:name=".UpdateInstallReceiver"
             android:exported="false" />
@@ -45,6 +52,14 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".NearbyRecoveryReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
         <provider
@@ -68,6 +83,7 @@
         </provider>
         <activity android:name=".PrivacyActivity" android:exported="false" />
         <activity android:name=".SettingsActivity" android:exported="false" />
+        <activity android:name=".WatchSettingsActivity" android:exported="false" />
         <activity android:name=".AppUpdatesActivity" android:exported="false" />
         <activity android:name=".ProfilePhotoActivity" android:exported="false" />
         <activity android:name=".ProfileCropActivity" android:exported="false" />
@@ -83,6 +99,9 @@
         <activity android:name=".DeviceSetupActivity" android:exported="false" />
         <activity android:name=".ArchivesActivity" android:exported="false" />
         <activity android:name=".TogetherTimeActivity" android:exported="false" />
+        <activity android:name=".TogetherTimeFixActivity" android:exported="false" />
+        <activity android:name=".TogetherTimeDayActivity" android:exported="false" />
+        <activity android:name=".TogetherTimeCorrectionActivity" android:exported="false" />
         <activity android:name=".SmoochActivity" android:exported="false" />
         <activity android:name=".NotesActivity" android:exported="false" />
         <activity android:name=".CountdownActivity" android:exported="false" />

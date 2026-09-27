@@ -5,9 +5,11 @@ import android.content.res.Resources;
 
 /** Localized presentation shared by the Wear launcher, tile, and complication. */
 final class WearDisplayText {
+    private final Context context;
     private final Resources resources;
 
     WearDisplayText(Context context) {
+        this.context = context.getApplicationContext();
         resources = context.getResources();
     }
 
@@ -34,6 +36,9 @@ final class WearDisplayText {
     String status(WearDisplayCache.State state) {
         if (!state.available()) return resources.getString(R.string.relationship_unavailable);
         if (state.stale()) return resources.getString(R.string.stale_open_phone);
+        if (!WearConfiguration.read(context).showCountdownTitles()) {
+            return resources.getString(R.string.next_countdown);
+        }
         return state.countdownTitle == null || state.countdownTitle.isBlank()
                 ? resources.getString(R.string.no_countdown)
                 : state.countdownTitle;

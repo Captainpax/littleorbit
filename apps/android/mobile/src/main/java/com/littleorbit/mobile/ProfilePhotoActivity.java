@@ -6,9 +6,12 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.littleorbit.data.repository.OrbitServiceException;
+import com.littleorbit.data.repository.PartnerNameRules;
 import com.littleorbit.data.repository.ProfileRepository;
 import com.littleorbit.mobile.databinding.ActivityProfilePhotoBinding;
 import dagger.hilt.android.AndroidEntryPoint;
@@ -16,9 +19,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
+import java.util.concurrent.CompletionException;
 import javax.inject.Inject;
 
-/** Relationship-avatar picker where each person chooses only their partner's image. */
+/** Partner-controlled relationship names and avatars with explicit shared ownership. */
 @AndroidEntryPoint
 public final class ProfilePhotoActivity extends OrbitShellActivity {
     private static final int MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -44,6 +48,13 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
         setContentView(binding.getRoot());
         binding.choosePhoto.setOnClickListener(view -> pickPhoto.launch("image/*"));
         binding.removePhoto.setOnClickListener(view -> askToRemovePhoto());
+        binding.savePartnerName.setOnClickListener(view -> savePartnerName());
+        binding.resetPartnerName.setOnClickListener(view -> resetPartnerName());
+        binding.partnerNameInput.setOnEditorActionListener((view, action, event) -> {
+            if (action != EditorInfo.IME_ACTION_DONE) return false;
+            savePartnerName();
+            return true;
+        });
         render(profiles.cached());
         profiles.refresh().thenAccept(state -> runOnUiThread(() -> {
             if (!isFinishing() && !isDestroyed()) render(state);
@@ -133,6 +144,58 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
                 .show();
     }
 
+    private void savePartnerName() {
+        String entered = String.valueOf(binding.partnerNameInput.getText());
+        final String normalized;
+        try {
+            normalized = PartnerNameRules.normalize(entered);
+        } catch (IllegalArgumentException invalid) {
+            binding.partnerNameLayout.setError(getString(R.string.partner_name_invalid));
+            return;
+        }
+        binding.partnerNameLayout.setError(null);
+        setBusy(true);
+        profiles.savePartnerName(normalized).thenAccept(state -> runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            binding.partnerNameInput.setText(normalized);
+            render(state);
+            binding.profileStatus.setText(R.string.partner_name_saved);
+            setBusy(false);
+        })).exceptionally(failure -> {
+            runOnUiThread(() -> handleNameFailure(failure));
+            return null;
+        });
+    }
+
+    private void resetPartnerName() {
+        setBusy(true);
+        profiles.resetPartnerName().thenAccept(state -> runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            binding.partnerNameInput.setText("");
+            render(state);
+            binding.profileStatus.setText(R.string.partner_name_reset_done);
+            setBusy(false);
+        })).exceptionally(failure -> {
+            runOnUiThread(() -> handleNameFailure(failure));
+            return null;
+        });
+    }
+
+    private void handleNameFailure(Throwable failure) {
+        if (isFinishing() || isDestroyed()) return;
+        setBusy(false);
+        Throwable cause = failure instanceof CompletionException && failure.getCause() != null
+                ? failure.getCause() : failure;
+        if (cause instanceof OrbitServiceException service && service.statusCode() == 409) {
+            binding.profileStatus.setText(R.string.partner_name_conflict);
+            profiles.refresh().thenAccept(state -> runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed()) render(state);
+            }));
+            return;
+        }
+        binding.profileStatus.setText(R.string.request_failed);
+    }
+
     private void render(ProfileRepository.State state) {
         renderOwn(state);
         String partnerName = state.paired() ? state.partnerName() : getString(R.string.not_paired);
@@ -146,6 +209,13 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
                 R.string.rc14_partner_avatar_description, partnerName);
         binding.profilePreview.setContentDescription(partnerDescription);
         binding.profileInitial.setContentDescription(partnerDescription);
+        binding.partnerNameInput.setContentDescription(getString(
+                R.string.partner_name_input_description, partnerName));
+        if (!binding.partnerNameInput.hasFocus()) {
+            binding.partnerNameInput.setText(
+                    state.partnerNameAssigned() ? state.partnerName() : "");
+        }
+        binding.resetPartnerName.setEnabled(state.paired() && state.partnerNameAssigned());
         byte[] bytes = state.partnerPhoto();
         if (bytes == null) {
             binding.profilePreview.setVisibility(View.GONE);
@@ -183,6 +253,10 @@ public final class ProfilePhotoActivity extends OrbitShellActivity {
         ProfileRepository.State state = profiles.cached();
         binding.choosePhoto.setEnabled(!busy && state.paired());
         binding.removePhoto.setEnabled(!busy && state.paired() && state.partnerPhoto() != null);
+        binding.partnerNameInput.setEnabled(!busy && state.paired());
+        binding.savePartnerName.setEnabled(!busy && state.paired());
+        binding.resetPartnerName.setEnabled(
+                !busy && state.paired() && state.partnerNameAssigned());
     }
 
     private void fail() {

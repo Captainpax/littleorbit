@@ -17,6 +17,8 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.Until;
+import com.littleorbit.data.security.SessionStore;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import java.util.List;
@@ -25,6 +27,11 @@ import java.util.concurrent.atomic.AtomicReference;
 /** Device smoke test for the signed-out native entry point. */
 @RunWith(AndroidJUnit4.class)
 public final class MainActivitySmokeTest {
+    @Before
+    public void ensureSignedOutFixture() {
+        new SessionStore(InstrumentationRegistry.getInstrumentation().getTargetContext()).clear();
+    }
+
     @Test
     public void signedOutHomeRendersItsPrimaryState() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {

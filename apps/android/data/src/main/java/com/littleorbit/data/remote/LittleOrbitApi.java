@@ -51,6 +51,16 @@ public interface LittleOrbitApi {
     @DELETE("api/v1/couple/current/partner-avatar")
     Call<Void> deletePartnerAvatar();
 
+    /** Assigns a shared relationship name to the caller's current partner. */
+    @PUT("api/v1/couple/current/partner-name")
+    Call<ProfileApiModels.PartnerNameState> putPartnerName(
+            @Body ProfileApiModels.PartnerNameMutation request);
+
+    /** Resets only the shared partner name controlled by the caller. */
+    @POST("api/v1/couple/current/partner-name/reset")
+    Call<ProfileApiModels.PartnerNameState> resetPartnerName(
+            @Body ProfileApiModels.PartnerNameReset request);
+
     /** Authenticates a verified account. */
     @POST("api/v1/auth/login")
     Call<ApiModels.SessionResponse> login(@Body ApiModels.LoginRequest request);
@@ -99,37 +109,54 @@ public interface LittleOrbitApi {
             @Body ApiModels.QuestionReportRequest request);
 
     /** Loads the server-authoritative UTC quiz day for RC5. */
-    @GET("api/v2/quizzes/today")
+    @GET("api/v4/quizzes/today")
     Call<QuizApiModels.Day> quizToday();
 
     /** Loads one current or historical UTC quiz day. */
-    @GET("api/v2/quizzes/days/{quizDate}")
+    @GET("api/v4/quizzes/days/{quizDate}")
     Call<QuizApiModels.Day> quizDay(@Path("quizDate") String quizDate);
 
     /** Loads the fixed thirty-day content-free history. */
-    @GET("api/v2/quizzes/history")
+    @GET("api/v4/quizzes/history")
     Call<java.util.List<QuizApiModels.HistoryItem>> quizHistory(@Query("days") int days);
 
     /** Loads content-free quiz completion state for delayed polling. */
-    @GET("api/v2/quizzes/status")
+    @GET("api/v4/quizzes/status")
     Call<QuizApiModels.Status> quizStatus();
 
     /** Saves one revisioned private answer draft. */
-    @PUT("api/v2/quizzes/days/{quizDate}/questions/{questionId}/draft")
+    @PUT("api/v4/quizzes/days/{quizDate}/questions/{questionId}/draft")
     Call<QuizApiModels.Day> saveQuizDraft(
             @Path("quizDate") String quizDate,
             @Path("questionId") String questionId,
             @Body QuizApiModels.DraftMutation request);
 
     /** Finishes the caller's reviewed daily quiz. */
-    @POST("api/v2/quizzes/days/{quizDate}/finish")
+    @POST("api/v4/quizzes/days/{quizDate}/finish")
     Call<QuizApiModels.Day> finishQuiz(
             @Path("quizDate") String quizDate, @Body QuizApiModels.DayMutation request);
 
     /** Reopens the caller's daily quiz while shared reveal is pending. */
-    @POST("api/v2/quizzes/days/{quizDate}/reopen")
+    @POST("api/v4/quizzes/days/{quizDate}/reopen")
     Call<QuizApiModels.Day> reopenQuiz(
             @Path("quizDate") String quizDate, @Body QuizApiModels.DayMutation request);
+
+    /** Creates or edits the caller's private rating after shared reveal. */
+    @PUT("api/v4/quizzes/days/{quizDate}/questions/{questionId}/feedback")
+    Call<QuizApiModels.Feedback> saveQuizFeedback(
+            @Path("quizDate") String quizDate,
+            @Path("questionId") String questionId,
+            @Body QuizApiModels.FeedbackMutation request);
+
+    /** Deletes the caller's private rating within its edit window. */
+    @HTTP(
+            method = "DELETE",
+            path = "api/v4/quizzes/days/{quizDate}/questions/{questionId}/feedback",
+            hasBody = true)
+    Call<QuizApiModels.FeedbackDeleteResult> deleteQuizFeedback(
+            @Path("quizDate") String quizDate,
+            @Path("questionId") String questionId,
+            @Body QuizApiModels.FeedbackDelete request);
 
     /** Loads creator-visible custom prompts and a partner surprise count. */
     @GET("api/v2/quizzes/custom")
@@ -208,6 +235,11 @@ public interface LittleOrbitApi {
     @POST("api/v1/notes/{noteId}/restore")
     Call<NoteApiModels.Note> restoreNote(
             @Path("noteId") String noteId, @Body NoteApiModels.ArchiveRequest request);
+
+    /** Copies an explicit offline conflict and its valid clean attachments. */
+    @POST("api/v1/notes/{noteId}/fork")
+    Call<NoteApiModels.Note> forkNote(
+            @Path("noteId") String noteId, @Body NoteApiModels.ForkRequest request);
 
     /** Lists private attachment metadata for one current note. */
     @GET("api/v1/notes/{noteId}/attachments")
@@ -333,6 +365,24 @@ public interface LittleOrbitApi {
     @PUT("api/v3/together-time/days/{day}")
     Call<TogetherTimeModels.HistoryDay> correctTogetherDay(
             @Path("day") String day, @Body TogetherTimeModels.DayCorrection request);
+
+    /** Loads one coordinate-free shared-home day timeline. */
+    @GET("api/v3/together-time/days/{day}")
+    Call<TogetherTimeModels.DayDetails> togetherDayDetails(@Path("day") String day);
+
+    /** Loads current opted-in collection health without installation identifiers. */
+    @GET("api/v3/together-time/device-health")
+    Call<TogetherTimeModels.DeviceHealthResponse> togetherDeviceHealth();
+
+    /** Opts this random installation into a content-free health snapshot. */
+    @PUT("api/v3/together-time/device-health/{installationId}")
+    Call<TogetherTimeModels.DeviceHealthView> updateTogetherDeviceHealth(
+            @Path("installationId") String installationId,
+            @Body TogetherTimeModels.DeviceHealthUpdate request);
+
+    /** Withdraws this installation's collection-health sharing. */
+    @DELETE("api/v3/together-time/device-health/{installationId}")
+    Call<Void> deleteTogetherDeviceHealth(@Path("installationId") String installationId);
 
     /** Loads member and mutual privacy settings. */
     @GET("api/v1/couple/preferences")

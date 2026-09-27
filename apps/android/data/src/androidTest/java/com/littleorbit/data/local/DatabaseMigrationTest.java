@@ -82,6 +82,29 @@ public final class DatabaseMigrationTest {
         database.close();
     }
 
+    @Test
+    public void migrateFiveToSixPreservesCountdownWithSafeTimedDefaults() throws IOException {
+        String name = "watch-countdown-migration-test";
+        SupportSQLiteDatabase database = helper.createDatabase(name, 5);
+        database.execSQL(
+                "INSERT INTO display_cache (cacheKey, relationshipStartEpochDay, nearbySeconds, "
+                        + "nearbyProcessedAtEpochMillis, nextCountdownTitle, "
+                        + "nextCountdownEpochMillis, cacheSyncedAtEpochMillis) VALUES "
+                        + "('primary', 1, 2, 3, 'Trip', 4, 5)");
+        database.close();
+
+        database = helper.runMigrationsAndValidate(
+                name, 6, true, DatabaseMigrations.MIGRATION_5_6);
+        try (Cursor cursor = database.query("SELECT * FROM display_cache")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("Trip", text(cursor, "nextCountdownTitle"));
+            assertEquals("timed", text(cursor, "nextCountdownTimingKind"));
+            assertEquals("", text(cursor, "nextCountdownOccursOn"));
+            assertEquals("UTC", text(cursor, "nextCountdownTimezone"));
+        }
+        database.close();
+    }
+
     private static long value(Cursor cursor, String column) {
         return cursor.getLong(cursor.getColumnIndexOrThrow(column));
     }

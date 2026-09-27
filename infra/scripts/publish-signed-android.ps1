@@ -55,6 +55,15 @@ function Read-ApkIdentity([string]$Aapt, [string]$Path) {
     return [pscustomobject]@{ Package = $Matches[1]; VersionCode = [int]$Matches[2] }
 }
 
+function Assert-WearFeature([string]$Aapt, [string]$Path) {
+    $badging = & $Aapt dump badging $Path
+    if ($LASTEXITCODE -ne 0) { throw "Wear APK metadata could not be read." }
+    $watch = $badging | Where-Object {
+        $_ -match "^\s*uses-feature:\s+name='android\.hardware\.type\.watch'\s*$"
+    } | Select-Object -First 1
+    if (-not $watch) { throw "Wear APK does not require android.hardware.type.watch." }
+}
+
 function Read-ApkSigner([string]$ApkSigner, [string]$Path) {
     $result = & $ApkSigner verify --verbose --print-certs $Path
     if ($LASTEXITCODE -ne 0) { throw "APK signature verification failed." }
@@ -134,6 +143,7 @@ if ($wearIdentity.Package -ne "com.littleorbit.mobile" -or
         $wearIdentity.VersionCode -ne $manifest.WearVersionCode) {
     throw "Wear APK identity differs from the release manifest."
 }
+Assert-WearFeature $aapt $wearSource
 $phoneSigner = Read-ApkSigner $apkSigner $phoneSource
 $wearSigner = Read-ApkSigner $apkSigner $wearSource
 if ($phoneSigner -ne $manifest.CertificateSha256 -or $wearSigner -ne $phoneSigner) {

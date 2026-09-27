@@ -21,7 +21,7 @@ public final class ProtocolFixturesTest {
     private static final List<String> NAMES = List.of(
             "activity-page", "countdown", "location-batch", "note-operation", "note-attachment",
             "notification-event", "pairing",
-            "question-batch", "orbit-profile", "smooch");
+            "question-batch", "orbit-profile", "partner-name", "smooch");
     private final JsonAdapter<Map<String, Object>> adapter;
 
     /** Creates a generic JSON adapter without coupling protocol payloads to Room entities. */
@@ -52,6 +52,20 @@ public final class ProtocolFixturesTest {
         assertFalse(validTogetherTime(read("v3", "together-time.invalid.json")));
         assertTrue(validLocationV3(read("v3", "location-batch.valid.json")));
         assertFalse(validLocationV3(read("v3", "location-batch.invalid.json")));
+    }
+
+    @Test
+    public void v3QuestionBatchRequiresSemanticConceptIdentity() throws IOException {
+        assertTrue(validQuestionBatchV3(read("v3", "question-batch.valid.json")));
+        assertFalse(validQuestionBatchV3(read("v3", "question-batch.invalid.json")));
+    }
+
+    @Test
+    public void v4QuizFixturesCarryDepthCompositionAndPublicThemes() throws IOException {
+        assertTrue(validQuestionBatchV4(read("v4", "question-batch.valid.json")));
+        assertFalse(validQuestionBatchV4(read("v4", "question-batch.invalid.json")));
+        assertTrue(validQuizDayV4(read("v4", "quiz-day.valid.json")));
+        assertFalse(validQuizDayV4(read("v4", "quiz-day.invalid.json")));
     }
 
     @Test
@@ -107,6 +121,7 @@ public final class ProtocolFixturesTest {
             case "pairing" -> validPairing(value);
             case "question-batch" -> validQuestionBatch(value);
             case "orbit-profile" -> validOrbitProfile(value);
+            case "partner-name" -> validPartnerName(value);
             case "smooch" -> validSmooch(value);
             default -> false;
         };
@@ -151,7 +166,8 @@ public final class ProtocolFixturesTest {
                 && numberIn(event.get("sequence"), 1, Integer.MAX_VALUE)
                 && List.of("note_created", "note_updated", "attachment_available",
                         "countdown_created", "countdown_updated", "quiz_submitted",
-                        "quiz_revealed", "smooch_received").contains(event.get("kind"))
+                        "quiz_revealed", "smooch_received",
+                        "relationship_name_changed").contains(event.get("kind"))
                 && boundedText(event.get("partner_display_name"), 120)
                 && (event.get("target_type") == null || List.of(
                         "note", "countdown", "quiz", "smooch").contains(event.get("target_type")))
@@ -231,8 +247,10 @@ public final class ProtocolFixturesTest {
     }
 
     private static boolean validTogetherTime(Map<String, Object> value) {
-        if (value.size() != 18
+        if (value.size() != 19
                 || !isUuid(value.get("relationship_id"))
+                || !(value.get("home_timezone") instanceof String zone)
+                || zone.isBlank() || zone.length() > 64
                 || !String.valueOf(value.get("paired_at")).matches("^.+T.+(?:Z|[+-].+)$")
                 || !numberIn(value.get("paired_days"), 0, Integer.MAX_VALUE)
                 || !numberIn(value.get("nearby_observed_seconds"), 0, Integer.MAX_VALUE)
@@ -246,7 +264,7 @@ public final class ProtocolFixturesTest {
                         "apart", "poor_accuracy", "stale").contains(value.get("counting_state"))
                 && List.of("unavailable", "low", "medium", "high")
                         .contains(value.get("nearby_confidence"))
-                && numberIn(value.get("algorithm_version"), 3, Integer.MAX_VALUE)
+                && numberIn(value.get("algorithm_version"), 4, Integer.MAX_VALUE)
                 && value.get("includes_legacy_estimates") instanceof Boolean
                 && numberIn(value.get("proximity_threshold_m"), 10, 1000)
                 && value.get("location_enabled_by_me") instanceof Boolean
@@ -277,7 +295,20 @@ public final class ProtocolFixturesTest {
         boolean validPhoto = photo == null || photo instanceof Map<?, ?> details
                 && numberIn(details.get("revision"), 1, Integer.MAX_VALUE)
                 && String.valueOf(details.get("sha256")).matches("^[a-f0-9]{64}$");
-        return name instanceof String text && !text.isBlank() && validPhoto;
+        return name instanceof String text && !text.isBlank()
+                && numberIn(me.get("name_revision"), 0, Integer.MAX_VALUE)
+                && me.get("partner_assigned") instanceof Boolean
+                && validPhoto;
+    }
+
+    private static boolean validPartnerName(Map<String, Object> value) {
+        Object assigned = value.get("assigned_name");
+        return value.size() == 5
+                && boundedText(value.get("display_name"), 80)
+                && (assigned == null || boundedText(assigned, 40))
+                && numberIn(value.get("revision"), 1, Integer.MAX_VALUE)
+                && value.get("partner_assigned") instanceof Boolean
+                && String.valueOf(value.get("updated_at")).matches("^.+T.+(?:Z|[+-].+)$");
     }
 
     private static boolean validReleaseHistory(List<Map<String, Object>> values) {
@@ -347,6 +378,55 @@ public final class ProtocolFixturesTest {
                 && question.get("options") instanceof List<?> options
                 && question.get("option_icons") instanceof List<?> icons
                 && options.size() == icons.size());
+    }
+
+    private static boolean validQuestionBatchV3(Map<String, Object> value) {
+        Object questions = value.get("questions");
+        if (!"3".equals(value.get("schema_version"))
+                || !(questions instanceof List<?> list)
+                || list.size() != 10) {
+            return false;
+        }
+        return list.stream().allMatch(item -> item instanceof Map<?, ?> question
+                && question.get("prompt") instanceof String prompt
+                && prompt.length() >= 12
+                && question.get("concept_family") instanceof String family
+                && family.matches("^[a-z0-9-]{3,80}$")
+                && boundedText(question.get("concept_summary"), 180)
+                && question.get("options") instanceof List<?> options
+                && question.get("option_icons") instanceof List<?> icons
+                && options.size() == icons.size());
+    }
+
+    private static boolean validQuestionBatchV4(Map<String, Object> value) {
+        Object questions = value.get("questions");
+        if (!"4".equals(value.get("schema_version"))
+                || !(questions instanceof List<?> list)
+                || list.size() != 10) {
+            return false;
+        }
+        return list.stream().allMatch(item -> item instanceof Map<?, ?> question
+                && boundedText(question.get("concept_summary"), 180)
+                && List.of("light", "reflective", "deeper").contains(question.get("depth"))
+                && List.of("themed", "variety").contains(question.get("theme_role"))
+                && question.get("theme_tags") instanceof List<?> tags
+                && tags.size() <= 4);
+    }
+
+    private static boolean validQuizDayV4(Map<String, Object> value) {
+        if (!validQuizDay(value) || !value.containsKey("theme")) return false;
+        Object theme = value.get("theme");
+        boolean validTheme = theme == null || theme instanceof Map<?, ?> details
+                && boundedText(details.get("weekly_title"), 80)
+                && boundedText(details.get("weekly_summary"), 240)
+                && boundedText(details.get("daily_title"), 80)
+                && boundedText(details.get("daily_summary"), 240);
+        return validTheme && ((List<?>) value.get("questions")).stream().allMatch(
+                item -> item instanceof Map<?, ?> question
+                        && List.of("light", "reflective", "deeper")
+                                .contains(question.get("depth"))
+                        && List.of("themed", "variety").contains(question.get("theme_role"))
+                        && question.get("theme_tags") instanceof List<?>);
     }
 
     private static boolean validQuizDay(Map<String, Object> value) {

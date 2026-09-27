@@ -7,6 +7,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from little_orbit_api import (
     activity_models,  # noqa: F401
+    admin_device_models,  # noqa: F401
     attachment_models,  # noqa: F401
     countdown_models,  # noqa: F401
     diagnostic_models,  # noqa: F401
@@ -14,6 +15,7 @@ from little_orbit_api import (
     models,  # noqa: F401
     notification_models,  # noqa: F401
     profile_models,  # noqa: F401
+    quiz_intelligence_models,  # noqa: F401
     together_models,  # noqa: F401
 )
 from little_orbit_api.config import get_settings

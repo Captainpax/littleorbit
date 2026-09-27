@@ -20,6 +20,37 @@
             android:paddingEnd="24dp"
             android:paddingBottom="24dp">
 
+            <TextView
+                android:id="@+id/weekThemeText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.1"
+                android:textColor="@color/lavender_soft"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/dayThemeText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:accessibilityHeading="true"
+                android:textColor="@color/cloud"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/dayThemeSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="16dp"
+                android:textColor="@color/muted"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
             <LinearLayout
                 android:id="@+id/progressContainer"
                 android:layout_width="match_parent"

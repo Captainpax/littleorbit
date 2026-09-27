@@ -5,11 +5,13 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
     UniqueConstraint,
     Uuid,
@@ -77,14 +79,14 @@ class TogetherDay(Base):
     __tablename__ = "together_days"
     __table_args__ = (
         UniqueConstraint("couple_id", "day"),
-        CheckConstraint("estimated_seconds >= 0 AND estimated_seconds <= 86400"),
+        CheckConstraint("estimated_seconds >= 0 AND estimated_seconds <= 90000"),
         CheckConstraint(
             "corrected_seconds IS NULL OR "
-            "(corrected_seconds >= 0 AND corrected_seconds <= 86400)"
+            "(corrected_seconds >= 0 AND corrected_seconds <= 90000)"
         ),
         CheckConstraint("revision >= 0"),
         CheckConstraint(
-            "estimate_method IN ('legacy_v2', 'mixed', 'current_v3')"
+            "estimate_method IN ('legacy_v2', 'mixed', 'current_v3', 'current_v4')"
         ),
         Index("ix_together_days_couple_day", "couple_id", "day"),
     )
@@ -94,6 +96,9 @@ class TogetherDay(Base):
         ForeignKey("couples.id", ondelete="CASCADE")
     )
     day: Mapped[date] = mapped_column(Date, nullable=False)
+    day_timezone: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="UTC"
+    )
     estimated_seconds: Mapped[int] = mapped_column(nullable=False, default=0)
     estimate_method: Mapped[str] = mapped_column(
         String(16), nullable=False, default="current_v3"
@@ -112,3 +117,39 @@ class TogetherDay(Base):
         """Return the explicit correction when present, otherwise the estimate."""
 
         return self.corrected_seconds if self.corrected_seconds is not None else self.estimated_seconds
+
+
+class TogetherDeviceHealth(Base):
+    """Latest opt-in content-free collection health for one installation."""
+
+    __tablename__ = "together_device_health"
+    __table_args__ = (
+        UniqueConstraint("couple_id", "account_id", "installation_id"),
+        CheckConstraint("battery_percent BETWEEN 0 AND 100"),
+        CheckConstraint("queue_size >= 0 AND queue_size <= 1000"),
+        CheckConstraint(
+            "network_transport IN ('wifi', 'cellular', 'ethernet', 'other', 'offline')"
+        ),
+        CheckConstraint("upload_state IN ('working', 'waiting', 'error')"),
+        Index("ix_together_device_health_expiry", "expires_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    couple_id: Mapped[UUID] = mapped_column(
+        ForeignKey("couples.id", ondelete="CASCADE"), index=True
+    )
+    account_id: Mapped[UUID] = mapped_column(
+        ForeignKey("accounts.id", ondelete="CASCADE"), index=True
+    )
+    installation_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    device_model: Mapped[str] = mapped_column(String(80), nullable=False)
+    battery_percent: Mapped[int] = mapped_column(Integer, nullable=False)
+    charging: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    network_transport: Mapped[str] = mapped_column(String(12), nullable=False)
+    background_location: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    battery_unrestricted: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    tracking_notification: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    upload_state: Mapped[str] = mapped_column(String(12), nullable=False)
+    queue_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

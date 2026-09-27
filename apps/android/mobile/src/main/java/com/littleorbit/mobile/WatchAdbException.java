@@ -11,7 +11,7 @@ import javax.net.ssl.SSLException;
 
 /** A privacy-safe wireless-ADB failure that never retains endpoint or pairing-code text. */
 final class WatchAdbException extends Exception {
-    enum Operation { PAIR, CONNECT, INSPECT, INSTALL }
+    enum Operation { PAIR, CONNECT, INSPECT, INSTALL, REMOVE }
 
     enum Reason {
         ADDRESS_INVALID,
@@ -95,6 +95,7 @@ final class WatchAdbException extends Exception {
             case CONNECT -> "WCONN";
             case INSPECT -> "WINFO";
             case INSTALL -> "WINST";
+            case REMOVE -> "WREMV";
         };
         return prefix + "-" + String.format(Locale.ROOT, "%02d", reason.ordinal() + 1);
     }

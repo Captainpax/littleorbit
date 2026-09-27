@@ -99,11 +99,12 @@ public final class NotesActivity extends OrbitShellActivity {
 
     private void bindActions() {
         binding.createButton.setOnClickListener(ignored -> document.newNote());
-        binding.syncButton.setOnClickListener(ignored -> document.sync());
         binding.archiveButton.setOnClickListener(ignored -> document.confirmArchive());
         binding.backToLibrary.setOnClickListener(ignored -> document.returnToLibrary());
         binding.useServerButton.setOnClickListener(ignored -> document.useServerVersion());
         binding.keepMyVersionButton.setOnClickListener(ignored -> document.keepMyVersion());
+        binding.reviewMergeButton.setOnClickListener(ignored -> document.reviewAndMerge());
+        binding.finishMergeButton.setOnClickListener(ignored -> document.finishMerge());
         binding.libraryRetryButton.setOnClickListener(ignored -> load());
         binding.boldButton.setOnClickListener(ignored -> editorTools.wrap("**", "**"));
         binding.italicButton.setOnClickListener(ignored -> editorTools.wrap("_", "_"));

@@ -1,14 +1,271 @@
 # Home deployment runbook
 
-Public availability depends on this computer, home power, internet service, router, and the Nginx Proxy Manager host remaining online. This topology is suitable for learning and a small service only after security, backup, and device release gates pass.
+After cutover, public availability will depend on Unraid, home power, internet service, the router, authoritative DNS, and the separate Nginx Proxy Manager host remaining online. This topology is suitable for learning and a small service only after security, backup, and device release gates pass. The target production host is Unraid at `192.168.50.14`; Nginx Proxy Manager remains at `192.168.50.6`. Its certificate and TLS settings were preserved, while the separately authorized 2026-09-27 DNS correction changed the stale `pax-kun.com` apex A record to the current WAN address.
 
-## Before touching live routing
+## Unraid production layout
 
-1. Reserve `192.168.50.182` for this computer's network adapter in router DHCP and verify the lease after reconnect/reboot.
-2. Copy `.env.example` to a protected `.env`, generate independent random secrets, configure production SMTP, and replace GitHub placeholders.
-3. Run tests, build containers, migrate a fresh database, start the stack, and verify `http://192.168.50.182:8180/api/v1/health/ready` from the NPM host.
-4. Restore the newest backup into an empty test database and perform a login smoke test.
-5. Verify DNS for `lil-orb.pax-kun.com` without modifying unrelated records.
+Use these non-exported paths. Do not place the live database or attachments beneath a generic appdata/user-share path that Unraid mover or snapshot tooling can relocate while the service runs. This follows Unraid's separation of [container working data and shares](https://docs.unraid.net/unraid-os/using-unraid-to/manage-storage/shares/).
+
+| Host path | Purpose | Required boundary |
+|---|---|---|
+| `/mnt/cache/little-orbit-live/` | PostgreSQL, attachments, immutable releases, Ollama, and ClamAV state | Cache-only direct pool path; PostgreSQL `999:70` mode `0700`, attachment root `65532:65532` mode `0750`, release bytes read-only in application containers |
+| `/mnt/cache/little-orbit-deploy/` | Clean source checkout and fixed launcher | Non-exported; no runtime secrets or signer plaintext |
+| `/mnt/cache/little-orbit-secrets/` | Root-only runtime environment and backup age identity | Mode `0700`; never commit, print, or mount into unrelated containers |
+| `/mnt/cache/gpu-coordinator/` | Stable `gpu.lock` inode and content-free diagnostics | Shared GID, sticky/setgid directory `3770`, root-owned single-link lock `0660`; never replace the inode during metadata updates |
+| `/mnt/cache/little-orbit-tools/` | Checksum-pinned host-only tools such as `age` | Non-exported cache-only share; never add it to production container mounts |
+| `/mnt/cache/vault/little-orbit/android-signing/` | Separately encrypted Little Orbit and Big Orbit signer bundles | Outside production Compose; decrypt only into tmpfs for one-shot signing |
+| `/mnt/user/little-orbit-backups/` | Encrypted, privacy-filtered database/attachment pairs | Array-only share; local recovery, not off-host disaster recovery |
+
+Run `infra/scripts/unraid-bootstrap.sh` as root on the verified `.14` host to create the layout and install the checksum-pinned `age` binary. The script refuses another host and refuses to create state unless `/mnt/cache` is the expected BTRFS device mount and `/mnt/user` is the exact `shfs` mount; mere root-filesystem directories do not pass. It requires SMB and NFS export to be disabled, may add the two missing NFS-disable keys to an otherwise exact legacy share configuration, and rejects partial or conflicting NFS policy. After validating each persistent share file, it applies the same fixed storage policy through Unraid's local management command so the running `shfs` sees it before any directory or file is created. It then writes a root-owned mode-`0600` content-free `.array-placement` sentinel through `/mnt/user/little-orbit-backups/` so an empty backup share materializes on an array disk and can pass the physical-placement audit. Do not remove that sentinel. Both bootstrap and the Compose attachment initializer retain `65532:65532` mode `0750` on the attachment root; this denies traversal by Unraid's generic `users` group while preserving access for the unprivileged API, worker, media worker, and backup reader. Exclude the live PostgreSQL and attachment directories from generic appdata backup/snapshot jobs.
+
+Keep the root-only runtime environment at `/mnt/cache/little-orbit-secrets/runtime.env`. In addition to normal production secrets, it must resolve these deployment values:
+
+```dotenv
+PUBLIC_BASE_URL=https://lil-orb.pax-kun.com
+GATEWAY_BIND_ADDRESS=192.168.50.14
+GATEWAY_INTERNAL_SUBNET=10.253.14.0/28
+GATEWAY_CADDY_IP=10.253.14.2
+GATEWAY_API_IP=10.253.14.3
+TRUSTED_PROXY_IP=10.253.14.2
+LITTLE_ORBIT_DATA_ROOT=/mnt/cache/little-orbit-live
+LITTLE_ORBIT_BACKUP_ROOT=/mnt/user/little-orbit-backups
+RELEASE_STORAGE_ROOT=/mnt/cache/little-orbit-live/releases
+GPU_COORDINATOR_ROOT=/mnt/cache/gpu-coordinator
+GPU_LOCK_HOST_PATH=/mnt/cache/gpu-coordinator/gpu.lock
+GPU_COORDINATOR_GID=2000
+AI_SCHEDULE_TIMEZONE=America/Los_Angeles
+AI_LEARNING_LOCAL_HOUR=1
+AI_GENERATION_LOCAL_HOUR=3
+AI_WORK_RETRY_HOURS=6
+AI_WORK_MAX_RUNTIME_SECONDS=6600
+AI_COVERAGE_DAYS=14
+```
+
+Do not choose `172.30.14.0/28`: the target's Pterodactyl bridge owns `172.30.0.0/16`. Verify `10.253.14.0/28` is still unused before every first deployment on a rebuilt host.
+
+The launcher always applies Compose in this order:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-stack.sh validate
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh startup
+```
+
+The quiet validation resolves `compose.yaml`, then `compose.gpu.yaml`, then `compose.unraid.yaml` without printing expanded environment values. Production starts always go through the fail-closed dispatcher so the firewall is installed before publication and the gateway is stopped after any boundary failure. Under the [Docker Compose merge rules](https://docs.docker.com/reference/compose-file/merge/), relative paths still resolve from the base Compose project while target-keyed volume mounts in the Unraid override replace their base counterparts. The launcher discards ambient overrides for every fixed production setting and validates the effective port model; the post-start firewall check also verifies the running Docker bindings. Never print the rendered Compose model because it contains expanded secrets. Require that only `192.168.50.14:8180` is published. PostgreSQL, API, web, Ollama, ClamAV, media, mail, and context-fetcher ports must remain private.
+
+## Unraid startup, firewall, and schedules
+
+Before installing the schedules, set Unraid's host timezone to `America/Los_Angeles` in **Settings > Date and Time**.
+The installer requires both `/boot/config/ident.cfg` to name that exact IANA timezone and the effective
+`/etc/localtime` bytes to match its installed zoneinfo file. It fails before changing User Scripts if either check is
+unavailable or mismatched; setting only a process `TZ` variable is not sufficient. Verify and install after the array
+and Docker are available:
+
+```bash
+source /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-timezone.sh
+require_unraid_pacific_timezone
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-install-user-scripts.sh install
+```
+
+The default `install` mode writes the fixed wrappers but keeps startup and every cron entry disabled. This is the only
+mode allowed before traffic has moved. After successful cutover validation, activate the already inspected entries
+explicitly:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-install-user-scripts.sh activate-after-cutover
+```
+
+Do not activate `.14` while `.182` schedules are enabled or before `.14` is the authoritative writer.
+
+Each installed entry calls the fixed dispatcher rather than reconstructing a Compose command:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh startup
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh pending
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh backup
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh test_restore
+```
+
+- `startup`: after array/Docker startup; verifies the exact mounts, applies the firewall, creates/validates paths, starts the exact stack, and rechecks the firewall/IPv6 boundary. A failed start or post-start check stops the gateway.
+- `pending`: every five minutes; runs allowlisted Big Orbit operations. Startup-file-free, quiet, tuple-only psql output makes an empty claim a successful no-op. A real claim must be exactly one lowercase canonical UUID and one allowlisted kind in the `id|kind` form; notices, command tags, extra rows, extra delimiters, or malformed fields fail closed. A concurrent runner may return successful `already_running` only for this mode.
+- `backup`: daily at 08:00 `America/Los_Angeles`; a lock collision waits up to five minutes and then fails nonzero.
+- `test_restore`: Tuesday at 07:00 `America/Los_Angeles`; it uses the same bounded lock behavior.
+
+The dispatcher repeats the timezone check before every scheduled `backup` or `test_restore`, so later host drift fails
+that run nonzero instead of silently executing Pacific wall-clock protection jobs at the wrong local time. The
+five-minute `pending` runner remains interval-based, and queued typed operations are not reinterpreted as wall-clock
+schedules.
+
+The idempotent firewall script owns only its alternating `LITTLE_ORBIT_GATEWAY_A` and `LITTLE_ORBIT_GATEWAY_B` chains. It fully prepares the inactive chain before inserting it at the front of `DOCKER-USER`, then retires the previous chain, so a failed refresh remains fail-closed. It uses conntrack original-destination matching to accept source `192.168.50.6` for original target `192.168.50.14:8180`, rejects every other source for that destination, and returns unrelated traffic to the existing `DOCKER-USER` rules. It never flushes DMS or other rules. Startup fails if an IPv6 listener exposes port 8180. From `.6`, validate readiness with the real public host header; from another LAN peer, verify the direct request is rejected:
+
+```bash
+curl --fail -H 'Host: lil-orb.pax-kun.com' \
+  http://192.168.50.14:8180/api/v1/health/ready
+```
+
+Keep the private Caddy-to-Next.js hop on Little Orbit's reserved port 3014. This host already has a Scriptarr-owned `DOCKER-USER` rejection for port 3000; do not weaken or flush that rule to make Little Orbit work. If `/api/*` stays healthy while web routes return an empty `502`, verify that Caddy and the web container both use 3014 and then recreate only the affected Little Orbit gateway after the web peer is healthy.
+
+### Database child-role rotation
+
+Run database credential rotation only from the reviewed checkout, as root, with shell tracing disabled:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-rotate-database-roles.sh rotate
+```
+
+The command holds the same host-wide operations lock as startup, backup, restore, and migration work. It rotates only
+the API, worker, media, and backup roles; the PostgreSQL owner password and owner URL remain byte-for-byte unchanged.
+Four independent 256-bit hexadecimal passwords replace the four `POSTGRES_*` child-role values and the three matching
+application URLs. Passwords reach the existing `database-bootstrap` stdin path and the independent PostgreSQL probes
+through stdin, never a command argument. The command closes the gateway and mutation services first, proves every new
+role works and every old role receives an exact authentication rejection, prepares the firewall, and only then recreates
+and verifies the gateway.
+
+Credential probes must connect to host `postgres` across the private Compose network. The PostgreSQL image explicitly
+trusts loopback connections during local administration, so `127.0.0.1` cannot prove password acceptance or rejection;
+the private service address reaches the SCRAM rule. Do not weaken this boundary or reinterpret a network failure as an
+authentication rejection.
+
+The root-only secrets directory must be an exact root-owned mode-`0700` directory; bootstrap repairs that directory
+itself without recursively changing any secret file. During rotation, fixed mode-`0600` old/new environment snapshots
+and an atomic, content-free `preparing` journal make interruption recoverable. A successful run removes credential
+snapshots and leaves only `state=committed` plus a random operation identifier. If the command is interrupted or reports
+that recovery is required, do not hand-edit `runtime.env` or restart the gateway. Run:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-rotate-database-roles.sh recover
+```
+
+Recovery restores the old environment and child-role passwords, recreates and verifies the internal services, prepares
+and verifies the firewall, and reopens the gateway only after every restored credential succeeds. A failed rollback
+keeps the gateway closed and retains the root-only snapshot plus `preparing` journal for another reviewed recovery.
+Neither success nor recovery output contains a database credential or connection URL.
+
+### Gmail SMTP app-password rotation
+
+The current working-tree SMTP helper changes only the single `SMTP_PASSWORD` definition in the fixed root-only runtime
+environment. It holds the shared operations lock, refuses shell tracing, accepts no password argument, atomically
+preserves `root:root` mode `0600`, and recreates only the worker through the fixed base/GPU/Unraid launcher. It
+requires the existing Gmail layout (`smtp.gmail.com:587` with STARTTLS), exactly one password key, and one
+16-character alphanumeric app password with the display grouping spaces removed. The worker health check proves the
+worker process and PostgreSQL connection; it does not prove Gmail authentication or delivery.
+
+Create a new Google app password without revoking the old one. With shell tracing disabled, place it in a temporary
+root-only file without putting the value in shell history or a process argument:
+
+```bash
+set +x
+install -o root -g root -m 0600 /dev/null \
+  /mnt/cache/little-orbit-secrets/smtp-password.next
+IFS= read -r -s -p 'New Gmail app password (without spaces): ' SMTP_PASSWORD_NEXT
+printf '\n'
+printf '%s\n' "${SMTP_PASSWORD_NEXT}" \
+  >/mnt/cache/little-orbit-secrets/smtp-password.next
+unset SMTP_PASSWORD_NEXT
+little_orbit_smtp_status=0
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-rotate-smtp-password.sh \
+  rotate --password-file /mnt/cache/little-orbit-secrets/smtp-password.next \
+  || little_orbit_smtp_status=$?
+: >/mnt/cache/little-orbit-secrets/smtp-password.next
+sync -f /mnt/cache/little-orbit-secrets/smtp-password.next
+rm -- /mnt/cache/little-orbit-secrets/smtp-password.next
+sync -f /mnt/cache/little-orbit-secrets
+if ((little_orbit_smtp_status != 0)); then
+  echo "SMTP rotation failed with status ${little_orbit_smtp_status}; stop here." >&2
+fi
+unset little_orbit_smtp_status
+```
+
+Non-interactive standard input is also accepted with `rotate --stdin`; never place the password itself on the command
+line. The protected caller-owned file is no longer needed after the rotation attempt: truncate, file-sync, unlink, and
+directory-sync that exact file immediately whether the command succeeds or fails, as above. The helper deliberately
+does not delete an arbitrary caller path. A successful first phase reports `awaiting_test` and retains one root-only
+old-environment snapshot. If the new worker fails Compose readiness, the helper automatically restores the old
+environment and worker. If that rollback cannot prove the old worker healthy, it stops the worker and retains the
+recovery snapshot instead of accepting an uncertain credential. Failure to verify even that final stop is a separate
+hard failure; isolate the worker until Docker control is repaired.
+
+While the old Google app password is still active, use Little Orbit's ordinary verification or password-recovery flow
+for a controlled account and confirm the expected message arrives with the public HTTPS fragment link. The helper
+does not enqueue or send a test message, contact Google account management, or revoke either app password. Do not
+treat worker readiness as delivery evidence.
+
+After a successful delivery test, discard the local rollback snapshot explicitly and only then revoke the old app
+password in Google's account UI:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-rotate-smtp-password.sh commit
+```
+
+If delivery fails before commit, keep the old Google password active and restore it locally:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-rotate-smtp-password.sh rollback
+```
+
+`rollback` also recovers an interrupted `preparing` operation. If a process stops after the durable `rolled-back`
+journal transition but before staging cleanup finishes, run the same `rollback` command again. It first requires the
+live environment to match a nonempty old snapshot; an empty or absent old snapshot is accepted only in the exact
+cleanup states where every earlier transient stage is already absent. It then removes only the helper's three fixed,
+root-only staging paths and reports success only after proving all three are absent. An inconsistent file, symlink,
+metadata mismatch, changed live environment, or impossible cleanup order fails closed for manual review. The retry
+does not replace `runtime.env`, so the restored old credential remains active.
+
+A completed rollback restores only `runtime.env` and recreates only the worker; it does not alter queued outbox rows
+or other services. If rollback reports that the worker was stopped, leave it stopped, retain the root-only snapshot,
+correct the dependency failure, and repeat the reviewed rollback command. Do not hand-edit `runtime.env`, delete the
+snapshot, revoke the old Google password, or use `commit` until the application-level delivery test succeeds.
+
+## Migration preflight
+
+Do not change live routing until every item is recorded in a new verification entry:
+
+1. Confirm no BTRFS operation is active, the array is started, parity is valid, and cache/array free space covers the database, attachments, immutable releases, rebuilt model/cache data, and backup retention.
+2. Confirm `.14` has the intended static reservation, pin the SSH port 23 host key, install a temporary migration public key, and test batch authentication without weakening password policy.
+3. Confirm Docker Compose and NVIDIA runtime versions, port 8180 availability, `10.253.14.0/28` availability, and absence of an IPv6 listener.
+4. Build and migrate an isolated project with synthetic state; pre-pull the pinned Ollama models and refresh ClamAV. Do not copy Ollama or ClamAV caches from `.182`.
+5. Deploy and verify Scriptarr's lock-aware Oracle and Raven behavior before Little Orbit can use the shared GPU. No new consumer may start while an Ollama, LocalAI, or NVENC process still owns VRAM, even when the advisory lock was released by a crash.
+6. Confirm both Little Orbit users are off the app. Disable `.182` schedules, create a normal privacy-filtered encrypted backup, and pass a restore drill.
+7. Record the source commit and image digests, migration head `0031`, privacy-safe table counts including the existing feedback and feedback-operation counts, attachment aggregate digest, and every immutable-release size/hash. Stage `.182` with code that understands migration `0032` before freezing it.
+
+The worker deliberately does not depend on model installation: safe fourteen-day coverage must start even when the registry or Ollama is unavailable. Pre-pull and verify the two pinned model digests explicitly before enabling GPU work:
+
+```bash
+bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-stack.sh \
+  --profile model-setup run --rm model-init
+```
+
+## Application-cold exact transfer
+
+The ordinary backup intentionally omits sensitive short-lived tables, so it is not the migration source. The migration command stops gateway, API, worker, media worker, and context fetcher, then refuses to continue while an `ai_runs` claim or Big Orbit AI request remains `running`. It streams a complete logical database directly through pinned SSH into an empty target. Frozen attachments and immutable releases land in sibling directories under `/mnt/cache/little-orbit-live`; only complete verified directory trees are renamed over the empty live paths. It has no archive-output option and must not be wrapped in redirection or `tee`.
+
+Run from the clean `.182` checkout with exact paths to the temporary SSH identity and a one-host `known_hosts` file:
+
+```powershell
+python infra/scripts/direct_migration.py `
+  --direction forward `
+  --local-host 192.168.50.182 `
+  --unraid-host 192.168.50.14 `
+  --unraid-port 23 `
+  --ssh-identity C:\protected\little-orbit-migration-ed25519 `
+  --known-hosts C:\protected\little-orbit-migration-known-hosts `
+  --backup-identity "$env:LOCALAPPDATA\LittleOrbit\backup-age-identity.txt" `
+  --local-env .env `
+  --local-release-root data/releases `
+  --confirm forward-.182-to-.14-users-offline
+```
+
+The command first proves that target attachment and release storage are empty. It then streams the runtime environment plus fixed target-only path values—including the exact `/mnt/cache/gpu-coordinator/gpu.lock` bind—and the backup identity into root-only files; an existing file is accepted only when its bytes already match and is never overwritten. Before freezing `.182`, it builds every target-local application and migration image needed by the transfer or later startup without starting target writers. It starts only target PostgreSQL, requires every public target table to be empty, and only then freezes the source. Before promotion it compares source and destination inventories containing every public base-table count and Alembic head, normalized role attributes/memberships, database/schema/object/default ACLs, attachment file count/total bytes/aggregate digest without exposing paths, and every immutable release path/size/hash. A static least-privilege gate rejects extra role membership or grants; forward migration permits only the reviewed empty `ai_work_queue` table and its fixed API/worker/backup privileges. Its final JSON contains both inventories as cutover evidence. On success, the source writers deliberately remain stopped. Then:
+
+1. Run the target migration container and require Alembic head `0032`.
+2. Validate database roles/grants, exact pre/post counts, attachment aggregate digest, and immutable release sizes/hashes without inspecting content.
+3. Apply and inspect the firewall while the target gateway is still stopped. The Unraid overlay disables Docker-managed gateway restarts; only the post-Docker User Script may launch it after restoring and verifying the firewall. This avoids the reboot-time publication window observed when Docker treated a daemon-shutdown Caddy exit as eligible for `on-failure` recovery.
+4. Start API, workers, web, and gateway in dependency order through the fixed launcher. Require readiness with `Host: lil-orb.pax-kun.com`.
+5. Change Nginx Proxy Manager only after the firewall and readiness checks pass.
+6. Remove the temporary migration authorization only after transfer and rollback prerequisites have been recorded.
+
+## Cutover and rollback
+
+### New-installation owner bootstrap
 
 Promote the first owner only after that person has registered and verified their email:
 
@@ -16,26 +273,60 @@ Promote the first owner only after that person has registered and verified their
 docker compose --env-file .env -f infra/compose.yaml exec api python -m little_orbit_api.cli promote-admin owner@example.com
 ```
 
-Then visit `/admin/enroll`, re-enter the owner password, scan the TOTP QR code, confirm one current code, and store the one-time recovery codes. The command never creates an account or bypasses email verification.
+For releases through 1.1, the historical browser enrollment flow configured the first TOTP. In the 1.2 final state `/admin` is absent. After promotion, run `python -m little_orbit_api.cli bootstrap-admin <email>` in the trusted API environment, transfer its one-use eight-digit PIN out of band, and use Big Orbit to submit the password, PIN, label, and non-exportable P-256 public key. The restricted ten-minute setup proves that key with a single-use signed challenge. If the owner has no enabled factor, only this bootstrap flow may return the first protected TOTP QR challenge and one-time recovery codes; an existing factor is preserved for later-device enrollment. The promotion command never creates an account or bypasses email verification.
 
-## Windows Firewall
+Enabled-factor replacement is also Big-Orbit-only. The enrolled device must hold the exact approved-device session, provide the current password and exactly one current TOTP or unused recovery code, then confirm the new TOTP through that same session. The challenge exposes both PNG and SVG QR data URLs for the protected client. A successful confirmation revokes every earlier administrator session and returns one replacement session bound to the same device. An ordinary account token and a missing current factor both fail closed.
 
-Create an inbound TCP rule for local port 8180 scoped to remote address `192.168.50.6`. Remove or disable any broader prior rule for the same application port. Verify another LAN host cannot connect while NPM can. Record the actual rule name in private operations notes.
+Existing production ownership and Big Orbit enrollment are migrated as database state; do not promote a replacement owner during the host move.
 
-From an elevated PowerShell prompt, apply the repository's idempotent rule:
+### Migration rollback boundary
+
+Before `.14` accepts any write, rollback is the NPM upstream switch back to `.182` followed by restarting its frozen writer services. After `.14` accepts a write, never start the stale `little-orbit` project. Stop every service in that old project, keep its database/attachment volumes and secrets untouched, create an absolute empty bind-backed recovery root outside the checkout, and run the explicit reverse mode from the updated `.182` source:
 
 ```powershell
-.\infra\scripts\configure-windows-firewall.ps1
+New-Item -ItemType Directory -Path D:\LittleOrbit\rollback-data
+python infra/scripts/direct_migration.py `
+  --direction rollback `
+  --local-host 192.168.50.182 `
+  --unraid-host 192.168.50.14 `
+  --unraid-port 23 `
+  --ssh-identity C:\protected\little-orbit-migration-ed25519 `
+  --known-hosts C:\protected\little-orbit-migration-known-hosts `
+  --local-env .env `
+  --rollback-data-root D:\LittleOrbit\rollback-data `
+  --confirm post-write-rollback-.14-to-.182-users-offline
 ```
 
-Use `-WhatIf` to preview the named rule. The script creates or updates only `Little Orbit Gateway - NPM only` and leaves unrelated rules unchanged.
+Rollback rejects a backup identity argument and never copies or overwrites `.182` secrets. It requires the old production project to be fully stopped, refuses an existing `little-orbit-rollback` container or PostgreSQL volume, and records a durable `rollback-preparing` journal on `.14` before any local destination mutation. It then builds the updated attachment image and starts a fresh `little-orbit-rollback_postgres-data` volume. After it freezes the exact `.14` writers, the same single-transaction database restore, sibling-tree verification, and content-free inventory comparison run in reverse. Local promotion is followed by a durable `rollback-committed` transition while both host locks remain held. A pre-commit failure removes only the dedicated rollback project/data, restarts and proves the exact `.14` writers, and restores the forward-committed journal; a committed rollback preserves the local target and keeps `.14` frozen.
+
+The recovery override binds only `127.0.0.1:18181` by default. Validate the restored API, sessions, attachments, releases, roles, and Alembic head in that isolated project before exposing it. Every later Compose invocation must retain the same project, base/override order, environment file, and non-secret recovery values:
+
+```powershell
+$env:ROLLBACK_DATA_ROOT = 'D:\LittleOrbit\rollback-data'
+$env:LITTLE_ORBIT_ENV_FILE = (Resolve-Path .env)
+$env:ROLLBACK_GATEWAY_BIND_ADDRESS = '127.0.0.1'
+$env:ROLLBACK_GATEWAY_PORT = '18181'
+$env:GATEWAY_INTERNAL_SUBNET = '10.253.182.0/28'
+$env:GATEWAY_CADDY_IP = '10.253.182.2'
+$env:GATEWAY_API_IP = '10.253.182.3'
+docker compose --project-name little-orbit-rollback --env-file .env `
+  -f infra/compose.yaml -f infra/compose.rollback.yaml up -d --wait api web gateway
+```
+
+Only after local validation may an operator bind that recovery gateway to `192.168.50.182:8180`, reapply and verify the `.182` firewall boundary, and point NPM back. Never start the stale project alongside it. A power loss between the two whole-directory promotions can leave one complete destination tree and one empty tree; the recovery stack remains unstarted and a retry fails closed rather than serving a mixture. Inspect and discard only the dedicated rollback project/root before retrying.
+
+After cutover, verify HTTPS and WSS, both existing sessions, Big Orbit enrollment/session behavior, SMTP, first-party notification delivery, authorized attachment reads, ClamAV, full and ranged phone/Wear APK downloads, and forwarded-client identity. Reboot `.14` and repeat stack startup, firewall persistence, schedules, and GPU-lock checks. Produce a fresh target backup and pass the local restore drill.
+
+Retain `.182` source code and signer recovery files. After a short validation window, removal of its old PostgreSQL and attachment volumes requires a new, explicit destructive approval and must occur before the agreed 24-hour duplicate-state limit. The migration plan does not itself authorize deletion.
+
+The PowerShell firewall and operations wrappers remain only for `.182` recovery. Do not register their schedules alongside active Unraid User Scripts.
 
 ## Nginx Proxy Manager
 
 Create one proxy host for `lil-orb.pax-kun.com`:
 
 - Scheme: HTTP
-- Forward hostname/IP: `192.168.50.182`
+- Forward hostname/IP: `192.168.50.14`
 - Forward port: `8180`
 - WebSocket support: enabled
 - Block common exploits: enabled
@@ -44,17 +335,68 @@ Create one proxy host for `lil-orb.pax-kun.com`:
 
 Keep `REGISTRATION_OPEN=false` while Mailpit is the configured SMTP service. Open registration only after an external SMTP delivery test confirms that verification and password-reset links use the public HTTPS origin.
 
-Test website pages, `/patch-notes`, `/patch-notes.xml`, `/.well-known/assetlinks.json`, `/api/v1/health/ready`, a real WebSocket upgrade, signup email delivery, and certificate renewal/recovery. Enable HSTS only after those checks and a rollback path succeed. The initial live NPM change is an explicit deployment action; screenshots or a saved draft are not proof that traffic works.
+Change only the NPM upstream address from `.182` to `.14`; keep its certificate and TLS settings unchanged. Treat DNS as a separate authorized operation. On 2026-09-27, after the existing apex address proved stale, the authorized correction changed `pax-kun.com` A from `67.185.206.35` to current WAN `67.185.205.68`; `lil-orb.pax-kun.com` retained its CNAME. All four authoritative name servers returned the new value, and a Pixel 8 Pro refreshed it and received API 1.3.0 readiness in Chrome over Wi-Fi. That is not an external cellular check or authenticated app-session evidence. Test website pages, `/patch-notes`, `/patch-notes.xml`, `/.well-known/assetlinks.json`, `/api/v1/health/ready`, a real WebSocket upgrade, signup email delivery, and certificate renewal/recovery. Enable HSTS only after those checks and a rollback path succeed. The live NPM change is an explicit deployment action; screenshots or a saved draft are not proof that traffic works.
+
+On the current LAN, router hairpin access to public port 443 is unavailable. For an internal test of the same NPM HTTPS path, resolve `lil-orb.pax-kun.com:18443` to `192.168.50.6` and keep the public hostname for TLS; NPM's LAN listener 18443 maps to the WAN-443 path. This is a diagnostic mapping, not a different public origin, and it does not replace an external cellular/WAN check.
 
 ## Restart recovery
 
-Set Docker Desktop/engine and the Compose stack to start after host reboot. Reboot the host, then verify DHCP address, firewall scope, all health checks, public HTTPS, WSS, email, worker schedules, and one curated fallback pool while Ollama is stopped.
+If forward migration is interrupted, do not start either copy manually. With schedules still disabled and the same pinned SSH inputs, run the recovery-only direction:
 
-The internal `gateway-api` link reserves `172.30.14.2` for Caddy and `172.30.14.3` for FastAPI. Keep both assignments together with `TRUSTED_PROXY_IP`; this prevents a recreated API container from dynamically taking the trusted proxy address before Caddy starts. After a Compose recreation, inspect the resolved configuration and confirm both containers are healthy before testing forwarded-client throttles.
+```powershell
+python infra/scripts/direct_migration.py `
+  --direction recover-forward `
+  --local-host 192.168.50.182 `
+  --unraid-host 192.168.50.14 `
+  --unraid-port 23 `
+  --ssh-identity C:\protected\little-orbit-migration-ed25519 `
+  --known-hosts C:\protected\little-orbit-migration-known-hosts `
+  --local-env .env `
+  --confirm recover-interrupted-forward-.14-state
+```
+
+Under the shared local/remote migration exclusion, `preparing` removes only the fixed `.14` target copy and becomes a durable restart-required journal before `.182` is started and proved healthy. `committed` preserves `.14` and never starts `.182`; an absent journal is a no-op. Malformed or foreign state refuses recovery.
+
+For an interrupted reverse migration, retain the fully stopped old `little-orbit` project and the exact fenced rollback root, then use `--direction recover-rollback` with confirmation `recover-interrupted-rollback-.182-state` and the same `--rollback-data-root`. `rollback-preparing` removes only the dedicated rollback project and allowlisted root children, restarts and proves `.14`, then restores its forward-committed journal. `rollback-committed` preserves the promoted `.182` copy and never restarts `.14`. A legacy forward-committed marker permits the same cleanup/restart path; malformed, absent, or foreign state fails closed.
+
+The Unraid startup User Script runs only after the array and Docker are available. Reboot the host, then verify the `.14` address, direct cache mounts, NPM-only firewall scope, absent IPv6 listener, all health checks, public HTTPS, WSS, email, worker schedules, and one curated fallback pool while Ollama is stopped.
+
+The internal `gateway-api` link reserves `10.253.14.2` for Caddy and `10.253.14.3` for FastAPI. Keep both assignments together with `TRUSTED_PROXY_IP`; this prevents a recreated API container from dynamically taking the trusted proxy address before Caddy starts. After a Compose recreation, inspect the resolved configuration and confirm both containers are healthy before testing forwarded-client throttles.
 
 ## Signed Android releases
 
-Keep the PKCS12 release store and its four `ANDROID_SIGNING_*` settings outside Git. Back them up separately because Android will reject an update signed by a replacement key. Increment `versionCode` before every published update, set the intended `versionName`, then build and verify both targets:
+Signing is not part of production Compose. On `.14`, use the Android builder with its digest-pinned JDK base to produce clean unsigned candidates, then the separate one-shot signer. The launcher records the resulting content-addressed image IDs and runs those IDs rather than mutable tags. The signer runs with `--network none`, a read-only root, all capabilities dropped, no Docker socket, a tmpfs work directory, and a read-only secret mount. Keep the product-specific encrypted signer bundle and its age identity separate because Android will reject an update signed by a replacement key.
+
+The controlled launcher accepts only a clean committed source tree, empty candidate/output directories under `/mnt/cache/little-orbit-live/release-work/`, an encrypted bundle under `/mnt/cache/vault/little-orbit/android-signing/`, and an explicit age identity. It decrypts `release.p12`, `store-password`, `key-alias`, and `key-password` beneath `/dev/shm/little-orbit-signing/little-orbit.<run-id>`, passes passwords by file, and deletes plaintext through an exit trap:
+
+```bash
+/mnt/cache/little-orbit-deploy/repo/android-release/run-release.sh \
+  /mnt/cache/little-orbit-deploy/repo \
+  /mnt/cache/little-orbit-live/release-work/candidate-<run-id> \
+  /mnt/cache/little-orbit-live/release-work/signed-<run-id> \
+  /mnt/cache/vault/little-orbit/android-signing/little-orbit-signer.tar.age \
+  /mnt/cache/little-orbit-secrets/android-signing-age-identity.txt
+```
+
+Before manifest creation, require the pinned Little Orbit certificate fingerprint and independently inspect phone and Wear package, version code, byte count, hash, and Wear feature. A failed password, alias, signer identity, forbidden QA marker, or metadata mismatch fails closed. Keep the original `.182` signer files unchanged until multiple disposable bundle restore/sign checks pass on `.14`.
+
+Use the pinned absolute age path and the certificate-only mode for each non-signing custody check:
+
+```bash
+ANDROID_RELEASE_AGE_BIN=/mnt/cache/little-orbit-tools/bin/age \
+  /mnt/cache/little-orbit-deploy/repo/android-release/run-release.sh --verify-bundle \
+  /mnt/cache/little-orbit-deploy/repo \
+  /mnt/cache/vault/little-orbit/android-signing/little-orbit-signer.tar.age \
+  /mnt/cache/little-orbit-secrets/android-signing-age-identity.txt
+```
+
+It verifies the recovered PKCS12 private-key entry and pinned certificate without building or
+signing an APK, writes no release output, and removes decrypted files from `/dev/shm` on every exit.
+Use clean, committed disposable checkouts only beneath
+`/mnt/cache/little-orbit-deploy/android-signing-drills/`; the product-specific launcher accepts one
+exactly named child there and keeps the production source allowlist separate.
+
+The PowerShell build remains a `.182` recovery path. Keep its PKCS12 release store and four `ANDROID_SIGNING_*` settings outside Git. Increment `versionCode` before every published update, set the intended `versionName`, then build and verify both targets:
 
 ```powershell
 .\infra\scripts\build-signed-android.ps1
@@ -175,7 +517,7 @@ Before publication, test an authorized synthetic image and PDF through reservati
 
 Take a PostgreSQL backup before migration `0017`. The migration adds privacy-minimized throttle buckets and separate pending administrator-MFA fields; it does not replace an enabled factor. Upgrade the API and worker to the same revision, wait for Alembic head and health, and confirm the worker removes inactive throttle rows. Do not run `test_security_rc14_postgres.py` against this database because that isolated test suite truncates all application tables.
 
-Before serving RC14 traffic, verify configured limits with synthetic accounts and confirm no raw IP, email, token, password, TOTP, recovery code, or pair code appears in the throttle table or security events. Exercise a successful reset with two outstanding links, an old-session rotation attempt, deleted-account login, pair redemption expiry/reuse and competing confirmations, and a one-sided legacy quiz export. Replace an enrolled test administrator factor using current proof; confirm the old factor remains valid until the new factor is confirmed, every earlier session is then revoked, recovery codes remain one-use, and the configuration response contains only the documented allowlist.
+Before serving RC14 traffic, verify configured limits with synthetic accounts and confirm no raw IP, email, token, password, TOTP, recovery code, or pair code appears in the throttle table or security events. Exercise a successful reset with two outstanding links, an old-session rotation attempt, deleted-account login, pair redemption expiry/reuse and competing confirmations, and a one-sided legacy quiz export. From an approved Big Orbit test device, replace an enrolled administrator factor using the current password and exactly one current proof. Confirm an ordinary account session and a missing current factor are rejected; both PNG and SVG QR data URLs describe the same pending secret; the old factor remains valid until confirmation; every earlier administrator session is then revoked; and only a replacement session bound to the same approved device survives. Recovery codes remain one-use, and the configuration response contains only the documented allowlist. First-factor enrollment must use the restricted terminal-PIN bootstrap instead of these replacement routes.
 
 Open note and notification sockets with disposable sessions, then revoke each session while the socket is active and while it is idle. Both paths must close within the 30-second revalidation bound, and a queued note operation after revocation must not commit. These checks establish server behavior only; the two-physical-phone notification and full phone/watch release gates remain open.
 
@@ -212,3 +554,128 @@ Build phone code 23 and Wear code 18 as `1.0.0` with `infra/scripts/build-signed
 Publish with a future `required_after` instant long enough to verify an installed RC17 client's metadata check, explicit download, byte count, hash, certificate, Android confirmation, and in-place replacement before the version floor activates. Then verify current metadata, complete and 1,024-byte ranged phone/Wear downloads, patch notes, RSS, `/status`, and local and public health. Once the floor is active, phone versions below code 23 must receive `426 client_upgrade_required` on protected versioned routes while public release metadata and APK bytes remain reachable.
 
 For together-time, use disposable paired accounts or privacy-safe aggregates only. Verify unequal phone cadence, a nearby-apart-nearby sequence, a lone-phone stale transition, queue retry after temporary throttling, exact duplicate acceptance, conflicting sample rejection, correction preservation, process restart, and raw-coordinate expiry. On Android, keep the detail screen open: observed seconds may project only through the server deadline using elapsed realtime, then must freeze. Widget and Wear must show the authoritative observed value and stale state rather than continuing the projection. A synthetic/emulator pass does not establish real-world physical proximity; record that gate separately.
+
+## 1.0.1 Together Time and Our Space reliability
+
+Phone 1.0.1 uses version code 24. Reuse the exact signed 1.0.0 Wear code 18 APK with `-ReuseWearApk`; the generated manifest must independently prove the same Wear bytes, hash, package, code, and signer. The owner explicitly waived the unavailable physical tablet soak on 2026-09-19. Preserve that missing evidence in the verification report, publish only after the signed phone manifest and production health checks pass, and keep the compatibility floor at code 23 during the optional rollout.
+
+Use this order against an explicitly identified target. The duplicate command prints counts only and never titles or bodies. `--apply` refuses to run unless the supplied sidecar names a checksum-valid encrypted dump that excluded raw locations and device-health snapshots.
+
+```powershell
+# 1. New image against the existing schema: classification only.
+docker compose --env-file .env -f infra/compose.yaml run --rm api `
+  python -m little_orbit_api.cli deduplicate-notes
+
+# 2. Stop mutation services at one consistency point and create the coordinated age backup.
+powershell -File infra/scripts/backup-all.ps1
+
+# 3. Rehearse migration 0026 on disposable PostgreSQL, then migrate production API-first.
+docker compose --env-file .env -f infra/compose.yaml run --rm migrate
+
+# 4. Repartition retained coordinate-free buckets and recompute only retained raw evidence.
+docker compose --env-file .env -f infra/compose.yaml run --rm `
+  -v "${PWD}/backups:/backups:ro" api `
+  python -m little_orbit_api.cli reaggregate-together-time --apply `
+  --backup-manifest /backups/postgres/<verified>.dump.age.json
+
+# 5. Reversibly archive only safe exact untouched duplicates for the normal seven-day window.
+docker compose --env-file .env -f infra/compose.yaml run --rm `
+  -v "${PWD}/backups:/backups:ro" api `
+  python -m little_orbit_api.cli deduplicate-notes --apply `
+  --backup-manifest /backups/postgres/<verified>.dump.age.json
+```
+
+The read-only bind intentionally exposes only the backup directory to the one-shot command. Verify the selected sidecar before use; the examples do not authorize guessing it. Re-run the classifier after archival and require `safe_to_archive: 0`. Ambiguous groups remain untouched for manual review. Check that corrections retain their revisions across local-time reaggregation, that raw coordinates still expire before 24 hours, and that opted-in health rows expire at 24 hours and are absent after unpair.
+
+Before publication, test exactly-20-minute and longer gaps, intervening apart/poor readings, 2-minute/15-minute streams, reordered retries, one-phone-only collection, 23/25-hour days, and opt-in/out authorization. Exercise note create response loss, rotation, process death, continuous typing, a newer partner revision, attachment-safe fork, GIF pause/play and reduced motion. The final gate requires a physical phone/tablet soak through screen-off, Wi-Fi/cellular transition, temporary offline state, battery restriction, and a forced 15-minute gap followed by a confirming anchor.
+
+Production 1.0.1 was published on 2026-09-19 at
+`2026-09-19T18:19:24.932834Z`. Migration `0026`, one retained-history rebuild,
+two reversible safe-duplicate archives, signed full/range downloads, RSS,
+local/public readiness, and the code-23 compatibility floor were verified. The
+owner waived the unavailable physical tablet soak; the missing evidence remains
+recorded in the 1.0.1 verification report.
+
+## 1.1.0 managed-watch release
+
+Production 1.1.0 was published on 2026-09-19 at
+`2026-09-19T20:35:33.306439Z` with phone version code 25, Wear version code 19,
+compatibility floor 23, and no forced-update deadline. The generated manifest,
+GitHub assets, staged bytes, immutable API row, public metadata, and web fallback
+use the same artifact sizes and SHA-256 values.
+
+The complete Android unit/lint/build matrix and independent signed-artifact
+checks passed. Local and public metadata agreed; local and public complete phone
+and Wear downloads matched the generated sizes and hashes; both 1,024-byte
+public ranges returned `206` with correct totals. Patch notes, RSS, status,
+showcase, local readiness, and public readiness passed after deployment.
+
+The owner explicitly waived the unavailable physical Wear-device gate for this
+release. First install, remembered update, same-version repair, private removal,
+target switch, watch-side debugging revocation, offline Smooch, preference
+revocation, 24-hour deletion, large text, tile, and both complications remain
+unperformed on physical watch hardware. Keep those checks open in
+[`WEAR-INSTALLER.md`](WEAR-INSTALLER.md) and the 1.1.0 verification record;
+shipping approval is not evidence that they ran.
+
+Future releases must still begin from the installed production pair where
+possible and prove that page open, scheduled metadata work, and status refresh
+do not request APK bytes. A later physical pass may close the missing evidence,
+but it must not edit the immutable 1.1.0 release identity or imply the check was
+part of this rollout.
+
+## 1.1.1 watch-hardening release
+
+The verified 1.1.1 release contains phone version code 26 and Wear version code
+20, keeps the compatibility floor at phone code 23, and has no forced-update
+deadline. The exact phone artifact is 37,658,658 bytes with SHA-256
+`a80a06513239b459522b3043083efc0cfce9e96e63cadbaadc5d0f3e3d3f1768`;
+the exact Wear artifact is 14,737,940 bytes with SHA-256
+`b5f2af70402b6c8c5ff6feae91b5f23a32bd7c0ccea91b032ab705f8013d7f2b`.
+Both use signing-certificate SHA-256
+`43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337`.
+
+On 2026-09-19, the owner explicitly waived the remaining physical in-app
+wireless-ADB wizard, second-controller-phone, complete passive-surface and
+large-font, and production in-place upgrade observations as publication gates.
+The missing checks remain documented in the 1.1.1 verification record and are
+not treated as passed evidence. Publication must use the exact generated
+manifest and must verify local and public metadata, complete and ranged phone
+and Wear downloads, hashes, patch notes, RSS, and health after the immutable
+release record is created.
+
+Production 1.1.1 was published at `2026-09-19T23:45:53.67375Z`. Local and
+public metadata matched the generated manifest. Complete phone and Wear
+downloads from both endpoints matched the exact sizes and SHA-256 values, and
+all four 1,024-byte range requests returned HTTP 206 with correct totals.
+Download, patch notes, RSS, status, showcase, and readiness checks returned
+HTTP 200. Release-service logs contained no traceback, unhandled, fatal, or
+error match during the rollout window.
+
+## 1.2.0 quiz intelligence and Big Orbit release
+
+Production 1.2.0 was published at `2026-09-21T12:10:32.956306Z` after a coordinated encrypted backup and migrations `0027` through `0029`. PostgreSQL 17 uses the pinned pgvector 0.8.6 image. The secret-free context fetcher joins only its private worker link and bounded egress network, Ollama remains internal, and only gateway port 8180 is host-published.
+
+At the owner's direction, the final v2-only administrator API was deployed directly rather than retaining or deploying a temporary `/v1/admin` compatibility route. Local and public `/admin` plus `/api/v1/admin/configuration` return 404; unauthenticated `/api/v2/admin/devices` returns 403. The exact Big Orbit 1.0.0 code-2 APK was installed and cold-launched on the Pixel and tablet, but the owner waived production two-device enrollment, revocation, alerts, and recovery observation and will perform that QA after release. Do not describe those recovery devices as enrolled until that later evidence exists.
+
+The three Windows operations tasks are registered for the current interactive owner. A manual runner backup recorded a passing local encrypted pair, and a manual non-destructive restore recorded a pass, verified excluded private rows were empty, and removed its temporary database. The owner waived an off-host copy/restore and durable off-host Big Orbit signer backup until the replacement server is available. A same-disk passing drill is not off-host disaster-recovery evidence.
+
+The immutable phone artifact is version 1.2.0 code 28, 37,695,087 bytes, SHA-256 `aaa8c98d452db6d87c687f25cd2630432b64481ab6753c2bdb7bdb5baa7dc04f`. The unchanged Wear 1.1.1 code-20 artifact is 14,737,940 bytes with SHA-256 `b5f2af70402b6c8c5ff6feae91b5f23a32bd7c0ccea91b032ab705f8013d7f2b`. Both use certificate SHA-256 `43e83a420c7496ce9121339ab5bd6b01a6357161a83a95042ace56855bd89337`. The compatibility floor remains 23 and `required_after` is absent.
+
+Code 27 was signed but discarded before publication when deep inspection found a QA-only asset-name marker in production bytecode. Big Orbit code 1 was also discarded after the exact minified APK crashed during WorkManager initialization. Neither failed version code nor its bytes was reused. Public and local complete/range downloads, GitHub mirrors, patch notes, RSS, public pages, readiness, and rollout logs were verified against the final code-28 and Big Orbit code-2 artifacts.
+
+## 1.3.0 themed quizzes and Big Orbit bootstrap release
+
+Production 1.3.0 was published at `2026-09-24T02:33:46.511784Z` after an encrypted coordinated backup, a passing non-destructive restore drill, and migrations 0030 and 0031. The immutable artifacts are Little Orbit phone code 29, Wear code 21, and independently signed Big Orbit code 3. If any future signed candidate fails inspection or launch, increment the affected code and rebuild from a clean committed tree; never reuse failed bytes or a failed code.
+
+Before migration, create and verify a coordinated encrypted database/attachment backup. Rehearse `0029 -> 0031 -> 0029 -> 0031` on an isolated PostgreSQL 17/pgvector database, then apply 0030 and 0031 in production. Confirm the worker synchronizes the reviewed knowledge manifest and exactly 2,190 reserve entries, records the configured `America/Los_Angeles` schedule, and leaves already published quiz coverage intact if Ollama, embeddings, or public context are unavailable. Do not reset consumed reserve rows.
+
+The 1.3 coordinator uses a workspace-bounded relative-path helper compatible with the documented Windows PowerShell 5.1 invocation as well as PowerShell 7. Treat encrypted component files without a completed pair manifest as incomplete and never select them for restore.
+
+The published 1.3.0 baseline used Saturday/Sunday 09:00 Pacific and one planned week, as recorded in its immutable release evidence. For the current Unraid migration source, verify Saturday at 01:00 `America/Los_Angeles` makes one cursor-bounded learning/planning job eligible and Sunday at 03:00 makes generation eligible. Under contention, require persistent six-hour retries without an `AiRun` claim or false failure; successful generation must publish only after fourteen days satisfy schema, theme/depth composition, safety, embedding, and semantic checks. Inspect Big Orbit for content-free queue, reserve-low, stale-context, and failed/fallback-run alerts. The typed regeneration action may replace only future unanswered global pools.
+
+For every fresh Big Orbit device, run `python -m little_orbit_api.cli bootstrap-admin <email>` inside the trusted API environment and transfer the displayed PIN out of band. Do not store it in a deployment log. Confirm five wrong attempts and ten-minute expiry fail closed, a second PIN revokes the first unfinished setup, and bootstrap bearer tokens cannot call normal administrator routes. On the first owner, require both protected PNG and SVG forms of the same QR/TOTP challenge and retain recovery codes securely; on later devices, confirm existing MFA material is unchanged. Keep at least one tested recovery path before revoking an older device. Exercise later MFA replacement only from an exact device-bound Big Orbit session, and verify its new session remains bound to that same approved device after all earlier administrator sessions are revoked.
+
+Build release variants only after both repositories' `VERSION` and release-train contracts agree. Inspect Little Orbit and Big Orbit outputs for QA packages, labels, endpoints, keys, metadata, or bundled smoke APKs. Publication verified exact complete and ranged first-party downloads, matching GitHub mirror digests, public metadata and pages, healthy readiness, and a clean rollout log window. The compatibility floor remains phone code 23 and `required_after` is unset.
+
+At the owner's expedited-release direction, exact APK cold launches were completed on API 36 phone/Big Orbit and API 34 round-Wear emulators. Physical phone/Wear upgrade, two-partner quiz, and fresh/returning Big Orbit enrollment observations remain deferred live QA and must not be described as passed.

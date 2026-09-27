@@ -10,7 +10,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE = ROOT / "quality-baseline.json"
 SOURCE_SUFFIXES = {".java", ".py", ".ts", ".tsx"}
-IGNORED_PARTS = {".gradle", ".next", ".venv", "build", "node_modules"}
+SOURCE_ROOTS = (
+    (ROOT / "apps", SOURCE_SUFFIXES),
+    (ROOT / "services", SOURCE_SUFFIXES),
+    (ROOT / "infra" / "scripts", {".py"}),
+)
+IGNORED_PARTS = {
+    ".gradle",
+    ".mypy_cache",
+    ".next",
+    ".pytest_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "build",
+    "fixtures",
+    "generated",
+    "node_modules",
+    "venv",
+}
 
 
 def _logical_lines(path: Path) -> int:
@@ -34,20 +51,57 @@ def _complexity(node: ast.AST) -> int:
     return value
 
 
+def _ignored_directory(name: str) -> bool:
+    return name in IGNORED_PARTS or name.startswith(".venv")
+
+
 def _source_files() -> list[Path]:
-    roots = (ROOT / "apps", ROOT / "services")
     source_files: list[Path] = []
-    for source_root in roots:
+    for source_root, suffixes in SOURCE_ROOTS:
         for directory, child_directories, filenames in os.walk(source_root):
             child_directories[:] = [
-                name for name in child_directories if name not in IGNORED_PARTS
+                name for name in child_directories if not _ignored_directory(name)
             ]
             source_files.extend(
                 Path(directory) / name
                 for name in filenames
-                if Path(name).suffix in SOURCE_SUFFIXES
+                if Path(name).suffix in suffixes
             )
     return source_files
+
+
+def _python_violations(
+    path: Path,
+    relative: str,
+    limits: dict[str, int],
+    allowed: set[str],
+) -> list[str]:
+    if path.suffix != ".py":
+        return []
+    violations: list[str] = []
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=relative)
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        key = f"{relative}:{node.name}"
+        lines = (node.end_lineno or node.lineno) - node.lineno + 1
+        if lines > limits["python_function_lines"] and key not in allowed:
+            violations.append(f"{key}: function exceeds line limit ({lines})")
+        complexity = _complexity(node)
+        if complexity > limits["python_cyclomatic_complexity"] and key not in allowed:
+            violations.append(f"{key}: complexity is {complexity}")
+    return violations
+
+
+def _file_violations(
+    path: Path, limits: dict[str, int], allowed: set[str]
+) -> list[str]:
+    relative = path.relative_to(ROOT).as_posix()
+    violations: list[str] = []
+    if _logical_lines(path) > limits["source_file_logical_lines"]:
+        violations.append(f"{relative}: source file exceeds logical-line limit")
+    violations.extend(_python_violations(path, relative, limits, allowed))
+    return violations
 
 
 def main() -> int:
@@ -56,28 +110,16 @@ def main() -> int:
     config = json.loads(BASELINE.read_text(encoding="utf-8"))
     limits = config["limits"]
     allowed = set(config["exceptions"])
-    violations: list[str] = []
-    for path in _source_files():
-        relative = path.relative_to(ROOT).as_posix()
-        if _logical_lines(path) > limits["source_file_logical_lines"]:
-            violations.append(f"{relative}: source file exceeds logical-line limit")
-        if path.suffix != ".py":
-            continue
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=relative)
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            key = f"{relative}:{node.name}"
-            lines = (node.end_lineno or node.lineno) - node.lineno + 1
-            if lines > limits["python_function_lines"] and key not in allowed:
-                violations.append(f"{key}: function exceeds line limit ({lines})")
-            complexity = _complexity(node)
-            if complexity > limits["python_cyclomatic_complexity"] and key not in allowed:
-                violations.append(f"{key}: complexity is {complexity}")
+    source_files = _source_files()
+    violations = [
+        violation
+        for path in source_files
+        for violation in _file_violations(path, limits, allowed)
+    ]
     if violations:
         print("\n".join(violations))
         return 1
-    print(f"quality limits passed for {len(_source_files())} source files")
+    print(f"quality limits passed for {len(source_files)} source files")
     return 0
 
 

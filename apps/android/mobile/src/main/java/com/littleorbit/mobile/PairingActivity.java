@@ -43,6 +43,11 @@ public final class PairingActivity extends InsetAwareActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!orbit.isSignedIn()) {
+            startActivity(new Intent(this, MainActivity.class));
+            finish();
+            return;
+        }
         binding = ActivityPairingBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         restore(savedInstanceState);

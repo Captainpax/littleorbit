@@ -1,11 +1,18 @@
 {
   "me": {
-    "display_name": "Avery",
+    "display_name": "Starlight",
+    "name_revision": 1,
+    "partner_assigned": true,
     "photo": {
       "revision": 2,
       "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "updated_at": "2026-09-12T12:00:00Z"
     }
   },
-  "partner": { "display_name": "River", "photo": null }
+  "partner": {
+    "display_name": "Moon Owl 🦉",
+    "photo": null,
+    "name_revision": 2,
+    "partner_assigned": true
+  }
 }

@@ -2,6 +2,7 @@
 
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
 from sqlalchemy import delete, func, select
@@ -10,10 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .clock import SystemClock
 from .domain.location import (
-    MAX_MUTUAL_EVIDENCE_AGE,
+    MAX_BRIDGED_INTERVAL,
     RECOMPUTE_HORIZON,
     LiveProjection,
     Point,
+    ProximityTimeline,
     TimedPoint,
     build_proximity_timeline,
     live_projection,
@@ -25,7 +27,7 @@ from .models import (
 )
 from .together_models import TogetherDay
 
-ALGORITHM_VERSION = 3
+ALGORITHM_VERSION = 4
 
 
 async def recompute_recent_proximity(
@@ -50,12 +52,12 @@ async def recompute_recent_proximity(
         total += await _replace_range(
             session, couple, member_ids, start, end, current
         )
-        affected_days.update(_days_between(start, end))
+        affected_days.update(_days_between(start, end, couple.home_timezone))
     streams = await _latest_streams(session, couple.id, member_ids, not_after=current)
     couple.proximity_processed_through = _mutual_sample_freshness(streams)
     couple.proximity_algorithm_version = ALGORITHM_VERSION
     couple.updated_at = current
-    await _sync_daily_totals(session, couple.id, affected_days, current)
+    await _sync_daily_totals(session, couple, affected_days, current)
     return total
 
 
@@ -80,6 +82,24 @@ async def current_live_projection(
     return live_projection(timeline, now, sharing_enabled=sharing_enabled)
 
 
+async def reaggregate_retained_history(
+    session: AsyncSession,
+    couple: Couple,
+    *,
+    now: datetime | None = None,
+) -> None:
+    """Repartition the retained 30-day coordinate-free history in the home timezone."""
+
+    current = (now or SystemClock().now()).astimezone(UTC)
+    start = current - timedelta(days=30)
+    await _sync_daily_totals(
+        session,
+        couple,
+        _days_between(start, current, couple.home_timezone),
+        current,
+    )
+
+
 async def _replace_range(
     session: AsyncSession,
     couple: Couple,
@@ -92,8 +112,8 @@ async def _replace_range(
 
     bucket_start = _floor_minute(start)
     bucket_end = _ceil_minute(end)
-    context_start = bucket_start - MAX_MUTUAL_EVIDENCE_AGE
-    context_end = min(now, bucket_end + MAX_MUTUAL_EVIDENCE_AGE)
+    context_start = bucket_start - MAX_BRIDGED_INTERVAL
+    context_end = min(now, bucket_end + MAX_BRIDGED_INTERVAL)
     samples = list(
         await session.scalars(
             select(LocationSample)
@@ -121,20 +141,35 @@ async def _replace_range(
             TogetherBucket.corrected_at.is_(None),
         )
     )
+    await _store_estimates(session, couple.id, timeline, now)
+    return sum(item.duration_seconds for item in timeline.estimates)
+
+
+async def _store_estimates(
+    session: AsyncSession,
+    couple_id: UUID,
+    timeline: ProximityTimeline,
+    now: datetime,
+) -> None:
     for item in timeline.estimates:
         await session.execute(
             insert(TogetherBucket)
             .values(
-                couple_id=couple.id,
+                couple_id=couple_id,
                 bucket_start=item.bucket_start,
                 duration_seconds=item.duration_seconds,
                 estimated_distance_m=item.estimated_distance_m,
+                evidence_kind=item.evidence_kind,
+                observed_seconds=item.observed_seconds,
+                bridged_seconds=item.bridged_seconds,
+                unverified_seconds=item.unverified_seconds,
+                apart_seconds=item.apart_seconds,
+                poor_accuracy_seconds=item.poor_accuracy_seconds,
                 algorithm_version=ALGORITHM_VERSION,
                 created_at=now,
             )
             .on_conflict_do_nothing(index_elements=["couple_id", "bucket_start"])
         )
-    return sum(item.duration_seconds for item in timeline.estimates)
 
 
 def _recompute_ranges(
@@ -144,8 +179,8 @@ def _recompute_ranges(
 
     raw = sorted(
         (
-            max(safe_start, value.astimezone(UTC) - MAX_MUTUAL_EVIDENCE_AGE),
-            min(now, value.astimezone(UTC) + MAX_MUTUAL_EVIDENCE_AGE),
+            max(safe_start, value.astimezone(UTC) - MAX_BRIDGED_INTERVAL),
+            min(now, value.astimezone(UTC) + MAX_BRIDGED_INTERVAL),
         )
         for value in changed_at
         if safe_start <= value.astimezone(UTC) <= now
@@ -170,13 +205,16 @@ def _mutual_sample_freshness(streams: list[list[TimedPoint]]) -> datetime | None
 
 
 async def _sync_daily_totals(
-    session: AsyncSession, couple_id: UUID, days: set[date], now: datetime
+    session: AsyncSession, couple: Couple, days: set[date], now: datetime
 ) -> None:
     """Refresh coordinate-free daily totals while preserving explicit corrections."""
 
+    timezone = _timezone(couple.home_timezone)
     for current_day in sorted(days):
-        start = datetime.combine(current_day, datetime.min.time(), UTC)
-        end = start + timedelta(days=1)
+        start = datetime.combine(current_day, datetime.min.time(), timezone).astimezone(UTC)
+        end = datetime.combine(
+            current_day + timedelta(days=1), datetime.min.time(), timezone
+        ).astimezone(UTC)
         seconds, minimum, maximum = (
             await session.execute(
                 select(
@@ -184,7 +222,7 @@ async def _sync_daily_totals(
                     func.min(TogetherBucket.algorithm_version),
                     func.max(TogetherBucket.algorithm_version),
                 ).where(
-                    TogetherBucket.couple_id == couple_id,
+                    TogetherBucket.couple_id == couple.id,
                     TogetherBucket.bucket_start >= start,
                     TogetherBucket.bucket_start < end,
                 )
@@ -194,9 +232,10 @@ async def _sync_daily_totals(
         await session.execute(
             insert(TogetherDay)
             .values(
-                couple_id=couple_id,
+                couple_id=couple.id,
                 day=current_day,
-                estimated_seconds=min(int(seconds), 86_400),
+                day_timezone=timezone.key,
+                estimated_seconds=min(int(seconds), _day_seconds(start, end)),
                 estimate_method=method,
                 revision=0,
                 updated_at=now,
@@ -204,7 +243,8 @@ async def _sync_daily_totals(
             .on_conflict_do_update(
                 index_elements=["couple_id", "day"],
                 set_={
-                    "estimated_seconds": min(int(seconds), 86_400),
+                    "day_timezone": timezone.key,
+                    "estimated_seconds": min(int(seconds), _day_seconds(start, end)),
                     "estimate_method": method,
                     "updated_at": now,
                 },
@@ -216,8 +256,12 @@ def _estimate_method(minimum: int | None, maximum: int | None) -> str:
     """Describe whether one daily total contains legacy or current buckets."""
 
     if minimum is None or maximum is None or minimum >= ALGORITHM_VERSION:
+        return "current_v4"
+    if minimum >= 3 and maximum <= 3:
         return "current_v3"
-    return "legacy_v2" if maximum < ALGORITHM_VERSION else "mixed"
+    if maximum <= 2:
+        return "legacy_v2"
+    return "mixed"
 
 
 async def _latest_streams(
@@ -247,12 +291,28 @@ async def _latest_streams(
     return streams
 
 
-def _days_between(start: datetime, end: datetime) -> set[date]:
-    """Return UTC days touched by one half-open impact range."""
+def _days_between(start: datetime, end: datetime, timezone_name: str) -> set[date]:
+    """Return shared-home days touched by one half-open impact range."""
 
-    first = start.astimezone(UTC).date()
-    last = max(start, end - timedelta(microseconds=1)).astimezone(UTC).date()
+    timezone = _timezone(timezone_name)
+    first = start.astimezone(timezone).date()
+    last = max(start, end - timedelta(microseconds=1)).astimezone(timezone).date()
     return {first + timedelta(days=offset) for offset in range((last - first).days + 1)}
+
+
+def _timezone(name: str) -> ZoneInfo:
+    """Resolve the validated couple timezone with a safe legacy fallback."""
+
+    try:
+        return ZoneInfo(name)
+    except (KeyError, ValueError):
+        return ZoneInfo("UTC")
+
+
+def _day_seconds(start: datetime, end: datetime) -> int:
+    """Return the real UTC length of a local calendar day, including DST."""
+
+    return int((end - start).total_seconds())
 
 
 def _floor_minute(value: datetime) -> datetime:

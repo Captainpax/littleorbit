@@ -7,7 +7,7 @@ x-logging: &bounded-logging
     max-file: "3"
 
 x-database-role-service: &database-role-service
-  image: postgres:17.6-alpine
+  image: pgvector/pgvector:0.8.6-pg17-bookworm@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
   restart: "no"
   environment:
     PGHOST: postgres
@@ -21,15 +21,17 @@ x-database-role-service: &database-role-service
   command:
     - sh
     - -ec
-    - >-
-      psql --set=ON_ERROR_STOP=1
-      --set=database_name="$$PGDATABASE"
-      --set=owner_role="$$PGUSER"
-      --set=api_password="$$POSTGRES_API_PASSWORD"
-      --set=worker_password="$$POSTGRES_WORKER_PASSWORD"
-      --set=media_password="$$POSTGRES_MEDIA_PASSWORD"
-      --set=backup_password="$$POSTGRES_BACKUP_PASSWORD"
-      --file=/bootstrap-roles.sql
+    - |
+      {
+        printf '%s\n' \
+          '\getenv database_name PGDATABASE' \
+          '\getenv owner_role PGUSER' \
+          '\getenv api_password POSTGRES_API_PASSWORD' \
+          '\getenv worker_password POSTGRES_WORKER_PASSWORD' \
+          '\getenv media_password POSTGRES_MEDIA_PASSWORD' \
+          '\getenv backup_password POSTGRES_BACKUP_PASSWORD'
+        cat /bootstrap-roles.sql
+      } | psql --set=ON_ERROR_STOP=1
   volumes:
     - ./postgres/bootstrap-roles.sql:/bootstrap-roles.sql:ro
   networks:
@@ -41,7 +43,7 @@ services:
     image: caddy:2.10.2-alpine
     restart: unless-stopped
     ports:
-      - "8180:8180"
+      - "${GATEWAY_BIND_ADDRESS:-0.0.0.0}:8180:8180"
     volumes:
       - ./gateway/Caddyfile:/etc/caddy/Caddyfile:ro
     depends_on:
@@ -52,7 +54,7 @@ services:
     networks:
       edge:
       gateway-api:
-        ipv4_address: 172.30.14.2
+        ipv4_address: ${GATEWAY_CADDY_IP:-172.30.14.2}
       gateway-web:
     healthcheck:
       test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:8180/api/v1/health/live"]
@@ -67,16 +69,17 @@ services:
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     expose:
-      - "3000"
+      - "3014"
     environment:
       NODE_ENV: production
+      PORT: "3014"
       INTERNAL_API_URL: http://api:8000
       NEXT_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8180}
     networks:
       - private
       - gateway-web
     healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:3000/status"]
+      test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:3014/status"]
       interval: 20s
       timeout: 5s
       retries: 5
@@ -92,15 +95,15 @@ services:
     expose:
       - "8000"
     env_file:
-      - ../.env
+      - ${LITTLE_ORBIT_ENV_FILE:-../.env}
     environment:
       DATABASE_URL: ${DATABASE_API_URL:?set DATABASE_API_URL in .env}
       RELEASE_STORAGE_DIR: /var/lib/little-orbit/releases
       ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
       # The API trusts only Caddy's fixed address on the isolated gateway link.
-      TRUSTED_PROXY_IP: 172.30.14.2
+      TRUSTED_PROXY_IP: ${GATEWAY_CADDY_IP:-172.30.14.2}
     volumes:
-      - ../data/releases:/var/lib/little-orbit/releases:ro
+      - ${RELEASE_STORAGE_ROOT:-../data/releases}:/var/lib/little-orbit/releases:ro
       - attachment-data:/var/lib/little-orbit/attachments
     depends_on:
       attachment-init:
@@ -114,7 +117,7 @@ services:
       gateway-api:
         # Reserve .2 for Caddy so the API cannot claim the trusted-proxy
         # address while the gateway is being recreated during an update.
-        ipv4_address: 172.30.14.3
+        ipv4_address: ${GATEWAY_API_IP:-172.30.14.3}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/health/live', timeout=3)"]
       interval: 15s
@@ -132,10 +135,48 @@ services:
     command:
       - sh
       - -c
-      - install -d -o 65532 -g 65532 /var/lib/little-orbit/attachments
+      - install -d -m 0750 -o 65532 -g 65532 /var/lib/little-orbit/attachments
     volumes:
       - attachment-data:/var/lib/little-orbit/attachments
     network_mode: none
+    logging: *bounded-logging
+
+  backup-attachment-reader:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+      target: runtime
+    profiles: ["tools"]
+    user: "65532:65532"
+    restart: "no"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - attachment-data:/var/lib/little-orbit/attachments:ro
+    network_mode: none
+    pids_limit: 64
+    mem_limit: 256m
+    logging: *bounded-logging
+
+  backup-attachment-verifier:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+      target: runtime
+    profiles: ["tools"]
+    user: "65532:65532"
+    restart: "no"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    network_mode: none
+    pids_limit: 64
+    mem_limit: 256m
     logging: *bounded-logging
 
   database-bootstrap:
@@ -152,7 +193,7 @@ services:
     restart: "no"
     command: ["alembic", "-c", "services/api/alembic.ini", "upgrade", "head"]
     env_file:
-      - ../.env
+      - ${LITTLE_ORBIT_ENV_FILE:-../.env}
     environment:
       DATABASE_URL: ${DATABASE_OWNER_URL:?set DATABASE_OWNER_URL in .env}
     depends_on:
@@ -168,8 +209,29 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  gpu-lock-init:
+    image: pgvector/pgvector:0.8.6-pg17-bookworm@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
+    user: "0:0"
+    restart: "no"
+    command:
+      - sh
+      - -ec
+      - >-
+        test ! -L /run/gpu-coordinator/gpu.lock;
+        if test ! -e /run/gpu-coordinator/gpu.lock; then
+          umask 007; : > /run/gpu-coordinator/gpu.lock;
+        fi;
+        test -f /run/gpu-coordinator/gpu.lock;
+        test "$$(stat -c %h /run/gpu-coordinator/gpu.lock)" = 1;
+        chown 0:${GPU_COORDINATOR_GID:-2000} /run/gpu-coordinator/gpu.lock;
+        chmod 0660 /run/gpu-coordinator/gpu.lock
+    volumes:
+      - gpu-coordinator:/run/gpu-coordinator
+    network_mode: none
+    logging: *bounded-logging
+
   backup-postgres:
-    image: postgres:17.6-alpine
+    image: pgvector/pgvector:0.8.6-pg17-bookworm@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
     profiles: ["tools"]
     restart: "no"
     command:
@@ -177,6 +239,10 @@ services:
       - --format=custom
       - --no-owner
       - --exclude-table-data=public.location_samples
+      - --exclude-table-data=public.together_device_health
+      - --exclude-table-data=public.question_feedback
+      - --exclude-table-data=public.question_feedback_operations
+      - --exclude-table-data=public.anonymous_question_reviews
       - --username=little_orbit_backup
       - ${POSTGRES_DB:-little_orbit}
     environment:
@@ -196,6 +262,34 @@ services:
       - private
     logging: *bounded-logging
 
+  restore-drill-postgres:
+    image: pgvector/pgvector:0.8.6-pg17-bookworm@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
+    profiles: ["tools"]
+    user: "999:70"
+    restart: "no"
+    environment:
+      POSTGRES_DB: little_orbit_drill
+      POSTGRES_USER: drill_owner
+      POSTGRES_HOST_AUTH_METHOD: trust
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /var/lib/postgresql/data:size=4g,mode=0700,uid=999,gid=70
+      - /var/run/postgresql:size=16m,mode=0770,uid=999,gid=70
+      - /tmp:size=32m,mode=1770,uid=999,gid=70
+    network_mode: none
+    pids_limit: 128
+    mem_limit: 5g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U drill_owner -d little_orbit_drill"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    logging: *bounded-logging
+
   worker:
     build:
       context: ..
@@ -204,22 +298,76 @@ services:
     restart: unless-stopped
     command: ["python", "-m", "little_orbit_api.worker"]
     env_file:
-      - ../.env
+      - ${LITTLE_ORBIT_ENV_FILE:-../.env}
     environment:
       DATABASE_URL: ${DATABASE_WORKER_URL:?set DATABASE_WORKER_URL in .env}
       ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
+      PUBLIC_CONTEXT_FETCHER_URL: http://context-fetcher:8010
+      GPU_LOCK_PATH: /run/gpu-coordinator/gpu.lock
     volumes:
       - attachment-data:/var/lib/little-orbit/attachments
+      - gpu-coordinator:/run/gpu-coordinator
+    group_add:
+      - "${GPU_COORDINATOR_GID:-2000}"
     depends_on:
       api:
         condition: service_healthy
+      gpu-lock-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
-      model-init:
-        condition: service_completed_successfully
+      context-fetcher:
+        condition: service_healthy
     networks:
       - private
       - ai-private
+      - context-private
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import pathlib, socket;
+          assert b'little_orbit_api.worker' in pathlib.Path('/proc/1/cmdline').read_bytes();
+          socket.create_connection(('postgres', 5432), 3).close()
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *bounded-logging
+
+  context-fetcher:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    command:
+      - uvicorn
+      - little_orbit_api.public_context_fetcher:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8010"
+      - --no-proxy-headers
+    expose:
+      - "8010"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,mode=1770,uid=65532,gid=65532
+    networks:
+      - context-private
+      - context-egress
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/v1/health/live', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     logging: *bounded-logging
 
   media-worker:
@@ -254,6 +402,20 @@ services:
         condition: service_healthy
     networks:
       - media-private
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import pathlib, socket;
+          assert b'little_orbit_api.attachment_media' in pathlib.Path('/proc/1/cmdline').read_bytes();
+          socket.create_connection(('postgres', 5432), 3).close();
+          socket.create_connection(('clamav', 3310), 3).close()
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     logging: *bounded-logging
 
   clamav:
@@ -274,7 +436,7 @@ services:
     logging: *bounded-logging
 
   postgres:
-    image: postgres:17.6-alpine
+    image: pgvector/pgvector:0.8.6-pg17-bookworm@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-little_orbit}
@@ -288,7 +450,9 @@ services:
       - private
       - media-private
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      # The image's temporary init server listens only on its Unix socket. A
+      # TCP probe cannot report healthy until the final post-init server is up.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -305,6 +469,9 @@ services:
       OLLAMA_CONTEXT_LENGTH: "4096"
     volumes:
       - ollama-data:/root/.ollama
+      - gpu-coordinator:/run/gpu-coordinator
+    group_add:
+      - "${GPU_COORDINATOR_GID:-2000}"
     networks:
       - ai-private
       - model-egress
@@ -317,12 +484,15 @@ services:
 
   model-init:
     image: ollama/ollama:0.11.10
+    profiles: ["model-setup"]
     restart: "no"
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >-
         ollama pull qwen3:4b-instruct-2507-q4_K_M &&
-        test "$(ollama list | awk '$1 == "qwen3:4b-instruct-2507-q4_K_M" {print $2}')" = "0edcdef34593"
+        ollama pull nomic-embed-text:v1.5 &&
+        test "$(ollama list | awk '$1 == "qwen3:4b-instruct-2507-q4_K_M" {print $2}')" = "0edcdef34593" &&
+        test "$(ollama list | awk '$1 == "nomic-embed-text:v1.5" {print $2}')" = "0a109f422b47"
     environment:
       OLLAMA_HOST: http://ollama:11434
     depends_on:
@@ -339,13 +509,16 @@ networks:
     internal: true
     ipam:
       config:
-        - subnet: 172.30.14.0/28
+        - subnet: ${GATEWAY_INTERNAL_SUBNET:-172.30.14.0/28}
   gateway-web:
     internal: true
   ai-private:
     internal: true
   media-private:
     internal: true
+  context-private:
+    internal: true
+  context-egress:
   model-egress:
 
 volumes:
@@ -353,3 +526,4 @@ volumes:
   ollama-data:
   attachment-data:
   clamav-data:
+  gpu-coordinator:

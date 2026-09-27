@@ -84,7 +84,7 @@ public final class KadbWatchClient {
             String sdk = shell(client, "getprop ro.build.version.sdk");
             String patch = shell(client, "getprop ro.build.version.security_patch");
             String traits = shell(client, "getprop ro.build.characteristics");
-            String packages = shell(client, "dumpsys package com.littleorbit.mobile");
+            String packages = shell(client, "dumpsys package " + BuildConfig.APPLICATION_ID);
             return new Device(model, number(sdk), patch, installedVersion(packages), traits);
         } catch (Exception failure) {
             throw WatchAdbException.classify(WatchAdbException.Operation.INSPECT, failure);
@@ -102,6 +102,17 @@ public final class KadbWatchClient {
                     Collections.singletonList(apk), new String[] {"-r"});
         } catch (Exception failure) {
             throw WatchAdbException.classify(WatchAdbException.Operation.INSTALL, failure);
+        } finally { close(client); }
+    }
+
+    /** Uninstalls only Little Orbit from the explicitly inspected watch. */
+    public void uninstall(String host, int port) throws WatchAdbException {
+        Object client = connectedClient(host, port, 30_000);
+        try {
+            String output = shell(client, "pm uninstall " + BuildConfig.APPLICATION_ID);
+            if (!"Success".equals(output)) throw new Exception("Watch removal failed");
+        } catch (Exception failure) {
+            throw WatchAdbException.classify(WatchAdbException.Operation.REMOVE, failure);
         } finally { close(client); }
     }
 

@@ -53,7 +53,7 @@ public final class SettingsActivity extends OrbitShellActivity {
                 ignored -> open(DeviceSetupActivity.class));
         binding.locationSetupButton.setOnClickListener(ignored -> open(DeviceSetupActivity.class));
         binding.pauseNearbyButton.setOnClickListener(ignored -> pauseNearbyTracking());
-        binding.wearInstallButton.setOnClickListener(ignored -> open(WearInstallerActivity.class));
+        binding.wearInstallButton.setOnClickListener(ignored -> open(WatchSettingsActivity.class));
         binding.signOutButton.setOnClickListener(ignored -> signOut());
         binding.crashDiagnosticsSwitch.setChecked(crashDiagnostics.enabled());
         binding.crashDiagnosticsSwitch.setOnCheckedChangeListener((button, enabled) -> {
@@ -122,12 +122,14 @@ public final class SettingsActivity extends OrbitShellActivity {
             case UNAVAILABLE -> R.string.wear_status_unavailable;
         };
         binding.wearStatus.setText(text);
-        binding.wearInstallButton.setEnabled(state != WearStatusChecker.State.APP_CONNECTED);
+        binding.wearInstallButton.setEnabled(true);
     }
 
     private void signOut() {
         binding.signOutButton.setEnabled(false);
-        orbit.disableNotificationDevice(notificationDevice.id())
+        orbit.deleteTogetherDeviceHealth(notificationDevice.id())
+                .handle((ignored, failure) -> null)
+                .thenCompose(ignored -> orbit.disableNotificationDevice(notificationDevice.id()))
                 .handle((ignored, failure) -> null)
                 .thenCompose(ignored -> orbit.signOut())
                 .thenRun(() -> runOnUiThread(this::finishSignedOut));

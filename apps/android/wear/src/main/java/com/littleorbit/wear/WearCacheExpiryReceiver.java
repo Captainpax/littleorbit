@@ -16,7 +16,10 @@ public final class WearCacheExpiryReceiver extends BroadcastReceiver {
         if (!Intent.ACTION_BOOT_COMPLETED.equals(action) && !ACTION_EXPIRE.equals(action)) return;
         boolean expired = WearRelationshipGuard.expireIfNeeded(
                 context, System.currentTimeMillis());
-        if (expired) WearSurfaceUpdates.request(context);
+        if (expired) {
+            WearTargetGuard.clearController(context);
+            WearSurfaceUpdates.request(context);
+        }
     }
 
     static void schedule(Context context, long deadline) {

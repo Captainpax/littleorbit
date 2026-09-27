@@ -91,7 +91,7 @@ def test_curated_fallback_always_publishes_five_general_questions() -> None:
 
 
 def test_wrong_candidate_mix_is_recorded_without_discarding_valid_questions() -> None:
-    fixture = Path(__file__).parents[3] / "protocol/fixtures/v2/question-batch.valid.json"
+    fixture = Path(__file__).parents[3] / "protocol/fixtures/v4/question-batch.valid.json"
     payload = json.loads(fixture.read_text(encoding="utf-8"))
     payload["questions"][-1]["intimacy"] = False
     payload["questions"][-1]["category"] = "connection"
@@ -119,7 +119,7 @@ async def test_pinned_model_generates_a_strict_batch() -> None:
         assert request_payload["keep_alive"] == 0
         assert request_payload["options"]["num_ctx"] == 4096
         payload = {
-            "schema_version": "2",
+            "schema_version": "4",
             "date": "2026-09-11",
             "questions": [
                 {
@@ -130,8 +130,13 @@ async def test_pinned_model_generates_a_strict_batch() -> None:
                     "intimacy": index >= 8,
                     "options": [],
                     "option_icons": [],
-                    "scale_low_label": None,
-                    "scale_high_label": None,
+                        "scale_low_label": None,
+                        "scale_high_label": None,
+                        "concept_family": f"shared-moment-{index}",
+                        "concept_summary": f"A distinct shared moment preference number {index}",
+                        "depth": ["light", "reflective", "reflective", "deeper"][index % 4],
+                        "theme_role": "themed" if index % 5 < 3 else "variety",
+                        "theme_tags": ["shared-moments"],
                 }
                 for index in range(10)
             ],
@@ -157,3 +162,41 @@ async def test_changed_model_manifest_is_rejected_before_generation() -> None:
     client = OllamaClient(OllamaSettings(), httpx.MockTransport(handler))
     with pytest.raises(OllamaFailure, match="pinned manifest"):
         await client.generate("Generate a safe batch")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["timeout", "oom"])
+async def test_inference_timeout_and_oom_fail_closed_without_response_details(
+    failure: str,
+) -> None:
+    settings = OllamaSettings()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/tags":
+            return httpx.Response(
+                200,
+                json={
+                    "models": [
+                        {"name": settings.model, "digest": settings.manifest_digest}
+                    ]
+                },
+            )
+        if failure == "timeout":
+            raise httpx.ReadTimeout(
+                "untrusted-timeout-detail",
+                request=request,
+            )
+        return httpx.Response(
+            500,
+            text="CUDA out of memory: untrusted-server-detail",
+            request=request,
+        )
+
+    client = OllamaClient(settings, httpx.MockTransport(handler))
+    with pytest.raises(OllamaFailure) as raised:
+        await client.generate("Generate a safe batch")
+
+    assert str(raised.value) == (
+        "Ollama response failed transport or strict schema validation"
+    )
+    assert "untrusted" not in str(raised.value)

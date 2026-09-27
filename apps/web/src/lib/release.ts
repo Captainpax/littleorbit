@@ -70,25 +70,25 @@ export function formatReleaseDate(publishedAt: string): string {
 // Keep this verified fallback synchronized with every signed release so a brief API
 // outage never removes the public APK download from the statically rendered page.
 export const currentRelease: ReleaseMetadata = {
-  version: "1.0.0",
-  versionCode: 23,
+  version: "1.3.0",
+  versionCode: 29,
   minimumSupportedVersionCode: 23,
   minimumAndroid: "Android 10 (API 29)",
-  sha256: "6a8d711eda3c662748e62cc3e0391135985ccf58123886c3f80651684ca500c0",
+  sha256: "c5c879d458719e3ed27e5bdda38823d839600141ca08ff0d8967356df0d623e9",
   releaseNotes: [
-    "Evaluates every chronological observation so unequal phone cadence cannot hide intervening evidence.",
-    "Requires fresh evidence from both phones and bounds counted intervals and live projection to five minutes.",
-    "Shows a monotonic foreground timer with clear nearby, confirming, apart, inaccurate, waiting, and stale states.",
-    "Scopes encrypted offline samples to the exact relationship and retains them through temporary failures.",
-    "Keeps passive widget and Wear displays on authoritative observed nearby time.",
+    "Adds one weekly quiz arc with seven distinct daily themes and balanced depth.",
+    "Uses reviewed Markdown retrieval and a 2,190-question one-use offline reserve.",
+    "Strengthens same-day, same-week, and 365-day semantic no-repeat checks.",
+    "Runs privacy-thresholded learning on Saturday and next-week generation on Sunday.",
+    "Adds terminal-PIN bootstrap and richer content-free observability in Big Orbit 1.3.0.",
   ],
-  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.0.0",
-  apkUrl: hostedApkPath("1.0.0"),
+  githubUrl: "https://github.com/Captainpax/littleorbit/releases/tag/v1.3.0",
+  apkUrl: hostedApkPath("1.3.0"),
   wear: {
-    apkUrl: hostedWearApkPath("1.0.0"),
-    sha256: "43068ae14877ee0e158f6498a66f5987d56642521a8c4109372434e8c7fe9cd3",
-    sizeBytes: 14189878,
-    versionCode: 18,
+    apkUrl: hostedWearApkPath("1.3.0"),
+    sha256: "0f0f0f221d80bbb5fc9db70773d8980b5b40136251df2fe4e64c8b3530e985cf",
+    sizeBytes: 14737944,
+    versionCode: 21,
     minimumAndroid: 30,
   },
   published: true,
@@ -175,7 +175,7 @@ function fallbackHistory(): readonly ReleaseHistoryItem[] {
     sha256: currentRelease.sha256,
     minimumAndroid: 29,
     releaseNotes: currentRelease.releaseNotes,
-    publishedAt: "2026-09-17T03:06:07Z",
+    publishedAt: "2026-09-24T02:33:46.511784Z",
   }];
 }
 

@@ -9,4 +9,18 @@ public record WearReleaseMetadata(
         long sizeBytes,
         String packageName,
         String signerSha256,
-        int minimumAndroid) {}
+        int minimumAndroid,
+        boolean productionAuthority) {
+    public WearReleaseMetadata(
+            String version,
+            int versionCode,
+            String apkUrl,
+            String sha256,
+            long sizeBytes,
+            String packageName,
+            String signerSha256,
+            int minimumAndroid) {
+        this(version, versionCode, apkUrl, sha256, sizeBytes, packageName,
+                signerSha256, minimumAndroid, true);
+    }
+}

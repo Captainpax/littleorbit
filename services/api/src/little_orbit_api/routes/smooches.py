@@ -27,6 +27,7 @@ from ..models import Account, Couple, CoupleMember
 from ..notification_hub import NotificationConnectionHub
 from ..notification_models import NotificationEvent
 from ..notification_service import enqueue_smooch_event
+from ..relationship_name_service import visible_relationship_names
 from ..smooch_service import (
     EMOJIS,
     HOURLY_LIMIT,
@@ -54,6 +55,15 @@ async def _partner(session: AsyncSession, member: CoupleMember) -> Account:
     return partner
 
 
+async def _visible_partner_name(
+    session: AsyncSession, member: CoupleMember, partner_id: UUID
+) -> str:
+    names = await visible_relationship_names(
+        session, member.couple_id, (partner_id,), member.account_id
+    )
+    return names[partner_id].display_name
+
+
 @router.post("", response_model=SmoochResponse, status_code=status.HTTP_201_CREATED)
 async def send_smooch(
     payload: SmoochCreateRequest,
@@ -67,6 +77,7 @@ async def send_smooch(
     member = await active_member(session, actor.id)
     await lock_couple(session, member.couple_id)
     partner = await _partner(session, member)
+    partner_name = await _visible_partner_name(session, member, partner.id)
     prior = await session.scalar(
         select(Smooch).where(
             Smooch.couple_id == member.couple_id,
@@ -77,16 +88,8 @@ async def send_smooch(
     now = SystemClock().now()
     recent = await _recent_sends(session, member.couple_id, actor.id, now)
     if prior is not None:
-        return _send_response(prior, partner.display_name, len(recent))
-    if payload.emoji not in EMOJIS:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Emoji is unavailable")
-    retry = retry_after_seconds(recent, now)
-    if retry:
-        raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS,
-            "Five Smooches are allowed in a rolling hour",
-            headers={"Retry-After": str(retry)},
-        )
+        return _send_response(prior, partner_name, len(recent))
+    _enforce_send_allowed(payload.emoji, recent, now)
     smooch = Smooch(
         operation_id=payload.operation_id,
         couple_id=member.couple_id,
@@ -114,7 +117,19 @@ async def send_smooch(
         hub: NotificationConnectionHub = request.app.state.notification_connections
         await hub.available(notified_account)
     response.headers["X-RateLimit-Remaining"] = str(HOURLY_LIMIT - len(recent) - 1)
-    return _send_response(smooch, partner.display_name, len(recent) + 1)
+    return _send_response(smooch, partner_name, len(recent) + 1)
+
+
+def _enforce_send_allowed(emoji: str, recent: list[datetime], now: datetime) -> None:
+    if emoji not in EMOJIS:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Emoji is unavailable")
+    retry = retry_after_seconds(recent, now)
+    if retry:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Five Smooches are allowed in a rolling hour",
+            headers={"Retry-After": str(retry)},
+        )
 
 
 async def _recent_sends(
@@ -153,6 +168,7 @@ async def smooch_status(
 
     member = await active_member(session, actor.id)
     partner = await _partner(session, member)
+    partner_name = await _visible_partner_name(session, member, partner.id)
     couple = await session.get(Couple, member.couple_id)
     if couple is None or couple.ended_at is not None:
         raise relationship_inactive_error()
@@ -178,7 +194,7 @@ async def smooch_status(
         )
     )
     return SmoochStatus(
-        partner_display_name=partner.display_name,
+        partner_display_name=partner_name,
         remaining_this_hour=max(0, HOURLY_LIMIT - len(recent)),
         current_week=_week_summary(rows, actor.id, start, couple.home_timezone),
     )
@@ -194,29 +210,33 @@ async def pending_smooches(
     member = await active_member(session, actor.id)
     await lock_couple(session, member.couple_id)
     rows = list(
-        (
-            await session.execute(
-                select(Smooch, Account.display_name)
-                .join(Account, Account.id == Smooch.sender_id)
-                .where(
-                    Smooch.couple_id == member.couple_id,
-                    Smooch.recipient_id == actor.id,
-                    Smooch.delivered_at.is_(None),
-                )
-                .order_by(Smooch.sent_at)
-                .limit(50)
+        await session.scalars(
+            select(Smooch)
+            .where(
+                Smooch.couple_id == member.couple_id,
+                Smooch.recipient_id == actor.id,
+                Smooch.delivered_at.is_(None),
             )
-        ).all()
+            .order_by(Smooch.sent_at)
+            .limit(50)
+        )
+    )
+    names = await visible_relationship_names(
+        session,
+        member.couple_id,
+        (item.sender_id for item in rows if item.sender_id is not None),
+        actor.id,
     )
     return [
         SmoochDelivery(
             id=item.id,
             emoji=item.emoji,
             phrase_key=item.phrase_key,
-            partner_display_name=name,
+            partner_display_name=names[item.sender_id].display_name,
             sent_at=item.sent_at,
         )
-        for item, name in rows
+        for item in rows
+        if item.sender_id in names
     ]
 
 

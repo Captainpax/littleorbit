@@ -18,6 +18,7 @@ final class RelationshipLocalPurge {
         new CrashDiagnosticStore(app).clearForAccountChange();
         app.getSharedPreferences("smooch_settings", Context.MODE_PRIVATE).edit().clear().commit();
         app.getSharedPreferences("device_setup", Context.MODE_PRIVATE).edit().clear().commit();
+        app.getSharedPreferences("together-health", Context.MODE_PRIVATE).edit().clear().commit();
         PartnerNotificationWorker.cancel(app);
         SmoochStatusWorker.schedule(app, false);
         CrashDiagnosticWorker.cancel(app);

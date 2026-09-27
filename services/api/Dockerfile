@@ -16,7 +16,7 @@ RUN python -m pip install --upgrade pip && python -m pip install ./services/api 
 FROM base AS runtime
 USER 65532:65532
 EXPOSE 8000
-CMD ["uvicorn", "little_orbit_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "192.168.50.6,127.0.0.1"]
+CMD ["uvicorn", "little_orbit_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]
 
 FROM base AS media
 RUN apt-get update \

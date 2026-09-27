@@ -1,11 +1,28 @@
 """Worker cadence and job-isolation behavior."""
 
 import asyncio
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock
 
 import pytest
 
 from little_orbit_api import worker
+
+
+def test_saturday_one_am_uses_los_angeles_wall_clock_across_dst() -> None:
+    before = datetime(2026, 9, 26, 7, 59, tzinfo=UTC)
+    due = datetime(2026, 9, 26, 8, 0, tzinfo=UTC)
+    winter = datetime(2026, 11, 7, 9, 0, tzinfo=UTC)
+
+    assert worker._latest_due_date(before, 5, 1, "America/Los_Angeles") == date(
+        2026, 9, 19
+    )
+    assert worker._latest_due_date(due, 5, 1, "America/Los_Angeles") == date(
+        2026, 9, 26
+    )
+    assert worker._latest_due_date(winter, 5, 1, "America/Los_Angeles") == date(
+        2026, 11, 7
+    )
 
 
 async def test_mail_polling_uses_short_bounded_interval(monkeypatch: pytest.MonkeyPatch) -> None:

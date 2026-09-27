@@ -2,7 +2,11 @@
 
 The Mermaid diagrams in this document are the editable architecture source of truth. The overview PNG is a reader-friendly concept and must be regenerated when its flow changes.
 
+The external-routing diagram shows the live Unraid route after the 2026-09-27 cutover. [`VERIFICATION-UNRAID-2026-09-26.md`](operations/VERIFICATION-UNRAID-2026-09-26.md) records the completed `.182` to `.14` stream, Nginx Proxy Manager switch, corrected reboot recovery, authorized DNS correction, and one existing authenticated Android session, plus the second-session, post-reload WSS reconnect, broader device, and cellular external-WAN checks that remain open.
+
 ![Little Orbit network and logic overview](assets/network-flow-overview.png)
+
+*Illustrative architecture concept; depicted people and data are not production evidence or user data.*
 
 ## External routing and trust
 
@@ -10,7 +14,8 @@ The Mermaid diagrams in this document are the editable architecture source of tr
 flowchart TD
     Clients[Android / Wear OS / Browser] -->|HTTPS or WSS| DNS[lil-orb.pax-kun.com]
     DNS -->|public DNS| NPM[Nginx Proxy Manager<br/>192.168.50.6]
-    NPM -->|HTTP :8180<br/>trusted forwarded headers| Gateway[Gateway<br/>192.168.50.182:8180]
+    NPM -->|HTTP :8180<br/>only admitted LAN source| Firewall[Unraid DOCKER-USER<br/>original destination filter]
+    Firewall --> Gateway[Gateway<br/>192.168.50.14:8180]
     Gateway -->|all other paths| Web[Next.js]
     Gateway -->|/api/* and /ws/*| API[FastAPI]
     API --> DB[(PostgreSQL)]
@@ -20,6 +25,11 @@ flowchart TD
     Worker[Worker] --> DB
     Worker --> AI[AI adapter]
     AI --> Ollama[Ollama<br/>no published port]
+    Worker -->|exclusive stable-inode lock| GPULock[/gpu.lock<br/>shared GID/]
+    Ollama --> GPU[RTX 4060]
+    Oracle[Scriptarr Oracle / LocalAI] -->|same lock while resident| GPULock
+    Raven[Scriptarr Raven / NVENC] -->|same lock per process| GPULock
+    GPULock --> GPU
     Ollama -. model install only .-> Registry[Ollama model registry]
     Worker --> SMTP[SMTP adapter]
     Worker -->|expired-note cleanup| Files
@@ -31,9 +41,15 @@ flowchart TD
     Gateway -. ignore forwarded headers .-> Untrusted
 ```
 
-Only gateway port 8180 is published by Compose. Windows Firewall allows that production port only from `192.168.50.6`. The address `192.168.50.182` needs a DHCP reservation before production use. The worker waits for API health so migrations finish before maintenance or scheduled generation can query the new schema.
+Only gateway port 8180 is published by Compose, bound specifically to `192.168.50.14`. An owned, idempotent `DOCKER-USER` chain admits that original destination only from Nginx Proxy Manager at `192.168.50.6`, rejects other sources, preserves unrelated rules, and refuses startup when IPv6 exposes the port. The worker waits for API health so migrations finish before maintenance or scheduled generation can query the new schema.
 
-Caddy trusts incoming `X-Forwarded-For` only when its immediate peer is `192.168.50.6`. It overwrites a private `X-Little-Orbit-Client-IP` header before proxying to FastAPI. FastAPI accepts that private header only from Caddy's fixed `gateway-api` address, validates it as exactly one IP address, and does not enable Uvicorn's generic proxy-header trust. Compose reserves `172.30.14.2` for Caddy and `172.30.14.3` for FastAPI so update-time start order cannot give the trusted proxy address to the application container. Direct or malformed values fall back to the socket peer for throttling.
+The live Caddy-to-Next.js hop uses private port 3014. During cutover, API routes stayed healthy while web routes returned `502` because a pre-existing Scriptarr `DOCKER-USER` rule rejected port 3000. Restoring Little Orbit's reserved 3014 hop fixed the web route without changing or flushing Scriptarr's rules. LAN TLS validation used NPM listener 18443, which maps to the same NPM HTTPS path as WAN 443 because this router does not provide LAN hairpin access; it did not change the public origin or application port.
+
+After the NPM upstream switch, the separately authorized DNS correction changed the `pax-kun.com` apex A record from stale `67.185.206.35` to current WAN `67.185.205.68`; `lil-orb.pax-kun.com` continues to reach it through its existing CNAME. All four authoritative name servers returned the new value, and a Pixel 8 Pro refreshed the address and received API 1.3.0 readiness over Chrome on Wi-Fi. The installed production app subsequently used an existing session for authenticated HTTPS and opened its authenticated notification WebSocket through `.14`. A later code-only API/worker reload served authenticated `200` requests from that phone, but the phone left the network before the replacement API observed a WSS reconnect; neither Wi-Fi observation establishes cellular external-WAN reachability.
+
+Caddy trusts incoming `X-Forwarded-For` only when its immediate peer is `192.168.50.6`. It overwrites a private `X-Little-Orbit-Client-IP` header before proxying to FastAPI. FastAPI accepts that private header only from Caddy's fixed `gateway-api` address, validates it as exactly one IP address, and does not enable Uvicorn's generic proxy-header trust. Compose reserves `10.253.14.2` for Caddy and `10.253.14.3` for FastAPI; the target's Pterodactyl bridge already owns `172.30.0.0/16`. Direct or malformed values fall back to the socket peer for throttling. Allowed HTTP hosts derive the public name from `PUBLIC_BASE_URL` and retain only that name, localhost/loopback, and the internal `api` service name; direct readiness uses `Host: lil-orb.pax-kun.com`.
+
+Every GPU consumer opens the same stable inode at `/mnt/cache/gpu-coordinator/gpu.lock`, mounted as `/run/gpu-coordinator/gpu.lock`. Little Orbit acquires it before creating an AI-run claim and holds it through generation, embedding, immediate Ollama unload, and a bounded empty-`ollama ps` check. Oracle holds it while LocalAI is resident and unloads after 900 idle seconds; status checks cannot reload the model. Raven holds it for each NVENC process. Contention never preempts an owner: Little Orbit and Raven remain durably queued, while Oracle follows its existing graceful fallback. Scriptarr keeps its existing Pacific six-hour update cadence; Little Orbit's 01:00 and 03:00 eligibility times avoid its normal clock edges. After a crash or reboot, the advisory lock alone is insufficient; no consumer starts until stale Ollama, LocalAI, and NVENC processes are absent from VRAM.
 
 ## Authentication and pairing
 
@@ -46,16 +62,16 @@ sequenceDiagram
     A->>API: Register + 18+/terms + honeypot
     API->>DB: Commit capped IP + email digest counters
     API->>DB: Store Argon2id hash + hashed verification token
-    API-->>A: Neutral response; email verification link
+    API-->>A: Neutral response, email verification link
     A->>API: Consume verification token once
     A->>API: Create pair code
     API->>DB: Store hashed 8-char code, expires +10m
     B->>API: Redeem code
     API->>DB: Commit capped IP + account digest counters
-    API->>DB: Lock both accounts, then code; recheck eligibility and capacity
+    API->>DB: Lock both accounts, then code, and recheck eligibility and capacity
     API-->>A: Ask creator to confirm B
     A->>API: Confirm pending partner
-    API->>DB: Re-lock accounts in UUID order; recheck expiry and eligibility
+    API->>DB: Re-lock accounts in UUID order and recheck expiry and eligibility
     API->>DB: One transaction: consume code + create two-member couple
     API-->>A: Return shared paired state
     API-->>B: Pairing becomes visible on the next authenticated refresh
@@ -80,33 +96,76 @@ sequenceDiagram
         Phone-->>Phone: Render signed-out Home
     else Account is valid but relationship is inactive
         API-->>Phone: 409 relationship_inactive
-        Phone->>Local: Preserve account token; purge relationship state and passive surfaces
+        Phone->>Local: Preserve account token and purge relationship state and passive surfaces
         Phone-->>Phone: Render pairing setup
     end
 ```
 
 Public sign-in and password proof failures do not use the authenticated-session purge path. Home derives its recovery state after the failing request completes so a delayed callback cannot replace the signed-out screen with stale cached identity.
 
-## Administrator MFA replacement
+## Big Orbit enrollment and administrator MFA
 
 ```mermaid
 sequenceDiagram
-    actor Admin
+    actor Console as Trusted server console
+    actor Admin as Owner on fresh Big Orbit device
+    participant Key as Android Keystore
     participant API
     participant DB as PostgreSQL
-    Admin->>API: Start replacement with password + current TOTP/recovery
+    Console->>API: bootstrap-admin owner@example.com
+    API->>DB: Invalidate older PIN/setup and store hash with 10-minute expiry
+    API-->>Console: Show one 8-digit PIN once
+    Admin->>Key: Create non-exportable P-256 key
+    Admin->>API: Password + PIN + label + public key
     API->>DB: Commit capped IP + administrator digest counters
-    API->>DB: Lock account and MFA; recheck exact live session + current proof
-    API->>DB: Store encrypted pending secret with bounded expiry
-    Note over DB: Current factor remains active
-    API-->>Admin: Authenticator enrollment URI
-    Admin->>API: Confirm one code from pending factor
-    API->>DB: Recheck account, session, pending expiry, and TOTP replay counter
-    API->>DB: Swap factor + hash new recovery codes + revoke every prior session
-    API-->>Admin: One new MFA session + recovery codes shown once
-    Admin->>API: Read operational configuration
-    API-->>Admin: Explicit safe allowlist only
+    API->>DB: Lock account, verify password, consume PIN, and create pending device
+    API-->>Admin: Restricted 10-minute setup token
+    Admin->>API: Request bootstrap challenge
+    API-->>Admin: Single-use bootstrap challenge
+    Admin->>Key: Sign canonical bootstrap challenge
+    Admin->>API: Challenge + signature
+    API->>DB: Consume challenge and prove pending device key
+    alt First owner has no enabled MFA
+        API-->>Admin: TOTP URI + QR PNG and SVG data URLs
+        Admin->>API: Current 6-digit TOTP
+        API->>DB: Enable MFA, hash recovery codes, and approve device
+        API-->>Admin: Recovery codes once + device credential + session
+    else Existing MFA remains enabled
+        API->>DB: Approve device without changing MFA
+        API-->>Admin: Device credential + session
+    end
+    opt Final response is lost before local credential storage
+        Admin->>API: Request a fresh bootstrap challenge within original expiry
+        Admin->>Key: Sign the new challenge with the same key
+        API->>DB: Rotate replacement credential and short session
+        API-->>Admin: Replacement credential + session
+    end
+    loop Each session or background rotation
+        Admin->>API: Request fresh session challenge
+        API-->>Admin: Five-minute single-use challenge
+        Admin->>Key: Sign canonical session challenge
+        Admin->>API: Credential + signature
+        API->>DB: Verify enrolled non-revoked device and bind 30-minute session
+    end
+    opt Replace enabled MFA from an enrolled Big Orbit device
+        Admin->>API: Device-bound session + password + exactly one current factor
+        API->>DB: Recheck exact account, approved device, and session under lock
+        API-->>Admin: Pending challenge + TOTP URI + QR PNG and SVG data URLs
+        Admin->>API: New TOTP through the same device-bound session
+        API->>DB: Swap factor, revoke all earlier sessions, bind replacement to same device
+        API-->>Admin: Recovery codes once + same-device replacement session
+    end
+    Admin->>API: Read allowlisted metadata or queue typed job with operation ID
+    API->>DB: Authorize bound device and insert under owner + operation ID uniqueness
+    alt New job, identical retry, or concurrent duplicate
+        DB-->>API: Persisted current job and result
+        API-->>Admin: Typed job only, no relationship content or arbitrary command surface
+    else Same operation ID with different typed fields
+        API-->>Admin: 409 conflict
+    end
 ```
+
+The setup token is a separate restricted capability and cannot read ordinary administrator metadata or queue operations. A fifth wrong PIN invalidates it; a new console PIN expires every older live setup capability, and ordinary expiry revokes a still-pending device. Process death may resume within the original ten-minute window. If completion committed but its response was lost, recovery requires a fresh single-use signature from the same device key before credentials rotate. The public web app has no `/admin` interface and the final API has no `/v1/admin`. Initial MFA is bootstrap-only. Replacement requires an exact approved-device Big Orbit session, current password, and exactly one current TOTP or recovery proof; an ordinary account session is rejected. The old factor remains active until the same device-bound session confirms the pending secret. The server then revokes every earlier administrator session and returns one replacement session bound to that same device. Big Orbit alert acknowledgement is per enrolled device, so one phone cannot consume another owner's action inbox. Typed job operation IDs are scoped to the requesting owner: an identical retry returns the persisted current status and result, while reuse with a different kind or target week fails with a conflict even when submissions race.
 
 ## Live notes
 
@@ -120,7 +179,7 @@ sequenceDiagram
     API->>DB: Authorize current couple before listing notes
     API-->>B: Ordered directory snapshot
     A->>API: POST document(operation_id, title, body)
-    API->>DB: Lock current couple; resolve exact operation ID
+    API->>DB: Lock current couple and resolve exact operation ID
     API->>DB: Recover exact document saved in bounded window or insert once
     API-->>B: notification.available (content-free)
     loop Every 5 s while B's library remains visible
@@ -133,17 +192,17 @@ sequenceDiagram
     API-->>A: Snapshot(revision N) + unique-account presence
     A->>API: Operation(op_id, base N, insert/delete)
     API->>DB: Lock account + exact session, then couple + note
-    API->>DB: Dedupe op_id; transform; append revision N+1
+    API->>DB: Dedupe op_id, transform, and append revision N+1
     API-->>A: Ack(op_id, current body, revision N+1)
     API-->>B: Applied operation(revision N+1)
-    Note over A,B: Body input debounces 750 ms;<br/>ack patches preserve cursor/selection;<br/>duplicate operation IDs return current state
+    Note over A,B: Body input debounces 750 ms,<br/>ack patches preserve cursor/selection,<br/>duplicate operation IDs return current state
     A--xAPI: Disconnect
     Note over A: Preserve draft and base revision
     A->>API: Reconnect with base revision
     API-->>A: Operations or conflict snapshot
     Note over A: If revisions diverge beyond safe transform, show both versions
     A->>API: Rename or archive with metadata operation ID
-    API->>DB: Lock couple + note; dedupe; increment metadata revision
+    API->>DB: Lock couple + note, dedupe, and increment metadata revision
     Note over DB: Archived notes reject body operations<br/>and remain restorable for 7 days
     loop Every operation or 30 s idle heartbeat
         API->>DB: Recheck session, account, and current note access
@@ -151,7 +210,7 @@ sequenceDiagram
     end
 ```
 
-Session expiry, revocation, suspension, deletion, unpairing, or note archival closes the socket. The server retains only the keyed session digest needed for revalidation; the raw bearer token is not kept in connection state. A new Android workspace keeps one stable create ID and one request in flight. The bounded exact-match fallback runs only after current-couple authorization and protects clients that lose that identity immediately after a save. Android does not rebuild the library for an identical snapshot, and leaving the library stops its directory refresh.
+Session expiry, revocation, suspension, deletion, unpairing, or note archival closes the socket. The server retains only the keyed session digest needed for revalidation; the raw bearer token is not kept in connection state. A new Android workspace persists one stable create ID before its first request and serializes create, title, and body mutations. Autosave runs after 800 milliseconds idle and at least every five seconds while typing. A newer server revision stops synchronization; an explicit fork request copies only authorized clean attachments, rewrites their IDs, and leaves the shared source untouched. Android does not rebuild the library for an identical snapshot, and leaving the library stops its directory refresh.
 
 ## Private note attachments
 
@@ -164,7 +223,7 @@ sequenceDiagram
     participant Media as Media worker
     participant AV as ClamAV
     A->>API: Reserve(note_id, op_id, name, type, bytes, SHA-256)
-    API->>DB: Authorize before note lookup; lock couple; reserve quota
+    API->>DB: Authorize before note lookup, lock couple, and reserve quota
     API-->>A: Stable attachment ID + exact upload offset
     loop Bounded 1 MiB client chunks
         A->>API: PUT bytes with Upload-Offset
@@ -177,7 +236,7 @@ sequenceDiagram
     AV-->>Media: Clean, found, or unavailable
     alt clean and sanitization succeeds
         Media->>Files: Write metadata-free type-specific copy
-        Media->>DB: Re-lock couple; recheck final size/quota; mark available
+        Media->>DB: Re-lock couple, recheck final size/quota, and mark available
         Media->>DB: Append content-free attachment-ready activity
         A->>API: GET sanitized content
         API->>DB: Reauthorize current couple and note
@@ -217,26 +276,53 @@ sequenceDiagram
 
 The timeline helps each partner notice shared changes without creating another copy of private content. Event insertion shares the mutation's couple lock, dedupe keys make retries harmless, and sequence and seen watermarks only move forward. Administrators have no feed viewer.
 
-## Daily AI generation
+## Weekly quiz feedback learning and generation
 
 ```mermaid
-flowchart LR
-    Schedule[Daily scheduler] --> Dates[Find gaps for today + 7 future UTC dates]
-    Dates --> Prompt[Versioned prompt<br/>no couple data]
-    Prompt --> Ollama[Qwen3 4B in Ollama]
-    Ollama --> Parse[Strict v2 JSON parse<br/>exactly 10 candidates]
-    Parse --> Validate{Schema + safety + answerability<br/>canonical visible whitespace}
-    Validate -->|reject| Quarantine[Quarantine with reasons]
-    Validate -->|accept| Dedupe{Exact hash + trigram + repetition}
-    Dedupe -->|duplicate| Quarantine
-    Dedupe -->|unique| Pool[Candidate pool]
-    Pool --> Select[Balance tone, type, and category<br/>select 5 general + intimacy alternatives]
-    Bank[Curated bank] -->|timeout, OOM, shortage| Select
-    Select --> Publish[Publish date pool]
-    Publish --> Audit[Model digest, prompt version, parameters, validation, fallback]
+flowchart TD
+    Reveal[Shared reveal for eligible global question] --> Feedback[Private stars + fixed tags<br/>optional separately consented review]
+    Feedback --> Linked[Author-readable linked feedback<br/>editable through day 30]
+    Linked --> Aggregate{At least 5 distinct accounts<br/>for question and week?}
+    Aggregate -->|no| Hold[No admin or AI review surface]
+    Aggregate -->|yes| Eligible[Thresholded feedback becomes eligible]
+    Saturday[Schedule learning/planning job<br/>eligible Saturday 01:00 America/Los_Angeles] --> LearningJob[Queue content-free learning/planning job]
+    LearningJob --> Queue
+    Sunday[Schedule generation job<br/>eligible Sunday 03:00 local] --> Queue
+    Queue[Persistent content-free queue]
+    Queue --> Slot[Oldest eligible job<br/>one Little Orbit start per six-hour slot]
+    Slot --> Lock{Shared GPU lock and VRAM clear?}
+    Lock -->|busy| Retry[Advance next-attempt by six hours<br/>no AI run claim or false failure]
+    Retry --> Queue
+    Lock -->|acquired| Claim{Lease-fenced job kind}
+    Claim -->|learning/planning| LearningGate{Any newly eligible<br/>K-anonymous feedback?}
+    Eligible --> LearningGate
+    LearningGate -->|yes| Policy[Evaluate bounded policy<br/>activate only on deterministic pass]
+    LearningGate -->|no| Theme[Plan fourteen days of safe coverage<br/>distinct days, at most 2 observances per week]
+    Policy --> Theme
+    Theme --> FinishLearning
+    Linked -->|day 30| Unlink[Remove account, couple, and quiz-day links]
+    Unlink -->|by day 90| DeleteReview[Hard-delete raw review text]
+    Sources[Exact code-owned HTTPS sources] --> Fetcher[Secret-free fetcher<br/>public DNS, no redirects, 64 KiB]
+    Fetcher --> Generate[Generation while holding GPU lock]
+    Knowledge[Reviewed manifest-owned Markdown] --> Chunks[Bounded hashed pgvector chunks]
+    Chunks --> Generate
+    Claim -->|weekly generation| Generate
+    Claim -->|admin AI job| AdminRun[Allowlisted bounded target]
+    AdminRun --> Qwen
+    Generate --> Qwen[Pinned local Qwen model<br/>strict v4 JSON]
+    Qwen --> Validate{Schema, safety, whitespace,<br/>answerability, consent}
+    Validate -->|reject| Quarantine[Quarantine with reason codes]
+    Validate -->|accept| Semantic{365-day exact + trigram +<br/>concept family + pinned Nomic vectors}
+    Semantic -->|duplicate| Quarantine
+    Semantic -->|unique| Select[Exactly 3 themed + 2 variety<br/>1 light + 2 reflective + 2 deeper]
+    Reserve[One-use reviewed reserve<br/>1,825 general + 365 intimacy] -->|outage or shortage| Select
+    Select --> Publish[Exactly 5 global questions per day<br/>plus intimacy alternatives<br/>weekly job validates fourteen days]
+    Publish --> Audit[Model digests, prompt/policy versions,<br/>validation and fallback metadata]
+    FinishLearning --> Unload[keep_alive 0, wait for empty ollama ps<br/>then release shared lock]
+    Audit --> Unload
 ```
 
-Invalid model output is quarantined rather than repaired. Tabs, line breaks, control characters, non-breaking spaces, repeated horizontal spaces, and leading or trailing whitespace are rejected before publication so hidden layout characters never reach Android. A 180-question curated bank guarantees five general questions plus a consent-gated intimacy alternative for today and seven future dates while the model is unavailable.
+Invalid model output is quarantined rather than repaired. Tabs, line breaks, control characters, non-breaking spaces, repeated horizontal spaces, and leading or trailing whitespace are rejected before publication so hidden layout characters never reach Android. Global concepts are compared within the batch, planned coverage, and preceding 365 days; formatting changes do not reset memory. Public context may fall back to its latest sanitized snapshot for at most 30 days, after which reviewed knowledge and reserve content keep coverage while Big Orbit receives a content-free alert. Fourteen-day coverage is maintained independently of the hourly availability check, so that worker never loads Ollama merely to fill a midweek gap. A model, embedding, feedback, browsing, or GPU-availability failure cannot leave a quiz day empty. Neither local model receives answers, account/couple identity, notes, custom questions, locations, or relationship history. With two accounts the five-account threshold normally makes learning a no-op.
 
 ## Daily quiz, custom queue, and reveal
 
@@ -247,16 +333,16 @@ sequenceDiagram
     participant API
     participant DB as PostgreSQL
     A->>API: GET today's UTC quiz
-    API->>DB: Lock couple; snapshot 5 questions once
+    API->>DB: Lock couple and snapshot 5 questions once
     Note over DB: Due custom FIFO slots first,<br/>then eligible global questions
-    API-->>A: Stable ordered set; no partner answers
+    API-->>A: Stable ordered set with no partner answers
     A->>API: PUT private draft(op_id, answer revision)
     API->>DB: Authorize, dedupe op_id, validate type, increment revision
     A->>API: POST finish(day revision)
     API->>DB: Mark A finished + enqueue partner-finished event
     B->>API: Save all five drafts + finish
-    API->>DB: Lock both member rows; set one revealed_at + enqueue results-ready events
-    API-->>B: Both complete; include both answer sets
+    API->>DB: Lock both member rows, set one revealed_at, and enqueue results-ready events
+    API-->>B: Both complete, include both answer sets
     A->>API: Fetch pending events for random installation ID
     API-->>A: results-ready with UTC date only
     A->>API: GET day
@@ -264,6 +350,27 @@ sequenceDiagram
 ```
 
 A person may reopen and edit a finished set only before the shared reveal. Past incomplete days remain editable for seven days and remain visible for 30. Custom questions take the next available UTC slot, up to all five questions, and surprise content is hidden from the other partner until its day arrives. Non-surprise custom questions appear in both partners' pending queue. Intimacy-tagged custom or global questions require both partners' current consent. If either person opts out, every unrevealed intimacy prompt is replaced atomically, its drafts are cleared, and both people review the safe replacement before finishing again.
+
+```mermaid
+sequenceDiagram
+    actor A as Feedback author
+    participant Phone as Little Orbit Android
+    participant API
+    participant DB as PostgreSQL
+    Phone->>API: GET /v3 quiz day
+    API->>DB: Authorize active member before day lookup
+    API-->>Phone: Shared reveal + per-question eligibility + author's feedback only
+    A->>Phone: Stars, up to 3 fixed tags, optional review consent
+    Phone->>API: PUT feedback(operation_id, expected_revision)
+    API->>DB: Reauthorize and lock eligible launch-forward global question
+    API->>DB: Sanitize, dedupe operation, and create/update author row
+    API-->>Phone: Author-only revision and editable-until
+    opt Author removes feedback within 30 days
+        Phone->>API: DELETE with operation_id and expected_revision
+        API->>DB: Lock author row and delete idempotently
+    end
+    Note over DB: Partner never receives A's linked feedback<br/>Answers never enter feedback or AI inputs
+```
 
 ## Calendar-aware countdowns and private reminders
 
@@ -277,17 +384,17 @@ sequenceDiagram
     participant Calendar as Selected calendar app
     A->>PhoneA: Pick timed instant or all-day local date
     PhoneA->>API: Mutation(op_id, revision, timezone, timing kind)
-    API->>DB: Authorize; lock couple; validate; dedupe; save
+    API->>DB: Authorize, lock couple, validate, dedupe, and save
     API->>DB: Enqueue countdown-created/rescheduled event for B
     A->>API: Replace my reminder offsets
     API->>DB: Store only A's fixed offset choices
     API-->>PhoneA: Countdown plus A's private reminders
-    PhoneA->>PhoneA: Schedule local alerts; all-day uses 09:00 event time
+    PhoneA->>PhoneA: Schedule local alerts, all-day uses 09:00 event time
     B->>API: GET countdowns
     API-->>B: Shared details plus only B's reminder choices
     A->>PhoneA: Add to calendar
     PhoneA->>Calendar: Prefilled user-approved insert intent
-    Note over PhoneA,Calendar: One-way copy; no calendar token or later sync
+    Note over PhoneA,Calendar: One-way copy with no calendar token or later sync
 ```
 
 Reboot, app replacement, clock change, timezone change, and successful countdown sync all trigger reminder reconciliation. Offline countdown mutations keep their operation IDs and existing reminder selection until the server accepts the change.
@@ -344,7 +451,21 @@ flowchart TD
 
 Collection may continue into the relationship-scoped encrypted queue while the network is offline or temporarily throttled. Upload and server processing resume later, except that a sample already inside the five-minute cleanup margin is rejected instead of being reintroduced near its hard retention ceiling. Sign-in and signed-in process startup re-arm recovery work after local account cleanup, while a paired foreground screen reconciles current permission and both consent states.
 
-The estimator walks the chronological union of both sample streams. An observation from the faster phone can therefore end or weaken an interval instead of disappearing between two greedy matches. Nearby credit requires two consecutive nearby decisions, no more than five minutes between their bounding instants, and no more than five minutes between the two phones' evidence. Freshness and any live deadline use the older member's newest evidence, so one phone cannot make a stalled pair estimate appear current. The server persists only coordinate-free observed seconds. The visible phone screen may animate a provisional value with Android's monotonic clock until the explicit deadline, then freezes; a later authoritative response may retract unconfirmed display-only seconds. Widget and Wear records never extrapolate.
+The estimator walks the chronological union of both sample streams. Direct credit requires nearby decisions and two-phone evidence bounded to five minutes. A later strong nearby anchor may confirm an unknown gap up to 20 minutes only when no intervening observation reports apart or poor accuracy; the stored minute records label that duration as a bridge. Open gaps stay unverified and excluded from the durable total. Freshness and the five-minute live deadline use the older member's newest evidence, so one phone cannot make a stalled pair estimate appear current. Network restoration or a Wi-Fi/cellular transition may request a fresh sample, but network identity never leaves Android and never proves proximity. Widget and Wear records never extrapolate.
+
+```mermaid
+sequenceDiagram
+    participant Phone as Opted-in phone
+    participant API
+    participant DB as PostgreSQL
+    participant Partner as Active partner
+    Phone->>API: PUT installation health (random installation UUID)
+    API->>DB: Authorize current couple and replace 24-hour snapshot
+    Partner->>API: GET current couple health
+    API-->>Partner: Health fields only, no installation IDs
+    Phone->>API: DELETE health on opt-out/sign-out
+    Note over DB: Unpair deletes snapshots and backups exclude their rows
+```
 
 ## Smooch delivery and weekly history
 
@@ -360,16 +481,16 @@ sequenceDiagram
     PhoneA->>PhoneA: Queue encrypted send, max 5 / 15 min
     PhoneA->>API: POST emoji + phrase key + operation ID
     API->>DB: Authorize and lock current couple
-    API->>DB: Enforce 5 sends in rolling hour; insert once
+    API->>DB: Enforce 5 sends in rolling hour and insert once
     API-->>PhoneA: Accepted event + remaining allowance
     API->>DB: Insert short-lived notification event in same transaction
     API-->>PhoneB: Content-free WSS hint while app is foreground
     PhoneB->>API: Fetch pending events for random installation ID
     API-->>PhoneB: Recipient-only authorized event metadata
-    PhoneB-->>B: Private notification; generic public lock-screen version
+    PhoneB-->>B: Private notification with generic public lock-screen version
     PhoneB->>API: Acknowledge this installation after Android posts it
     B->>API: GET Monday-Sunday weekly history
-    API->>DB: Apply couple home timezone; aggregate both directions
+    API->>DB: Apply couple home timezone and aggregate both directions
     API-->>B: Current and historical weekly totals
 ```
 
@@ -386,7 +507,7 @@ sequenceDiagram
     participant Phone2 as Partner phone 2
     Feature->>DB: Insert feature row + short-lived event atomically
     DB->>DB: Create delivery per active enabled installation
-    Feature-->>Hub: Commit succeeded; signal recipient account
+    Feature-->>Hub: Commit succeeded and signal recipient account
     Hub-->>Phone1: notification.available (no content)
     loop Every client message or 30 s idle heartbeat
         Phone1->>Hub: Keep foreground subscription open
@@ -423,7 +544,7 @@ sequenceDiagram
     Worker->>DB: Record redacted delivery outcome
     Worker-->>User: Link carries token in URL fragment
     User->>API: Submit raw token
-    API->>DB: Lock account + every reset token; consume complete set if valid
+    API->>DB: Lock account + every reset token and consume complete set if valid
     API->>DB: Replace password + revoke every session in same transaction
 ```
 
@@ -439,10 +560,12 @@ flowchart LR
     Work -->|idempotency key + base revision| API[FastAPI]
     API -->|accepted state| Room
     API -->|stale revision| Conflict[Explicit local/server reconciliation]
-    Phone[Phone cache publisher] -->|Scoped generation over Wearable Data Layer| Guard[Wear generation guard]
+    Select[Explicit managed-watch selection] --> Target[Monotonic watch target generation]
+    Phone[Phone cache publisher] -->|Relationship + target generations over Wearable Data Layer| Guard[Wear relationship and target guards]
+    Target --> Guard
     Purge[Sign-out / unpair / inactive response] -->|Urgent inactive generation| Guard
     Guard -->|Accept current generation| Watch[Wear OS cache]
-    Guard -->|Reject legacy, older, or post-purge payload| Drop[Discard]
+    Guard -->|Reject non-target, older, or post-purge payload| Drop[Discard]
     Watch -->|24 h without authorization| Delete[Delete display, names, thumbnails, partial files]
     Room --> Sync[Bounded display-cache sync worker]
     Sync --> Render[Unique widget-render worker]
@@ -450,15 +573,77 @@ flowchart LR
     Widget -->|User refresh| Sync
     Render -->|Cache unavailable| Unavailable[Unavailable state]
     Watch --> Tile[Wear OS tile]
-    Watch --> Complication[Watch-face complication]
+    Watch --> NearbyComplication[Nearby complication]
+    Watch --> CountdownComplication[Countdown complication]
     Room -->|age threshold| Stale[Stale-data indicator]
     Watch -->|6 h age threshold| Stale
     Delete --> Unavailable
 ```
 
-Tokens stay in Android Keystore-backed storage. Offline queues contain encrypted countdown mutations, note drafts, location samples, and at most five unexpired Smooch sends. An interrupted Our Space editor stores its content and selection in encrypted app storage while Android saved state carries only an opaque workspace key. An exact structured `relationship_inactive` response, sign-out, unpair, or account change clears note workspaces, preview cache, retained media, and transient uploads; an ordinary revision-conflict 409 does not. Widget, tile, and complication caches contain only the confirmed pairing instant, coordinate-free nearby seconds and process time, next countdown, cache-sync time, and an opaque local relationship fingerprint/generation. The separate Wear launcher profile cache contains only display names and server-normalized 128-pixel thumbnails received through the Wearable Data Layer.
+Tokens stay in Android Keystore-backed storage and are never copied to Wear. Offline queues contain encrypted countdown mutations, note drafts, location samples, and at most five unexpired Smooch sends. The watch has its own five-item, 15-minute AES-GCM queue whose operation IDs transfer idempotent ownership to the phone only after target and relationship authorization. An interrupted Our Space editor stores its content and selection in encrypted app storage while Android saved state carries only an opaque workspace key. An exact structured `relationship_inactive` response, sign-out, unpair, or account change clears note workspaces, preview cache, retained media, and transient uploads; an ordinary revision-conflict 409 does not. Widget, tile, and complication caches contain only the confirmed pairing instant, coordinate-free nearby seconds and process time, next countdown, cache-sync time, and opaque local relationship/target generations. The separate Wear launcher profile cache contains only display names and optional server-normalized 128-pixel thumbnails received through the Wearable Data Layer.
 
-The phone advances the generation on sign-out, unpair, account deletion, or `relationship_inactive`, then publishes a durable urgent purge path and inactive display/profile replacements. The watch handles purge records before active records in each batch, clears old and partial files before a new relationship, and rejects an older or same-generation post-purge record. An asynchronous asset checks the generation again before replacing a thumbnail. Fresh values become visibly stale after six hours. At 24 hours without an accepted phone authorization, a best-effort alarm and every passive-surface read delete Wear relationship state and show unavailable. Boot restores the deadline check. The home widget also checks the active phone relationship identity around its Room read and stops rendering data after 24 hours. RC9 coalesces widget rendering through WorkManager so receiver callbacks only enqueue bounded work.
+The phone advances the relationship generation on sign-out, unpair, account deletion, or `relationship_inactive`. Selecting, switching, or removing a managed watch also advances a separate target generation. The watch handles target and relationship purges before active records, clears old and partial files before a new authority, and rejects records older than either barrier. A non-target watch that observes a newer target generation clears itself. An asynchronous asset checks both current target and relationship authority again before replacing a thumbnail. Fresh values become visibly stale after six hours. At 24 hours without an accepted phone authorization, a best-effort alarm and every passive-surface read delete Wear relationship state and show unavailable. Boot restores the deadline check. The home widget also checks the active phone relationship identity around its Room read and stops rendering data after 24 hours. RC9 coalesces widget rendering through WorkManager so receiver callbacks only enqueue bounded work.
+
+### Watch-originated Smooch ownership
+
+```mermaid
+sequenceDiagram
+    actor Person
+    participant Watch as Selected Wear node
+    participant Queue as Encrypted 15-minute queue
+    participant Phone as Phone Data Layer service
+    participant Outbox as Encrypted phone outbox
+    participant API as Authenticated API
+    Person->>Watch: Pick approved emoji, then confirm
+    Watch->>Queue: Store UUID + emoji + relationship/target generations
+    Watch->>Phone: Credential-free idempotent request
+    Phone->>Phone: Require selected source node, protocol, current generations, preference, emoji, UUID, and age
+    alt accepted
+        Phone->>Outbox: Take ownership under same operation ID
+        Phone-->>Watch: accepted_queued
+        Watch->>Queue: Delete local copy
+        Outbox->>API: Send through normal authenticated phone session
+    else rejected or expired
+        Phone-->>Watch: rejected
+        Watch->>Queue: Delete terminal request or let it expire
+    end
+```
+
+Data Layer transport is not treated as partner delivery. The watch reports only local queued state and the phone acknowledgement. Switching watches, disabling watch Smooches, private removal, relationship purge, or the 15-minute deadline clears the applicable request. Tile and complication surfaces never originate Smooches.
+
+The first valid managed record for an active Wear relationship generation binds the watch to that source phone node. Status and queued actions return only to the bound controller. Requests and acknowledgements from another connected phone are silently rejected, and no rejection discloses whether relationship state exists. Advancing the relationship purge barrier, sign-out, unpairing, or the 24-hour Wear expiry clears the binding before a future generation can bind again.
+
+## Partner-assigned relationship names
+
+```mermaid
+sequenceDiagram
+    actor Assigner as One active partner
+    participant Phone
+    participant API
+    participant DB as PostgreSQL
+    participant Other as Other partner surfaces
+    Assigner->>Phone: Enter the name both partners should see
+    Phone->>Phone: NFKC + contact/control validation<br/>persist encrypted operation ID + expected revision
+    Phone->>API: PUT current partner name
+    API->>DB: Authorize active relationship before lookup<br/>lock relationship + apply idempotently
+    DB-->>API: New effective name + monotonic name revision
+    API-->>Phone: Accepted shared state
+    Phone->>Other: Refresh phone, notification, widget, and managed-Wear display cache
+    alt stale revision
+        API-->>Phone: Conflict without overwrite
+        Phone->>API: Refresh authorized profile
+    end
+    alt unpair / sign-out / relationship inactive
+        Phone->>Other: Advance purge generation and clear cached names
+        API->>DB: Delete relationship names immediately
+    end
+```
+
+The caller may name only the other current member; account display identity does not change.
+Both members resolve the same result. Mutations carry a stable operation ID and expected
+revision, and Android encrypts the one pending operation before network use so an offline retry
+or process restart cannot create a second mutation. The API emits only a content-free activity
+kind and no partner alert. Big Orbit and AI never receive relationship names.
 
 ## Partner-assigned avatar processing and synchronization
 
@@ -472,9 +657,9 @@ sequenceDiagram
     participant Watch as Wear launcher
     Assigner->>Phone: Choose image for partner and approve square crop
     Phone->>API: PUT current relationship partner avatar, max 5 MiB
-    API->>DB: Authorize active couple before lookup; reject self-assignment
+    API->>DB: Authorize active couple before lookup and reject self-assignment
     API->>API: Decode, orient, strip metadata, crop and bound WebP variants
-    API->>DB: Lock couple; atomically replace subject image and revision
+    API->>DB: Lock couple and atomically replace subject image and revision
     API-->>Phone: Private revision and content hash
     Subject->>API: Authorize current pairing before own assigned image lookup
     API-->>Subject: 128 px WebP with private ETag
@@ -484,7 +669,7 @@ sequenceDiagram
     Note over Phone,Watch: Widget, tile, and complication remain text-only
     Assigner->>API: DELETE partner avatar
     API->>DB: Delete relationship image
-    Note over DB: Unpair deletes both avatars; neither transfers or enters archives
+    Note over DB: Unpair deletes both avatars, neither transfers or enters archives
 ```
 
 An unpaired caller never reaches avatar lookup. Replacement and deletion lock the relationship so concurrent first uploads cannot race. Clients compare both revision and content hash, which prevents a deleted then re-added revision from preserving stale bytes. Migration `0016` clears account-owned RC12 photos because converting a self-selected image into a partner-assigned image would misrepresent consent and ownership.
@@ -496,11 +681,19 @@ sequenceDiagram
     actor Person
     participant Phone as Little Orbit phone app
     participant API as Public release API
+    participant Embedded as Smoke-only embedded Wear APK
     participant Watch as Wear OS wireless ADB
-    Person->>Phone: Settings > Install on watch
-    Phone->>API: Fetch current immutable release metadata
-    Phone->>API: Download exact versioned Wear APK
-    Phone->>Phone: Verify endpoint, bytes, hash, package, version, watch feature, signer
+    Person->>Phone: Settings > Watch settings > Install/update/repair
+    alt Production build
+        Phone->>API: Fetch current immutable release metadata only
+        Person->>Phone: Explicitly continue with APK action
+        Phone->>API: Download exact versioned Wear APK
+        Phone->>Phone: Verify endpoint, bytes, hash, package, version, watch feature, pinned signer
+    else Side-by-side smoke build
+        Person->>Phone: Explicitly continue with APK action
+        Phone->>Embedded: Copy generated `.smoke` Wear APK after explicit action
+        Phone->>Phone: Derive and verify fixed smoke package, size, hash, version, and debug signer
+    end
     Phone->>Phone: Track pairing/connect services and port changes with local DNS-SD
     alt discovery unavailable or incomplete
         Person->>Phone: Enter current host, pairing port, and connection port
@@ -515,10 +708,60 @@ sequenceDiagram
         Phone-->>Person: Warn, then cancel or explicitly install anyway
     end
     Phone->>Watch: Create package session, write verified APK, and commit with -r
-    Watch-->>Person: Little Orbit app, tile, and complication available
+    Watch-->>Person: Little Orbit app, tile, and two complications available
 ```
 
-The phone checks connected nodes and the `little_orbit_display_v2` capability so Settings can distinguish no watch, a missing watch app, and a connected Little Orbit watch. The installer starts only after a person opens it, supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. Manual values cannot be overwritten by a late discovery callback; **Scan again** explicitly returns to automatic selection. The pairing-code field disables saved state, autofill, and personalized keyboard learning, clears as soon as installation begins and whenever the screen stops, and never appears in diagnostics. A failed signed-artifact preparation exposes a bounded retry. API 34+ discovery callbacks replace and remove service information continuously; older releases serialize one-shot resolution. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
+The phone checks connected nodes and the `little_orbit_display_v2` capability so Watch settings can distinguish no watch, a missing watch app, and a connected Little Orbit watch. Metadata checks may run in the background; APK download, pairing, installation, reinstall, and removal require an explicit action. The five-stage wizard supports manual addresses when discovery permission is denied, refuses non-watch devices and downgrades, and stores the ADB private key encrypted by Android Keystore. Manual values cannot be overwritten by a late discovery callback; **Scan again** explicitly returns to automatic selection. The pairing-code field disables saved state, autofill, and personalized keyboard learning, clears as soon as installation begins and whenever the screen stops, and never appears in diagnostics. A failed signed-artifact preparation exposes a bounded retry. API 34+ discovery callbacks replace and remove service information continuously; older releases serialize one-shot resolution. Private removal first advances the target purge barrier and clears watch-originated actions, then uninstalls only `com.littleorbit.mobile`, forgets the local ADB key, and tells the person to revoke the phone identity and wireless debugging on the watch. The public website deep-links `/app/install-wear` into this flow and retains a raw Wear APK link for advanced recovery.
+
+The smoke source is build-internal and can target only `com.littleorbit.mobile.smoke`; its APK is generated before the smoke phone is packaged. The production source remains immutable HTTPS metadata plus downloaded bytes and the pinned release certificate. Release and ordinary debug phone artifacts exclude the smoke APK and smoke signing metadata.
+
+## Application-cold exact host migration
+
+```mermaid
+sequenceDiagram
+    participant Old as Windows source .182
+    participant SSH as Host-key-pinned SSH :23
+    participant New as Empty Unraid target .14
+    Old->>Old: Confirm users offline, then disable schedules
+    Old->>Old: Privacy-filtered backup + passing restore drill
+    Old->>Old: Record counts and digests, then stop every writer
+    Old->>SSH: Complete pg_dump byte stream
+    SSH->>New: pg_restore into empty PostgreSQL
+    Old->>SSH: Frozen attachment manifest + byte stream
+    SSH->>New: Verify staging, then atomically promote
+    Old->>SSH: Immutable release byte stream
+    SSH->>New: Compare every relative-path SHA-256
+    New->>New: Apply migration 0032 and validate grants and counts
+    New->>New: Start dependencies and apply NPM-only firewall
+    Note over Old,New: No full private migration archive is retained
+```
+
+The transfer preserves sessions and privacy-sensitive rows that sanctioned backups intentionally omit. That is safe only because application writers are stopped, the destination starts empty, SSH host identity is pinned, and neither stream is saved. Before target writes, rollback may point NPM back and restart `.182`. After any target write, `.182` is stale and cannot start until current target state is frozen and reverse-streamed into its schema-0032-compatible stack.
+
+## Encrypted backup and non-destructive restore drill
+
+```mermaid
+flowchart TD
+    Timer[Unraid User Scripts<br/>08:00 daily / Tuesday 07:00] --> Runner[Fixed-mode flock runner]
+    Typed[Typed Big Orbit request<br/>five-minute pending runner] --> Runner
+    Runner --> Pause[Pause API, worker, and media mutations]
+    Pause --> PgDump[Dedicated read-only pg_dump role<br/>exclude raw coordinates, health, and raw feedback]
+    Pause --> Attach[Stream attachment payload + manifest]
+    PgDump --> Age[age encryption<br/>no plaintext host file]
+    Attach --> Age
+    Age --> Array[Array-only local encrypted files<br/>+ SHA-256 sidecars]
+    Array --> Pair[Atomic pair manifest<br/>exact paths, bytes, hashes, and exclusions]
+    Pair -. open milestone .-> OffHost[Physically separate encrypted copy<br/>not enabled by this migration]
+    Runner --> Evidence[Content-free backup_runs record]
+    Tuesday[Tuesday 07:00 task] --> Pair
+    Pair --> Temp[Restore exact paired dump to unique temporary database]
+    Temp --> VerifyDB[Verify schema and excluded tables empty]
+    Pair --> VerifyArchive[Decrypt exact paired attachment stream into hash/manifest verifier only]
+    VerifyDB --> Drop[Force-drop only validated drill database name]
+    VerifyArchive --> Evidence
+```
+
+The startup dispatcher is explicit and runs only after the Unraid array and Docker are available. The age identity stays in the root-only secret path outside Git and production containers. The pending runner alone may treat a held host lock as successful `already_running`; scheduled backup and restore modes wait for a bounded interval and fail nonzero rather than recording a skipped job as success. A restore drill does not replace live attachment bytes, does not inspect note content, and is recorded as local operational evidence rather than a guarantee of full disaster recovery.
 
 ## Patch notes and RSS
 
@@ -527,8 +770,8 @@ flowchart LR
     Build[Signed per-module release manifest] --> Publish[Publish immutable APK record]
     Publish --> DB[(PostgreSQL)]
     DB --> History[GET /api/v1/releases/history]
-    History --> Notes[/patch-notes]
-    History --> RSS[/patch-notes.xml RSS 2.0]
+    History --> Notes["/patch-notes"]
+    History --> RSS["/patch-notes.xml RSS 2.0"]
     Fallback[Checked-in latest signed fallback] --> Notes
     Fallback --> RSS
 ```
@@ -550,7 +793,7 @@ sequenceDiagram
     API-->>Phone: Immutable version, URLs, size, hashes, floor, optional UTC enforcement
     Phone->>Phone: Validate trusted API path, package, pinned signer, and update policy
     alt optional release
-        Phone-->>Person: Prompt once this process; persistent Home banner and App updates destination
+        Phone-->>Person: Prompt once this process with persistent Home banner and App updates destination
     else active compatibility floor excludes installed version
         Phone-->>Person: Update required or exit
     end

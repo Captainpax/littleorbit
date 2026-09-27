@@ -1,5 +1,6 @@
 {
   "relationship_id": "aeb31136-e199-4cc5-90ae-a5d07ed22df4",
+  "home_timezone": "America/Los_Angeles",
   "paired_at": "2026-09-01T18:30:00Z",
   "paired_days": 10,
   "nearby_observed_seconds": 21600,
@@ -11,7 +12,7 @@
   "counting_live_until": "2026-09-12T01:25:00Z",
   "nearby_last_processed_at": "2026-09-12T01:20:00Z",
   "nearby_confidence": "high",
-  "algorithm_version": 3,
+  "algorithm_version": 4,
   "includes_legacy_estimates": true,
   "proximity_threshold_m": 100.0,
   "location_enabled_by_me": true,

@@ -5,40 +5,43 @@ from typing import cast
 from uuid import UUID
 
 import pyotp
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..admin_device_models import AdminDevice, AdminDeviceSession
 from ..admin_schemas import (
     AdminEnrollmentChallenge,
     AdminEnrollmentConfirm,
     AdminEnrollmentStart,
-    AdminSessionRequest,
     AdminSessionResponse,
+)
+from ..big_orbit_auth import issue_device_session
+from ..big_orbit_dependencies import (
+    BigOrbitPrincipal,
+    current_big_orbit_account,
+    current_big_orbit_admin,
 )
 from ..clock import SystemClock
 from ..config import Settings, get_settings
 from ..database import session_scope
-from ..dependencies import current_account, current_admin, request_client_ip
+from ..dependencies import request_client_ip
 from ..models import Account, AdminMfa, SecurityEvent, Session
 from ..rate_limit import consume_rate_limits, request_rules
 from ..schemas import AdminConfigResponse
 from ..security import (
     decrypt_totp_secret,
     encrypt_totp_secret,
-    hash_password,
     hash_token,
-    new_opaque_token,
     new_recovery_codes,
-    normalize_email,
+    qr_png_data_url,
     qr_svg_data_url,
     totp_uri,
     verify_password,
     verify_totp,
 )
 
-router = APIRouter(prefix="/v1/admin", tags=["administration"])
-_dummy_admin_hash = hash_password("timing-only-administrator-password")
+router = APIRouter(prefix="/v2/admin", tags=["administration"])
 
 
 def _fernet_key(settings: Settings) -> str:
@@ -56,47 +59,6 @@ def _event(actor_id: UUID, event_type: str, outcome: str) -> SecurityEvent:
         outcome=outcome,
         metadata_json={},
         created_at=SystemClock().now(),
-    )
-
-
-async def _issue_admin_session(
-    session: AsyncSession,
-    account: Account,
-    settings: Settings,
-    recovery_codes: list[str] | None = None,
-) -> AdminSessionResponse:
-    now = SystemClock().now()
-    raw = new_opaque_token()
-    expires = now + timedelta(minutes=settings.admin_session_minutes)
-    session.add(
-        Session(
-            account_id=account.id,
-            token_hash=hash_token(raw, settings.token_pepper.get_secret_value()),
-            expires_at=expires,
-            authenticated_at=now,
-            admin_mfa_verified=True,
-            created_at=now,
-        )
-    )
-    return AdminSessionResponse(
-        access_token=raw,
-        expires_at=expires,
-        account_id=account.id,
-        recovery_codes=recovery_codes or [],
-    )
-
-
-def _set_admin_cookie(response: Response, token: str, settings: Settings) -> None:
-    """Set the browser-only console proof after MFA succeeds."""
-
-    response.set_cookie(
-        key="little_orbit_admin",
-        value=token,
-        max_age=settings.admin_session_minutes * 60,
-        httponly=True,
-        secure=settings.public_base_url.startswith("https://"),
-        samesite="strict",
-        path="/admin",
     )
 
 
@@ -164,7 +126,7 @@ def _enrollment_proof_valid(
     if not verify_password(account.password_hash, payload.password):
         return False
     if record is None or record.enabled_at is None:
-        return True
+        return False
     return _verify_factor(
         record,
         payload.current_totp_code,
@@ -175,91 +137,81 @@ def _enrollment_proof_valid(
 
 async def _authorize_mfa_start(
     session: AsyncSession,
-    actor: Account,
+    principal: BigOrbitPrincipal,
     payload: AdminEnrollmentStart,
-    authorization: str | None,
     settings: Settings,
-) -> AdminMfa | None:
-    locked_actor = await _lock_admin_account(session, actor.id)
-    record = await session.get(AdminMfa, actor.id, with_for_update=True)
-    session_is_live = await _request_session_active(session, actor.id, authorization, settings)
-    if session_is_live and _enrollment_proof_valid(locked_actor, record, payload, settings):
-        return record
-    session.add(_event(actor.id, "admin_mfa_enrollment", "proof_rejected"))
+) -> tuple[Account, AdminDevice, AdminMfa]:
+    locked = await _lock_big_orbit_principal(session, principal)
+    record = await session.get(AdminMfa, principal.account.id, with_for_update=True)
+    if (
+        locked is not None
+        and record is not None
+        and _enrollment_proof_valid(locked[0], record, payload, settings)
+    ):
+        return locked[0], locked[1], record
+    session.add(_event(principal.account.id, "admin_mfa_enrollment", "proof_rejected"))
     await session.commit()
     raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Current administrator proof required")
 
 
-def _stage_mfa_secret(
-    record: AdminMfa | None, account_id: UUID, encrypted: str, now: datetime
-) -> AdminMfa:
-    if record is None:
-        return AdminMfa(
-            account_id=account_id,
-            encrypted_secret=encrypted,
-            pending_encrypted_secret=encrypted,
-            pending_created_at=now,
-            recovery_hashes=[],
-            created_at=now,
-            updated_at=now,
-        )
-    if record.enabled_at is None:
-        record.encrypted_secret = encrypted
+def _stage_mfa_secret(record: AdminMfa, encrypted: str, now: datetime) -> None:
+    """Keep the enabled factor active while staging one bounded replacement."""
+
     record.pending_encrypted_secret = encrypted
     record.pending_created_at = now
     record.updated_at = now
-    return record
 
 
 @router.post("/mfa/start", response_model=AdminEnrollmentChallenge)
 async def start_mfa(
     payload: AdminEnrollmentStart,
-    actor: Account = Depends(current_account),
-    authorization: str | None = Header(default=None),
+    principal: BigOrbitPrincipal = Depends(current_big_orbit_admin),
     client_ip: str = Depends(request_client_ip),
     session: AsyncSession = Depends(session_scope),
     settings: Settings = Depends(get_settings),
 ) -> AdminEnrollmentChallenge:
     """Start enrollment only after current password reauthentication."""
 
+    actor = principal.account
     allowed = await _admin_rate_allowed("admin-mfa-start", client_ip, str(actor.id), settings)
     if not allowed:
         await _reject_admin_rate_limit(session, actor.id)
-    record = await _authorize_mfa_start(session, actor, payload, authorization, settings)
+    locked_actor, _device, record = await _authorize_mfa_start(
+        session, principal, payload, settings
+    )
     now = SystemClock().now()
     secret = pyotp.random_base32()
     encrypted = encrypt_totp_secret(secret, _fernet_key(settings))
-    staged = _stage_mfa_secret(record, actor.id, encrypted, now)
-    if record is None:
-        session.add(staged)
-    uri = totp_uri(secret, actor.email_normalized)
+    _stage_mfa_secret(record, encrypted, now)
+    uri = totp_uri(secret, locked_actor.email_normalized)
     session.add(_event(actor.id, "admin_mfa_enrollment", "challenge_created"))
     await session.commit()
-    return AdminEnrollmentChallenge(otpauth_uri=uri, qr_svg_data_url=qr_svg_data_url(uri))
+    return AdminEnrollmentChallenge(
+        otpauth_uri=uri,
+        qr_svg_data_url=qr_svg_data_url(uri),
+        qr_png_data_url=qr_png_data_url(uri),
+    )
 
 
 @router.post("/mfa/confirm", response_model=AdminSessionResponse)
 async def confirm_mfa(
     payload: AdminEnrollmentConfirm,
-    http_response: Response,
-    actor: Account = Depends(current_account),
-    authorization: str | None = Header(default=None),
+    principal: BigOrbitPrincipal = Depends(current_big_orbit_admin),
     client_ip: str = Depends(request_client_ip),
     session: AsyncSession = Depends(session_scope),
     settings: Settings = Depends(get_settings),
 ) -> AdminSessionResponse:
     """Enable MFA after one valid code and display newly generated recovery codes once."""
 
+    actor = principal.account
     allowed = await _admin_rate_allowed("admin-mfa-confirm", client_ip, str(actor.id), settings)
     if not allowed:
         await _reject_admin_rate_limit(session, actor.id)
-    locked_actor = await _lock_admin_account(session, actor.id)
+    locked = await _lock_big_orbit_principal(session, principal)
     record = await session.get(AdminMfa, actor.id, with_for_update=True)
-    active = _admin_account_active(locked_actor) and await _request_session_active(
-        session, actor.id, authorization, settings
-    )
-    if not active or locked_actor is None:
+    if locked is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication required")
+    locked_actor, locked_device = locked
     if record is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "No pending enrollment")
     now = SystemClock().now()
@@ -285,58 +237,16 @@ async def confirm_mfa(
     record.last_accepted_counter = counter
     record.updated_at = now
     await _revoke_sessions(session, actor.id, now)
-    response = await _issue_admin_session(session, locked_actor, settings, recovery_codes)
-    _set_admin_cookie(http_response, response.access_token, settings)
+    issued = await issue_device_session(session, locked_actor, locked_device, settings)
+    response = AdminSessionResponse(
+        access_token=issued.token,
+        expires_at=issued.expires_at,
+        account_id=locked_actor.id,
+        recovery_codes=recovery_codes,
+    )
     session.add(_event(actor.id, "admin_mfa_enrollment", "enabled"))
     await session.commit()
     return response
-
-
-@router.post("/session", response_model=AdminSessionResponse)
-async def admin_session(
-    payload: AdminSessionRequest,
-    http_response: Response,
-    client_ip: str = Depends(request_client_ip),
-    session: AsyncSession = Depends(session_scope),
-    settings: Settings = Depends(get_settings),
-) -> AdminSessionResponse:
-    """Issue an admin session after password and replay-safe TOTP or recovery proof."""
-
-    normalized = normalize_email(str(payload.email))
-    allowed = await _admin_rate_allowed("admin-session", client_ip, normalized, settings)
-    if not allowed:
-        await _reject_admin_rate_limit(session, None)
-    account = await _admin_login_account(session, normalized, payload.password)
-    record = await session.get(AdminMfa, account.id, with_for_update=True)
-    if record is None or record.enabled_at is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Administrator MFA is required")
-    accepted = _verify_admin_proof(record, payload, settings)
-    session.add(_event(account.id, "admin_session", "accepted" if accepted else "rejected"))
-    if not accepted:
-        await session.commit()
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Administrator credentials are invalid")
-    response = await _issue_admin_session(session, account, settings)
-    _set_admin_cookie(http_response, response.access_token, settings)
-    await session.commit()
-    return response
-
-
-async def _admin_login_account(
-    session: AsyncSession, normalized_email: str, password: str
-) -> Account:
-    account = await session.scalar(
-        select(Account)
-        .where(Account.email_normalized == normalized_email)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    )
-    password_ok = verify_password(
-        account.password_hash if account is not None else _dummy_admin_hash,
-        password,
-    )
-    if not password_ok or not _admin_account_active(account) or account is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Administrator credentials are invalid")
-    return account
 
 
 def _admin_account_active(account: Account | None) -> bool:
@@ -349,30 +259,43 @@ def _admin_account_active(account: Account | None) -> bool:
     )
 
 
-async def _request_session_active(
+async def _lock_big_orbit_principal(
     session: AsyncSession,
-    account_id: UUID,
-    authorization: str | None,
-    settings: Settings,
-) -> bool:
-    if not authorization or not authorization.startswith("Bearer "):
-        return False
-    digest = hash_token(authorization[7:], settings.token_pepper.get_secret_value())
-    return (
-        await session.scalar(
-            select(Session.id).where(
-                Session.account_id == account_id,
-                Session.token_hash == digest,
-                Session.revoked_at.is_(None),
-                Session.expires_at > SystemClock().now(),
-            )
+    principal: BigOrbitPrincipal,
+) -> tuple[Account, AdminDevice] | None:
+    """Recheck the exact session and device after taking the account lock."""
+
+    account = await _lock_admin_account(session, principal.account.id)
+    if not _admin_account_active(account) or account is None:
+        return None
+    device = await session.scalar(
+        select(AdminDevice)
+        .where(
+            AdminDevice.id == principal.device.id,
+            AdminDevice.account_id == account.id,
+            AdminDevice.approved_at.is_not(None),
+            AdminDevice.revoked_at.is_(None),
         )
-        is not None
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
-
-
-def _verify_admin_proof(record: AdminMfa, payload: AdminSessionRequest, settings: Settings) -> bool:
-    return _verify_factor(record, payload.totp_code, payload.recovery_code, settings)
+    active_session = await session.scalar(
+        select(Session)
+        .join(AdminDeviceSession, AdminDeviceSession.session_id == Session.id)
+        .where(
+            Session.id == principal.session.id,
+            Session.account_id == account.id,
+            Session.revoked_at.is_(None),
+            Session.expires_at > SystemClock().now(),
+            Session.admin_mfa_verified.is_(True),
+            AdminDeviceSession.device_id == principal.device.id,
+        )
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if active_session is None or device is None:
+        return None
+    return account, device
 
 
 def _verify_factor(
@@ -418,7 +341,8 @@ async def _revoke_sessions(session: AsyncSession, account_id: UUID, now: datetim
 
 @router.get("/configuration", response_model=AdminConfigResponse)
 async def configuration(
-    _admin: Account = Depends(current_admin), settings: Settings = Depends(get_settings)
+    _admin: Account = Depends(current_big_orbit_account),
+    settings: Settings = Depends(get_settings),
 ) -> AdminConfigResponse:
     """Return only explicitly approved operational configuration fields."""
 

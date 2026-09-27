@@ -3,6 +3,12 @@
 - Status: accepted
 - Date: 2026-09-16
 
+[ADR 0037](0037-confirmed-proximity-bridges-and-opt-in-health.md) supersedes
+this decision only for later-confirmed intervals longer than five minutes and
+for opt-in collection-health diagnostics. The mutual-freshness, chronological
+evaluation, five-minute live lease, privacy, and passive-surface rules remain
+active.
+
 ## Context
 
 The original proximity estimator greedily paired one sample from each phone. When the phones reported at different rates, an intervening observation could remain unmatched and disappear from the interval decision. The Android detail screen also fetched one aggregate once and displayed only hours and minutes, so it could not act like a live timer. Letting a phone add time indefinitely would be unsafe because one device cannot prove that both partners remain nearby.

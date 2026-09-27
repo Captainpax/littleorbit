@@ -14,5 +14,8 @@ final class WearSurfaceUpdates {
         ComplicationDataSourceUpdateRequester.create(
                         context, new ComponentName(context, TogetherComplicationService.class))
                 .requestUpdateAll();
+        ComplicationDataSourceUpdateRequester.create(
+                        context, new ComponentName(context, CountdownComplicationService.class))
+                .requestUpdateAll();
     }
 }

@@ -10,6 +10,16 @@ The two linked orbits communicate two independent people choosing a shared path.
 
 ## Android, widget, and Wear OS
 
+### 1.1.1 watch-hardening concepts
+
+![1.1.1 phone Watch settings concept](docs/assets/watch-settings-concept-1.1.1.png)
+
+![1.1.1 five-step Wear installer concept](docs/assets/wear-installer-concept-1.1.1.png)
+
+![1.1.1 round-watch destinations and state concept](docs/assets/wear-destinations-concept-1.1.1.png)
+
+These three generated sheets are design concepts, not production screenshots. They define the 1.1.1 hierarchy, cosmic navy/lavender/coral language, explicit installer progress and recovery, round-screen safe areas, and the separation between passive relationship information and deliberate actions. Device captures remain release-gate evidence rather than being represented by these images.
+
 ![Phone dashboard, quiz, notes, widget and Wear OS concepts](docs/assets/android-wear-concept.png)
 
 The dashboard leads with the relationship rather than system controls. Daily questions, countdowns, and notes use spacious cards. Widgets and watch surfaces show cached together-time and the next countdown, with a visible stale marker when refresh is overdue.
@@ -74,6 +84,14 @@ The RC12 captures verify the paired Home hierarchy, complete left navigation, ab
 
 The 1.0 Together Time detail is deliberately different from relationship age. A large timer shows observed nearby hours, minutes, and seconds, while a separate state explains whether both phones currently provide nearby, confirming, apart, inaccurate, waiting, or stale evidence. Only the foreground phone detail may animate a bounded provisional value, and it stops at the server deadline. Home, widget, tile, and complication remain on the authoritative observed value with a freshness label. A paired physical 1.0 capture remains open.
 
+![1.0.1 Together Time dashboard concept with collection health and evidence timeline](docs/assets/together-time-1.0.1-concept.png)
+
+The approved 1.0.1 concept separates the durable total, current counting state, per-phone collection health, and coordinate-free weekly evidence. **Fix counting** exposes direct Android settings without pretending same Wi-Fi proves proximity. Daily details distinguish observed time, later-confirmed bridges, gaps, apart readings, poor accuracy, and disabled collection. This image is concept art; implemented-device captures remain part of the release gate.
+
+![1.0.1 Our Space autosave and offline-conflict concept](docs/assets/our-space-1.0.1-concept.png)
+
+The 1.0.1 Our Space concept removes the ordinary Save action. A small status communicates saving, recent success, device-only offline storage, or review required. When a newer shared revision meets an offline draft, the editor stops and offers review/merge, an idempotent copy with remapped attachments, or the shared version. This image is concept art pending the physical paired-device capture.
+
 ![Signed RC7 Wear OS fallback state on a round Wear OS 5 emulator](docs/assets/wear-rc7-signed-emulator.png)
 
 ![RC12 Wear fallback state on a round API 34 emulator](docs/assets/wear-rc12-emulator.png)
@@ -87,6 +105,37 @@ RC8 adds synchronized, app-private couple thumbnails to the Wear launcher with s
 The RC14 implementation scopes passive records to an opaque relationship generation. Sign-out, unpair, deletion, and an inactive-relationship response publish an urgent purge that wins over delayed records. A disconnected watch keeps the six-hour stale state, then deletes display values, names, thumbnails, and partial files at 24 hours and shows a simple open-phone prompt. The home widget selects a compact, one-glance layout below 180 dp and keeps a 48 dp countdown action while expanded widgets retain the complete card. The installer keeps typed manual endpoints stable while discovery continues, never saves or autofills the pairing code, offers signed-artifact retry, and still detects current, incompatible, and downgrade states before install.
 
 The RC14 visual pass keeps each shell destination to one title, lets Home cards grow under large text, and uses the same lavender, coral, amber, deep-navy, 24 dp card language across Home, Quiz, Countdowns, and private archives. Form fields now declare meaningful keyboard and autofill behavior, archive and quiz-history dates follow the device locale, passive widget labels remain readable at Android's minimum text guidance, and Android 13 launchers receive a purpose-built monochrome orbit mark. The Wear tile picker now shows representative square and round previews, while launcher, tile, and complication wording comes from localized resources.
+
+The signed 1.1.0 implementation adds a dedicated phone Watch settings page rather than overloading the main Settings list. One explicitly selected watch receives target-scoped content. The page controls profile photos, countdown titles, watch Smooches, update alerts, and the default watch destination, and it exposes install/update, repair, diagnostics, and private removal. All switches default on only after explicit watch selection.
+
+Wear code 19 uses vertically scrolling Together, Countdown, and Smooch activities instead of a horizontal carousel. Countdown preserves timed versus all-day timezone semantics. Smooch uses only the nine approved choices, requires a confirmation screen, and queues at most five encrypted actions for 15 minutes without holding a phone account token. Tile and watch-face surfaces remain passive; Nearby and Countdown are separate complications and Smooch is never offered as a passive action. These remain implementation descriptions rather than physical-device captures; the owner approved release with the 1.1.0 round-watch capture checklist still open.
+
+## 1.2 quiz feedback and Big Orbit concepts
+
+![Little Orbit 1.2 quiz-feedback concept](docs/concepts/1.2.0/little-orbit-quiz-feedback-concept.png)
+
+The feedback concept keeps rating downstream of the shared reveal. Stars and fixed tags work without review text; the optional review has a separate unchecked learning-consent control. The implementation follows this hierarchy while retaining native Android dialog behavior, TalkBack labels, dynamic text, and a direct edit/remove path.
+
+![Big Orbit device-enrollment concept](docs/concepts/1.2.0/big-orbit-enrollment-concept.png)
+
+![Big Orbit action-inbox concept](docs/concepts/1.2.0/big-orbit-action-inbox-concept.png)
+
+![Big Orbit quiz-intelligence concept](docs/concepts/1.2.0/big-orbit-quiz-intelligence-concept.png)
+
+![Big Orbit AI-observatory concept](docs/concepts/1.2.0/big-orbit-ai-observatory-concept.png)
+
+These five sheets establish Little Orbit's feedback flow and the separate administrator application's navy, lavender, coral, amber, orbital-line, and soft-glow language. They use simulated data and are concept imagery, not production screenshots. Big Orbit's implementation keeps Android Keystore enrollment, generic notifications, K-anonymous feedback, local model provenance, and allowlisted typed operations visually distinct from passive health information.
+
+The 1.2 **Names & avatars** screen also makes relationship ownership explicit: your partner
+chooses the name and avatar shown for you, while you choose theirs. Phone and wide-tablet QA
+confirmed that both members resolve the same two names, contact-shaped input is rejected, and
+the large-text persistent tablet rail keeps every destination readable.
+
+### 1.3 themed quiz and owner-setup implementation
+
+The 1.3 source keeps the established 1.2 visual baseline rather than presenting new concept art as shipped UI. The phone quiz gives the weekly arc and current daily theme their own readable hierarchy above the focused question while keeping answers private until shared reveal. Depth and theme-role metadata guide composition but are not shown as scores or judgments.
+
+Big Orbit's fresh-device screen labels the one-time terminal PIN separately from returning-device MFA. First-owner setup uses a protected QR screen, explicit authenticator confirmation, and one-time recovery-code acknowledgement; malformed QR data fails to a recoverable state. The observatory adds content-free cards for local schedule, reviewed knowledge, context freshness, reserve capacity, weekly themes, and run outcome. Current scheduling makes planning eligible Saturday at 01:00 Pacific and generation Sunday at 03:00, while the internal scheduler keeps six-hour retries content-free and avoids presenting GPU contention as a model failure. This operational queue adds no Android or protocol field. These are implementation descriptions; signed 1.3 physical-device captures remain open post-release QA evidence rather than a completed observation.
 
 ## Public website
 
@@ -102,15 +151,17 @@ The website explains the mission, provides the signed APK and checksum, and host
 
 ![Implemented registration page](docs/assets/site-signup.png)
 
-![Implemented owner MFA login](docs/assets/site-admin-login.png)
+![Historical 1.1 browser owner MFA login](docs/assets/site-admin-login.png)
 
-Regenerate these images from the running gateway with `npm --prefix apps/web run capture:showcase`. The capture command fails on HTTP or browser-console errors.
+The owner-login capture is historical 1.1 evidence. In 1.2 the public site deliberately returns 404 for `/admin`; enrollment and administration move to Big Orbit. Regenerate current public images from the running gateway with `npm --prefix apps/web run capture:showcase`. The capture command fails on HTTP or browser-console errors.
 
-## Owner console
+## Big Orbit administrator app
 
-![Privacy-limited owner console concept](docs/assets/admin-console-concept.png)
+![Historical privacy-limited browser owner console concept](docs/assets/admin-console-concept.png)
 
-The console exposes service health, delivery and generation status, moderation queues, and account metadata. It deliberately has no viewer for notes, answers, precise locations, or exports.
+The historical browser concept is superseded by the 1.2 Big Orbit sheets above. The Android console exposes service health, delivery and generation status, actionable global-question moderation, registration control, bounded account/session actions, security events, and account metadata. It deliberately has no viewer for notes, answers, relationship history, precise locations, or exports.
+
+Big Orbit 1.0.0 code 2 is published and its exact minified APK cold-launched on the physical Pixel and API 36 tablet. Production enrollment and console screenshots remain open because the owner waived those live observations for publication and will report them separately.
 
 ## Screenshot checklist
 
@@ -134,9 +185,13 @@ The console exposes service health, delivery and generation status, moderation q
 - [x] RC16 physical Pixel check: an in-place code-21 upgrade preserved the valid session, hid the completed Home setup card, and showed the connected-only unpair action without executing it against the real couple.
 - [x] RC17 isolated data check: four identical visible cards were proved to be distinct create rows without reading their title/body, and a disposable PostgreSQL run proved different immediate create IDs now resolve to one partner-visible document.
 - [ ] RC17 physical pair: install code 22 on both phones, confirm one save remains one document, collect two confident nearby pairs, and capture the nearby-only Home/widget/Wear presentation.
-- [x] Website baseline: desktop landing, mobile landing, signup, and owner login.
+- [ ] 1.0.1 physical pair: the owner waived this unavailable tablet gate for publication. A future paired-device soak should still cover foreground and screen-off collection through Wi-Fi/cellular/offline transitions and a forced 15-minute gap followed by confirmation.
+- [x] Website baseline: desktop landing, mobile landing, signup, and historical 1.1 owner login.
 - [ ] Website remaining: patch notes/RSS in a feed reader, recovery states, expanded mobile navigation, and dedicated accessibility views.
-- [ ] Owner console: TOTP enrollment, health, AI batch review, user metadata, and redacted configuration.
+- [ ] 1.2 Little Orbit feedback: two-partner reveal eligibility, author-only edit/delete, offline error, dynamic text, TalkBack, and consent copy on physical phones.
+- [x] 1.2 partner names: two-way shared resolution on a physical Pixel and API 36 tablet, invalid contact-shaped input, phone/tablet layouts, and relationship ownership copy.
+- [x] 1.2 package upgrade: the exact signed Pixel package moved from phone code 26 to 28 with the same UID and original install time, and the installed base APK matched the published SHA-256. Unlocked UI/account-state observation was owner-waived.
+- [ ] Big Orbit: production Keystore enrollment, TOTP/recovery proof, session rotation, revocation, generic alerts, action inbox, quiz intelligence, AI observatory, typed jobs, and large-text/device screenshots. The owner waived this publication gate and will perform it as post-release QA.
 - [ ] Two-device flow: pairing through unpair archive on physical phones.
 - [ ] Updater: first-launch opt-in, once-per-process prompt, six-hour discovery, optional deferral, stalled/interrupted recovery, corrupt APK rejection, Android install approval, and scheduled compatibility floor on a physical phone.
 - [ ] Our Space on two phones: cursor stability during acknowledgements, simultaneous emoji edits, reconnect, explicit conflict choices, attachment scan/rejection, offline preview, delete, archive purge, and quota boundaries.

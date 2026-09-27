@@ -8,7 +8,13 @@ from typing import Any, cast
 import httpx
 from pydantic import TypeAdapter, ValidationError
 
-from .schemas import CandidateQuestion, GeneratedBatch, GeneratedCandidate
+from .schemas import (
+    CandidateQuestion,
+    GeneratedBatch,
+    GeneratedCandidate,
+    LearningPolicy,
+    WeeklyThemePlan,
+)
 
 
 @dataclass(frozen=True)
@@ -74,6 +80,8 @@ class OllamaClient:
             async with httpx.AsyncClient(
                 base_url=self._settings.base_url, timeout=timeout, transport=self._transport
             ) as client:
+                # Check the immutable digest before inference so a reused mutable tag
+                # cannot silently change the reviewed model behind this configuration.
                 await self._require_pinned_model(client)
                 response = await client.post("/api/generate", json=request)
                 response.raise_for_status()
@@ -81,9 +89,78 @@ class OllamaClient:
                 payload = json.loads(envelope["response"])
                 return _parse_batch(payload)
         except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+            # Collapse untrusted transport and envelope details into one bounded
+            # failure type; the caller can fall back without publishing partial data.
             raise OllamaFailure(
                 "Ollama response failed transport or strict schema validation"
             ) from exc
+
+    async def learn(self, prompt: str) -> LearningPolicy:
+        """Produce bounded writing guidance without persisting review input."""
+
+        request = {
+            "model": self._settings.model,
+            "prompt": prompt,
+            "stream": False,
+            "format": LearningPolicy.model_json_schema(),
+            "keep_alive": 0,
+            "options": {
+                "num_ctx": self._settings.context_tokens,
+                "num_predict": 1200,
+                "temperature": 0.2,
+                "top_p": 0.8,
+            },
+        }
+        timeout = httpx.Timeout(self._settings.timeout_seconds)
+        try:
+            async with httpx.AsyncClient(
+                base_url=self._settings.base_url,
+                timeout=timeout,
+                transport=self._transport,
+            ) as client:
+                await self._require_pinned_model(client)
+                response = await client.post("/api/generate", json=request)
+                response.raise_for_status()
+                return LearningPolicy.model_validate_json(response.json()["response"])
+        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
+            raise OllamaFailure("Ollama learning output failed strict validation") from exc
+
+    async def plan_week(self, prompt: str) -> WeeklyThemePlan:
+        """Create one strict weekly theme plan through the same pinned local model."""
+
+        request = self._structured_request(prompt, WeeklyThemePlan.model_json_schema(), 1200, 0.35)
+        timeout = httpx.Timeout(self._settings.timeout_seconds)
+        try:
+            async with httpx.AsyncClient(
+                base_url=self._settings.base_url,
+                timeout=timeout,
+                transport=self._transport,
+            ) as client:
+                await self._require_pinned_model(client)
+                response = await client.post("/api/generate", json=request)
+                response.raise_for_status()
+                return WeeklyThemePlan.model_validate_json(response.json()["response"])
+        except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
+            raise OllamaFailure("Ollama weekly plan failed strict validation") from exc
+
+    def _structured_request(
+        self, prompt: str, schema: dict[str, object], output_tokens: int, temperature: float
+    ) -> dict[str, object]:
+        """Build the common bounded request without widening the network boundary."""
+
+        return {
+            "model": self._settings.model,
+            "prompt": prompt,
+            "stream": False,
+            "format": schema,
+            "keep_alive": 0,
+            "options": {
+                "num_ctx": self._settings.context_tokens,
+                "num_predict": output_tokens,
+                "temperature": temperature,
+                "top_p": 0.8,
+            },
+        }
 
     async def _require_pinned_model(self, client: httpx.AsyncClient) -> None:
         """Reject a mutable tag whose installed manifest is not the reviewed build."""
@@ -109,11 +186,15 @@ def _parse_batch(payload: object) -> ParsedBatch:
         isinstance(item, dict) and item.get("intimacy") is True for item in raw_questions
     )
     if intimacy_count != 2:
+        # Preserve valid individual candidates, but retain batch-level evidence that
+        # the model missed the requested general/intimacy mix.
         quarantined.append(ModelCandidateFailure("batch", ("candidate_mix_invalid",)))
     for index, item in enumerate(raw_questions):
         try:
             questions.append(adapter.validate_python(item))
         except ValidationError:
+            # Quarantine candidates independently so one malformed sibling does not
+            # discard safe candidates that can reduce curated fallback usage.
             quarantined.append(
                 ModelCandidateFailure(_safe_client_id(item, index), ("schema_validation_failed",))
             )
@@ -126,7 +207,7 @@ def _validate_envelope(payload: object) -> tuple[date, list[object]]:
     if not isinstance(payload, dict) or set(payload) != {"schema_version", "date", "questions"}:
         raise ValueError("generation envelope has unexpected fields")
     values = cast(dict[str, Any], payload)
-    if values["schema_version"] != "2":
+    if values["schema_version"] != "4":
         raise ValueError("generation envelope uses an unsupported schema version")
     date_value = values["date"]
     if not isinstance(date_value, str):
@@ -141,5 +222,7 @@ def _validate_envelope(payload: object) -> tuple[date, list[object]]:
 def _safe_client_id(item: object, index: int) -> str:
     """Return a bounded diagnostic identifier without retaining malformed content."""
 
+    # Never derive a diagnostic label from prompts or options: quarantine metadata
+    # must remain content-free even when the candidate cannot be parsed safely.
     value = item.get("client_id") if isinstance(item, dict) else None
     return value if isinstance(value, str) and 3 <= len(value) <= 48 else f"candidate-{index + 1}"

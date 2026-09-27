@@ -426,6 +426,18 @@ class TogetherBucket(Base):
     __table_args__ = (
         UniqueConstraint("couple_id", "bucket_start"),
         CheckConstraint("duration_seconds >= 0 AND duration_seconds <= 60"),
+        CheckConstraint(
+            "observed_seconds >= 0 AND observed_seconds <= 60 "
+            "AND bridged_seconds >= 0 AND bridged_seconds <= 60 "
+            "AND unverified_seconds >= 0 AND unverified_seconds <= 60 "
+            "AND apart_seconds >= 0 AND apart_seconds <= 60 "
+            "AND poor_accuracy_seconds >= 0 AND poor_accuracy_seconds <= 60"
+        ),
+        CheckConstraint("duration_seconds = observed_seconds + bridged_seconds"),
+        CheckConstraint(
+            "observed_seconds + bridged_seconds + unverified_seconds + "
+            "apart_seconds + poor_accuracy_seconds <= 60"
+        ),
         Index("ix_together_buckets_couple_start", "couple_id", "bucket_start"),
     )
 
@@ -435,7 +447,15 @@ class TogetherBucket(Base):
     )
     bucket_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
-    estimated_distance_m: Mapped[float] = mapped_column(Float, nullable=False)
+    estimated_distance_m: Mapped[float | None] = mapped_column(Float)
+    evidence_kind: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="observed"
+    )
+    observed_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    bridged_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unverified_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    apart_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    poor_accuracy_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     algorithm_version: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
     corrected_by: Mapped[UUID | None] = mapped_column(
         ForeignKey("accounts.id", ondelete="SET NULL")
@@ -489,12 +509,13 @@ class GenerationBatch(Base):
     prompt_version: Mapped[str] = mapped_column(String(80), nullable=False)
     parameters: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     validation_results: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
-    candidate_snapshot: Mapped[list[dict[str, object]]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    candidate_snapshot: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
     selected_question_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     fallback_reason: Mapped[str | None] = mapped_column(String(120))
     duration_ms: Mapped[int | None] = mapped_column(Integer)
+    day_theme_id: Mapped[UUID | None] = mapped_column(ForeignKey("quiz_day_themes.id", ondelete="SET NULL"))
+    knowledge_revision: Mapped[str | None] = mapped_column(String(64))
+    context_digest: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -513,10 +534,12 @@ class CuratedBankQuestion(Timestamped, Base):
     option_icons: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     scale_low_label: Mapped[str | None] = mapped_column(String(32))
     scale_high_label: Mapped[str | None] = mapped_column(String(32))
+    concept_family: Mapped[str] = mapped_column(String(80), nullable=False, default="legacy")
+    concept_summary: Mapped[str] = mapped_column(String(180), nullable=False, default="Legacy concept")
+    depth: Mapped[str] = mapped_column(String(16), nullable=False, default="reflective")
+    theme_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    updated_by: Mapped[UUID | None] = mapped_column(
-        ForeignKey("accounts.id", ondelete="SET NULL")
-    )
+    updated_by: Mapped[UUID | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"))
 
 
 class ApkRelease(Timestamped, Base):

@@ -39,6 +39,7 @@ public final class TogetherTimeProjectionTest {
             String state, String serverNow, String liveUntil, long seconds) {
         return new TogetherTimeModels.PairSummary(
                 "aeb31136-e199-4cc5-90ae-a5d07ed22df4",
+                "America/Los_Angeles",
                 "2026-09-01T18:30:00Z",
                 10,
                 seconds,

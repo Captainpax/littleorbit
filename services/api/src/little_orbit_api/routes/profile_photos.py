@@ -15,6 +15,7 @@ from ..models import Account, CoupleMember
 from ..profile_images import MAX_UPLOAD_BYTES, InvalidProfileImage, normalize_profile_image
 from ..profile_models import RelationshipAvatar
 from ..profile_schemas import OrbitProfilePerson, OrbitProfileResponse, ProfilePhotoMetadata
+from ..relationship_name_service import visible_relationship_names
 
 router = APIRouter(prefix="/v1", tags=["profile"])
 
@@ -77,10 +78,25 @@ async def orbit_profile(
     partner = await session.get(Account, partner_id)
     own_avatar = await _avatar(session, member.couple_id, actor.id)
     partner_avatar = await _avatar(session, member.couple_id, partner_id)
+    names = await visible_relationship_names(
+        session, member.couple_id, (actor.id, partner_id), actor.id
+    )
+    own_name = names[actor.id]
+    partner_name = names[partner_id]
     return OrbitProfileResponse(
-        me=OrbitProfilePerson(display_name=actor.display_name, photo=_metadata(own_avatar)),
+        me=OrbitProfilePerson(
+            display_name=own_name.display_name,
+            photo=_metadata(own_avatar),
+            name_revision=own_name.revision,
+            partner_assigned=own_name.partner_assigned,
+        ),
         partner=(
-            OrbitProfilePerson(display_name=partner.display_name, photo=_metadata(partner_avatar))
+            OrbitProfilePerson(
+                display_name=partner_name.display_name,
+                photo=_metadata(partner_avatar),
+                name_revision=partner_name.revision,
+                partner_assigned=partner_name.partner_assigned,
+            )
             if partner is not None
             else None
         ),

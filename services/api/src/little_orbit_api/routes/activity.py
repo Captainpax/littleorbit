@@ -22,6 +22,7 @@ from ..couple_access import active_member, lock_couple
 from ..database import session_scope
 from ..dependencies import current_account
 from ..models import Account
+from ..relationship_name_service import visible_relationship_names
 
 router = APIRouter(prefix="/v1/activity", tags=["activity"])
 
@@ -38,21 +39,31 @@ async def list_activity(
 
     member = await active_member(session, actor.id)
     seen = await _seen_through(session, member.couple_id, actor.id)
-    query = (
-        select(ActivityEvent, Account.display_name)
-        .outerjoin(Account, Account.id == ActivityEvent.actor_id)
-        .where(ActivityEvent.couple_id == member.couple_id)
-    )
+    query = select(ActivityEvent).where(ActivityEvent.couple_id == member.couple_id)
     if cursor is not None:
         query = query.where(ActivityEvent.sequence < cursor)
     if unread_only:
         query = query.where(ActivityEvent.sequence > seen)
-    rows = list((await session.execute(
+    events = list(await session.scalars(
         query.order_by(ActivityEvent.sequence.desc()).limit(limit + 1)
-    )).all())
-    more = len(rows) > limit
-    rows = rows[:limit]
-    items = [_response(event, name, actor.id, seen) for event, name in rows]
+    ))
+    more = len(events) > limit
+    events = events[:limit]
+    actor_ids = [event.actor_id for event in events if event.actor_id is not None]
+    names = await visible_relationship_names(
+        session, member.couple_id, actor_ids, actor.id
+    )
+    items = [
+        _response(
+            event,
+            names[event.actor_id].display_name
+            if event.actor_id is not None and event.actor_id in names
+            else None,
+            actor.id,
+            seen,
+        )
+        for event in events
+    ]
     return ActivityPage(
         items=items,
         next_cursor=items[-1].sequence if more and items else None,
@@ -111,7 +122,9 @@ def _response(
         id=event.id,
         sequence=event.sequence,
         kind=cast(ActivityKind, event.kind),
-        partner_display_name="You" if event.actor_id == viewer_id else actor_name or "Partner",
+        partner_display_name=actor_name or (
+            "You" if event.actor_id == viewer_id else "Your partner"
+        ),
         target_type=cast(ActivityTargetType | None, event.target_type),
         target_id=event.target_id,
         target_title=event.target_title,

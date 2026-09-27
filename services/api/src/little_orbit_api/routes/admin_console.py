@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from ..attachment_models import NoteAttachment
+from ..big_orbit_dependencies import current_big_orbit_account as current_admin
 from ..clock import SystemClock
 from ..database import session_scope
-from ..dependencies import current_admin
 from ..models import (
     Account,
     ApkRelease,
@@ -46,7 +46,7 @@ from ..schemas import (
     PublicMessage,
 )
 
-router = APIRouter(prefix="/v1/admin", tags=["administration"])
+router = APIRouter(prefix="/v2/admin", tags=["administration"])
 
 
 async def _row_count(

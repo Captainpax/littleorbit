@@ -82,6 +82,18 @@ public interface OrbitRepository {
     CompletableFuture<QuizApiModels.Day> reopenQuiz(
             String quizDate, QuizApiModels.DayMutation mutation);
 
+    /** Creates or edits one private post-reveal question rating. */
+    CompletableFuture<QuizApiModels.Feedback> saveQuizFeedback(
+            String quizDate,
+            String questionId,
+            QuizApiModels.FeedbackMutation mutation);
+
+    /** Removes one private rating within its edit window. */
+    CompletableFuture<QuizApiModels.FeedbackDeleteResult> deleteQuizFeedback(
+            String quizDate,
+            String questionId,
+            QuizApiModels.FeedbackDelete mutation);
+
     /** Loads the privacy-limited custom question queue. */
     CompletableFuture<QuizApiModels.CustomQueue> customQuizQueue();
 
@@ -169,6 +181,19 @@ public interface OrbitRepository {
     CompletableFuture<TogetherTimeModels.HistoryDay> correctTogetherDay(
             String day, TogetherTimeModels.DayCorrection request);
 
+    /** Loads one coordinate-free shared-home day timeline. */
+    CompletableFuture<TogetherTimeModels.DayDetails> togetherDayDetails(String day);
+
+    /** Loads current opted-in collection health for the active couple. */
+    CompletableFuture<TogetherTimeModels.DeviceHealthResponse> togetherDeviceHealth();
+
+    /** Publishes this installation's current content-free health. */
+    CompletableFuture<TogetherTimeModels.DeviceHealthView> updateTogetherDeviceHealth(
+            String installationId, TogetherTimeModels.DeviceHealthUpdate request);
+
+    /** Withdraws this installation's diagnostics immediately. */
+    CompletableFuture<Void> deleteTogetherDeviceHealth(String installationId);
+
     /** Proposes a relationship start date for mutual approval. */
     CompletableFuture<TogetherTimeModels.StartDateProposal> proposeStartDate(
             TogetherTimeModels.ProposalRequest request);
@@ -204,6 +229,10 @@ public interface OrbitRepository {
     /** Restores one archived note idempotently. */
     CompletableFuture<NoteApiModels.Note> restoreNote(
             String noteId, NoteApiModels.ArchiveRequest request);
+
+    /** Saves an explicitly selected offline version as a separate shared note. */
+    CompletableFuture<NoteApiModels.Note> forkNote(
+            String noteId, NoteApiModels.ForkRequest request);
 
     /** Lists authorized attachments including upload and scan state. */
     CompletableFuture<List<NoteApiModels.Attachment>> noteAttachments(String noteId);

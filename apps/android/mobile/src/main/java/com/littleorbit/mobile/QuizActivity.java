@@ -2,6 +2,7 @@ package com.littleorbit.mobile;
 
 import android.content.Intent;
 import android.animation.ValueAnimator;
+import android.content.res.ColorStateList;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -9,6 +10,7 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.button.MaterialButton;
 import androidx.lifecycle.ViewModelProvider;
 import com.littleorbit.data.remote.QuizApiModels;
 import com.littleorbit.mobile.databinding.ActivityQuizBinding;
@@ -75,6 +77,7 @@ public final class QuizActivity extends OrbitShellActivity {
             binding.retryButton.setVisibility(View.VISIBLE);
             return;
         }
+        renderTheme(state.day);
         renderProgress(state);
         switch (mode) {
             case REVEALED -> renderReveal(state.day);
@@ -86,6 +89,22 @@ public final class QuizActivity extends OrbitShellActivity {
         }
     }
 
+    private void renderTheme(QuizApiModels.Day day) {
+        int visibility = day.theme == null ? View.GONE : View.VISIBLE;
+        binding.weekThemeText.setVisibility(visibility);
+        binding.dayThemeText.setVisibility(visibility);
+        binding.dayThemeSummary.setVisibility(visibility);
+        if (day.theme == null) return;
+        binding.weekThemeText.setText(getString(
+                R.string.quiz_week_theme, day.theme.weeklyTitle));
+        binding.dayThemeText.setText(day.theme.dailyTitle);
+        binding.dayThemeSummary.setText(day.theme.dailySummary);
+        binding.dayThemeText.setContentDescription(getString(
+                R.string.quiz_daily_theme_description,
+                day.theme.dailyTitle,
+                day.theme.dailySummary));
+    }
+
     private void setContentVisible(boolean visible) {
         int value = visible ? View.VISIBLE : View.INVISIBLE;
         binding.questionCard.setVisibility(value);
@@ -95,6 +114,9 @@ public final class QuizActivity extends OrbitShellActivity {
         binding.nextButton.setVisibility(value);
         binding.primaryButton.setVisibility(value);
         binding.reportButton.setVisibility(value);
+        binding.weekThemeText.setVisibility(value);
+        binding.dayThemeText.setVisibility(value);
+        binding.dayThemeSummary.setVisibility(value);
         binding.resultDoneButton.setVisibility(View.GONE);
     }
 
@@ -198,9 +220,49 @@ public final class QuizActivity extends OrbitShellActivity {
         if ("partner_guess".equals(question.kind)) {
             card.addView(contentText(guessLabel(question)));
         }
+        if (question.myFeedback != null) {
+            TextView summary = contentText(getString(
+                    R.string.quiz_feedback_saved_summary, question.myFeedback.stars));
+            summary.setTextColor(getColor(R.color.lavender_soft));
+            summary.setContentDescription(summary.getText());
+            card.addView(summary);
+        }
+        if (question.feedbackEligible) {
+            MaterialButton feedback = new MaterialButton(this);
+            feedback.setText(question.myFeedback == null
+                    ? getString(R.string.quiz_feedback_rate_action)
+                    : getString(R.string.quiz_feedback_edit_action, question.myFeedback.stars));
+            feedback.setMinHeight(dp(48));
+            feedback.setTextColor(getColor(R.color.lavender_soft));
+            feedback.setStrokeColor(ColorStateList.valueOf(getColor(R.color.orbit_border)));
+            feedback.setStrokeWidth(dp(1));
+            feedback.setOnClickListener(view -> showFeedback(question));
+            LinearLayout.LayoutParams feedbackParams = matchParams();
+            feedbackParams.topMargin = dp(10);
+            card.addView(feedback, feedbackParams);
+        }
         LinearLayout.LayoutParams params = matchParams();
         params.bottomMargin = dp(12);
         binding.answerContainer.addView(card, params);
+    }
+
+    private void showFeedback(QuizApiModels.Question question) {
+        new QuizFeedbackDialog(this).show(question, new QuizFeedbackDialog.Listener() {
+            @Override
+            public void save(
+                    QuizApiModels.Question selected,
+                    int stars,
+                    List<String> tags,
+                    String review,
+                    boolean consent) {
+                model.saveFeedback(selected, stars, tags, review, consent);
+            }
+
+            @Override
+            public void delete(QuizApiModels.Question selected) {
+                model.deleteFeedback(selected);
+            }
+        });
     }
 
     private String guessLabel(QuizApiModels.Question question) {
