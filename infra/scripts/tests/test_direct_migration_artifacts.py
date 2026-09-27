@@ -49,6 +49,16 @@ def test_target_postgres_layout_and_only_service_are_proven() -> None:
     assert "/var/lib/postgresql/data" in remote[0]
 
 
+def test_unraid_postgres_uses_the_proven_pgdata_subdirectory() -> None:
+    compose = (
+        Path(__file__).resolve().parents[2] / "compose.unraid.yaml"
+    ).read_text(encoding="utf-8")
+    postgres = compose.split("  postgres:", maxsplit=1)[1].split(
+        "\n  ollama:", maxsplit=1,
+    )[0]
+    assert "PGDATA: /var/lib/postgresql/data/pgdata" in postgres
+
+
 def test_release_inventory_is_relative_and_includes_size(tmp_path: Path) -> None:
     root = tmp_path / "releases"
     nested = root / "android"

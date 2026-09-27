@@ -81,6 +81,8 @@ services:
           create_host_path: false
 
   postgres:
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - type: bind
         source: ${LITTLE_ORBIT_DATA_ROOT:?set LITTLE_ORBIT_DATA_ROOT}/postgres
