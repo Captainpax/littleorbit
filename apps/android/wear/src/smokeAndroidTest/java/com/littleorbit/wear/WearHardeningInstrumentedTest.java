@@ -62,4 +62,3 @@ public final class WearHardeningInstrumentedTest {
                 .edit().clear().commit();
     }
 }
-
