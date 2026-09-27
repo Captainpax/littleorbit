@@ -91,9 +91,112 @@ def test_bootstrap_fences_every_share_export_and_placement() -> None:
         assert f"configure_share {name} only cache" in content
     assert 'configure_share little-orbit-backups no ""' in content
     assert "require_array_disk_mount" in content and "--mountpoint" in content
+    assert 'readonly UNRAID_EMCMD="/usr/local/sbin/emcmd"' in content
+    assert '"${UNRAID_EMCMD}" "$1"' in content
     main = content.rsplit("main() {", maxsplit=1)[1]
     assert main.index("audit_all_share_placements") < main.index("configure_shares")
+    assert main.index("configure_shares") < main.index("create_layout")
     assert main.index("create_layout") < main.index("verify_all_share_placements")
+
+
+@pytest.mark.skipif(BASH is None, reason="a functioning Bash is unavailable")
+def test_share_runtime_apply_is_exact_and_precedes_layout() -> None:
+    """Persisted share policy is applied to live shfs before any data write."""
+
+    bootstrap = SCRIPT_DIR / "unraid-bootstrap.sh"
+    rendered = run_bash(
+        'source "$1"; render_share_apply_request "$2" "$3" "$4" "$5"',
+        bootstrap.resolve().as_posix(),
+        "little-orbit-backups",
+        "no",
+        "",
+        "Little Orbit encrypted array backups",
+    )
+    expected = (
+        "cmdEditShare=Apply&shareNameOrig=little-orbit-backups"
+        "&shareName=little-orbit-backups"
+        "&shareComment=Little+Orbit+encrypted+array+backups"
+        "&shareFloor=0&shareUseCache=no&shareCachePool=&shareCachePool2="
+        "&shareAllocator=highwater&shareSplitLevel=&shareInclude=&shareExclude="
+        "&shareCOW=auto"
+    )
+    assert rendered.returncode == 0, rendered.stderr
+    assert rendered.stdout == expected
+    invoked = run_bash(
+        'source "$1"; run_unraid_emcmd() { printf "<%s>" "$1"; }; '
+        'apply_share_runtime "$2" "$3" "$4" "$5"',
+        bootstrap.resolve().as_posix(),
+        "little-orbit-backups",
+        "no",
+        "",
+        "Little Orbit encrypted array backups",
+    )
+    assert invoked.returncode == 0, invoked.stderr
+    assert invoked.stdout == f"<{expected}>"
+    content = script("unraid-bootstrap.sh")
+    configure = content[content.index("configure_share() {"):content.index(
+        "upgrade_legacy_non_nfs_share() {"
+    )]
+    first_validation = configure.index("validate_share_config")
+    runtime_apply = configure.index("apply_share_runtime")
+    assert first_validation < runtime_apply
+    assert configure.index("validate_share_config", runtime_apply) > runtime_apply
+
+
+@pytest.mark.skipif(BASH is None, reason="a functioning Bash is unavailable")
+def test_cache_share_runtime_apply_keeps_the_fixed_pool() -> None:
+    """The live refresh cannot drop the direct-cache primary storage setting."""
+
+    rendered = run_bash(
+        'source "$1"; render_share_apply_request "$2" "$3" "$4" "$5"',
+        (SCRIPT_DIR / "unraid-bootstrap.sh").resolve().as_posix(),
+        "little-orbit-live",
+        "only",
+        "cache",
+        "Little Orbit direct-pool live state",
+    )
+    expected = (
+        "cmdEditShare=Apply&shareNameOrig=little-orbit-live"
+        "&shareName=little-orbit-live"
+        "&shareComment=Little+Orbit+direct-pool+live+state"
+        "&shareFloor=0&shareUseCache=only&shareCachePool=cache&shareCachePool2="
+        "&shareAllocator=highwater&shareSplitLevel=&shareInclude=&shareExclude="
+        "&shareCOW=auto"
+    )
+    assert rendered.returncode == 0, rendered.stderr
+    assert rendered.stdout == expected
+
+
+@pytest.mark.skipif(BASH is None, reason="a functioning Bash is unavailable")
+def test_share_runtime_apply_propagates_management_failure() -> None:
+    """A failed live policy refresh prevents bootstrap from reaching layout writes."""
+
+    result = run_bash(
+        'source "$1"; run_unraid_emcmd() { return 73; }; '
+        'apply_share_runtime little-orbit-backups no "" "Little Orbit backups"',
+        (SCRIPT_DIR / "unraid-bootstrap.sh").resolve().as_posix(),
+    )
+    assert result.returncode == 73
+
+
+@pytest.mark.skipif(BASH is None, reason="a functioning Bash is unavailable")
+def test_share_runtime_apply_rejects_unreviewed_values() -> None:
+    """The management request cannot accept arbitrary names, pools, or text."""
+
+    bootstrap = (SCRIPT_DIR / "unraid-bootstrap.sh").resolve().as_posix()
+    probes = (
+        ("../share", "no", "", "Little Orbit"),
+        ("little-orbit-live", "prefer", "cache", "Little Orbit"),
+        ("little-orbit-live", "only", "other", "Little Orbit"),
+        ("little-orbit-live", "only", "cache", "Little Orbit&unsafe=true"),
+    )
+    for values in probes:
+        result = run_bash(
+            'source "$1"; render_share_apply_request "$2" "$3" "$4" "$5"',
+            bootstrap,
+            *values,
+        )
+        assert result.returncode == 64
 
 
 @pytest.mark.skipif(BASH is None, reason="a functioning Bash is unavailable")

@@ -24,7 +24,7 @@ The following checks passed before this record was written:
 
 | Check | Result |
 |---|---|
-| `python -m pytest infra/scripts/tests -q` | 123 passed; one capability skip |
+| `python -m pytest infra/scripts/tests -q` | 127 passed; one capability skip |
 | Full API/AI suite with disposable PostgreSQL 17/pgvector | 259 passed; one Windows symbolic-link capability skip; 22 warnings |
 | Direct-migration split suite | 81 passed |
 | Restart-safe migration recovery contract | 23 passed |
@@ -114,6 +114,8 @@ The authenticated Unraid dashboard and terminal showed:
 No terminal output containing a secret, row value, attachment name, signing password, or precise location was collected for this record.
 
 The live `.182` database was also checked through the content-free security inventory while it remained at migration `0031`: all 74 public tables and the exact reviewed role/ACL policy validated. No row values, hashes, filenames, or relationship content were emitted.
+
+The first live bootstrap attempt found that `.14`'s persisted array-only backup-share file had not yet refreshed the running `shfs`: its content-free placement sentinel landed on cache, and the physical-placement verifier stopped immediately. The misplaced sentinel and its otherwise empty directory were removed, the exact same share policy was applied through Unraid's local management command, and a repeat sentinel landed on one array disk with no cache copy. Bootstrap now performs that runtime apply before creating any share content, with fail-closed request rendering tests.
 
 ## Required before source freeze
 

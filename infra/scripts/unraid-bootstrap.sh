@@ -12,6 +12,7 @@ readonly TOOL_ROOT="${LITTLE_ORBIT_TOOL_ROOT:-/mnt/cache/little-orbit-tools}"
 readonly AGE_VERSION="1.3.2"
 readonly AGE_SHA256="cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10"
 readonly SHARE_CONFIG_ROOT="/boot/config/shares"
+readonly UNRAID_EMCMD="/usr/local/sbin/emcmd"
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 source "${SCRIPT_DIR}/unraid-operation-lock.sh"
@@ -53,6 +54,10 @@ require_target() {
     exit 78
   fi
   command -v findmnt >/dev/null; command -v mountpoint >/dev/null
+  [[ -x "${UNRAID_EMCMD}" ]] || {
+    echo "The fixed Unraid management command is unavailable." >&2
+    exit 69
+  }
   require_unraid_mount /mnt/cache device btrfs &&
     require_unraid_mount /mnt/user shfs fuse.shfs || {
     echo "The exact Unraid cache and user-share mounts must be available." >&2
@@ -73,23 +78,51 @@ configure_share() {
   if [[ -e "${target}" || -L "${target}" ]]; then
     upgrade_legacy_non_nfs_share "${target}" "${name}" "${use_cache}" "${pool}"
     validate_share_config "${target}" "${name}" "${use_cache}" "${pool}"
-    return
+  else
+    temporary="$(mktemp "${SHARE_CONFIG_ROOT}/.${name}.XXXXXX")"
+    {
+      printf 'shareComment="%s"\n' "${description}"
+      printf 'shareInclude=""\nshareExclude=""\n'
+      printf 'shareUseCache="%s"\nshareCachePool="%s"\nshareCachePool2=""\n' \
+        "${use_cache}" "${pool}"
+      printf 'shareCOW="auto"\nshareExport="-"\nshareCaseSensitive="auto"\n'
+      printf 'shareSecurity="private"\nshareReadList=""\nshareWriteList=""\n'
+      printf 'shareVolsizelimit=""\n'
+      printf 'shareExportNFS="-"\nshareExportNFSFsid="0"\n'
+      printf 'shareSecurityNFS="private"\nshareHostListNFS=""\n'
+    } >"${temporary}"
+    chmod 0600 "${temporary}"
+    mv -- "${temporary}" "${target}"
+    validate_share_config "${target}" "${name}" "${use_cache}" "${pool}"
   fi
-  temporary="$(mktemp "${SHARE_CONFIG_ROOT}/.${name}.XXXXXX")"
-  {
-    printf 'shareComment="%s"\n' "${description}"
-    printf 'shareInclude=""\nshareExclude=""\n'
-    printf 'shareUseCache="%s"\nshareCachePool="%s"\nshareCachePool2=""\n' \
-      "${use_cache}" "${pool}"
-    printf 'shareCOW="auto"\nshareExport="-"\nshareCaseSensitive="auto"\n'
-    printf 'shareSecurity="private"\nshareReadList=""\nshareWriteList=""\n'
-    printf 'shareVolsizelimit=""\n'
-    printf 'shareExportNFS="-"\nshareExportNFSFsid="0"\n'
-    printf 'shareSecurityNFS="private"\nshareHostListNFS=""\n'
-  } >"${temporary}"
-  chmod 0600 "${temporary}"
-  mv -- "${temporary}" "${target}"
+  apply_share_runtime "${name}" "${use_cache}" "${pool}" "${description}"
   validate_share_config "${target}" "${name}" "${use_cache}" "${pool}"
+}
+
+render_share_apply_request() {
+  local name="$1" use_cache="$2" pool="$3" description="$4" encoded_description
+  local description_pattern='^[A-Za-z0-9 .-]+$'
+  [[ "${name}" =~ ^[a-z0-9-]+$ && "${use_cache}" =~ ^(only|no)$ ]] || return 64
+  [[ -z "${pool}" || "${pool}" == "cache" ]] || return 64
+  [[ "${description}" =~ ${description_pattern} ]] || return 64
+  encoded_description="${description// /+}"
+  printf '%s' "cmdEditShare=Apply&shareNameOrig=${name}&shareName=${name}" \
+    "&shareComment=${encoded_description}&shareFloor=0&shareUseCache=${use_cache}" \
+    "&shareCachePool=${pool}&shareCachePool2=&shareAllocator=highwater" \
+    "&shareSplitLevel=&shareInclude=&shareExclude=&shareCOW=auto"
+}
+
+apply_share_runtime() {
+  local request
+  request="$(render_share_apply_request "$@")" || {
+    echo "The fixed share policy cannot be encoded safely." >&2
+    exit 78
+  }
+  run_unraid_emcmd "${request}"
+}
+
+run_unraid_emcmd() {
+  "${UNRAID_EMCMD}" "$1"
 }
 
 upgrade_legacy_non_nfs_share() {
