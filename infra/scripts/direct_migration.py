@@ -376,7 +376,28 @@ def restart_source_writers(
 ) -> None:
     """Restart exactly the preflight writers and prove each is ready."""
 
-    restart.restart_source_writers(args, source, writers, run_stack)
+    restart.restart_source_writers(
+        args, source, writers, run_stack, _start_existing_writer_containers,
+    )
+
+
+def _start_existing_writer_containers(
+    args: argparse.Namespace, source: str, container_ids: tuple[str, ...],
+) -> None:
+    """Start pinned existing containers without evaluating new dependencies."""
+
+    if source == "unraid":
+        run_checked([
+            *ssh_prefix(args), migration_remote_shell(
+                args, "docker start -- " + " ".join(container_ids),
+            ),
+        ])
+        return
+    if source not in {"local-production", "local-rollback"}:
+        raise ValueError("unknown migration stack location")
+    run_checked(
+        ["docker", "start", *container_ids], env=stack_environment(args, source),
+    )
 
 
 def _recover_failure(

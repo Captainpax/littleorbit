@@ -17,6 +17,41 @@ from infra.scripts.tests.direct_migration_test_support import (
 )
 
 
+def test_writer_recovery_starts_pinned_containers_without_new_dependencies(
+    tmp_path: Path,
+) -> None:
+    value = arguments(tmp_path)
+    calls: list[tuple[str, ...]] = []
+    started: list[tuple[str, ...]] = []
+    status = (
+        '[{"Service":"gateway","ID":"aaaaaaaaaaaa",'
+        '"State":"running","Health":"healthy"},'
+        '{"Service":"worker","ID":"bbbbbbbbbbbb",'
+        '"State":"running","Health":""}]'
+    )
+
+    def run(
+        _args: argparse.Namespace, source: str, *items: str, **kwargs: object,
+    ) -> str:
+        assert source == "local-production"
+        calls.append(items)
+        return status if kwargs.get("capture") else ""
+
+    MODULE.restart.restart_source_writers(
+        value, "local-production", ("gateway", "worker"), run,
+        lambda _args, source, ids: (
+            started.append((source, *ids))
+        ),
+    )
+    assert calls == [
+        ("ps", "--all", "--format", "json", "gateway", "worker"),
+        ("ps", "--format", "json", "gateway", "worker"),
+    ]
+    assert started == [
+        ("local-production", "aaaaaaaaaaaa", "bbbbbbbbbbbb"),
+    ]
+
+
 def test_failed_partial_stop_restarts_exact_original_writers(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
