@@ -135,7 +135,7 @@ services:
     command:
       - sh
       - -c
-      - install -d -o 65532 -g 65532 /var/lib/little-orbit/attachments
+      - install -d -m 0750 -o 65532 -g 65532 /var/lib/little-orbit/attachments
     volumes:
       - attachment-data:/var/lib/little-orbit/attachments
     network_mode: none

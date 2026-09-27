@@ -194,6 +194,34 @@ def test_attachment_restore_uses_sibling_stage_and_application_owner(
     assert "LITTLE_ORBIT_ATTACHMENT_RESTORE_MODE=stage" in destination
 
 
+def test_unraid_staging_seal_retains_private_attachment_root_mode() -> None:
+    """Migration promotion cannot widen the application-owned root boundary."""
+
+    commands: list[list[str]] = []
+
+    class Runtime:
+        @staticmethod
+        def ssh_prefix(_args: object) -> list[str]:
+            return ["ssh"]
+
+        @staticmethod
+        def remote_shell(value: str) -> str:
+            return value
+
+        @staticmethod
+        def run(command: list[str]) -> None:
+            commands.append(command)
+
+    MODULE.artifacts.seal_staging(
+        Runtime(), object(), "unraid", "/stage/attachments", "/stage/releases"
+    )
+
+    assert len(commands) == 1
+    shell = commands[0][-1]
+    assert "chown 65532:65532 /stage/attachments" in shell
+    assert "chmod 0750 /stage/attachments" in shell
+
+
 @pytest.mark.parametrize(
     ("source", "destination"),
     [("local-production", "unraid"), ("unraid", "local-rollback")],

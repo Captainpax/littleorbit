@@ -68,6 +68,10 @@ def test_bootstrap_requires_exact_unraid_mounts() -> None:
         'require_fixed_root "${BACKUP_ROOT}" /mnt/user/little-orbit-backups' in content
     )
     assert 'require_fixed_root "${GPU_ROOT}" /mnt/cache/gpu-coordinator' in content
+    assert (
+        'install -d -m 0750 -o 65532 -g 65532 "${DATA_ROOT}/attachments"'
+        in content
+    )
 
 
 @pytest.mark.skipif(BASH is None, reason="a functioning Bash is unavailable")

@@ -30,7 +30,10 @@ Mutable live state uses direct cache-pool paths under
 the array-only `/mnt/user/little-orbit-backups` share. PostgreSQL and
 attachments are excluded from generic appdata snapshots. Source, runtime
 secrets, shared GPU coordination, and signing material use separate
-non-exported cache paths with least-privilege ownership. Runtime recovery is
+non-exported cache paths with least-privilege ownership. The attachment root
+is owned by the application identity `65532:65532` at mode `0750`; both host
+bootstrap and container initialization preserve that traversal boundary so
+Unraid's generic `users` group cannot reach private bytes. Runtime recovery is
 therefore local to this server at first; an off-host encrypted copy remains an
 explicit open reliability risk.
 

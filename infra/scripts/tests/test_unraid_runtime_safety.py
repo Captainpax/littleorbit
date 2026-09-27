@@ -248,6 +248,20 @@ def test_background_mutation_services_have_real_health_checks() -> None:
     assert "('clamav', 3310)" in media
 
 
+def test_attachment_initializer_preserves_private_host_traversal_boundary() -> None:
+    """Container startup cannot reopen attachment traversal to Unraid users."""
+
+    compose = COMPOSE_PATH.read_text(encoding="utf-8")
+    initializer = compose.split("  attachment-init:", maxsplit=1)[1].split(
+        "\n  backup-attachment-reader:", maxsplit=1
+    )[0]
+    assert (
+        "install -d -m 0750 -o 65532 -g 65532 "
+        "/var/lib/little-orbit/attachments"
+    ) in initializer
+    assert "install -d -o 65532 -g 65532" not in initializer
+
+
 def test_internal_web_hop_avoids_the_existing_host_port_guard() -> None:
     """The private web flow must not collide with Scriptarr's port-3000 rule."""
 
