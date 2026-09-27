@@ -318,6 +318,28 @@ rotation and a post-rotation receipt through the ordinary application flow
 remain open. The old Google credential must remain active until that two-phase
 rotation reaches its separately verified commit point.
 
+## Live generic-backup boundary audit — 2026-09-27
+
+A read-only inspection of `.14` found no installed Unraid appdata-backup,
+snapshot, or ZFS backup plugin. The installed User Scripts were the two
+maintenance helpers, the DMS and Scriptarr firewall helpers, the four Little
+Orbit wrappers, the DMS mount helper, and the Docker-log-size helper. No User
+Script file referenced `/mnt/cache/little-orbit-live`. Therefore no generic
+Unraid backup or snapshot job currently includes the direct-cache PostgreSQL
+or attachment paths.
+
+This is an absence-of-tool boundary, not an explicit exclusion entry. If a
+generic appdata or snapshot tool is installed later, it must explicitly exclude
+`/mnt/cache/little-orbit-live/postgres` and
+`/mnt/cache/little-orbit-live/attachments` (or the whole live root) before it is
+enabled. The sanctioned privacy-filtered encrypted backup remains the only
+runtime backup path.
+
+The same read-only pass reconfirmed `USE_DHCP="yes"`, empty static-address
+fields, current `br0` address `192.168.50.14/24`, and a DHCP-derived default
+route through `.1`. This proves the current lease only; it does not prove a
+router-side reservation, so that gate remains open.
+
 ## Pre-freeze gates and evidence
 
 - [ ] Independently confirm the router-side `.14` reservation. The reservation was not observable from Unraid; the SSH port 23 host key and temporary key, capacity, NVIDIA runtime, port 8180, IPv6 listeners, and `10.253.14.0/28` availability were rechecked before freeze.
@@ -333,6 +355,7 @@ rotation reaches its separately verified commit point.
 - [x] Complete disposable-key end-to-end signing for Little Orbit and Big Orbit plus wrong-store-password, wrong-key-password, wrong-alias, wrong-certificate, redaction, independent metadata, and zero-residue cleanup checks on `.14`, with the final negative-verifier Docker caveat recorded above.
 - [x] Confirm both people are off the app and disable `.182` schedules.
 - [x] Create a fresh ordinary privacy-filtered encrypted backup and pass its restore drill.
+- [x] Confirm that no generic appdata-backup, snapshot, or ZFS backup tool is installed and that no User Script references the live root. Require explicit PostgreSQL and attachment exclusions before enabling any such tool later.
 - [x] Record source commit/image digests, migration head `0031`, privacy-safe table counts including feedback and feedback-operation rows, attachment aggregate digest, and every immutable-release size/hash.
 - [x] Stage schema-0032-compatible source on `.182` for rollback without starting it.
 
