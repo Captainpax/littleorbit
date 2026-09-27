@@ -220,6 +220,9 @@ def test_share_validation_rejects_unsafe_settings_and_duplicates(
     config.write_text(safe_config, encoding="utf-8")
     assert validate().returncode == 0
 
+    config.write_bytes(safe_config.replace("\n", "\r\n").encode())
+    assert validate().returncode == 0
+
     config.write_text(
         safe_config.replace('shareExportNFS="-"', 'shareExportNFS="e"'),
         encoding="utf-8",

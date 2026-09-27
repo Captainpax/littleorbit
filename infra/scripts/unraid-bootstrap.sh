@@ -186,20 +186,20 @@ reject_duplicate_share_settings() {
 }
 
 require_share_setting() {
-  local target="$1" name="$2" key="$3" expected="$4" count
-  count="$(awk -v key="${key}" '
+  local target="$1" name="$2" key="$3" expected="$4"
+  awk -v key="${key}" -v expected="${expected}" '
     {
       line = $0
+      sub(/\r$/, "", line)
+      if (line == key "=\"" expected "\"") exact++
       sub(/^[[:space:]]*/, "", line)
       if (substr(line, 1, length(key)) == key) {
         tail = substr(line, length(key) + 1)
         if (tail ~ /^[[:space:]]*=/) count++
       }
     }
-    END { print count + 0 }
-  ' "${target}")"
-  [[ "${count}" == "1" ]] &&
-    grep -Fqx -- "${key}=\"${expected}\"" "${target}" || {
+    END { exit !(count == 1 && exact == 1) }
+  ' "${target}" || {
       echo "The ${name} share has an ambiguous or unsafe ${key} setting." >&2
       exit 78
     }
