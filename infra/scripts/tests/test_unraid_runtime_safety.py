@@ -241,6 +241,37 @@ def test_background_mutation_services_have_real_health_checks() -> None:
     assert "('clamav', 3310)" in media
 
 
+def test_internal_web_hop_avoids_the_existing_host_port_guard() -> None:
+    """The private web flow must not collide with Scriptarr's port-3000 rule."""
+
+    compose = COMPOSE_PATH.read_text(encoding="utf-8")
+    caddy = (COMPOSE_PATH.parent / "gateway" / "Caddyfile").read_text(
+        encoding="utf-8"
+    )
+    web = compose.split("  web:", maxsplit=1)[1].split("\n  api:", maxsplit=1)[0]
+    assert 'PORT: "3014"' in web
+    assert '"http://127.0.0.1:3014/status"' in web
+    assert "reverse_proxy web:3014" in caddy
+    assert "reverse_proxy web:3000" not in caddy
+
+
+def test_ollama_receives_the_same_stable_gpu_lock_mount() -> None:
+    """The GPU daemon can diagnose the inode held by its worker controller."""
+
+    compose = COMPOSE_PATH.read_text(encoding="utf-8")
+    unraid = (COMPOSE_PATH.parent / "compose.unraid.yaml").read_text(encoding="utf-8")
+    ollama = compose.split("  ollama:", maxsplit=1)[1].split(
+        "\n  model-init:", maxsplit=1
+    )[0]
+    unraid_ollama = unraid.split("  ollama:", maxsplit=1)[1].split(
+        "\nnetworks:", maxsplit=1
+    )[0]
+    assert "gpu-coordinator:/run/gpu-coordinator" in ollama
+    assert '"${GPU_COORDINATOR_GID:-2000}"' in ollama
+    assert "${GPU_LOCK_HOST_PATH:?set GPU_LOCK_HOST_PATH}" in unraid_ollama
+    assert "target: /run/gpu-coordinator/gpu.lock" in unraid_ollama
+
+
 def test_user_scripts_require_explicit_post_cutover_activation() -> None:
     """Installation writes disabled metadata; only one named command enables jobs."""
 

@@ -97,6 +97,11 @@ services:
         target: /root/.ollama
         bind:
           create_host_path: false
+      - type: bind
+        source: ${GPU_LOCK_HOST_PATH:?set GPU_LOCK_HOST_PATH}
+        target: /run/gpu-coordinator/gpu.lock
+        bind:
+          create_host_path: false
 
 networks:
   gateway-api:
