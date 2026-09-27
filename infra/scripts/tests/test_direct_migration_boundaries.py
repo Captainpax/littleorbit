@@ -181,6 +181,20 @@ def test_runtime_environment_rebuild_replaces_overrides_once() -> None:
     assert b"https://old.example" not in rebuilt
 
 
+def test_captured_process_output_is_decoded_as_utf8(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: dict[str, object] = {}
+
+    def capture(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        observed.update(kwargs)
+        return subprocess.CompletedProcess(command, 0, stdout="ok\n")
+
+    monkeypatch.setattr(MODULE.transport.subprocess, "run", capture)
+    assert MODULE.transport.run_checked(["fixture"], capture=True) == "ok"
+    assert observed["encoding"] == "utf-8"
+
+
 def test_local_docker_environment_drops_ambient_controls_and_pins_daemon(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

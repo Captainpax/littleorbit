@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import asdict
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -68,6 +70,25 @@ def test_attachment_inventory_exposes_no_paths(tmp_path: Path) -> None:
     assert observed["file_count"] == 1
     assert observed["total_bytes"] == 7
     assert "secret-name" not in json.dumps(observed)
+
+
+def test_inventory_one_shot_bundles_its_security_dependency(tmp_path: Path) -> None:
+    root = tmp_path / "attachments"
+    root.mkdir()
+    (root / "fixture.bin").write_bytes(b"fixture")
+    result = subprocess.run(
+        [
+            sys.executable, "-I", "-c", MODULE.artifacts._inventory_program(),
+            "attachments", str(root),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    assert json.loads(result.stdout) == asdict(
+        MODULE.inventory.attachment_inventory(root)
+    )
 
 
 def test_attachment_reader_is_bound_to_the_exact_live_writer_mount(

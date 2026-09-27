@@ -88,7 +88,7 @@ def run_checked(
     """Run one command without printing its possibly sensitive arguments."""
 
     result = subprocess.run(
-        command, check=True, text=True, env=env,
+        command, check=True, text=True, encoding="utf-8", env=env,
         stdout=subprocess.PIPE if capture else None,
     )
     return result.stdout.strip() if capture and result.stdout else ""

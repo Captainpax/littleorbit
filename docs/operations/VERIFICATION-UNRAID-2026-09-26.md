@@ -24,7 +24,7 @@ The following checks passed before this record was written:
 
 | Check | Result |
 |---|---|
-| `python -m pytest infra/scripts/tests -q` | 130 passed; one capability skip |
+| `python -m pytest infra/scripts/tests -q` | 132 passed; one capability skip |
 | Full API/AI suite with disposable PostgreSQL 17/pgvector | 259 passed; one Windows symbolic-link capability skip; 22 warnings |
 | Direct-migration split suite | 81 passed |
 | Restart-safe migration recovery contract | 23 passed |
@@ -124,6 +124,8 @@ The first inactive User Scripts install also exposed an empty-host no-op bug: an
 The selected code-only snapshot contains no runtime environment, signer store, backup identity, or SSH key. Its clean rollback and `.14` deployment checkouts have a matching mode-independent blob/path digest. Earlier staging attempts remain preserved as recoverable code-only directories and are not selected for migration.
 
 Immediately before the source freeze, the three `.182` production schedules were disabled and verified not running. The first fresh backup attempt exposed Windows PowerShell 5.1 native-argument removal of JSON quotes in the operations runner; database commands now stream SQL through `psql` stdin. The first restore attempt then exposed the .NET Framework redirected-stdin UTF-8 preamble corrupting otherwise binary-safe PostgreSQL and attachment streams. The shared binary pipeline now creates destination stdin under a BOM-free encoding, and restore cleanup is armed before the restore command can fail. The exact leaked disposable database from that failed attempt was removed after name and count validation. A newly generated encrypted pair passed two restore drills with matching pair-manifest SHA-256 `7fc7cb833f1373aa94b9d4f202157190b0ff454c3e52c3555945c917bf83ab95`; schema, excluded private rows, and the attachment manifest verified, no drill database remained, and public-host source readiness returned HTTP 200. The earlier failed run remains visible as failed operational evidence and is not treated as a valid drill.
+
+The first real pre-freeze attachment inventory then found that the isolated one-shot command had been given `migration_inventory.py` without its local security dependency. File hashing now lives in a self-contained one-shot module, while the host-only database/security comparison remains separate. Captured subprocess output is decoded explicitly as UTF-8 rather than the Windows locale. An isolated-process regression and the live read-only helper both passed: schema head `0031`, 74 public tables, one feedback row, one feedback-operation row, one attachment of 353,543 bytes with aggregate SHA-256 `03bb5db2e663c8fb94ce9b437f4cd99dd284f7470f7221960353722f54e89395`, and all immutable release sizes/hashes were emitted without content inspection. The exact frozen inventory remains the authority for transfer comparison.
 
 ## Required before source freeze
 

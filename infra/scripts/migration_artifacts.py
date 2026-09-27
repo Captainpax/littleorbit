@@ -135,6 +135,12 @@ def _program(name: str) -> str:
     return (Path(__file__).resolve().parent / name).read_text(encoding="utf-8")
 
 
+def _inventory_program() -> str:
+    """Return the self-contained inventory used by one-shot containers."""
+
+    return _program("migration_file_inventory.py")
+
+
 def _container_id(
     runtime: Runtime, args: argparse.Namespace, location: str, service: str,
 ) -> str:
@@ -293,7 +299,7 @@ def attachment_inventory(
     source_mount: AttachmentMount | None = None,
 ) -> inventory.AttachmentInventory:
     command = attachment_command(
-        runtime, args, location, _program("migration_inventory.py"), stage=stage,
+        runtime, args, location, _inventory_program(), stage=stage,
         source_mount=source_mount,
     )
     raw = runtime.run(
@@ -363,7 +369,7 @@ def release_inventory_at(
     ]
     values.extend((
         "--entrypoint", "python", "backup-attachment-verifier", "-c",
-        _program("migration_inventory.py"), "releases", RELEASE_CONTAINER_ROOT,
+        _inventory_program(), "releases", RELEASE_CONTAINER_ROOT,
     ))
     raw = runtime.run_stack(args, "unraid", *values, capture=True)
     return inventory.parse_release_inventory(raw)

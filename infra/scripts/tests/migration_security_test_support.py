@@ -21,6 +21,7 @@ def load_script(name: str) -> Any:
 
 
 SECURITY = load_script("migration_security.py")
+FILE_INVENTORY = load_script("migration_file_inventory.py")
 INVENTORY = load_script("migration_inventory.py")
 
 
