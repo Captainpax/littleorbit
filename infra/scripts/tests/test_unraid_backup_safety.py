@@ -1,6 +1,92 @@
 """Backup and restore invariants for the fixed Unraid host."""
 
-from infra.scripts.tests.unraid_test_support import COMPOSE_PATH, script
+from __future__ import annotations
+
+from pathlib import Path
+import subprocess
+
+import pytest
+
+from infra.scripts.tests.unraid_test_support import (
+    BASH,
+    COMPOSE_PATH,
+    SCRIPT_DIR,
+    script,
+)
+
+
+def _run_pending_with_mocked_claim(
+    tmp_path: Path, claim: str
+) -> subprocess.CompletedProcess[str]:
+    state = tmp_path / "claim-consumed"
+    return subprocess.run(
+        [
+            str(BASH),
+            "-c",
+            r'''
+source "$1"
+claim="$2"
+state="$3"
+
+stack() {
+  local argument quiet=false
+  for argument in "$@"; do
+    [[ "${argument}" == --quiet ]] && quiet=true
+  done
+  if [[ "$*" == *"printenv POSTGRES_USER"* ]]; then
+    printf 'postgres\n'
+  elif [[ "$*" == *"printenv POSTGRES_DB"* ]]; then
+    printf 'little_orbit\n'
+  elif [[ "$*" == *"psql"* ]]; then
+    if [[ -n "${claim}" && ! -e "${state}" ]]; then
+      : >"${state}"
+      printf '%s\n' "${claim}"
+      [[ "${quiet}" == true ]] || printf 'UPDATE 1\n'
+    else
+      [[ "${quiet}" == true ]] || printf 'UPDATE 0\n'
+    fi
+  else
+    return 64
+  fi
+}
+
+run_backup() { printf 'backup:%s\n' "$1"; }
+run_restore_drill() { printf 'test_restore:%s\n' "$1"; }
+run_pending
+''',
+            "pending-claim-test",
+            (SCRIPT_DIR / "unraid-operations.sh").resolve().as_posix(),
+            claim,
+            state.resolve().as_posix(),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+
+@pytest.mark.skipif(BASH is None, reason="a functioning Bash is unavailable")
+def test_pending_runner_treats_an_empty_claim_as_no_work(tmp_path: Path) -> None:
+    """psql's empty UPDATE command tag cannot become a malformed job claim."""
+
+    result = _run_pending_with_mocked_claim(tmp_path, "")
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
+
+
+@pytest.mark.skipif(BASH is None, reason="a functioning Bash is unavailable")
+def test_pending_runner_dispatches_only_the_returned_claim_row(tmp_path: Path) -> None:
+    """A command tag cannot contaminate the allowlisted kind after a real claim."""
+
+    job_id = "12345678-1234-1234-1234-123456789abc"
+    result = _run_pending_with_mocked_claim(tmp_path, f"{job_id}|backup")
+
+    assert result.returncode == 0
+    assert result.stdout == f"backup:{job_id}\n"
+    assert result.stderr == ""
 
 
 def test_gpu_lock_is_a_stable_root_owned_inode() -> None:

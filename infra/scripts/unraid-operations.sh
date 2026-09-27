@@ -22,7 +22,7 @@ db_sql() {
   local identity user database
   identity="$(db_identity)"; user="${identity%%|*}"; database="${identity#*|}"
   stack exec -T postgres psql --username="${user}" --dbname="${database}" \
-    --no-align --tuples-only --set=ON_ERROR_STOP=1 --command="$1"
+    --quiet --no-align --tuples-only --set=ON_ERROR_STOP=1 --command="$1"
 }
 
 start_run() {
@@ -135,4 +135,6 @@ main() {
   esac
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

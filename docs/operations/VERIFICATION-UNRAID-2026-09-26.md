@@ -4,7 +4,7 @@
 
 This record covers preparation and the live application-cold move of Little Orbit from the Windows host at `192.168.50.182` to Unraid at `192.168.50.14`, cooperative use of the target RTX 4060 with Scriptarr, and use of `.14` as the isolated Android build/signing host.
 
-As of 2026-09-27, the direct database, attachment, and immutable-release stream is committed; production is at migration `0032`; Nginx Proxy Manager points to `.14:8180`; and `.14` is the authoritative writer. Public pages, readiness, release metadata, complete and ranged APK delivery, forwarded-client identity, ClamAV health, schedule activation, the shared lock inode, empty Ollama/VRAM state, child-role credential rotation, and fresh local encrypted backup/restore drills have passed the checks recorded below. The old `.182` writer services remain stopped, and no `.182` database or attachment volume has been deleted. Existing authenticated sessions, authenticated WSS, Big Orbit behavior, SMTP and notification delivery, authorized attachment reads, physical-device QA, external cellular/WAN reachability, and final reboot recovery remain open; this record does not claim those checks passed.
+As of 2026-09-27, the direct database, attachment, and immutable-release stream is committed; production is at migration `0032`; Nginx Proxy Manager points to `.14:8180`; and `.14` is the authoritative writer. Public pages, readiness, release metadata, complete and ranged APK delivery, forwarded-client identity, ClamAV health, schedule activation, corrected fail-closed reboot recovery, the shared lock inode, empty Ollama/VRAM state, child-role credential rotation, and fresh local encrypted backup/restore drills have passed the checks recorded below. The old `.182` writer services remain stopped, and no `.182` database or attachment volume has been deleted. Existing authenticated sessions, authenticated WSS, Big Orbit behavior, SMTP and notification delivery, authorized attachment reads, an active shared-GPU workload, physical-device QA, external cellular/WAN reachability, and off-host recovery remain open; this record does not claim those checks passed.
 
 ## Implemented in source
 
@@ -24,7 +24,7 @@ The following checks passed before this record was written:
 
 | Check | Result |
 |---|---|
-| `python -m pytest infra/scripts/tests -q` | 150 passed; one capability skip |
+| `python -m pytest infra/scripts/tests -q` | 153 passed; one capability skip |
 | Full API/AI suite with disposable PostgreSQL 17/pgvector | 259 passed; one Windows symbolic-link capability skip; 22 warnings |
 | Direct-migration split suite | 81 passed |
 | Restart-safe migration recovery contract | 23 passed |
@@ -174,6 +174,73 @@ The post-rotation target backup completed at `20260927-151434`:
 
 Its networkless restore drill reached schema `0032`, verified the private-row exclusions and attachment manifest, and matched pair-manifest SHA-256 `d3be4284fc2bb480239493fe5e6adf749942f1b808e71492ba066db7f3ec9dda`. It also records `off_host_copy=false` and does not close the off-host recovery gate.
 
+## Reboot recovery evidence — 2026-09-27
+
+The first post-cutover reboot changed boot ID
+`28db165a-d60a-4a95-a4a1-fae310df8f51` to
+`e1dfb835-1e35-42e6-8d61-67bb22cde595`. It exposed a real startup-order
+defect: Docker restored the gateway under its earlier `on-failure:5` policy
+before the User Scripts dispatcher prepared the NPM-only firewall. That pass
+is retained as failed safety evidence. The Unraid override now fixes the
+gateway restart policy at `no`; startup remains solely responsible for
+opening it after firewall preparation, and failure cleanup stops it.
+
+The corrected reboot changed boot ID
+`e1dfb835-1e35-42e6-8d61-67bb22cde595` to
+`bcce9962-1335-44d4-a122-a5e9d3c00db1`. A one-second observer outside `.14`
+recorded these content-free transitions in Pacific time:
+
+| Time | Docker API | Gateway | TCP 8180 | Firewall/startup evidence |
+|---|---|---|---|---|
+| 08:29:08 | unavailable | unavailable | absent | new boot; no owned jump or startup log |
+| 08:29:40 | unavailable | unavailable | absent | array reached `STARTED` |
+| 08:29:54 | socket only | unavailable | absent | startup waiting for Docker |
+| 08:37:49 | responsive | `restart=no`, exited | absent | owned jump first; firewall reported `configured` |
+| 08:38:20–08:43:49 | responsive | exited | absent | bootstrap complete; firewall remained first |
+| 08:43:53 | responsive | Compose starting | present | first publication, more than six minutes after firewall preparation |
+| 08:44:00 | responsive | `restart=no`, running | present | exact `.14:8180` listener |
+| 08:44:16 | responsive | healthy | present | post-start firewall verification and startup finished |
+
+This live sequence closes the reboot-order gate: the gateway did not start or
+publish port 8180 when Docker first became responsive, remained stopped behind
+the prepared firewall while dependencies converged, and was published only by
+the explicit Compose start. The final listener was exactly
+`192.168.50.14:8180`; no IPv6 listener existed. The Little Orbit jump was
+first in `DOCKER-USER`, its owned chain admitted original traffic only from
+NPM `.6`, rejected every other source, returned afterward, and preserved the
+unrelated Questloom and Scriptarr rules. A direct request from `.182` timed
+out, while the NPM TLS path remained available.
+
+After the corrected reboot, PostgreSQL, API, worker, media worker, web,
+gateway, Ollama, ClamAV, and context fetcher were healthy. Attachment init,
+database bootstrap, migration, database grants, and GPU-lock init all exited
+zero; schema remained `0032`; the role-rotation journal remained committed;
+the cache-pool BTRFS device counters remained zero; and the target checkout
+was clean at `808f43fef6941b8c38bcc45e557a2fa5cef4d25a` before this evidence
+update. All eight public/NPM routes returned `200`. Full phone and Wear APK
+streams reproduced their immutable SHA-256 values, and independent 1,024-byte
+ranges returned `206` with exact total sizes and immutable cache headers. A
+fresh readiness request recorded only NPM `.6` as Caddy's peer, client `.182`,
+the public host, and status `200`.
+
+The GPU lock remained device/inode `42:3177412`, root:`2000` mode `0660`, one
+link and zero bytes on the host and inside the Little Orbit worker, Ollama,
+Scriptarr Oracle, and Scriptarr Raven. Oracle and Raven were healthy,
+`ollama ps` was empty, and the NVIDIA compute-process count was zero. This is
+reboot persistence and empty-state evidence, not the still-open active
+Little Orbit/Scriptarr contention exercise.
+
+The host retained exact `America/Los_Angeles` zoneinfo and the activated
+startup, `*/5 * * * *`, `0 8 * * *`, and `0 7 * * 2` User Scripts entries.
+The first post-reboot pending runs exposed a non-destructive parser defect:
+PostgreSQL's empty `UPDATE ... RETURNING` emitted command tag `UPDATE 0`, which
+the runner rejected as a malformed UUID. No job existed or changed state.
+Both the Unraid runner and retained Windows recovery wrapper now invoke psql
+with `--quiet`, preserving returned claim rows while suppressing command tags;
+focused empty and non-empty claim tests pass. The scheduler-owned 08:55 run
+then started and finished cleanly on the empty queue. The full infrastructure
+suite after that repair passed 153 tests with one capability skip.
+
 ## Pre-freeze gates and evidence
 
 - [ ] Independently confirm the router-side `.14` reservation. The reservation was not observable from Unraid; the SSH port 23 host key and temporary key, capacity, NVIDIA runtime, port 8180, IPv6 listeners, and `10.253.14.0/28` availability were rechecked before freeze.
@@ -182,7 +249,7 @@ Its networkless restore drill reached schema `0032`, verified the private-row ex
   templates. A mismatched configured identifier or effective `/etc/localtime` makes installation and direct
   wall-clock dispatch fail nonzero. The inspected entries were activated after cutover.
 - [x] Build and migrate an isolated target project with synthetic state, refresh ClamAV, and pre-pull/verify both pinned Ollama models under the shared lock.
-- [x] Finish Scriptarr's real demand and 900-second idle unload with exclusive residency plus post-unload lock/GPU proof. Lock contention, graceful Oracle fallback, the NVENC wrapper, and service-level durable queue behavior also passed; crash/reboot recovery remains a post-cutover gate.
+- [x] Finish Scriptarr's real demand and 900-second idle unload with exclusive residency plus post-unload lock/GPU proof. Lock contention, graceful Oracle fallback, the NVENC wrapper, and service-level durable queue behavior also passed. The corrected controlled reboot preserved the exact lock and empty GPU state as recorded above; an induced crash and an active shared workload remain open.
 - [x] Replace Scriptarr Oracle and Raven's live coordinator-directory mounts with exact `/run/gpu-coordinator/gpu.lock` file binds through the corrected Warden plan; repeat passive-health, exact mount/inode, contention, post-release acquisition, and empty-GPU checks. The earlier full 901-second idle-unload proof used the same stable host inode; the narrower exact-file repetition is recorded above.
 - [x] Run Little Orbit API/AI tests, Ruff, mypy, web checks/tests/build, Android unit/lint tasks, Compose checks, backup/restore safety tests, and Android release-helper tests.
 - [x] Verify Pacific daylight-saving boundaries, ordered six-hour retry persistence, contention before `AiRun` claim, stale-lease fencing, administrator AI queueing, fourteen-day coverage, and timeout/OOM handling in focused tests.
@@ -210,7 +277,7 @@ Its networkless restore drill reached schema `0032`, verified the private-row ex
 
 - [x] Produce a fresh target encrypted backup and pass the local Tuesday-style restore drill at schema `0032` with the required privacy exclusions.
 - [x] Rotate the four exposed child database roles through the host-locked command, independently reject every retired value, and pass a fresh post-rotation backup and restore drill.
-- [ ] Reboot `.14` and reverify array/Docker ordering, Compose health, firewall persistence, schedules, GPU lock behavior, and public service health.
+- [x] Reboot `.14` after fixing the gateway's restart policy and prove the live array/Docker, firewall-before-gateway, Compose health, schedule, exact GPU-lock, empty compute, direct-block, NPM TLS, and immutable-release recovery sequence recorded above. The first reboot exposed the earlier auto-start gap and is retained as failed evidence; the corrected reboot passed.
 - [ ] Complete the deferred physical-device and two-person migration QA; current server and emulator evidence does not imply those observations.
 - [ ] Establish and restore an encrypted off-host runtime copy. The Unraid parity-array backup remains local-only evidence until then.
 

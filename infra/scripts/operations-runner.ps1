@@ -20,7 +20,7 @@ function Invoke-DatabaseCommand {
     $databaseUser = (& $docker @composeArguments exec -T postgres printenv POSTGRES_USER).Trim()
     $databaseName = (& $docker @composeArguments exec -T postgres printenv POSTGRES_DB).Trim()
     $output = $Sql | & $docker @composeArguments exec -T postgres psql `
-        --username=$databaseUser --dbname=$databaseName --no-align --tuples-only `
+        --username=$databaseUser --dbname=$databaseName --quiet --no-align --tuples-only `
         --set=ON_ERROR_STOP=1 --file=-
     if ($LASTEXITCODE -ne 0) {
         throw "The operations database command failed."

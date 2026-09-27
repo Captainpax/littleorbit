@@ -86,7 +86,7 @@ bash /mnt/cache/little-orbit-deploy/repo/infra/scripts/unraid-user-script.sh tes
 ```
 
 - `startup`: after array/Docker startup; verifies the exact mounts, applies the firewall, creates/validates paths, starts the exact stack, and rechecks the firewall/IPv6 boundary. A failed start or post-start check stops the gateway.
-- `pending`: every five minutes; runs allowlisted Big Orbit operations. A concurrent runner may return successful `already_running` only for this mode.
+- `pending`: every five minutes; runs allowlisted Big Orbit operations. Quiet psql output makes an empty claim a successful no-op and leaves a real claim as exactly `id|kind`. A concurrent runner may return successful `already_running` only for this mode.
 - `backup`: daily at 08:00 `America/Los_Angeles`; a lock collision waits up to five minutes and then fails nonzero.
 - `test_restore`: Tuesday at 07:00 `America/Los_Angeles`; it uses the same bounded lock behavior.
 

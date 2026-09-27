@@ -17,6 +17,14 @@ def test_database_sql_is_streamed_without_native_argument_requoting() -> None:
     assert "--command=$Sql" not in source
 
 
+def test_database_sql_suppresses_psql_command_tags() -> None:
+    """An empty UPDATE cannot be mistaken for a pending job claim."""
+
+    source = RUNNER.read_text(encoding="utf-8")
+
+    assert "--dbname=$databaseName --quiet --no-align --tuples-only" in source
+
+
 def test_compose_binary_streams_drop_the_windows_utf8_bom() -> None:
     helper = BINARY_PIPELINE.read_text(encoding="utf-8")
 
