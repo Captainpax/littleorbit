@@ -122,7 +122,7 @@ remove_managed_cron_lines() {
     echo "The User Scripts custom cron path must be a regular file, not a link." >&2
     exit 78
   }
-  [[ -f "${path}" ]] || return
+  [[ -f "${path}" ]] || return 0
   directory="${path%/*}"
   temporary="$(mktemp "${directory}/.customSchedule.XXXXXX")"
   if ! perl -e '

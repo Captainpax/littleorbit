@@ -108,7 +108,6 @@ def test_cron_transition_preserves_unrelated_bytes_and_is_idempotent(
     suffix = b"foreign-tail-without-newline"
     original = prefix + managed + b"\r\n" + suffix + b"\n" + managed
     expected_foreign = prefix + suffix + b"\n"
-    cron.write_bytes(original)
 
     def call(function: str) -> subprocess.CompletedProcess[str]:
         return run_bash(
@@ -117,6 +116,11 @@ def test_cron_transition_preserves_unrelated_bytes_and_is_idempotent(
             cron.resolve().as_posix(),
         )
 
+    absent = call("remove_managed_cron_lines")
+    assert absent.returncode == 0, absent.stderr
+    assert not cron.exists()
+
+    cron.write_bytes(original)
     removed = call("remove_managed_cron_lines")
     assert removed.returncode == 0, removed.stderr
     assert cron.read_bytes() == expected_foreign

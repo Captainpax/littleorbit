@@ -117,6 +117,8 @@ The live `.182` database was also checked through the content-free security inve
 
 The first live bootstrap attempt found that `.14`'s persisted array-only backup-share file had not yet refreshed the running `shfs`: its content-free placement sentinel landed on cache, and the physical-placement verifier stopped immediately. The misplaced sentinel and its otherwise empty directory were removed, the exact same share policy was applied through Unraid's local management command, and a repeat sentinel landed on one array disk with no cache copy. That management path canonically rewrites share files with CRLF endings; the exact post-apply validator accepts only the same fixed values under LF or CRLF and rejects duplicates or alternate values. Bootstrap now performs the runtime apply and revalidation before creating any share content, with fail-closed request-rendering tests for both direct-cache and array-only policy shapes. A live run of the corrected bootstrap completed and preserved exactly one array sentinel with no cache copy.
 
+The first inactive User Scripts install also exposed an empty-host no-op bug: an absent `customSchedule.cron` inherited the failed file-test status and made `install` exit nonzero after writing only disabled schedule metadata. The no-file branch now returns explicit success, has a regression test, and a corrected live install reported `installed-inactive`; no Little Orbit cron line or container was activated.
+
 ## Required before source freeze
 
 - [ ] Recheck the static/DHCP reservation, SSH port 23 host key, temporary migration key, free capacity, NVIDIA runtime, port 8180, IPv6 listeners, and `10.253.14.0/28` availability.
