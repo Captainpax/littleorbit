@@ -153,7 +153,7 @@ The website explains the mission, provides the signed APK and checksum, and host
 
 ![Historical 1.1 browser owner MFA login](docs/assets/site-admin-login.png)
 
-The owner-login capture is historical 1.1 evidence. In 1.2 the public site deliberately returns 404 for `/admin`; enrollment and administration move to Big Orbit. Regenerate current public images from the running gateway with `npm --prefix apps/web run capture:showcase`. The capture command fails on HTTP or browser-console errors.
+The owner-login capture is historical 1.1 evidence. In 1.2 the public site deliberately returns 404 for `/admin`; enrollment and administration move to Big Orbit. Regenerate the three current public images from the running gateway with `npm --prefix apps/web run capture:showcase`. The historical owner-login image remains archival and is not regenerated. The capture command fails on HTTP or browser-console errors.
 
 ## Big Orbit administrator app
 

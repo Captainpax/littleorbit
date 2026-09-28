@@ -4,7 +4,7 @@
 
 This record covers preparation and the live application-cold move of Little Orbit from the Windows host at `192.168.50.182` to Unraid at `192.168.50.14`, cooperative use of the target RTX 4060 with Scriptarr, and use of `.14` as the isolated Android build/signing host.
 
-As of 2026-09-27, the direct database, attachment, and immutable-release stream is committed; production is at migration `0032`; Nginx Proxy Manager points to `.14:8180`; and `.14` is the authoritative writer. Public pages, readiness, release metadata, complete and ranged APK delivery, forwarded-client identity, ClamAV health, schedule activation, corrected fail-closed reboot recovery, the shared lock inode, empty Ollama/VRAM state, a live Oracle/LocalAI exclusive-residency and idle-unload cycle, digest-pinned Warden recreation, child-role credential rotation, fresh local encrypted backup/restore drills, authoritative DNS correction, one existing authenticated Android session, and existing-credential Gmail STARTTLS, authentication, and content-free mailbox delivery have passed the checks recorded below. That phone opened an authenticated notification WSS connection before the final code-only reload and produced authenticated `200` traffic afterward. The old `.182` writer services remain stopped, and no `.182` database or attachment volume has been deleted. The second existing session, a post-reload authenticated WSS reconnect, Big Orbit enrollment/session/TOTP behavior, Gmail credential rotation and post-rotation ordinary application delivery, first-party notification delivery, authorized attachment reads, Little Orbit generation or embedding while Scriptarr owns the GPU, real Raven durable queue/resume behavior, broader physical-device QA, external cellular/WAN reachability, router-side `.14` reservation confirmation, post-Warden-recreation reboot observation, clean Git provenance for the deployed two-host Warden source, and off-host recovery remain open; this record does not claim those checks passed.
+As of 2026-09-27, the direct database, attachment, and immutable-release stream is committed; production is at migration `0032`; Nginx Proxy Manager points to `.14:8180`; and `.14` is the authoritative writer. Public pages, readiness, release metadata, complete and ranged APK delivery, forwarded-client identity, ClamAV health, schedule activation, corrected fail-closed reboot recovery, the shared lock inode, empty Ollama/VRAM state, a live Oracle/LocalAI exclusive-residency and idle-unload cycle, a corrected isolated Raven contention, container-recreation, durable-resume, cleanup, and production-non-mutation cycle, digest-pinned Warden recreation, child-role credential rotation, fresh local encrypted backup/restore drills, authoritative DNS correction, one existing authenticated Android session, and existing-credential Gmail STARTTLS, authentication, and content-free mailbox delivery have passed the checks recorded below. The owner confirmed that the content-free SMTP message carrying subject timestamp `20260927T205700Z` from the configured production sender arrived in the intended production inbox; that does not prove app-password rotation. The phone opened an authenticated notification WSS connection before the final code-only reload and produced authenticated `200` traffic afterward. The old `.182` writer services remain stopped, and no `.182` database or attachment volume has been deleted. The second existing session, a post-reload authenticated WSS reconnect, Big Orbit enrollment/session/TOTP behavior, Gmail credential rotation and post-rotation ordinary application delivery, first-party notification delivery, authorized attachment reads, Little Orbit generation or embedding while Scriptarr owns the GPU, broader physical-device QA, external cellular/WAN reachability, router-side `.14` reservation confirmation, post-Warden-recreation reboot observation, clean Git provenance for the deployed two-host Warden source, and off-host recovery remain open; this record does not claim those checks passed.
 
 ## Implemented in deployed source
 
@@ -71,7 +71,7 @@ Scriptarr now runs the lock-aware images below on `.14`:
 
 The deployment preserved the one stable lock inode, `3177412`, as root:`2000` mode `0660` with one link and zero bytes. Oracle and Raven now bind that exact host file read/write at `/run/gpu-coordinator/gpu.lock` and have supplementary GID `2000`; no coordinator-directory bind remains. Sage and Warden carry `America/Los_Angeles`; the durable update task remains `0 */6 * * *` in that timezone. The corrected Warden image contains service-plan SHA-256 `29fe9ffabfe9bda73b467282200ae8583bd0f9269d38dc6eeaa4ecd8cc6dd694` and storage-layout SHA-256 `ac69d760658f25a1ed18d7f294669af7d30a4ed97323c6af91f4d1e4d49926e4`. Its configured edge service set is exactly Moon, Sage, Raven, and Oracle; all four plus Warden reconciled healthy. Warden's primary `/api/runtime` view is cluster-wide: those four rows carry `hostId=edge`, while the healthy MySQL, Vault, and Portal rows carry `hostId=data` and come live from the authenticated `.7` worker. The stopped legacy Vault, Portal, and MySQL containers on `.14` are outside the edge managed-service set and are not counted as current health failures. Passive Oracle health/status/model-list calls left VRAM empty. Under a host-held lock, a real synthetic Oracle request returned the graceful `gpu_busy` fallback without taking a lease. Raven's exact-file NVENC boundary returned retry exit `75` and zero output while locked, and the same exact lock became obtainable after release. The Warden suite passed 84 tests and the bounded production release verifier passed.
 
-No synthetic live library title was inserted merely to demonstrate Raven's durable queue. Durable `gpu_busy` queue/resume behavior is covered by Raven's service tests; the live exact-file proof is limited to the NVENC wrapper's busy result and post-release lock acquisition, not a manufactured queued encode. During the earlier stable-inode rollout phase, a real Oracle request containing only `Repeat exactly: synthetic-oracle-check.` completed HTTP `200` in 127.690 seconds; its reply was discarded and never printed. LocalAI was the sole GPU compute process at 4,932 MiB and exclusively held the shared lock. Passive status polling did not reload it: Oracle recorded `idle_unloaded` 901 seconds after demand, after which GPU process views were empty and the unchanged lock inode was obtainable. After the exact-file rollout, passive checks, exact mount/inode evidence, host-held contention, Oracle fallback, post-release acquisition, and empty GPU state were repeated. The later current-state acceptance pass below adds a second real synthetic demand/unload cycle through the corrected exact-file deployment; it still does not manufacture a Raven library job or prove Raven's durable queue/resume path.
+During the earlier stable-inode rollout phase, a real Oracle request containing only `Repeat exactly: synthetic-oracle-check.` completed HTTP `200` in 127.690 seconds; its reply was discarded and never printed. LocalAI was the sole GPU compute process at 4,932 MiB and exclusively held the shared lock. Passive status polling did not reload it: Oracle recorded `idle_unloaded` 901 seconds after demand, after which GPU process views were empty and the unchanged lock inode was obtainable. After the exact-file rollout, passive checks, exact mount/inode evidence, host-held contention, Oracle fallback, post-release acquisition, and empty GPU state were repeated. The later current-state acceptance pass below adds a second real synthetic demand/unload cycle and an isolated Raven durable queue/recreation/resume cycle through the corrected exact-file deployment without changing production library data.
 
 The private registry was unavailable during the corrected Warden rollout, but the exact tested image is now portable under the immutable registry reference above. Registry inspection verified manifest digest `sha256:eed600b09c354251fd01f64fbb3f98c2ee0a388533042a79549ac8817b94566a` and its config/image digest `sha256:4a92ef6460590c4e3b1d084541cd37e73fc536b57c91584245e37fa6fc7e7108`, which matches the local image used for the live proof. The Unraid template is pinned to that manifest, and a root-only backup of the prior template was retained.
 
@@ -284,8 +284,43 @@ seconds after demand, LocalAI exited, the compute-process count returned to
 zero, the lock became obtainable, and every recorded lock metadata field was
 unchanged. This proves active Oracle demand, exclusive residency, full-resident
 lock ownership, and idle unload on the corrected exact-file deployment. It does
-not prove Little Orbit generation or embedding while Scriptarr owns the GPU,
-nor Raven's durable queue/resume behavior.
+not prove Little Orbit generation or embedding while Scriptarr owns the GPU.
+
+The preparatory isolated Raven attempts selected the stopped `.14` recovery Vault
+digest
+`sha256:f5c98b77c4d6add5250353b1a929296b5792b988228e19b0b316b495ea9cc9e`
+instead of the live data-host Vault digest
+`sha256:b0f66563cd13c428999b463c8f954b77ddb2e196be09c21f30b5fe1ed49f3b5a`.
+They failed closed before creating a title or durable task. After the live
+digest was pinned, the disposable network exposed the host's intended
+`DOCKER-USER` rejection of forwarded port `3004` from non-production subnets.
+The final harness kept its randomly named internal-only bridge, published no
+ports, changed no firewall rule, and moved only its synthetic Sage listener to
+internal port `13004`. A penultimate functional run reached AVIF output but
+found a test-only signature assertion that skipped two bytes instead of the
+four-byte ISO base-media box length; correcting that assertion produced the
+final pass. Every failed attempt removed its isolated containers, network, and
+tmpfs tree without changing a production container identity or GPU-lock field.
+
+In the final corrected pass, the host held the unchanged shared lock while a
+synthetic CBZ import returned the expected HTTP `409` contention response and
+persisted one title plus a content-free ingest task as `queued` with
+`details.failureCode=gpu_busy`. Its durable ingest run also remained `queued`
+with `result.reason=gpu_busy` and a populated `retryAfter`. Recreating only the
+isolated Raven container produced a new container ID from the same immutable
+Raven image and recovered that same run and task. Releasing the lock caused the
+recreated worker to resume automatically and complete within the bounded
+five-minute window. The title became reader-ready, the task and run completed,
+and the disposable tree contained the expected valid AVIF page and manifest.
+
+Cleanup removed every `loravaccept-*` container, network, and disposable file.
+The production identity and lifecycle-event snapshots matched before and after
+the test; the GPU returned empty; and lock inode `3177412` remained mode `0660`,
+UID `0`, GID `2000`, one link, zero bytes, and freely obtainable. An independent
+post-test check found zero acceptance containers and networks, all nine Little
+Orbit containers healthy, and Warden, Moon, Sage, Raven, and Oracle healthy.
+Public root, status, readiness, and current-release routes still returned
+`200`, while direct `.14:8180` access remained blocked.
 
 The host reported PDT and retained the live User Scripts schedule: startup at
 array start, pending operations every five minutes, encrypted backup daily at
@@ -294,12 +329,13 @@ still found schema `0032`; AI work rows were completed deduplication tombstones
 with no active lease; the mail aggregate was `5/5/0`
 (total/delivered/pending) with `max_attempts=0`; and administrator MFA, device,
 and device-session counts remained `0/0/0`. This was aggregate inspection only;
-no outbound receipt test was performed.
+no outbound receipt test was performed as part of that inspection. Separate
+receipt evidence follows below.
 
 This pass did not exercise the second phone session, a post-reload authenticated
-WSS reconnect, Big Orbit enrollment/session/TOTP, Gmail credential rotation or
-ordinary delivery, a real Raven durable queue/resume path, off-host recovery,
-or router-side `.14` reservation confirmation. It also did not repeat a host
+WSS reconnect, Big Orbit enrollment/session/TOTP, Gmail app-password rotation
+or post-rotation ordinary application delivery, off-host recovery, or
+router-side `.14` reservation confirmation. It also did not repeat a host
 reboot; the separately recorded corrected reboot-recovery evidence above
 remains authoritative.
 
@@ -309,9 +345,10 @@ After the shared-GPU pass, a one-shot process inside the running production
 worker loaded its existing Gmail settings and called the same SMTP adapter used
 by ordinary delivery. It addressed a content-free message to the configured
 SMTP username in memory and reported success for opaque probe ID
-`20260927T205700Z`. Protected inspection of the configured Gmail mailbox found
-exactly one matching message in Inbox, All Mail, and Sent, and none in Spam.
-No mailbox address, credential, or message body was printed.
+`20260927T205700Z`. The owner then opened the intended production inbox and
+confirmed the matching content-free message carrying subject timestamp
+`20260927T205700Z` from the configured production sender. No recipient address,
+credential, or private message content was printed or recorded.
 
 The probe bypassed the application database deliberately: it created no mail
 outbox row, recovery token, or temporary host file. It therefore proves that
@@ -352,7 +389,7 @@ router-side reservation, so that gate remains open.
   templates. A mismatched configured identifier or effective `/etc/localtime` makes installation and direct
   wall-clock dispatch fail nonzero. The inspected entries were activated after cutover.
 - [x] Build and migrate an isolated target project with synthetic state, refresh ClamAV, and pre-pull/verify both pinned Ollama models under the shared lock.
-- [x] Finish Scriptarr's real demand and 900-second idle unload with exclusive residency plus post-unload lock/GPU proof. Lock contention, graceful Oracle fallback, the NVENC wrapper, and service-level durable queue behavior also passed. The corrected controlled reboot preserved the exact lock and empty GPU state as recorded above; an induced crash, Little Orbit generation/embedding while Scriptarr owns the GPU, and a real Raven durable queue/resume path remain open.
+- [x] Finish Scriptarr's real demand and 900-second idle unload with exclusive residency plus post-unload lock/GPU proof. Lock contention, graceful Oracle fallback, the NVENC wrapper, and service-level durable queue behavior also passed. A later isolated pass held the shared lock while Raven work remained durable, recreated Raven, and proved automatic completion after release without overlapping GPU consumers or production mutation. The corrected controlled reboot preserved the exact lock and empty GPU state as recorded above. An induced GPU-consumer crash and Little Orbit generation/embedding while Scriptarr owns the GPU remain open.
 - [x] Replace Scriptarr Oracle and Raven's live coordinator-directory mounts with exact `/run/gpu-coordinator/gpu.lock` file binds through the corrected Warden plan; repeat passive-health, exact mount/inode, contention, post-release acquisition, and empty-GPU checks. The earlier full 901-second idle-unload proof used the same stable host inode; the later current-state pass repeated real synthetic demand on the corrected exact-file deployment, observed LocalAI as the sole GPU process and continuous lock owner, and reached empty GPU plus a free unchanged lock after approximately 905 seconds.
 - [x] Recreate Warden from the immutable registry digest under the shared lock, preserve all four local edge child identities, observe no destructive local child lifecycle event, distinguish the healthy `.7` data-worker rows in the aggregate runtime view, and enable Unraid autostart for Warden alone without starting the stopped legacy `.14` containers.
 - [x] Run Little Orbit API/AI tests, Ruff, mypy, web checks/tests/build, Android unit/lint tasks, Compose checks, backup/restore safety tests, and Android release-helper tests.
@@ -377,7 +414,8 @@ router-side reservation, so that gate remains open.
 - [x] Verify one existing physical Android session against the exact published APK, including authenticated HTTPS and an accepted/open notification WSS before the code-only reload; verify authenticated `200` traffic again after the reload without inspecting relationship content.
 - [ ] Verify the second existing session, a post-reload authenticated WSS reconnect, Big Orbit enrollment/session behavior, a rotated Gmail credential plus ordinary application delivery, first-party notification delivery, and an authorized attachment read. The existing Gmail credential passed STARTTLS/authentication and a content-free adapter self-send with protected mailbox receipt; that does not close the rotation or post-rotation ordinary-flow gates.
 - [x] Exercise a current post-cutover Scriptarr Oracle/LocalAI workload through the exact shared lock and prove exclusive GPU residency, no Ollama/FFmpeg overlap, continuous lock ownership, idle unload, unchanged lock metadata, and post-unload acquisition.
-- [ ] Exercise Little Orbit GPU generation/embedding while live Scriptarr owns the GPU, and exercise a real Raven durable queue/resume path. The current Oracle/LocalAI active-workload proof and host-held Raven exit-`75` boundary do not establish either behavior.
+- [ ] Exercise Little Orbit GPU generation/embedding while live Scriptarr owns the GPU. The current Oracle/LocalAI active-workload proof does not establish Little Orbit's queued cross-consumer behavior.
+- [x] Exercise Raven's durable queue/resume path with the live data-host Vault digest: hold the shared lock, persist isolated synthetic work, recreate Raven, release the lock, observe automatic completion without overlapping GPU consumers, remove every isolated test resource, and match the pre/post production identity and event snapshot.
 - [ ] Verify the public origin from an external cellular/WAN path. The separately authorized apex A correction from `67.185.206.35` to current WAN `67.185.205.68` is complete: all four authoritative name servers answered the new value, and the Pixel 8 Pro passed browser plus authenticated-app checks over Wi-Fi. Those checks do not substitute for a cellular external-network request.
 
 ## Required after cutover

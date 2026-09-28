@@ -27,7 +27,6 @@ try {
   await capture("site-home-desktop.png", "/", { width: 1440, height: 1000 });
   await capture("site-home-mobile.png", "/", { width: 390, height: 844 }, true);
   await capture("site-signup.png", "/signup", { width: 1280, height: 900 });
-  await capture("site-admin-login.png", "/admin/login", { width: 1280, height: 900 });
   console.log(`showcase screenshots saved to ${output}`);
 } finally {
   await browser.close();
