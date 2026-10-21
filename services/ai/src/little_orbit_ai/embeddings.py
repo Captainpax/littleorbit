@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 import httpx
 
+from .gpu_inference import post_inference
+from .gpu_probe import GpuRequiredFailure, GpuRequirement
 from .ollama import OllamaFailure
 
 
@@ -13,11 +15,18 @@ class EmbeddingSettings:
 
     base_url: str = "http://ollama:11434"
     model: str = "nomic-embed-text:v1.5"
-    manifest_digest: str = (
-        "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f"
-    )
+    manifest_digest: str = "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f"
     dimensions: int = 768
     timeout_seconds: float = 30.0
+    gpu_requirement: GpuRequirement | None = None
+
+    def __post_init__(self) -> None:
+        if self.gpu_requirement is not None and (
+            self.model != "nomic-embed-text:v1.5"
+            or self.manifest_digest
+            != "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f"
+        ):
+            raise GpuRequiredFailure("Strict recovery embedding model pins cannot change")
 
 
 class OllamaEmbeddingClient:
@@ -35,7 +44,12 @@ class OllamaEmbeddingClient:
     async def embed(self, texts: list[str]) -> list[list[float]]:
         """Return one finite fixed-width vector per bounded public input."""
 
-        _validate_inputs(texts)
+        try:
+            _validate_inputs(texts)
+        except OllamaFailure as error:
+            if self._strict_proof():
+                raise GpuRequiredFailure("Strict GPU embedding input was rejected") from error
+            raise
         timeout = httpx.Timeout(self.settings.timeout_seconds)
         try:
             async with httpx.AsyncClient(
@@ -44,23 +58,43 @@ class OllamaEmbeddingClient:
                 transport=self._transport,
             ) as client:
                 await self._require_pinned_model(client)
-                response = await client.post(
+                response = await post_inference(
+                    client,
                     "/api/embed",
-                    json={
+                    {
                         "model": self.settings.model,
                         "input": texts,
                         "truncate": False,
                         "keep_alive": 0,
                     },
+                    self.settings.manifest_digest,
+                    self.settings.gpu_requirement,
                 )
                 response.raise_for_status()
                 vectors = response.json().get("embeddings")
+        except GpuRequiredFailure as error:
+            if not self._strict_proof():
+                raise OllamaFailure(
+                    "GPU embedding offload rejected; vectors were not accepted"
+                ) from error
+            raise
         except (httpx.HTTPError, TypeError, ValueError) as exc:
+            if self._strict_proof():
+                raise GpuRequiredFailure("Strict GPU embedding transport failed") from exc
             raise OllamaFailure("Embedding transport failed") from exc
-        return _parse_vectors(vectors, len(texts), self.settings.dimensions)
+        try:
+            return _parse_vectors(vectors, len(texts), self.settings.dimensions)
+        except OllamaFailure as error:
+            if self._strict_proof():
+                raise GpuRequiredFailure("Strict GPU embedding validation failed") from error
+            raise
+
+    def _strict_proof(self) -> bool:
+        requirement = self.settings.gpu_requirement
+        return requirement is not None and requirement.strict_recovery
 
     async def _require_pinned_model(self, client: httpx.AsyncClient) -> None:
-        if self._verified:
+        if self._verified and self.settings.gpu_requirement is None:
             return
         response = await client.get("/api/tags")
         response.raise_for_status()
@@ -70,6 +104,8 @@ class OllamaEmbeddingClient:
             None,
         )
         if installed is None or installed.get("digest") != self.settings.manifest_digest:
+            if self.settings.gpu_requirement is not None:
+                raise GpuRequiredFailure("Strict GPU embedding pin is not installed")
             raise OllamaFailure("Installed embedding model does not match its pinned digest")
         self._verified = True
 

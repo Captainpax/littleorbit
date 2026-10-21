@@ -6,6 +6,14 @@ This document describes published 1.3 product behavior and the current source's 
 
 ## Data and purpose
 
+The October 2026 [recovery profile](operations/ARRAY-RX480-RECOVERY.md) adds no
+user data use or AI input. Private source files and secrets stay outside Git and
+diagnostic output. Its local GPU probe exchanges device/ownership metadata, not
+prompts or relationship content. Recovery workers remain held before queue,
+schedule and privacy maintenance; standard expiry on verified working copies
+must be separately admitted before serving traffic. Immutable forensic evidence
+is not a live data store or permission to expose expired private records.
+
 | Data | Purpose | Access | Intended retention |
 |---|---|---|---|
 | Email, password hash, verification state | Account access and recovery | Account owner; limited admin metadata | Until deletion plus bounded backup expiry |

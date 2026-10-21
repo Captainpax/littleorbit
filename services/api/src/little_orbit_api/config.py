@@ -2,8 +2,9 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -57,9 +58,41 @@ class Settings(BaseSettings):
     gpu_lock_path: Path = Path("data/gpu/gpu.lock")
     gpu_release_timeout_seconds: int = Field(default=120, ge=5, le=600)
     gpu_verify_idle_processes: bool = False
+    gpu_probe_backend: Literal["nvidia", "amd-vulkan"] = "nvidia"
+    gpu_recovery_proof_mode: bool = False
+    gpu_amd_probe_socket: Path = Path("/run/gpu-probe/idle.sock")
+    gpu_amd_pci_bdf: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$"
+    )
+    gpu_amd_device_id: str | None = Field(default=None, pattern=r"^0x[0-9a-f]{4}$")
+    gpu_amd_render_major: int | None = Field(default=None, ge=1)
+    gpu_amd_render_minor: int | None = Field(default=None, ge=0)
+    gpu_amd_idle_vram_bytes: int | None = Field(default=None, ge=0)
+    worker_hold: bool = False
     ai_theme_locale: str = Field(default="en-US", min_length=2, max_length=24)
     ai_public_context_enabled: bool = True
     public_context_fetcher_url: str = "http://context-fetcher:8010"
+
+    @model_validator(mode="after")
+    def require_complete_amd_admission(self) -> "Settings":
+        """AMD cannot silently disable its guard or guess a device/VRAM baseline."""
+
+        if self.gpu_recovery_proof_mode and self.gpu_probe_backend != "amd-vulkan":
+            raise ValueError("RX480 proof mode requires the AMD ownership backend")
+        if self.gpu_probe_backend != "amd-vulkan":
+            return self
+        fields = (
+            self.gpu_amd_pci_bdf,
+            self.gpu_amd_device_id,
+            self.gpu_amd_render_major,
+            self.gpu_amd_render_minor,
+            self.gpu_amd_idle_vram_bytes,
+        )
+        if not self.gpu_verify_idle_processes or any(value is None for value in fields):
+            raise ValueError("AMD GPU requires enabled ownership checks and exact admission fields")
+        if not self.gpu_amd_probe_socket.is_absolute():
+            raise ValueError("AMD GPU probe socket must be an absolute path")
+        return self
 
 
 @lru_cache

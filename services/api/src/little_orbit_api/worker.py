@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from time import perf_counter
 
 from little_orbit_ai.embeddings import OllamaEmbeddingClient
+from little_orbit_ai.gpu_probe import GpuRequiredFailure
 from little_orbit_ai.ollama import OllamaClient, OllamaSettings
 from little_orbit_ai.pipeline import generate_pool, load_curated_bank, select_pool
 from little_orbit_ai.schemas import CandidateQuestion, DayTheme, LearningPolicy
@@ -14,6 +15,7 @@ from little_orbit_ai.schemas import CandidateQuestion, DayTheme, LearningPolicy
 from .admin_operations import refresh_admin_alerts
 from .ai_work_queue import AiWorkLease, AiWorkLeaseExpired, latest_due_date
 from .ai_work_runner import run_ai_work_cycle
+from .amd_gpu_probe import gpu_requirement
 from .clock import SystemClock
 from .config import Settings, get_settings
 from .mail import deliver_pending_mail
@@ -47,12 +49,16 @@ def _ollama_settings() -> OllamaSettings:
         base_url=os.getenv("OLLAMA_BASE_URL", "http://ollama:11434"),
         model=os.getenv("OLLAMA_MODEL", "qwen3:4b-instruct-2507-q4_K_M"),
         manifest_digest=os.getenv("OLLAMA_MODEL_DIGEST", OllamaSettings().manifest_digest),
+        gpu_requirement=gpu_requirement(get_settings()),
     )
 
 
-def _latest_due_date(
-    current: datetime, weekday: int, hour: int, timezone: str = "UTC"
-) -> date:
+def _strict_model_proof(settings: OllamaSettings) -> bool:
+    requirement = settings.gpu_requirement
+    return requirement is not None and requirement.strict_recovery
+
+
+def _latest_due_date(current: datetime, weekday: int, hour: int, timezone: str = "UTC") -> date:
     """Compatibility wrapper around the local-time queue scheduler."""
 
     return latest_due_date(current, weekday, hour, timezone)
@@ -66,8 +72,10 @@ async def ensure_question_coverage(days: int | None = None) -> None:
     replaces eligible seeds with validated model output for two full quiz weeks.
     """
 
-    await sync_question_reserve()
     runtime = get_settings()
+    if runtime.gpu_recovery_proof_mode:
+        return  # Strict recovery never treats curated coverage as GPU acceptance.
+    await sync_question_reserve()
     settings = _ollama_settings()
     embedding_client = OllamaEmbeddingClient(embedding_settings())
     database_bank = await curated_bank()
@@ -140,9 +148,11 @@ async def generate_question_week(
             )
             generated += int(improved)
             fallback += int(not improved)
-        except AiWorkLeaseExpired:
+        except (AiWorkLeaseExpired, GpuRequiredFailure):
             raise
         except Exception:
+            if _strict_model_proof(settings):
+                raise
             fallback += 1
             LOGGER.exception("Weekly generation failed for %s; safe seed remains", target)
     if generated + fallback + existing == 7:
@@ -175,7 +185,8 @@ async def _generate_question_day(
         _knowledge_query(day_theme.title if day_theme else "evergreen couples questions"),
         embedding_client,
     )
-    if not await pool_exists(target):
+    strict = _strict_model_proof(settings)
+    if not strict and not await pool_exists(target):
         seed = select_pool(
             target,
             None,
@@ -228,8 +239,11 @@ async def _improve_seeded_pool(
     knowledge_revision: str | None = None,
     lease: AiWorkLease | None = None,
 ) -> bool:
-    if not force and not await is_coverage_seed(target):
-        return False
+    if not force:
+        strict = _strict_model_proof(settings)
+        needs_check = not strict or await pool_exists(target)
+        if needs_check and not await is_coverage_seed(target):
+            return False
     recent = await recent_question_prompts(target)
     started = perf_counter()
     result = await generate_pool(
@@ -305,9 +319,11 @@ async def _prepare_week_intelligence(
     settings = runtime or get_settings()
     try:
         await sync_reviewed_knowledge(embeddings, lease=lease)
-    except AiWorkLeaseExpired:
+    except (AiWorkLeaseExpired, GpuRequiredFailure):
         raise
     except Exception:
+        if settings.gpu_recovery_proof_mode:
+            raise
         LOGGER.exception("Reviewed knowledge sync failed; prior revision remains active")
     knowledge = await retrieve_knowledge("weekly theme planning", embeddings)
     await plan_quiz_week(
@@ -374,6 +390,10 @@ async def run_forever(
 ) -> None:
     """Run mail polling independently from slower maintenance and AI work."""
 
+    if get_settings().worker_hold:
+        LOGGER.warning("Worker recovery hold: no queue, mail or maintenance tasks started")
+        await asyncio.Event().wait()
+        return
     await asyncio.gather(
         _poll_mail_forever(mail_interval_seconds),
         _run_privacy_maintenance_forever(privacy_interval_seconds),

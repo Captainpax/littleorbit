@@ -6,6 +6,7 @@ from datetime import date
 from importlib.resources import files
 from itertools import combinations
 
+from .gpu_probe import GpuRequiredFailure
 from .ollama import OllamaClient, OllamaFailure, OllamaSettings, ParsedBatch
 from .prompt import PROMPT_VERSION, build_prompt
 from .reserve import reserve_candidates
@@ -79,6 +80,24 @@ def select_pool(
 
     generated_general = [item for item in accepted if not item.intimacy]
     intimacy = [item for item in accepted if item.intimacy]
+    if settings.gpu_requirement is not None and settings.gpu_requirement.strict_recovery:
+        if failure_reason is not None or len(generated_general) < 5 or not intimacy:
+            raise GpuRequiredFailure("Strict GPU recovery refuses curated fallback")
+        selected = _balanced_five(generated_general, {item.client_id for item in generated_general})
+        pool = PublishedPool(
+            date=target_date,
+            general=selected,
+            intimacy_alternatives=intimacy,
+            prompt_version=PROMPT_VERSION,
+            model=settings.model,
+            model_manifest_digest=settings.manifest_digest,
+            fallback_reason=None,
+            theme_title=day_theme.title if day_theme else None,
+            theme_summary=day_theme.summary if day_theme else None,
+            knowledge_revision=knowledge_revision,
+            context_digest=context_digest,
+        )
+        return PipelineResult(pool, tuple(quarantined))
     used_ids = {item.client_id for item in accepted}
     curated = curated_bank or load_curated_bank()
     bank = [item for item in curated if not item.intimacy]
@@ -117,8 +136,7 @@ def select_pool(
         failure_reason is None
         and batch
         and (
-            len([item for item in accepted if not item.intimacy]) < 5
-            or missing_generated_intimacy
+            len([item for item in accepted if not item.intimacy]) < 5 or missing_generated_intimacy
         )
     ):
         # A successful model call can still require fallback after deterministic
@@ -155,7 +173,9 @@ def _balanced_five(
         kinds = {item.kind for item in group}
         categories = {item.category for item in group}
         kind_counts = [sum(item.kind is kind for item in group) for kind in kinds]
-        category_counts = [sum(item.category is category for item in group) for category in categories]
+        category_counts = [
+            sum(item.category is category for item in group) for category in categories
+        ]
         meaningful = any(
             item.category
             in {Category.CONNECTION, Category.MEMORIES, Category.VALUES, Category.DREAMS}
@@ -171,7 +191,11 @@ def _balanced_five(
         # changes in which equally diverse pool is published.
         key = tuple(item.client_id for item in group)
         candidate = (score, group)
-        if best is None or score > best[0] or (score == best[0] and key < tuple(i.client_id for i in best[1])):
+        if (
+            best is None
+            or score > best[0]
+            or (score == best[0] and key < tuple(i.client_id for i in best[1]))
+        ):
             best = candidate
     if best is None:
         raise RuntimeError("validated question pool contains fewer than five questions")
@@ -206,7 +230,11 @@ def _order_for_conversation(items: list[CandidateQuestion]) -> list[CandidateQue
     }
     return sorted(
         items,
-        key=lambda item: (depth_rank[item.depth], category_rank[item.category], kind_rank[item.kind]),
+        key=lambda item: (
+            depth_rank[item.depth],
+            category_rank[item.category],
+            kind_rank[item.kind],
+        ),
     )
 
 
@@ -237,7 +265,9 @@ def _fallback_metadata(
         QuestionDepth.DEEPER,
     )
     role = ThemeRole.THEMED if index % 5 < 3 else ThemeRole.VARIETY
-    tags = item.theme_tags or ([theme.title.casefold().replace(" ", "-")] if theme else ["evergreen"])
+    tags = item.theme_tags or (
+        [theme.title.casefold().replace(" ", "-")] if theme else ["evergreen"]
+    )
     return item.model_copy(
         update={"depth": depths[index % 5], "theme_role": role, "theme_tags": tags}
     )

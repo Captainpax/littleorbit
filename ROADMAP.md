@@ -2,6 +2,13 @@
 
 The roadmap describes intent, not a promise of dates. Privacy and safety gates can delay a feature.
 
+## Recovery track — October 2026
+
+- [ ] Recover complete cold Little Orbit state to a separately admitted direct-array profile; preserve the original cache image, encrypted backups, secrets, published APKs, and rollback evidence.
+- [ ] Validate explicit RX480/Vulkan support with the original pinned generation and embedding models; require real GPU offload for both, with no CPU-only recovery fallback.
+- [ ] Admit only Little Orbit and essential dependencies after schema, worker-hold, capacity, firewall, authenticated/WSS/media/APK, restart, and soak gates. Existing cache/NVIDIA launchers remain unchanged.
+- [ ] Complete production verification before recovery autostart. Local code or sealed evidence is not runtime acceptance; see the [recovery runbook](docs/operations/ARRAY-RX480-RECOVERY.md).
+
 ## 1.0 — Free public foundation
 
 - [x] Product identity, repository boundaries, public documentation, and architecture decisions.

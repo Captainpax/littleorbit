@@ -10,6 +10,13 @@ The external-routing diagram shows the live Unraid route after the 2026-09-27 cu
 
 ## External routing and trust
 
+The diagram below describes the original cache/NVIDIA deployment. The explicit
+[array/RX480 recovery profile](operations/ARRAY-RX480-RECOVERY.md) preserves
+these network/privacy boundaries but replaces only storage admission and GPU
+ownership verification under [ADR 0049](adr/0049-explicit-array-rx480-recovery.md).
+Its host probe is content-free and local; it adds no public listener. Hardware
+and runtime acceptance are still pending, and unrelated GPU consumers stay off.
+
 ```mermaid
 flowchart TD
     Clients[Android / Wear OS / Browser] -->|HTTPS or WSS| DNS[lil-orb.pax-kun.com]

@@ -4,6 +4,12 @@ Little Orbit has two coordinated mutable stores: PostgreSQL metadata and private
 
 ## Protect the age identity
 
+For the October 2026 cache-loss recovery, follow the separate
+[array/RX480 runbook](ARRAY-RX480-RECOVERY.md). Existing encrypted backups remain
+preserved. Their deliberate privacy exclusions mean a backup is not equivalent
+to full cold state; selecting that fallback requires an explicit data-loss
+decision. Do not independently choose the newest database and attachment files.
+
 Set `BACKUP_AGE_RECIPIENT` in the root-only `/mnt/cache/little-orbit-secrets/runtime.env` to the public recipient printed by the checksum-pinned `age-keygen`. Keep the corresponding private identity outside Git and production containers. The Unraid restore drill defaults to:
 
 ```text

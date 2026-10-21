@@ -4,6 +4,12 @@ After cutover, public availability will depend on Unraid, home power, internet s
 
 ## Unraid production layout
 
+The cache/NVIDIA layout below remains the original production profile. Do not
+reuse its bootstrap or launcher against a missing cache pool. The approved
+[array/RX480 recovery runbook](ARRAY-RX480-RECOVERY.md) uses independently
+admitted direct-array paths and remains unaccepted until its real hardware
+and runtime gates pass.
+
 Use these non-exported paths. Do not place the live database or attachments beneath a generic appdata/user-share path that Unraid mover or snapshot tooling can relocate while the service runs. This follows Unraid's separation of [container working data and shares](https://docs.unraid.net/unraid-os/using-unraid-to/manage-storage/shares/).
 
 | Host path | Purpose | Required boundary |

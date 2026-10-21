@@ -11,6 +11,7 @@ The generation pass may receive calendar dates, recent global question text/conc
 ## Hard rules and invariants
 
 - Use `qwen3:4b-instruct-2507-q4_K_M` through internal Ollama with one parallel request, 4096 context, bounded output, and `keep_alive: 0`.
+- Explicit AMD recovery preserves that model and pinned Nomic embeddings, but requires actual GPU residency for every generation and embedding. Only under the already-held shared lock may the proof retain a model for at most 30 seconds, then explicitly unload and verify release. Missing proof fails closed instead of returning CPU-only or curated recovery success; normal-profile behavior is unchanged.
 - Require versioned structured JSON. Quarantine malformed or rejected output; never silently rewrite it into a publishable question.
 - Reject identifying-data requests, coercion, manipulation, diagnosis, regulated advice, self-harm, minors, graphic sexual content, and unsafe location disclosure.
 - Reject leading or trailing whitespace, repeated horizontal spaces, tabs, line breaks, non-breaking spaces, and control characters in every visible generated field. Quarantine the candidate rather than repairing its typography silently.

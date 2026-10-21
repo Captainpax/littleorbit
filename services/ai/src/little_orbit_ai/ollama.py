@@ -8,6 +8,8 @@ from typing import Any, cast
 import httpx
 from pydantic import TypeAdapter, ValidationError
 
+from .gpu_inference import post_inference
+from .gpu_probe import GpuRequiredFailure, GpuRequirement
 from .schemas import (
     CandidateQuestion,
     GeneratedBatch,
@@ -27,6 +29,15 @@ class OllamaSettings:
     timeout_seconds: float = 120.0
     context_tokens: int = 4096
     output_tokens: int = 2400
+    gpu_requirement: GpuRequirement | None = None
+
+    def __post_init__(self) -> None:
+        if self.gpu_requirement is not None and (
+            self.model != "qwen3:4b-instruct-2507-q4_K_M"
+            or self.manifest_digest
+            != "0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0"
+        ):
+            raise GpuRequiredFailure("Strict recovery generation model pins cannot change")
 
 
 class OllamaFailure(RuntimeError):
@@ -82,13 +93,14 @@ class OllamaClient:
             ) as client:
                 # Check the immutable digest before inference so a reused mutable tag
                 # cannot silently change the reviewed model behind this configuration.
-                await self._require_pinned_model(client)
-                response = await client.post("/api/generate", json=request)
+                response = await self._infer(client, request)
                 response.raise_for_status()
                 envelope = response.json()
                 payload = json.loads(envelope["response"])
                 return _parse_batch(payload)
         except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+            if self._strict_proof():
+                raise GpuRequiredFailure("Strict GPU generation failed validation") from exc
             # Collapse untrusted transport and envelope details into one bounded
             # failure type; the caller can fall back without publishing partial data.
             raise OllamaFailure(
@@ -118,11 +130,12 @@ class OllamaClient:
                 timeout=timeout,
                 transport=self._transport,
             ) as client:
-                await self._require_pinned_model(client)
-                response = await client.post("/api/generate", json=request)
+                response = await self._infer(client, request)
                 response.raise_for_status()
                 return LearningPolicy.model_validate_json(response.json()["response"])
         except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
+            if self._strict_proof():
+                raise GpuRequiredFailure("Strict GPU learning failed validation") from exc
             raise OllamaFailure("Ollama learning output failed strict validation") from exc
 
     async def plan_week(self, prompt: str) -> WeeklyThemePlan:
@@ -136,12 +149,34 @@ class OllamaClient:
                 timeout=timeout,
                 transport=self._transport,
             ) as client:
-                await self._require_pinned_model(client)
-                response = await client.post("/api/generate", json=request)
+                response = await self._infer(client, request)
                 response.raise_for_status()
                 return WeeklyThemePlan.model_validate_json(response.json()["response"])
         except (httpx.HTTPError, KeyError, TypeError, ValueError, ValidationError) as exc:
+            if self._strict_proof():
+                raise GpuRequiredFailure("Strict GPU planning failed validation") from exc
             raise OllamaFailure("Ollama weekly plan failed strict validation") from exc
+
+    def _strict_proof(self) -> bool:
+        requirement = self._settings.gpu_requirement
+        return requirement is not None and requirement.strict_recovery
+
+    async def _infer(self, client: httpx.AsyncClient, request: dict[str, object]) -> httpx.Response:
+        try:
+            await self._require_pinned_model(client)
+            return await post_inference(
+                client,
+                "/api/generate",
+                request,
+                self._settings.manifest_digest,
+                self._settings.gpu_requirement,
+            )
+        except GpuRequiredFailure as error:
+            if not self._strict_proof():
+                raise OllamaFailure(
+                    "GPU offload rejected; model output was not accepted"
+                ) from error
+            raise
 
     def _structured_request(
         self, prompt: str, schema: dict[str, object], output_tokens: int, temperature: float
@@ -172,6 +207,8 @@ class OllamaClient:
             (item for item in models if item.get("name") == self._settings.model), None
         )
         if installed is None or installed.get("digest") != self._settings.manifest_digest:
+            if self._settings.gpu_requirement is not None:
+                raise GpuRequiredFailure("Strict GPU model pin is not installed")
             raise OllamaFailure("Installed Ollama model does not match the pinned manifest digest")
 
 

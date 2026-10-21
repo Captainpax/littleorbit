@@ -1,0 +1,42 @@
+# Recovery-only candidate. Never combine with compose.gpu.yaml (NVIDIA).
+# Rendering/building this file is not RX480 runtime or launch acceptance.
+services:
+  ollama:
+    image: ${RX480_OLLAMA_IMAGE:?set reviewed locally built RX480 image ID/reference}
+    build:
+      context: ..
+      dockerfile: infra/dockerfiles/OllamaRx480.Dockerfile
+      args:
+        MESA_VULKAN_DRIVERS_VERSION: ${RX480_MESA_VERSION:?pin reviewed container-only Mesa package version}
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
+    environment:
+      OLLAMA_VULKAN: "1"
+      GGML_VK_VISIBLE_DEVICES: "0"
+      VK_DRIVER_FILES: /usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_CONTEXT_LENGTH: "4096"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  worker:
+    environment:
+      WORKER_HOLD: ${WORKER_HOLD:-true}
+      GPU_PROBE_BACKEND: amd-vulkan
+      GPU_RECOVERY_PROOF_MODE: "true"
+      GPU_VERIFY_IDLE_PROCESSES: "true"
+      GPU_AMD_PROBE_SOCKET: /run/gpu-probe/idle.sock
+      GPU_AMD_PCI_BDF: ${GPU_AMD_PCI_BDF:?require exact admitted RX480 PCI address}
+      GPU_AMD_DEVICE_ID: "0x67df"
+      GPU_AMD_RENDER_MAJOR: "226"
+      GPU_AMD_RENDER_MINOR: "128"
+      GPU_AMD_IDLE_VRAM_BYTES: ${GPU_AMD_IDLE_VRAM_BYTES:?require reviewed quiet baseline not a guess}
+    volumes:
+      - type: bind
+        source: /run/little-orbit-gpu-probe
+        target: /run/gpu-probe
+        read_only: true
+        bind:
+          create_host_path: false
+    group_add: ["2000"]

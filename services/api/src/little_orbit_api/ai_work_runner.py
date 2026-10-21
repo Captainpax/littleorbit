@@ -28,9 +28,10 @@ from .ai_work_queue import (
     lease_is_current,
     retry_work,
 )
+from .amd_gpu_probe import GpuReleaseUnsafe, gpu_requirement, request_idle_proof
 from .clock import SystemClock
 from .config import Settings
-from .gpu_coordination import try_acquire_gpu_lock
+from .gpu_coordination import GpuFileLock, try_acquire_gpu_lock
 from .quiz_learning_service import (
     RUN_TAKEOVER_AFTER,
     ai_run_is_finished,
@@ -81,7 +82,7 @@ async def run_ai_work_cycle(
         return "gpu_busy"
     with lock:
         if settings.gpu_verify_idle_processes and not await _prepare_idle_gpu(
-            model_settings, settings.gpu_release_timeout_seconds
+            model_settings, settings.gpu_release_timeout_seconds, settings
         ):
             await defer_due_work(now, retry_after)
             return "gpu_process_busy"
@@ -92,14 +93,14 @@ async def run_ai_work_cycle(
         )
         if lease is None:
             return "idle"
-        return await _run_lease(
-            lease,
-            settings,
-            model_settings,
-            generate_week,
-            prepare_week,
-            retry_after,
-        )
+        try:
+            return await _run_lease(
+                lease, settings, model_settings, generate_week, prepare_week, retry_after, lock
+            )
+        except GpuReleaseUnsafe:
+            lock.quarantine()
+            LOGGER.critical("AMD GPU lock quarantined: cleanup ownership is unverified")
+            raise
 
 
 async def _run_lease(
@@ -109,12 +110,15 @@ async def _run_lease(
     generate_week: GenerateWeek,
     prepare_week: PrepareWeek,
     retry_after: timedelta,
+    gpu_lock: GpuFileLock | None = None,
 ) -> str:
+    if settings.gpu_probe_backend == "amd-vulkan":
+        if not isinstance(gpu_lock, GpuFileLock):
+            raise RuntimeError("AMD work requires the actual guarded GPU lock")
+        gpu_lock.require_verified_release()
     heartbeat = asyncio.create_task(_heartbeat_forever(lease, settings))
     execution = asyncio.create_task(
-        _execute_work(
-            lease, settings, model_settings, generate_week, prepare_week
-        )
+        _execute_work(lease, settings, model_settings, generate_week, prepare_week)
     )
     cleanup_attempted = False
     try:
@@ -130,20 +134,21 @@ async def _run_lease(
             raise RuntimeError("AI work heartbeat stopped before execution completed")
         await execution
         cleanup_attempted = True
-        await _wait_for_ollama_idle(model_settings, settings.gpu_release_timeout_seconds)
+        await _release_gpu(settings, model_settings, gpu_lock)
         if heartbeat.done():
             await heartbeat
         if not await complete_work(lease, SystemClock().now()):
             raise RuntimeError("AI work lease expired before completion")
         return "passed"
-    except Exception:
+    except (Exception, asyncio.CancelledError):
         execution.cancel()
         await asyncio.gather(execution, return_exceptions=True)
         if not cleanup_attempted:
-            with suppress(Exception):
-                await _wait_for_ollama_idle(
-                    model_settings, settings.gpu_release_timeout_seconds
-                )
+            try:
+                await _cleanup_failed_work(settings, model_settings, gpu_lock)
+            except GpuReleaseUnsafe:
+                await retry_work(lease, SystemClock().now(), retry_after)
+                raise
         await retry_work(lease, SystemClock().now(), retry_after)
         raise
     finally:
@@ -175,9 +180,7 @@ async def _execute_work(
 ) -> None:
     if not await lease_is_current(lease):
         raise RuntimeError("AI work lease expired before execution")
-    local_date = lease.scheduled_at.astimezone(
-        ZoneInfo(settings.ai_schedule_timezone)
-    ).date()
+    local_date = lease.scheduled_at.astimezone(ZoneInfo(settings.ai_schedule_timezone)).date()
     if lease.kind == WEEKLY_LEARNING:
         await learn_feedback_week(
             local_date - timedelta(days=5),
@@ -188,9 +191,7 @@ async def _execute_work(
         await prepare_week(local_date + timedelta(days=9), settings, lease=lease)
         return
     if lease.kind == WEEKLY_GENERATION:
-        await _run_generation_horizon(
-            lease, local_date + timedelta(days=1), generate_week
-        )
+        await _run_generation_horizon(lease, local_date + timedelta(days=1), generate_week)
         return
     if lease.kind in {ADMIN_LEARNING, ADMIN_GENERATION, ADMIN_REGENERATION}:
         await process_quiz_admin_job(
@@ -217,30 +218,22 @@ async def _run_generation_horizon(
         summary = _merge_generation_summaries(first, second)
         status = (
             "passed"
-            if summary["fallback_days"] == 0
-            and summary["context_stale_sources"] == 0
+            if summary["fallback_days"] == 0 and summary["context_stale_sources"] == 0
             else "fallback"
         )
         if not await lease_is_current(lease):
             raise RuntimeError("AI work lease expired during generation")
         await finish_ai_run(run_key, status, summary, lease=lease)
     except Exception:
-        await finish_ai_run(
-            run_key, "failed", {"reason": "internal_failure"}, lease=lease
-        )
+        await finish_ai_run(run_key, "failed", {"reason": "internal_failure"}, lease=lease)
         raise
 
 
-def _merge_generation_summaries(
-    first: dict[str, int], second: dict[str, int]
-) -> dict[str, object]:
+def _merge_generation_summaries(first: dict[str, int], second: dict[str, int]) -> dict[str, object]:
     return {
-        "generated_days": first.get("generated_days", 0)
-        + second.get("generated_days", 0),
-        "fallback_days": first.get("fallback_days", 0)
-        + second.get("fallback_days", 0),
-        "existing_days": first.get("existing_days", 0)
-        + second.get("existing_days", 0),
+        "generated_days": first.get("generated_days", 0) + second.get("generated_days", 0),
+        "fallback_days": first.get("fallback_days", 0) + second.get("fallback_days", 0),
+        "existing_days": first.get("existing_days", 0) + second.get("existing_days", 0),
         "context_stale_sources": max(
             first.get("context_stale_sources", 0),
             second.get("context_stale_sources", 0),
@@ -255,9 +248,7 @@ async def _heartbeat_forever(lease: AiWorkLease, settings: Settings) -> None:
             raise RuntimeError("AI work lease was replaced while running")
 
 
-async def _wait_for_ollama_idle(
-    settings: OllamaSettings, timeout_seconds: int
-) -> None:
+async def _wait_for_ollama_idle(settings: OllamaSettings, timeout_seconds: int) -> None:
     """Request immediate unload and retain the host lock until ``/api/ps`` is empty."""
 
     deadline = monotonic() + timeout_seconds
@@ -269,7 +260,10 @@ async def _wait_for_ollama_idle(
             try:
                 response = await client.get("/api/ps")
                 response.raise_for_status()
-                models = response.json().get("models", [])
+                payload = response.json()
+                if not isinstance(payload, dict) or not isinstance(payload.get("models"), list):
+                    raise RuntimeError("Ollama process response is incomplete")
+                models = payload["models"]
             except (httpx.HTTPError, TypeError, ValueError):
                 await asyncio.sleep(1)
                 continue
@@ -281,19 +275,56 @@ async def _wait_for_ollama_idle(
 
 
 async def _prepare_idle_gpu(
-    settings: OllamaSettings, timeout_seconds: int
+    settings: OllamaSettings, timeout_seconds: int, gpu_settings: Settings | None = None
 ) -> bool:
     """Unload stale Ollama state and reject compute, graphics, or encoder owners."""
 
     try:
         await _wait_for_ollama_idle(settings, timeout_seconds)
+        if gpu_settings is not None and gpu_settings.gpu_probe_backend == "amd-vulkan":
+            return await _amd_idle(gpu_settings)
         compute = await _nvidia_smi_output(
             "--query-compute-apps=pid", "--format=csv,noheader,nounits"
         )
         process_monitor = await _nvidia_smi_output("pmon", "-c", "1")
-    except (FileNotFoundError, OSError, RuntimeError, TimeoutError):
+    except (FileNotFoundError, OSError, RuntimeError, TimeoutError, ValueError):
         return False
     return not compute.strip() and not _pmon_has_active_pid(process_monitor)
+
+
+async def _amd_idle(settings: Settings) -> bool:
+    requirement = gpu_requirement(settings)
+    if requirement is None:
+        raise RuntimeError("AMD GPU admission is incomplete")
+    return await request_idle_proof(requirement.socket_path, requirement.identity)
+
+
+async def _release_gpu(
+    settings: Settings, model_settings: OllamaSettings, gpu_lock: GpuFileLock | None = None
+) -> None:
+    try:
+        await _wait_for_ollama_idle(model_settings, settings.gpu_release_timeout_seconds)
+        if settings.gpu_probe_backend == "amd-vulkan" and not await _amd_idle(settings):
+            raise RuntimeError("AMD ownership remained busy after Ollama unloaded")
+        if settings.gpu_probe_backend == "amd-vulkan" and gpu_lock is not None:
+            gpu_lock.verify_release()
+    except (Exception, asyncio.CancelledError) as error:
+        if settings.gpu_probe_backend == "amd-vulkan":
+            if gpu_lock is not None:
+                gpu_lock.quarantine()
+            LOGGER.critical("AMD GPU cleanup unverified; lock retained before lease retry")
+            raise GpuReleaseUnsafe("AMD cleanup could not prove device idle") from error
+        raise
+
+
+async def _cleanup_failed_work(
+    settings: Settings, model_settings: OllamaSettings, gpu_lock: GpuFileLock | None = None
+) -> None:
+    if settings.gpu_probe_backend == "amd-vulkan":
+        await _release_gpu(settings, model_settings, gpu_lock)
+    else:
+        with suppress(Exception):
+            await _release_gpu(settings, model_settings)
 
 
 async def _nvidia_smi_output(*arguments: str) -> bytes:
@@ -328,9 +359,7 @@ def _pmon_has_active_pid(output: bytes) -> bool:
     return False
 
 
-async def _request_model_unloads(
-    client: httpx.AsyncClient, models: object
-) -> None:
+async def _request_model_unloads(client: httpx.AsyncClient, models: object) -> None:
     if not isinstance(models, list):
         raise RuntimeError("Ollama process response has an invalid model list")
     for item in models:

@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from uuid import UUID
 
 from little_orbit_ai.embeddings import EmbeddingSettings, OllamaEmbeddingClient
+from little_orbit_ai.gpu_probe import GpuRequiredFailure
 from little_orbit_ai.ollama import OllamaSettings
 from little_orbit_ai.pipeline import PipelineResult
 from little_orbit_ai.safety import normalized_hash
@@ -20,7 +21,9 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .ai_work_queue import AiWorkLease, require_current_lease
+from .amd_gpu_probe import gpu_requirement
 from .clock import SystemClock
+from .config import get_settings
 from .database import SessionFactory
 from .models import (
     CuratedBankQuestion,
@@ -45,9 +48,8 @@ def embedding_settings() -> EmbeddingSettings:
     return EmbeddingSettings(
         base_url=os.getenv("OLLAMA_BASE_URL", defaults.base_url),
         model=os.getenv("OLLAMA_EMBEDDING_MODEL", defaults.model),
-        manifest_digest=os.getenv(
-            "OLLAMA_EMBEDDING_MODEL_DIGEST", defaults.manifest_digest
-        ),
+        manifest_digest=os.getenv("OLLAMA_EMBEDDING_MODEL_DIGEST", defaults.manifest_digest),
+        gpu_requirement=gpu_requirement(get_settings()),
     )
 
 
@@ -149,6 +151,12 @@ async def persist_pool(
             session, target, result, bank, embedding_client, allow_embeddings
         )
         bank_ids = {item.client_id for item in bank}
+        if (
+            settings.gpu_requirement is not None
+            and settings.gpu_requirement.strict_recovery
+            and any(item.client_id in bank_ids for item in candidates)
+        ):
+            raise GpuRequiredFailure("Strict GPU recovery refuses curated database substitution")
         general_items = [item for item in candidates if not item.intimacy]
         order = {item.client_id: index for index, item in enumerate(general_items, start=1)}
         stored = [
@@ -209,9 +217,7 @@ async def _clear_replaceable_pool(session: AsyncSession, target: date) -> bool:
         )
         if answered or materialized:
             return False
-    await session.execute(
-        delete(GenerationBatch).where(GenerationBatch.publish_date == target)
-    )
+    await session.execute(delete(GenerationBatch).where(GenerationBatch.publish_date == target))
     if question_ids:
         await session.execute(delete(Question).where(Question.id.in_(question_ids)))
     return True
@@ -295,9 +301,7 @@ async def _filter_database_duplicates(
     semantics: dict[str, CandidateSemantics] = {}
     proposed = [*result.pool.general, *result.pool.intimacy_alternatives]
     for item in proposed:
-        value = await candidate_semantics(
-            embedding_client, item, allow_embedding=allow_embeddings
-        )
+        value = await candidate_semantics(embedding_client, item, allow_embedding=allow_embeddings)
         same_batch = any(semantics_overlap(value, accepted) for accepted in semantics.values())
         missing_ai_embedding = value.prompt_vector is None and item.client_id not in bank_ids
         duplicate = await is_semantic_duplicate(session, target, item, value)
@@ -339,9 +343,7 @@ async def _fill_from_bank(
             continue
         if normalized_hash(item.prompt) in used:
             continue
-        value = await candidate_semantics(
-            embedding_client, item, allow_embedding=allow_embeddings
-        )
+        value = await candidate_semantics(embedding_client, item, allow_embedding=allow_embeddings)
         same_batch = any(semantics_overlap(value, accepted) for accepted in semantics.values())
         if not same_batch and not await is_semantic_duplicate(session, target, item, value):
             (intimacy if item.intimacy else general).append(item)
@@ -350,9 +352,7 @@ async def _fill_from_bank(
             semantics[digest] = value
 
 
-def _fallback_slot(
-    item: CandidateQuestion, general: list[CandidateQuestion]
-) -> CandidateQuestion:
+def _fallback_slot(item: CandidateQuestion, general: list[CandidateQuestion]) -> CandidateQuestion:
     """Fill the first missing role and depth from the reviewed daily contract."""
 
     role_targets = ((ThemeRole.THEMED, 3), (ThemeRole.VARIETY, 2))
@@ -362,7 +362,11 @@ def _fallback_slot(
         (QuestionDepth.DEEPER, 2),
     )
     role = next(
-        (value for value, count in role_targets if sum(q.theme_role is value for q in general) < count),
+        (
+            value
+            for value, count in role_targets
+            if sum(q.theme_role is value for q in general) < count
+        ),
         ThemeRole.VARIETY,
     )
     depth = next(
@@ -461,8 +465,6 @@ async def record_seed_attempt(
 async def is_coverage_seed(target: date) -> bool:
     async with SessionFactory() as session:
         fallback_reason = await session.scalar(
-            select(GenerationBatch.fallback_reason).where(
-                GenerationBatch.publish_date == target
-            )
+            select(GenerationBatch.fallback_reason).where(GenerationBatch.publish_date == target)
         )
     return fallback_reason == "coverage_seed"
