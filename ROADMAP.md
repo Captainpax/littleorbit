@@ -4,6 +4,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 
 ## Recovery track — October 2026
 
+- [x] Implement fail-closed local array admission, explicit AMD checks, and a nine-service held preparation profile. CPU/config tests are not restoration, hardware, runtime or public acceptance.
 - [ ] Recover complete cold Little Orbit state to a separately admitted direct-array profile; preserve the original cache image, encrypted backups, secrets, published APKs, and rollback evidence.
 - [ ] Validate explicit RX480/Vulkan support with the original pinned generation and embedding models; require real GPU offload for both, with no CPU-only recovery fallback.
 - [ ] Admit only Little Orbit and essential dependencies after schema, worker-hold, capacity, firewall, authenticated/WSS/media/APK, restart, and soak gates. Existing cache/NVIDIA launchers remain unchanged.

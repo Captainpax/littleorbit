@@ -42,6 +42,25 @@ suppresses expanded secret-bearing output. The target currently has no Python
 interpreter; a separately reviewed existing-runtime controller remains required.
 Do not install a host interpreter merely to bypass that execution gap.
 
+`compose.array-recovery.yaml`, applied last after the base and RX480 files,
+replaces the complete service/network maps rather than hiding bootstrap helpers
+behind profiles. It contains exactly nine explicit-only services, no build,
+pull, dependencies, named volumes or host ports, and requires reviewed local
+image IDs, numeric identities and resource limits. Both worker processes are
+held by isolated standard-library Python without importing application code;
+their disabled health checks are not application health. PostgreSQL bypasses
+the stock initialization entrypoint and refuses missing PG17/control files.
+Ollama models and ClamAV definitions stay read-only with no download egress or
+automatic updater. This is a preparation profile, not a launch command.
+
+`prepare-array-recovery-profile.py` accepts bounded rendered configuration on
+stdin plus sealed admission/input contracts and emits only a sanitized result.
+Do not save, tee or log a production expanded model: it may contain credentials.
+Image-declared `Config.Volumes` must be inventoried and explicitly covered by
+reviewed binds or bounded temporary filesystems; actual container mounts still
+need independent inspection to exclude anonymous storage. Preparation grants
+no lifecycle action, worker release, runtime-image creation or publication.
+
 The reviewed historical metadata selection contains 3,897 entries and 3,308
 files, totaling 4.285 decimal GB across live state, deployment, secrets,
 coordination and preservation-only tool candidates. These are hash-row
@@ -63,8 +82,11 @@ replacement models or try arbitrary ROCm architecture overrides after failure.
 
 A stable single-link host GPU lock is held through the entire operation.
 An unprivileged worker cannot infer host GPU idleness from its own process
-namespace. A narrow root-owned Unix-socket probe must validate peer identity,
-fresh nonce, exact PCI/render device and complete host DRM ownership census;
+namespace. The client authenticates the root-owned Unix-socket server using
+Linux `SO_PEERCRED`; restrictive root/GID2000 socket permissions authorize
+callers. The PHP server does not assert per-client UID/container authentication.
+Its pinned configuration, fresh nonce, exact PCI/render device and complete
+host DRM ownership census provide the ownership proof;
 unknown or unavailable information blocks work. Do not grant worker hostPID,
 privileged mode, a Docker socket or broad host `/proc` access.
 
@@ -92,9 +114,10 @@ command. Keep every unrelated container, plugin child and User Script disabled;
 libvirt stays disabled. Verify this before deliberately enabling a new runtime.
 
 Never issue a blanket Compose `up`: the original dependency graph can bootstrap
-roles, initialize fresh storage or run migrations. A later reviewed array
-overlay, exact local image IDs and `--no-deps --no-build --pull never` stage
-controller are required before any lifecycle action. Workers remain held before
+roles, initialize fresh storage or run migrations. The array overlay and model
+preparation validator now exist, but exact local image contents and a separately
+reviewed `--no-deps --no-build --pull never` lifecycle controller are still
+required before any start. Workers remain held before
 privacy maintenance, queue claims and schedules. Separately authorize ordinary
 working-copy privacy-expiry maintenance before public traffic; preserve forensic
 source bytes without exposing expired private state through the service.

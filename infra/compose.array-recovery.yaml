@@ -1,0 +1,312 @@
+# CANDIDATE: preparation only, not a start or host/GPU acceptance receipt.
+# Apply LAST after compose.yaml and compose.rx480.yaml, never NVIDIA/unraid.
+# !override REPLACES the original service map, including every bootstrap/tool.
+# Compose support and the exact merged model must be independently verified.
+name: little-orbit-recovery
+
+x-array-common: &array-common
+  profiles: [array-recovery-explicit-only]
+  restart: "no"
+  pull_policy: never
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+
+services: !override
+  gateway:
+    <<: *array-common
+    image: ${ORBIT_RECOVERY_IMAGE_GATEWAY:?require admitted local image ID}
+    user: ${ORBIT_RECOVERY_USER_GATEWAY:?require reviewed UID:GID}
+    cpus: ${ORBIT_RECOVERY_CPUS_GATEWAY:?require reviewed CPU budget}
+    mem_limit: ${ORBIT_RECOVERY_MEMORY_GATEWAY:?require reviewed memory bytes}
+    memswap_limit: ${ORBIT_RECOVERY_MEMORY_GATEWAY:?require reviewed memory bytes}
+    pids_limit: ${ORBIT_RECOVERY_PIDS_GATEWAY:?require reviewed PID budget}
+    read_only: true
+    # No host port or edge network: public publication is a separate stage.
+    entrypoint: [caddy]
+    command: [run, --config, /etc/caddy/Caddyfile, --adapter, caddyfile]
+    volumes:
+      - type: bind
+        source: /mnt/disk2/little-orbit-recovery/deploy/repo/infra/gateway/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+        bind: {create_host_path: false}
+    # Cover Caddy's image-declared VOLUMEs without anonymous persistent storage.
+    tmpfs: ["/data:size=16m,mode=1777", "/config:size=16m,mode=1777"]
+    networks:
+      gateway-api: {ipv4_address: 10.253.14.2}
+      gateway-web: {}
+    healthcheck:
+      test: [CMD, wget, --spider, --quiet, "http://127.0.0.1:8180/api/v1/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  web:
+    <<: *array-common
+    image: ${ORBIT_RECOVERY_IMAGE_WEB:?require admitted local image ID}
+    user: ${ORBIT_RECOVERY_USER_WEB:?require reviewed UID:GID}
+    cpus: ${ORBIT_RECOVERY_CPUS_WEB:?require reviewed CPU budget}
+    mem_limit: ${ORBIT_RECOVERY_MEMORY_WEB:?require reviewed memory bytes}
+    memswap_limit: ${ORBIT_RECOVERY_MEMORY_WEB:?require reviewed memory bytes}
+    pids_limit: ${ORBIT_RECOVERY_PIDS_WEB:?require reviewed PID budget}
+    read_only: true
+    entrypoint: [node]
+    command: [server.js]
+    environment:
+      NODE_ENV: production
+      PORT: "3014"
+      INTERNAL_API_URL: http://api:8000
+      NEXT_PUBLIC_BASE_URL: https://lil-orb.pax-kun.com
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    networks: [private, gateway-web]
+    healthcheck:
+      test: [CMD, wget, --spider, --quiet, "http://127.0.0.1:3014/status"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  api:
+    <<: *array-common
+    image: ${ORBIT_RECOVERY_IMAGE_API:?require admitted local image ID}
+    user: "65532:65532"
+    cpus: ${ORBIT_RECOVERY_CPUS_API:?require reviewed CPU budget}
+    mem_limit: ${ORBIT_RECOVERY_MEMORY_API:?require reviewed memory bytes}
+    memswap_limit: ${ORBIT_RECOVERY_MEMORY_API:?require reviewed memory bytes}
+    pids_limit: ${ORBIT_RECOVERY_PIDS_API:?require reviewed PID budget}
+    read_only: true
+    entrypoint: [uvicorn]
+    command: ["little_orbit_api.main:app", --host, 0.0.0.0, --port, "8000", --no-proxy-headers]
+    env_file: [/mnt/disk2/little-orbit-recovery/secrets/runtime.env]
+    environment:
+      DATABASE_URL: ${DATABASE_API_URL:?require recovered API credential URL}
+      RELEASE_STORAGE_DIR: /var/lib/little-orbit/releases
+      ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
+      TRUSTED_PROXY_IP: 10.253.14.2
+    volumes:
+      - type: bind
+        source: /mnt/disk2/little-orbit-recovery/live/releases
+        target: /var/lib/little-orbit/releases
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: /mnt/disk2/little-orbit-recovery/live/attachments
+        target: /var/lib/little-orbit/attachments
+        bind: {create_host_path: false}
+    tmpfs: ["/tmp:size=32m,mode=1770,uid=65532,gid=65532"]
+    networks:
+      private: {}
+      gateway-api: {ipv4_address: 10.253.14.3}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/health/live', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    <<: *array-common
+    image: ${ORBIT_RECOVERY_IMAGE_POSTGRES:?require admitted local image ID}
+    user: "999:70"
+    cpus: ${ORBIT_RECOVERY_CPUS_POSTGRES:?require reviewed CPU budget}
+    mem_limit: ${ORBIT_RECOVERY_MEMORY_POSTGRES:?require reviewed memory bytes}
+    memswap_limit: ${ORBIT_RECOVERY_MEMORY_POSTGRES:?require reviewed memory bytes}
+    pids_limit: ${ORBIT_RECOVERY_PIDS_POSTGRES:?require reviewed PID budget}
+    read_only: true
+    # Never call docker-entrypoint.sh: missing cold PG17 bytes must not initdb.
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - >-
+        test -d "$${PGDATA}" && test ! -L "$${PGDATA}" &&
+        test -f "$${PGDATA}/PG_VERSION" && test ! -L "$${PGDATA}/PG_VERSION" &&
+        test "$$(cat "$${PGDATA}/PG_VERSION")" = 17 &&
+        test -s "$${PGDATA}/global/pg_control" &&
+        exec postgres -D "$${PGDATA}"
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_DB: ${POSTGRES_DB:?require recovered database name}
+      POSTGRES_USER: ${POSTGRES_USER:?require recovered owner role}
+    volumes:
+      - type: bind
+        source: /mnt/disk2/little-orbit-recovery/live/postgres
+        target: /var/lib/postgresql/data
+        bind: {create_host_path: false}
+    tmpfs: ["/var/run/postgresql:size=16m,mode=0770,uid=999,gid=70", "/tmp:size=32m,mode=1770,uid=999,gid=70"]
+    networks: [private, media-private]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    <<: *array-common
+    image: ${ORBIT_RECOVERY_IMAGE_WORKER:?require admitted local image ID}
+    user: "65532:65532"
+    cpus: ${ORBIT_RECOVERY_CPUS_WORKER:?require reviewed CPU budget}
+    mem_limit: ${ORBIT_RECOVERY_MEMORY_WORKER:?require reviewed memory bytes}
+    memswap_limit: ${ORBIT_RECOVERY_MEMORY_WORKER:?require reviewed memory bytes}
+    pids_limit: ${ORBIT_RECOVERY_PIDS_WORKER:?require reviewed PID budget}
+    read_only: true
+    # This holds even an old image which does not understand WORKER_HOLD.
+    # A held process is NOT worker/runtime acceptance. No app module is imported.
+    entrypoint: [python, -I, -S, -c]
+    command: ["import signal; signal.pause()"]
+    environment:
+      WORKER_HOLD: "true"
+      GPU_PROBE_BACKEND: amd-vulkan
+      GPU_RECOVERY_PROOF_MODE: "true"
+      GPU_VERIFY_IDLE_PROCESSES: "true"
+      GPU_AMD_PROBE_SOCKET: /run/gpu-probe/idle.sock
+      GPU_AMD_PCI_BDF: ${GPU_AMD_PCI_BDF:?require admitted RX480 PCI address}
+      GPU_AMD_DEVICE_ID: "0x67df"
+      GPU_AMD_RENDER_MAJOR: "226"
+      GPU_AMD_RENDER_MINOR: "128"
+      GPU_AMD_IDLE_VRAM_BYTES: ${GPU_AMD_IDLE_VRAM_BYTES:?require reviewed quiet baseline}
+      GPU_LOCK_PATH: /run/gpu-coordinator/gpu.lock
+      DATABASE_URL: ${DATABASE_WORKER_URL:?require recovered worker credential URL}
+      ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
+      PUBLIC_CONTEXT_FETCHER_URL: http://context-fetcher:8010
+    env_file: [/mnt/disk2/little-orbit-recovery/secrets/runtime.env]
+    volumes:
+      - type: bind
+        source: /mnt/disk2/little-orbit-recovery/live/attachments
+        target: /var/lib/little-orbit/attachments
+        bind: {create_host_path: false}
+      - type: bind
+        source: /mnt/disk2/little-orbit-recovery/gpu-coordinator/gpu.lock
+        target: /run/gpu-coordinator/gpu.lock
+        bind: {create_host_path: false}
+      - type: bind
+        source: /run/little-orbit-gpu-probe
+        target: /run/gpu-probe
+        read_only: true
+        bind: {create_host_path: false}
+    group_add: ["2000"]
+    tmpfs: ["/tmp:size=32m,mode=1770,uid=65532,gid=65532"]
+    networks: [private, ai-private, context-private]
+    healthcheck: {disable: true}
+
+  context-fetcher:
+    <<: *array-common
+    image: ${ORBIT_RECOVERY_IMAGE_CONTEXT_FETCHER:?require admitted local image ID}
+    user: "65532:65532"
+    cpus: ${ORBIT_RECOVERY_CPUS_CONTEXT_FETCHER:?require reviewed CPU budget}
+    mem_limit: ${ORBIT_RECOVERY_MEMORY_CONTEXT_FETCHER:?require reviewed memory bytes}
+    memswap_limit: ${ORBIT_RECOVERY_MEMORY_CONTEXT_FETCHER:?require reviewed memory bytes}
+    pids_limit: ${ORBIT_RECOVERY_PIDS_CONTEXT_FETCHER:?require reviewed PID budget}
+    read_only: true
+    entrypoint: [uvicorn]
+    command: ["little_orbit_api.public_context_fetcher:app", --host, 0.0.0.0, --port, "8010", --no-proxy-headers]
+    tmpfs: ["/tmp:size=16m,mode=1770,uid=65532,gid=65532"]
+    networks: [context-private, context-egress]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/v1/health/live', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    <<: *array-common
+    image: ${ORBIT_RECOVERY_IMAGE_OLLAMA:?require admitted RX480 local image ID}
+    user: ${ORBIT_RECOVERY_USER_OLLAMA:?require reviewed UID:GID}
+    cpus: ${ORBIT_RECOVERY_CPUS_OLLAMA:?require reviewed CPU budget}
+    mem_limit: ${ORBIT_RECOVERY_MEMORY_OLLAMA:?require reviewed memory bytes}
+    memswap_limit: ${ORBIT_RECOVERY_MEMORY_OLLAMA:?require reviewed memory bytes}
+    pids_limit: ${ORBIT_RECOVERY_PIDS_OLLAMA:?require reviewed PID budget}
+    read_only: true
+    entrypoint: [ollama]
+    command: [serve]
+    devices: [/dev/dri/renderD128:/dev/dri/renderD128, /dev/dri/card0:/dev/dri/card0]
+    environment:
+      OLLAMA_VULKAN: "1"
+      GGML_VK_VISIBLE_DEVICES: "0"
+      VK_DRIVER_FILES: /usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_CONTEXT_LENGTH: "4096"
+    volumes:
+      - type: bind
+        source: /mnt/disk2/little-orbit-recovery/live/ollama
+        target: /root/.ollama
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: /mnt/disk2/little-orbit-recovery/gpu-coordinator/gpu.lock
+        target: /run/gpu-coordinator/gpu.lock
+        bind: {create_host_path: false}
+    group_add: ["2000", "${ORBIT_RECOVERY_DRI_GID:?require reviewed common render/card group}"]
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    networks: [ai-private]
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+
+  media-worker:
+    <<: *array-common
+    image: ${ORBIT_RECOVERY_IMAGE_MEDIA_WORKER:?require admitted local image ID}
+    user: "65532:65532"
+    cpus: ${ORBIT_RECOVERY_CPUS_MEDIA_WORKER:?require reviewed CPU budget}
+    mem_limit: ${ORBIT_RECOVERY_MEMORY_MEDIA_WORKER:?require reviewed memory bytes}
+    memswap_limit: ${ORBIT_RECOVERY_MEMORY_MEDIA_WORKER:?require reviewed memory bytes}
+    pids_limit: ${ORBIT_RECOVERY_PIDS_MEDIA_WORKER:?require reviewed PID budget}
+    read_only: true
+    # attachment_media currently ignores WORKER_HOLD; never call its main here.
+    entrypoint: [python, -I, -S, -c]
+    command: ["import signal; signal.pause()"]
+    environment: {WORKER_HOLD: "true"}
+    volumes:
+      - type: bind
+        source: /mnt/disk2/little-orbit-recovery/live/attachments
+        target: /var/lib/little-orbit/attachments
+        bind: {create_host_path: false}
+    tmpfs: ["/tmp:size=512m,mode=1770,uid=65532,gid=65532"]
+    networks: [media-private]
+    healthcheck: {disable: true}
+
+  clamav:
+    <<: *array-common
+    image: ${ORBIT_RECOVERY_IMAGE_CLAMAV:?require admitted local image ID}
+    user: ${ORBIT_RECOVERY_USER_CLAMAV:?require reviewed UID:GID}
+    cpus: ${ORBIT_RECOVERY_CPUS_CLAMAV:?require reviewed CPU budget}
+    mem_limit: ${ORBIT_RECOVERY_MEMORY_CLAMAV:?require reviewed memory bytes}
+    memswap_limit: ${ORBIT_RECOVERY_MEMORY_CLAMAV:?require reviewed memory bytes}
+    pids_limit: ${ORBIT_RECOVERY_PIDS_CLAMAV:?require reviewed PID budget}
+    read_only: true
+    # Exact image inspection must confirm clamd/config and writable tmpfs needs.
+    # Bypass stock init/freshclam; never fetch a database or auto-update here.
+    entrypoint: [clamd]
+    command: [--foreground=true]
+    volumes:
+      - type: bind
+        source: /mnt/disk2/little-orbit-recovery/live/clamav
+        target: /var/lib/clamav
+        read_only: true
+        bind: {create_host_path: false}
+    # Candidate ephemeral log/socket roots; exact image config remains a gate.
+    tmpfs: ["/tmp:size=32m,mode=1777", "/var/log/clamav:size=16m,mode=1777", "/run/clamav:size=16m,mode=1777"]
+    networks: [media-private]
+    healthcheck:
+      test: [CMD-SHELL, "clamdscan --ping 1 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+
+networks: !override
+  private: {internal: true}
+  gateway-api:
+    internal: true
+    ipam:
+      config: [{subnet: 10.253.14.0/28}]
+  gateway-web: {internal: true}
+  ai-private: {internal: true}
+  media-private: {internal: true}
+  context-private: {internal: true}
+  context-egress: {}
+
+# All persistent state uses exact bind mounts, never anonymous/named volumes.
+volumes: !reset {}
