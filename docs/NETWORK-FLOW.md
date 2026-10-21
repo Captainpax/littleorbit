@@ -557,6 +557,13 @@ sequenceDiagram
 
 Email and recovery tokens use URL fragments so browsers do not send them in HTTP request targets or proxy logs. The client submits the token explicitly to the API, where it is hashed. A successful password reset consumes every outstanding link for the account and revokes every active session; a concurrent link cannot survive the account lock. Existing query-string links remain accepted during the transition. Local development uses Mailpit. Production uses configured SMTP and never exposes Mailpit publicly. The worker polls the outbox every 30 seconds by default.
 
+During explicitly admitted recovery, `RECOVERY_MAIL_NOT_BEFORE` adds an inclusive
+UTC-normalized `created_at` eligibility boundary before locking, ordering and
+limiting the due batch. Older encrypted rows are not decrypted, sent or mutated;
+fresh eligible rows follow the same SMTP path. The optional timezone-aware
+setting does not release `WORKER_HOLD`, alter endpoints or affect ordinary
+deployments when unset. See the [recovery runbook](operations/ARRAY-RX480-RECOVERY.md).
+
 ## Android offline and wearable cache
 
 ```mermaid

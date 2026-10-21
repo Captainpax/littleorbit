@@ -1,10 +1,11 @@
 """Typed runtime configuration loaded from environment variables."""
 
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,6 +31,7 @@ class Settings(BaseSettings):
     smtp_starttls: bool = False
     smtp_username: str | None = None
     smtp_password: SecretStr | None = None
+    recovery_mail_not_before: datetime | None = None
     trusted_proxy_ip: str = "172.30.14.2"
     registration_open: bool = True
     registration_ip_per_hour: int = 8
@@ -72,6 +74,22 @@ class Settings(BaseSettings):
     ai_theme_locale: str = Field(default="en-US", min_length=2, max_length=24)
     ai_public_context_enabled: bool = True
     public_context_fetcher_url: str = "http://context-fetcher:8010"
+
+    @field_validator("recovery_mail_not_before", mode="before")
+    @classmethod
+    def require_aware_mail_cutoff(cls, value: object) -> datetime | None:
+        """An explicit recovery boundary must never become an implicit local time."""
+
+        if value is None:
+            return None
+        if isinstance(value, str):
+            try:
+                value = datetime.fromisoformat(value)
+            except ValueError:
+                raise ValueError("Recovery mail cutoff must be an aware ISO 8601 instant") from None
+        if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("Recovery mail cutoff must be an aware ISO 8601 instant")
+        return value.astimezone(UTC)
 
     @model_validator(mode="after")
     def require_complete_amd_admission(self) -> "Settings":

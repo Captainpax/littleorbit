@@ -98,6 +98,26 @@ never as GPU success. The proof phase cannot use that substitution to pass.
 `WORKER_HOLD=true` blocks mail, queue, schedules and privacy tasks before they
 start. Releasing that hold remains a separate stage decision.
 
+Before releasing the application worker, set its internal
+`RECOVERY_MAIL_NOT_BEFORE` to the separately recorded cutover instant in an
+explicit timezone-aware ISO 8601 form. This is an opt-in delivery filter, not a
+database migration: only due, undelivered rows whose existing `created_at` is at
+or after that instant are eligible. Earlier ciphertext, attempts, retry times
+and delivery status stay untouched and unsent; do not decrypt, replay, delete,
+retimestamp or reset the backlog to make admission pass. The boundary is
+inclusive and normalized to UTC; invalid, empty or timezone-naive values refuse
+settings/startup. A future boundary deliberately holds all earlier rows.
+Keep the exact boundary across worker recreation; do not derive it from each
+process's startup time or remove it while the preserved backlog remains.
+
+The optional setting is unset in normal deployments, preserving their existing
+delivery behavior. It grants no worker release by itself, creates no accounts,
+and requests no password reset or automatic probe email. Verify fresh delivery
+only through a separately admitted existing-user request; keep the two original
+accounts and credentials intact. Confirm that the controlled build actually
+contains this guard before releasing a recovered worker; old images may ignore
+unknown environment settings.
+
 For **both** generation and embeddings, synthetic-only tests must prove exact
 model identity and actual RX480 residency. CPU assistance is allowed; CPU-only
 or curated fallback is not a successful recovery test. An AMD inference call may

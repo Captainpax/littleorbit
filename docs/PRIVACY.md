@@ -13,6 +13,13 @@ prompts or relationship content. Recovery workers remain held before queue,
 schedule and privacy maintenance; standard expiry on verified working copies
 must be separately admitted before serving traffic. Immutable forensic evidence
 is not a live data store or permission to expose expired private records.
+An explicitly configured recovery mail boundary excludes pre-cutover outbox
+rows from delivery before decryption or claiming. Their ciphertext and retry/
+delivery metadata remain unchanged and unsent pending separate operator review;
+fresh eligible requests keep the existing encrypted outbox behavior. This
+operational hold neither creates accounts nor requests password resets, and
+must not be silently removed to replay historical mail. Normal deployments
+without the optional boundary retain their existing behavior.
 
 | Data | Purpose | Access | Intended retention |
 |---|---|---|---|

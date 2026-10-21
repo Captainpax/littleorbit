@@ -72,12 +72,15 @@ async def deliver_pending_mail(settings: Settings, limit: int = 20) -> None:
     """Deliver a bounded batch, retaining encrypted payloads for retry."""
 
     now = SystemClock().now()
+    query = select(MailOutbox).where(
+        MailOutbox.delivered_at.is_(None), MailOutbox.next_attempt_at <= now
+    )
+    if settings.recovery_mail_not_before is not None:
+        query = query.where(MailOutbox.created_at >= settings.recovery_mail_not_before)
     async with SessionFactory() as session:
         rows = list(
             await session.scalars(
-                select(MailOutbox)
-                .where(MailOutbox.delivered_at.is_(None), MailOutbox.next_attempt_at <= now)
-                .order_by(MailOutbox.created_at)
+                query.order_by(MailOutbox.created_at)
                 .limit(limit)
                 .with_for_update(skip_locked=True)
             )
