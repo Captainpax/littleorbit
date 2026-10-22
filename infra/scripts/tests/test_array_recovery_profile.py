@@ -138,6 +138,68 @@ class ContractTests(unittest.TestCase):
             profile.cpu("NaN")
         self.assertEqual(str(caught.exception), "CPU allocation outside bounds")
 
+    def test_rx480_uses_exact_official_image_without_build(self) -> None:
+        overlay = (REPO / "infra/compose.rx480.yaml").read_text(encoding="utf-8")
+        self.assertIn("image: ollama/ollama:0.35.1@sha256:"
+                      "17e945f1aa6e505707eeb621e3f36847d0a4a063d4778f7007645acccfb8bd4f", overlay)
+        for forbidden in ("build:", "OllamaRx480.Dockerfile", "RX480_MESA_VERSION", "RX480_OLLAMA_IMAGE"):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, overlay)
+
+    def test_both_amd_overlays_select_only_actual_radeon_icd(self) -> None:
+        for name in ("compose.rx480.yaml", "compose.array-recovery.yaml"):
+            overlay = (REPO / "infra" / name).read_text(encoding="utf-8")
+            selections = re.findall(r"^\s+VK_DRIVER_FILES:\s*(\S+)\s*$", overlay, re.MULTILINE)
+            self.assertEqual(selections, ["/usr/share/vulkan/icd.d/radeon_icd.json"])
+
+
+def environment_fixture() -> dict:
+    """Synthetic explicit config only; never a recovered secret file."""
+    values = {
+        "gateway": {},
+        "web": {"NODE_ENV": "production", "PORT": "3014", "INTERNAL_API_URL": "http://api:8000",
+                "NEXT_PUBLIC_BASE_URL": "https://lil-orb.pax-kun.com"},
+        "api": {"DATABASE_URL": "SYNTHETIC", "RELEASE_STORAGE_DIR": "/var/lib/little-orbit/releases",
+                "ATTACHMENT_STORAGE_DIR": "/var/lib/little-orbit/attachments", "TRUSTED_PROXY_IP": "10.253.14.2"},
+        "postgres": {"PGDATA": "/var/lib/postgresql/data/pgdata", "POSTGRES_DB": "SYNTHETIC",
+                     "POSTGRES_USER": "SYNTHETIC"},
+        "worker": {"WORKER_HOLD": "true", "GPU_PROBE_BACKEND": "amd-vulkan", "GPU_RECOVERY_PROOF_MODE": "true",
+                   "GPU_VERIFY_IDLE_PROCESSES": "true", "GPU_AMD_PROBE_SOCKET": "/run/gpu-probe/idle.sock",
+                   "GPU_AMD_PCI_BDF": "0000:05:00.0", "GPU_AMD_DEVICE_ID": "0x67df",
+                   "GPU_AMD_RENDER_MAJOR": "226", "GPU_AMD_RENDER_MINOR": "128", "GPU_AMD_IDLE_VRAM_BYTES": "0",
+                   "GPU_LOCK_PATH": "/run/gpu-coordinator/gpu.lock", "DATABASE_URL": "SYNTHETIC",
+                   "ATTACHMENT_STORAGE_DIR": "/var/lib/little-orbit/attachments",
+                   "PUBLIC_CONTEXT_FETCHER_URL": "http://context-fetcher:8010"},
+        "context-fetcher": {},
+        "ollama": {"OLLAMA_VULKAN": "1", "GGML_VK_VISIBLE_DEVICES": "0",
+                   "VK_DRIVER_FILES": "/usr/share/vulkan/icd.d/radeon_icd.json", "OLLAMA_NUM_PARALLEL": "1",
+                   "OLLAMA_MAX_LOADED_MODELS": "1", "OLLAMA_CONTEXT_LENGTH": "4096"},
+        "media-worker": {"WORKER_HOLD": "true"}, "clamav": {},
+    }
+    return {name: {"environment": environment} for name, environment in values.items()}
+
+
+class RadeonEnvironmentTests(unittest.TestCase):
+    def test_actual_radeon_icd_is_accepted_without_runtime_authority(self) -> None:
+        self.assertIsNone(profile.validate_environment(environment_fixture()))
+
+    def test_old_filename_lavapipe_and_multiple_icds_are_rejected(self) -> None:
+        for value in ("/usr/share/vulkan/icd.d/radeon_icd.x86_64.json",
+                      "/usr/share/vulkan/icd.d/lvp_icd.json", "/usr/share/vulkan/icd.d/*.json",
+                      "/usr/share/vulkan/icd.d/radeon_icd.json:/usr/share/vulkan/icd.d/lvp_icd.json"):
+            services = environment_fixture()
+            services["ollama"]["environment"]["VK_DRIVER_FILES"] = value
+            with self.subTest(value=value), self.assertRaises(profile.ProfileError):
+                profile.validate_environment(services)
+
+    def test_vulkan_or_residency_drift_is_rejected(self) -> None:
+        for key, value in (("OLLAMA_VULKAN", "0"), ("GGML_VK_VISIBLE_DEVICES", "1"),
+                           ("OLLAMA_MAX_LOADED_MODELS", "2")):
+            services = environment_fixture()
+            services["ollama"]["environment"][key] = value
+            with self.subTest(key=key), self.assertRaises(profile.ProfileError):
+                profile.validate_environment(services)
+
 
 @unittest.skipUnless(DOCKER, "Local Compose CLI unavailable; do not substitute a runtime claim")
 class ModelTests(unittest.TestCase):
@@ -202,6 +264,14 @@ class ModelTests(unittest.TestCase):
         self.assertTrue(mount["read_only"])
         self.rejected(lambda m: m["services"]["ollama"]["networks"].update({"model-egress": None}))
         self.rejected(lambda m: m["services"]["ollama"].update({"command": ["pull", "another-model"]}))
+
+    def test_final_amd_model_uses_local_id_and_sole_radeon_icd_without_build(self) -> None:
+        ollama = self.rendered["services"]["ollama"]
+        self.assertEqual(ollama["image"], self.contract["images"]["ollama"])
+        self.assertNotIn("build", ollama)
+        self.assertEqual(ollama["environment"]["VK_DRIVER_FILES"], "/usr/share/vulkan/icd.d/radeon_icd.json")
+        self.rejected(lambda m: m["services"]["ollama"]["environment"].update({
+            "VK_DRIVER_FILES": "/usr/share/vulkan/icd.d/lvp_icd.json"}))
 
     def test_gpu_privilege_and_wrong_device_rejected(self) -> None:
         self.rejected(lambda m: m["services"]["worker"].update({"privileged": True}))

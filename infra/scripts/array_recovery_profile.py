@@ -328,7 +328,7 @@ def validate_environment(services: dict[str, Any]) -> None:
                 "Missing required environment value")
     require(services["ollama"]["environment"] == {
         "OLLAMA_VULKAN": "1", "GGML_VK_VISIBLE_DEVICES": "0",
-        "VK_DRIVER_FILES": "/usr/share/vulkan/icd.d/radeon_icd.x86_64.json",
+        "VK_DRIVER_FILES": "/usr/share/vulkan/icd.d/radeon_icd.json",
         "OLLAMA_NUM_PARALLEL": "1", "OLLAMA_MAX_LOADED_MODELS": "1", "OLLAMA_CONTEXT_LENGTH": "4096"},
             "Vulkan/model residency configuration differs")
     require(services["web"]["environment"] == {

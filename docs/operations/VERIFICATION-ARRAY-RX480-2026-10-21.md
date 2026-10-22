@@ -95,3 +95,39 @@ and community documents, security-reporting policy, and reviewed AI knowledge
 have no changed UI, protocol, user-data use or editorial promise. Their content
 is unchanged. Third-party/runtime-image license and package provenance remain a
 build gate; this candidate adds no deployed host package.
+
+## October 22 image-selection correction
+
+The approved download-only static inspection of the exact official Ollama 0.35.1
+manifest `sha256:17e945f1aa6e505707eeb621e3f36847d0a4a063d4778f7007645acccfb8bd4f`
+found Mesa `25.2.8-0ubuntu0.24.04.4`, the Vulkan backend and Radeon ICD
+`/usr/share/vulkan/icd.d/radeon_icd.json`. The ICD SHA-256 is
+`bc0e4f88754ce48b429c05fc8c691438c5f04a4170d482c925bc5998159db299`.
+The RX480 overlay now names that official image without a build stanza; the
+final array overlay still requires an independently admitted exact local image
+ID. Both overlays and the preparation validator select only the actual Radeon
+ICD, not the nonexistent historical filename or the image's Lavapipe alternative.
+The old Dockerfile is retained but is no longer the recovery default.
+
+This corrects the earlier build-candidate description without rewriting its
+historical test results. No image was built, daemon started, driver installed,
+model downloaded or runtime activated by this repository change. Static file
+and dependency-candidate presence does not prove the loader or RX480 works.
+Exact local image/config identity, created mounts, real generation and embedding
+residency, ownership/unload, privacy and service acceptance remain required.
+
+The focused verification below is local CPU/config-only; its synthetic values
+are not production admission. The Markdown inventory was repeated across all
+134 owned files. Only this addendum, the recovery runbook and ROADMAP needed
+updates: no public product, UI, protocol, privacy purpose, network trust,
+backup, signing, accepted ADR history or ordinary NVIDIA deployment changed.
+
+| October 22 local check | Observed result |
+|---|---|
+| Updated profile/preparation suite | 33 passed, including actual local Compose configuration parsing only; no daemon |
+| Array admission suite | 16 passed |
+| Focused profile/test Ruff | Passed |
+| Ratcheted quality checker | Passed for 561 source files; baseline unchanged |
+| Documentation inventory and links | Passed for 134 owned Markdown files |
+| Whitespace diff check | Passed |
+| Focused strict profile mypy comparison | Two unchanged optional-network typing errors, reproduced from clean HEAD at the same lines; not a passing mypy claim |

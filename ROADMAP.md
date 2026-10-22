@@ -5,6 +5,7 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 ## Recovery track — October 2026
 
 - [x] Implement fail-closed local array admission, explicit AMD checks, and a nine-service held preparation profile. CPU/config tests are not restoration, hardware, runtime or public acceptance.
+- [x] Match both AMD recovery overlays to the statically inspected official Ollama 0.35.1 image and its existing Radeon ICD, without a default Mesa build or host-driver change. Local image identity, loader compatibility and real RX480 inference remain acceptance gates.
 - [x] Implement an opt-in aware-UTC recovery mail boundary: preserve pre-cutover encrypted backlog unsent and unchanged while admitting fresh eligible requests. Normal unset delivery remains unchanged; actual guarded-worker and mailbox acceptance are still pending.
 - [ ] Recover complete cold Little Orbit state to a separately admitted direct-array profile; preserve the original cache image, encrypted backups, secrets, published APKs, and rollback evidence.
 - [ ] Validate explicit RX480/Vulkan support with the original pinned generation and embedding models; require real GPU offload for both, with no CPU-only recovery fallback.

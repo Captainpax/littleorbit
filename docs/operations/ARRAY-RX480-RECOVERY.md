@@ -74,11 +74,23 @@ That metadata alone does not prove inference compatibility. Keep the default
 NVIDIA profile unchanged; explicit AMD mode must fail closed without its own
 host and model proofs.
 
-The narrowly evaluated backend candidate is Ollama 0.35.1 for Linux amd64,
-with a reviewed Vulkan/Mesa ICD inside the container, not new host drivers.
-The candidate is not yet a locally accepted production image. Preserve both
-original model digests: Qwen generation and Nomic embeddings. Do not download
-replacement models or try arbitrary ROCm architecture overrides after failure.
+The backend candidate is the official Linux amd64 image
+`ollama/ollama:0.35.1@sha256:17e945f1aa6e505707eeb621e3f36847d0a4a063d4778f7007645acccfb8bd4f`.
+An independently verified, download-only static inspection found existing Mesa
+`25.2.8-0ubuntu0.24.04.4`, the Vulkan backend, and the Radeon ICD at
+`/usr/share/vulkan/icd.d/radeon_icd.json` (SHA-256
+`bc0e4f88754ce48b429c05fc8c691438c5f04a4170d482c925bc5998159db299`).
+Both AMD overlays select that exact ICD; Lavapipe also exists in the image and
+must not be selected as a GPU substitute. The RX480 overlay no longer builds or
+apt-installs Mesa. `OllamaRx480.Dockerfile` is retained as a non-default historical
+candidate, not an instruction to build or install host drivers.
+
+Static image contents are not loader, device or inference acceptance. The last
+array overlay still requires a separately admitted exact local image ID matching
+this manifest and its config; changing a Compose file grants no pull or start.
+Preserve both original model digests: Qwen generation and Nomic embeddings. Do
+not download replacement models or try arbitrary ROCm architecture overrides
+after failure.
 
 A stable single-link host GPU lock is held through the entire operation.
 An unprivileged worker cannot infer host GPU idleness from its own process

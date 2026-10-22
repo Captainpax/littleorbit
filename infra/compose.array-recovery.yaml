@@ -209,7 +209,7 @@ services: !override
 
   ollama:
     <<: *array-common
-    image: ${ORBIT_RECOVERY_IMAGE_OLLAMA:?require admitted RX480 local image ID}
+    image: ${ORBIT_RECOVERY_IMAGE_OLLAMA:?require admitted official 0.35.1 RX480 local image ID}
     user: ${ORBIT_RECOVERY_USER_OLLAMA:?require reviewed UID:GID}
     cpus: ${ORBIT_RECOVERY_CPUS_OLLAMA:?require reviewed CPU budget}
     mem_limit: ${ORBIT_RECOVERY_MEMORY_OLLAMA:?require reviewed memory bytes}
@@ -222,7 +222,7 @@ services: !override
     environment:
       OLLAMA_VULKAN: "1"
       GGML_VK_VISIBLE_DEVICES: "0"
-      VK_DRIVER_FILES: /usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+      VK_DRIVER_FILES: /usr/share/vulkan/icd.d/radeon_icd.json
       OLLAMA_NUM_PARALLEL: "1"
       OLLAMA_MAX_LOADED_MODELS: "1"
       OLLAMA_CONTEXT_LENGTH: "4096"
