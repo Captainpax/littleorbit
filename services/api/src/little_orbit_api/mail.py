@@ -2,6 +2,7 @@
 
 import asyncio
 import smtplib
+import ssl
 from datetime import timedelta
 from email.message import EmailMessage
 
@@ -55,6 +56,11 @@ def recovery_body(settings: Settings, display_name: str, token: str) -> str:
 
 
 def _send_smtp(settings: Settings, row: MailOutbox, body: str) -> None:
+    # Development Mailpit may be plaintext, but never transmit credentials that way.
+    if (settings.smtp_username or settings.smtp_password) and not (
+        settings.smtp_username and settings.smtp_password and settings.smtp_starttls
+    ):
+        raise ValueError("Credentialed SMTP requires STARTTLS and complete credentials")
     message = EmailMessage()
     message["From"] = settings.smtp_from
     message["To"] = row.recipient
@@ -62,7 +68,7 @@ def _send_smtp(settings: Settings, row: MailOutbox, body: str) -> None:
     message.set_content(body)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as smtp:
         if settings.smtp_starttls:
-            smtp.starttls()
+            smtp.starttls(context=ssl.create_default_context())
         if settings.smtp_username and settings.smtp_password:
             smtp.login(settings.smtp_username, settings.smtp_password.get_secret_value())
         smtp.send_message(message)

@@ -65,7 +65,7 @@ TMPFS = {
     "gateway": ["/data:size=16m,mode=1777", "/config:size=16m,mode=1777"],
     "web": ["/tmp:size=32m,mode=1777"],
     "api": ["/tmp:size=32m,mode=1770,uid=65532,gid=65532"],
-    "postgres": ["/var/run/postgresql:size=16m,mode=0770,uid=999,gid=70", "/tmp:size=32m,mode=1770,uid=999,gid=70"],
+    "postgres": ["/var/run/postgresql:size=16m,mode=0770,uid=999,gid=999", "/tmp:size=32m,mode=1770,uid=999,gid=999"],
     "worker": ["/tmp:size=32m,mode=1770,uid=65532,gid=65532"],
     "context-fetcher": ["/tmp:size=16m,mode=1770,uid=65532,gid=65532"],
     "ollama": ["/tmp:size=64m,mode=1777"],
@@ -82,7 +82,7 @@ HEALTH_TESTS = {
     "clamav": ["CMD-SHELL", "clamdscan --ping 1 >/dev/null 2>&1"],
 }
 ALLOWED_SERVICE_KEYS = {
-    "profiles", "restart", "pull_policy", "cap_drop", "security_opt", "logging",
+    "profiles", "restart", "pull_policy", "cap_drop", "cap_add", "security_opt", "logging",
     "image", "user", "cpus", "mem_limit", "memswap_limit", "pids_limit",
     "read_only", "entrypoint", "command", "volumes", "networks", "healthcheck",
     "environment", "env_file", "tmpfs", "group_add", "devices",
@@ -150,7 +150,9 @@ def validate_contract(value: Any) -> dict[str, Any]:
         require(16 <= positive_int(resource["pids"], "PID budget") <= 4096, "PID budget outside bounds")
     for name in ("api", "worker", "context-fetcher", "media-worker"):
         require(contract["users"][name] == "65532:65532", "Application identity differs")
-    require(contract["users"]["postgres"] == "999:70", "PostgreSQL identity differs")
+    # The inspected pg17-bookworm image defines postgres as 999:999. The outer
+    # recovered directory's historical GID is not the runtime image identity.
+    require(contract["users"]["postgres"] == "999:999", "PostgreSQL identity differs")
     validate_gpu_contract(contract["gpu"])
     return contract
 
@@ -178,6 +180,11 @@ def validate_image_volumes(contract: dict[str, Any]) -> None:
                     for target in targets), "Image would create an uncovered anonymous volume")
 
 
+def validate_capabilities(service: dict[str, Any], name: str) -> None:
+    capabilities = ["NET_BIND_SERVICE"] if name == "gateway" else []
+    require(service.get("cap_add", []) == capabilities, "Recovery capability bound differs")
+
+
 def validate_common(service: dict[str, Any], expected: dict[str, Any], name: str) -> None:
     require(set(service) <= ALLOWED_SERVICE_KEYS, "Unexpected service configuration field")
     require(service.get("profiles") == [PROFILE] and service.get("restart") == "no"
@@ -191,6 +198,7 @@ def validate_common(service: dict[str, Any], expected: dict[str, Any], name: str
             and service.get("pids_limit") == resource["pids"], "Memory/PID allocation differs")
     require(service.get("cap_drop") == ["ALL"] and service.get("read_only") is True
             and service.get("security_opt") == ["no-new-privileges:true"], "Container isolation differs")
+    validate_capabilities(service, name)
     require(service.get("logging") == {"driver": "json-file", "options": {
         "max-size": "10m", "max-file": "3"}}, "Log bound differs")
     require(service.get("entrypoint") == COMMANDS[name][0]

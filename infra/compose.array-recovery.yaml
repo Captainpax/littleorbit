@@ -17,6 +17,9 @@ x-array-common: &array-common
 services: !override
   gateway:
     <<: *array-common
+    # The recovered Caddy executable has cap_net_bind_service=ep. Keep only
+    # that file capability in its bounding set, even on unprivileged port 8180.
+    cap_add: [NET_BIND_SERVICE]
     image: ${ORBIT_RECOVERY_IMAGE_GATEWAY:?require admitted local image ID}
     user: ${ORBIT_RECOVERY_USER_GATEWAY:?require reviewed UID:GID}
     cpus: ${ORBIT_RECOVERY_CPUS_GATEWAY:?require reviewed CPU budget}
@@ -108,7 +111,7 @@ services: !override
   postgres:
     <<: *array-common
     image: ${ORBIT_RECOVERY_IMAGE_POSTGRES:?require admitted local image ID}
-    user: "999:70"
+    user: "999:999"
     cpus: ${ORBIT_RECOVERY_CPUS_POSTGRES:?require reviewed CPU budget}
     mem_limit: ${ORBIT_RECOVERY_MEMORY_POSTGRES:?require reviewed memory bytes}
     memswap_limit: ${ORBIT_RECOVERY_MEMORY_POSTGRES:?require reviewed memory bytes}
@@ -132,7 +135,7 @@ services: !override
         source: /mnt/disk2/little-orbit-recovery/live/postgres
         target: /var/lib/postgresql/data
         bind: {create_host_path: false}
-    tmpfs: ["/var/run/postgresql:size=16m,mode=0770,uid=999,gid=70", "/tmp:size=32m,mode=1770,uid=999,gid=70"]
+    tmpfs: ["/var/run/postgresql:size=16m,mode=0770,uid=999,gid=999", "/tmp:size=32m,mode=1770,uid=999,gid=999"]
     networks: [private, media-private]
     healthcheck:
       test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]

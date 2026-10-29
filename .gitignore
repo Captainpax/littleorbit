@@ -39,5 +39,7 @@ local.properties
 /data/
 backups/
 secrets/
+infra/recovery/worker-closure.json
+infra/recovery/wheelhouse/
 *.log
 .codex-remote-attachments/

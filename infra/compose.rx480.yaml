@@ -35,4 +35,4 @@ services:
         read_only: true
         bind:
           create_host_path: false
-    group_add: ["2000"]
+    group_add: !override ["2000"]

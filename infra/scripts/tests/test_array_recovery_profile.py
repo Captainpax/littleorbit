@@ -43,7 +43,7 @@ SPEC.loader.exec_module(profile)
 
 def fixture_contract() -> dict:
     users = {name: "65532:65532" for name in profile.SERVICES}
-    users.update({"web": "1001:1001", "postgres": "999:70", "ollama": "0:0", "clamav": "100:100"})
+    users.update({"web": "1001:65533", "postgres": "999:999", "ollama": "0:0", "clamav": "1000:1000"})
     return {
         "recordType": "little-orbit-array-profile-input/v1",
         "images": {name: "sha256:" + str(index + 1) * 64 for index, name in enumerate(profile.SERVICES)},
@@ -278,8 +278,30 @@ class ModelTests(unittest.TestCase):
         self.rejected(lambda m: m["services"]["worker"].update({"pid": "host"}))
         self.rejected(lambda m: m["services"]["ollama"]["devices"][0].update({"source": "/dev/dri/renderD129"}))
 
+    def test_only_gateway_retains_exact_executable_file_capability(self) -> None:
+        self.assertEqual(self.rendered["services"]["gateway"]["cap_add"], ["NET_BIND_SERVICE"])
+        self.rejected(lambda m: m["services"]["gateway"].pop("cap_add"))
+        self.rejected(lambda m: m["services"]["gateway"].update({"cap_add": ["SYS_ADMIN"]}))
+        self.rejected(lambda m: m["services"]["gateway"]["cap_add"].append("NET_ADMIN"))
+        for name in profile.SERVICES:
+            if name != "gateway":
+                with self.subTest(role=name):
+                    self.rejected(lambda m: m["services"][name].update({"cap_add": ["NET_BIND_SERVICE"]}))
+
     def test_postgres_stock_init_rejected(self) -> None:
         self.rejected(lambda m: m["services"]["postgres"].update({"entrypoint": ["docker-entrypoint.sh"]}))
+
+    def test_postgres_uses_image_group_and_preserves_nested_pgdata(self) -> None:
+        postgres = self.rendered["services"]["postgres"]
+        self.assertEqual(postgres["user"], "999:999")
+        self.assertEqual(postgres["environment"]["PGDATA"], "/var/lib/postgresql/data/pgdata")
+        self.assertTrue(all("gid=999" in mount for mount in postgres["tmpfs"]))
+        contract = copy.deepcopy(self.contract)
+        contract["users"]["postgres"] = "999:70"
+        with self.assertRaises(profile.ProfileError):
+            self.valid(contract=contract)
+        self.rejected(lambda m: m["services"]["postgres"]["environment"].update({
+            "PGDATA": "/var/lib/postgresql/data"}))
 
     def test_resource_and_user_drift_rejected(self) -> None:
         self.rejected(lambda m: m["services"]["api"].update({"mem_limit": 1024}))

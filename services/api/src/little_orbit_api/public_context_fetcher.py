@@ -105,7 +105,7 @@ async def _fetch_bounded(source: PublicContextSourceDefinition) -> tuple[bytes, 
     try:
         async with (
             httpx.AsyncClient(
-                follow_redirects=False, timeout=10, headers=headers
+                follow_redirects=False, trust_env=False, timeout=10, headers=headers
             ) as client,
             client.stream("GET", source.url) as response,
         ):

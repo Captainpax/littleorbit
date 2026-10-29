@@ -84,8 +84,12 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 - `docs/adr/0046-terminal-pin-big-orbit-bootstrap.md` — one-use terminal PINs, restricted setup capabilities, key proof, and first-owner MFA.
 - `docs/adr/0047-unraid-persistence-gpu-and-signing-isolation.md` — direct-pool persistence, exact host streaming, cooperative GPU arbitration, local-only recovery, and isolated Android signing.
 - `docs/adr/0049-explicit-array-rx480-recovery.md` — scoped direct-array recovery and mandatory actual AMD GPU proof without weakening normal production launchers.
+- `docs/adr/0050-controlled-array-serving-contracts.md` — distinct serving/admission, verified SMTP, offline worker closure and narrow native networking contracts; not runtime acceptance.
+- `docs/adr/0052-shared-array-docker-and-separate-budgets.md` — approved shared DMS/Orbit successor, separate budgets, honest swap capability and staged image availability; application gates pending.
 - `docs/operations/ARRAY-RX480-RECOVERY.md` — source, capacity, worker-hold, actual GPU and staged-publication gates; implementation is not runtime acceptance.
 - `docs/operations/VERIFICATION-ARRAY-RX480-2026-10-21.md` — local implementation checks, explicit skips/baseline findings and remaining real recovery gates.
+- `docs/operations/VERIFICATION-ARRAY-SERVING-2026-10-22.md` — local SMTP/serving/resource/network/worker-closure checks, full documentation review and explicit unsealed/native acceptance gates.
+- `docs/operations/VERIFICATION-ARRAY-IMAGE-STAGING-2026-10-29.md` — original-image staging, source-derived PG17 identity, code-only artifact checks and pending native/integrity gates.
 - `docs/adr/0048-device-bound-administrator-mfa-replacement.md` — Big-Orbit-only factor rotation, exact approved-device sessions, bootstrap-only first MFA, and same-device replacement sessions.
 - `docs/adr/0028-isolated-attachment-media-worker.md` — least-privilege scanning, sanitization, atomic publication, and private archive access.
 - `docs/adr/0029-relationship-invalidation-purge-protocol.md` — structured invalidation and generation-ordered phone, widget, and Wear cleanup.

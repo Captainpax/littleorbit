@@ -28,7 +28,7 @@ class IdleProofTests(unittest.TestCase):
             "render_minor": 128,
         }
         self.proof: dict[str, object] = {
-            "schema": 1,
+            "schema": 2,
             "nonce": "fresh",
             "device": self.device,
             "census_complete": True,
@@ -36,6 +36,9 @@ class IdleProofTests(unittest.TestCase):
             "errors": [],
             "samples": 2,
             "gpu_busy_percent": 0,
+            "gpu_busy_errno": None,
+            "runtime_status": "active",
+            "runtime_active_ms": 1_000,
             "vram_used_bytes": 4_096,
             "sample_span_ms": 150,
         }
@@ -45,13 +48,16 @@ class IdleProofTests(unittest.TestCase):
 
     def test_rejects_unknown_busy_stale_and_malformed_fields(self) -> None:
         cases: dict[str, list[object]] = {
-            "schema": [None, True, "1", 2],
+            "schema": [None, True, "2", 1, 3],
             "nonce": [None, "previous"],
             "census_complete": [None, False, 1],
             "owners": [None, {}, [123]],
             "errors": [None, ["permission_denied"]],
             "samples": [None, True, 0, 1],
             "gpu_busy_percent": [None, True, "0", -1, 1],
+            "gpu_busy_errno": [False, 0, "EBUSY", "EIO"],
+            "runtime_status": [None, True, "resuming", "suspending", "error"],
+            "runtime_active_ms": [None, False, "1000", -1],
             "vram_used_bytes": [None, False, "0", -1, 4_097],
             "sample_span_ms": [None, True, "1", 0, -1, 2_001],
         }
@@ -77,6 +83,31 @@ class IdleProofTests(unittest.TestCase):
                 device[field] = value
                 proof["device"] = device
                 self.assertFalse(probe.validate_idle_proof(proof, "fresh", self.identity))
+
+    def test_suspended_ebusy_is_explicit_missing_counter_not_a_fabricated_zero(self) -> None:
+        value = dict(
+            self.proof, runtime_status="suspended", gpu_busy_percent=None, gpu_busy_errno="EBUSY"
+        )
+        self.assertTrue(probe.validate_idle_proof(value, "fresh", self.identity))
+        self.assertIsNone(value["gpu_busy_percent"])
+        self.assertEqual(value["gpu_busy_errno"], "EBUSY")
+
+    def test_suspension_cannot_hide_bad_metrics_owners_or_uninitialized_runtime(self) -> None:
+        value = dict(
+            self.proof, runtime_status="suspended", gpu_busy_percent=None, gpu_busy_errno="EBUSY"
+        )
+        for changes in (
+            {"runtime_active_ms": 0}, {"runtime_status": "active"},
+            {"gpu_busy_errno": "EIO"}, {"gpu_busy_errno": None},
+            {"gpu_busy_percent": 0}, {"gpu_busy_percent": 101},
+            {"gpu_busy_percent": 0, "gpu_busy_errno": None, "runtime_active_ms": 0},
+            {"owners": [{"pid": 123, "approved": True}]},
+            {"vram_used_bytes": 4_097}, {"census_complete": False},
+        ):
+            with self.subTest(changes=changes):
+                self.assertFalse(
+                    probe.validate_idle_proof(dict(value, **changes), "fresh", self.identity)
+                )
 
     def test_rejects_incomplete_or_nonobject_proof(self) -> None:
         malformed: tuple[object, ...] = (None, [], {}, "pass")
@@ -131,6 +162,10 @@ class ProbeTransportTests(unittest.IsolatedAsyncioTestCase):
             {"owners": [{"pid": 0, "approved": True}]},
             {"vram_used_bytes": 4_096},
             {"gpu_busy_percent": None},
+            {"runtime_status": "suspended"},
+            {"runtime_status": "suspended", "gpu_busy_percent": None, "gpu_busy_errno": "EBUSY"},
+            {"schema": 1},
+            {"nonce": "stale"},
             {"census_complete": False},
             {"errors": ["unknown"]},
         )
@@ -165,7 +200,7 @@ class ProbeTransportTests(unittest.IsolatedAsyncioTestCase):
         ):
             self.assertFalse(await probe.request_idle_proof(path, identity))
         request = json.loads(writer.write.call_args.args[0])
-        self.assertEqual(request, {"schema": 1, "operation": "idle", "nonce": "new"})
+        self.assertEqual(request, {"schema": 2, "operation": "idle", "nonce": "new"})
         writer.close.assert_called_once()
         writer.wait_closed.assert_awaited_once()
 

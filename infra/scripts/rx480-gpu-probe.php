@@ -54,7 +54,7 @@ function read_config(string $path, string $sha256): string {
 
 function load_config(string $path, string $sha256): array {
     $value = json_decode(read_config($path, $sha256), true, 32, JSON_THROW_ON_ERROR);
-    require_true(is_array($value) && ($value['schema'] ?? null) === 1);
+    require_true(is_array($value) && ($value['schema'] ?? null) === 2);
     require_true(preg_match('/^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$/D', $value['pci_bdf'] ?? '') === 1);
     require_true(($value['device_id'] ?? null) === '0x67df');
     require_true(($value['render_node'] ?? null) === '/dev/dri/renderD128');
@@ -63,6 +63,9 @@ function load_config(string $path, string $sha256): array {
     require_true(($value['vram_total_bytes'] ?? null) === 8589934592);
     require_true(is_int($value['idle_vram_bytes'] ?? null) && $value['idle_vram_bytes'] >= 0);
     require_true(preg_match('/^[0-9a-f]{64}$/D', $value['ollama_container_id'] ?? '') === 1);
+    require_true(preg_match('/^[0-9a-f]{64}$/D', $value['worker_container_id'] ?? '') === 1);
+    require_true(preg_match('/^[0-9a-f]{64}$/D', $value['native_helper_sha256'] ?? '') === 1);
+    require_true(read_small('/proc/sys/kernel/random/boot_id') === ($value['boot_id'] ?? null));
     require_true(preg_match('/^pid:\[[0-9]+\]$/D', $value['host_pid_namespace'] ?? '') === 1);
     require_true(readlink('/proc/1/ns/pid') === $value['host_pid_namespace']);
     require_true(readlink('/proc/self/ns/pid') === $value['host_pid_namespace']);
@@ -135,23 +138,7 @@ function process_owners(string $pid, array $targets, array $config): array {
         if (pid_gone($pid)) { return []; }
         throw $error;
     }
-    $directory = '/proc/' . $pid . '/fd';
-    $fds = @scandir($directory);
-    if ($fds === false && pid_gone($pid)) { return []; }
-    require_true(is_array($fds) && count($fds) <= 65538);
-    $owns = false;
-    foreach ($fds as $fd) {
-        if (!ctype_digit($fd)) { continue; }
-        clearstatcache(true, $directory . '/' . $fd);
-        $info = @stat($directory . '/' . $fd);
-        if ($info === false) {
-            require_true(fd_gone($pid, $fd));
-            continue;
-        }
-        if (($info['mode'] & 0170000) === 0020000 && in_array($info['rdev'], $targets, true)) {
-            $owns = true;
-        }
-    }
+    $owns = owns_device($pid, $targets);
     if (pid_gone($pid)) { return []; }
     require_true(process_identity($pid) === $before);
     if (!$owns) { return []; }
@@ -159,6 +146,29 @@ function process_owners(string $pid, array $targets, array $config): array {
         'pid' => (int) $pid, 'start_time_ticks' => $before['start_time_ticks'],
         'approved' => approved_owner($before['cgroup'], $config),
     ]];
+}
+
+function owns_device(string $pid, array $targets): bool {
+    $directory = '/proc/' . $pid . '/fd';
+    // Keep our enumeration FD open: scandir closes it before its own FD can be
+    // inspected, then a second scandir may reuse that number and mimic an error.
+    $handle = @opendir($directory);
+    if ($handle === false && pid_gone($pid)) { return false; }
+    require_true(is_resource($handle));
+    $owns = false; $count = 0;
+    try {
+        while (($fd = readdir($handle)) !== false) {
+            require_true(++$count <= 65538);
+            if (!ctype_digit($fd)) { continue; }
+            clearstatcache(true, $directory . '/' . $fd);
+            $info = @stat($directory . '/' . $fd);
+            if ($info === false) { require_true(fd_gone($pid, $fd)); continue; }
+            if (($info['mode'] & 0170000) === 0020000 && in_array($info['rdev'], $targets, true)) {
+                $owns = true;
+            }
+        }
+    } finally { closedir($handle); }
+    return $owns;
 }
 
 function census(array $config): array {
@@ -182,7 +192,7 @@ function census(array $config): array {
 function sample(array $config, string $nonce): array {
     $started = hrtime(true);
     $identity = device_info($config);
-    $owners = []; $busy = 0; $used = 0;
+    $owners = []; $metrics = [];
     for ($index = 0; $index < 2; $index++) {
         foreach (census($config) as $owner) {
             $key = (string) $owner['pid'];
@@ -192,30 +202,79 @@ function sample(array $config, string $nonce): array {
             }
             $owners[$key] = $owner;
         }
-        $busy = max($busy, metric($config, 'gpu_busy_percent'));
-        $used = max($used, metric($config, 'mem_info_vram_used'));
+        $metrics[] = native_helper($config, ['telemetry', $config['pci_bdf']]);
         if ($index === 0) { usleep(100000); }
     }
     require_true(device_info($config) === $identity);
     $elapsed = (int) ceil((hrtime(true) - $started) / 1000000);
-    require_true($elapsed > 0 && $elapsed <= 2000 && $busy <= 100);
-    return [
-        'schema' => 1, 'nonce' => $nonce, 'device' => $identity,
+    require_true($elapsed > 0 && $elapsed <= 2000);
+    return array_merge([
+        'schema' => 2, 'nonce' => $nonce, 'device' => $identity,
         'census_complete' => true, 'owners' => array_values($owners), 'errors' => [],
-        'samples' => 2, 'gpu_busy_percent' => $busy, 'vram_used_bytes' => $used,
-        'sample_span_ms' => $elapsed,
-    ];
+        'samples' => 2, 'sample_span_ms' => $elapsed,
+    ], combine_metrics($metrics));
+}
+
+function native_helper(array $config, array $args, $client = null): array {
+    $path = __DIR__ . '/rx480-probe-native.pl';
+    read_config($path, $config['native_helper_sha256']);
+    $descriptors = [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+    if ($client !== null) { $descriptors[3] = $client; }
+    $process = proc_open(array_merge(['/usr/bin/perl', $path], $args), $descriptors, $pipes);
+    require_true(is_resource($process));
+    $raw = stream_get_contents($pipes[1], 8193); $errors = stream_get_contents($pipes[2], 1024);
+    fclose($pipes[1]); fclose($pipes[2]); $exit = proc_close($process);
+    require_true($exit === 0 && $errors === '' && is_string($raw) && strlen($raw) <= 8192);
+    $value = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
+    require_true(is_array($value));
+    return $value;
+}
+
+function combine_metrics(array $metrics): array {
+    require_true(count($metrics) === 2);
+    $first = $metrics[0]; $second = $metrics[1];
+    require_true($first['runtime_status'] === $second['runtime_status']);
+    require_true(in_array($first['runtime_status'], ['active', 'suspended'], true));
+    $missing = false; $busy = 0; $used = 0; $active = PHP_INT_MAX;
+    foreach ($metrics as $item) {
+        require_true(is_int($item['runtime_active_ms']) && $item['runtime_active_ms'] >= 0);
+        require_true(is_int($item['vram_used_bytes']) && $item['vram_used_bytes'] >= 0);
+        $used = max($used, $item['vram_used_bytes']); $active = min($active, $item['runtime_active_ms']);
+        if ($item['gpu_busy_percent'] === null) {
+            require_true($item['gpu_busy_errno'] === 'EBUSY' && $item['runtime_status'] === 'suspended');
+            $missing = true;
+        } else {
+            require_true(is_int($item['gpu_busy_percent']) && $item['gpu_busy_percent'] >= 0);
+            require_true($item['gpu_busy_percent'] <= 100 && $item['gpu_busy_errno'] === null);
+            $busy = max($busy, $item['gpu_busy_percent']);
+        }
+    }
+    require_true($first['runtime_status'] !== 'suspended' || $active > 0);
+    require_true(!$missing || $busy === 0);
+    return ['gpu_busy_percent' => $missing ? null : $busy, 'gpu_busy_errno' => $missing ? 'EBUSY' : null,
+        'runtime_status' => $first['runtime_status'], 'runtime_active_ms' => $active, 'vram_used_bytes' => $used];
+}
+
+function client_identity($client, array $config): array {
+    $peer = native_helper($config, ['peer'], $client);
+    require_true(is_int($peer['pid']) && $peer['pid'] > 1 && $peer['uid'] === 65532);
+    $identity = process_identity((string) $peer['pid']);
+    $id = preg_quote($config['worker_container_id'], '/');
+    require_true(preg_match('/^0::\/little-orbit-recovery-[a-z0-9-]+\/' . $id . '$/m', $identity['cgroup']) === 1);
+    return ['peer' => $peer, 'process' => $identity];
 }
 
 function reply($client, array $config): void {
+    $peer = client_identity($client, $config);
     stream_set_timeout($client, 2);
     $raw = fgets($client, 513);
     require_true(is_string($raw) && strlen($raw) <= 512 && substr($raw, -1) === "\n");
     $request = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
-    require_true(is_array($request) && count($request) === 3 && ($request['schema'] ?? null) === 1);
+    require_true(is_array($request) && count($request) === 3 && ($request['schema'] ?? null) === 2);
     require_true(in_array($request['operation'] ?? null, ['idle', 'residency'], true));
     require_true(preg_match('/^[0-9a-f]{64}$/D', $request['nonce'] ?? '') === 1);
     $proof = sample($config, $request['nonce']);
+    require_true(client_identity($client, $config) === $peer);
     $response = json_encode($proof, JSON_THROW_ON_ERROR) . "\n";
     require_true(strlen($response) <= 8192 && fwrite($client, $response) === strlen($response));
 }
@@ -246,7 +305,7 @@ function serve(array $config): void {
     }
 }
 
-try {
+if (realpath($argv[0] ?? '') === __FILE__) { try {
     require_true(PHP_SAPI === 'cli' && PHP_INT_SIZE === 8 && count($argv) === 3);
     require_true(function_exists('posix_geteuid') && posix_geteuid() === 0);
     require_true(is_string($argv[1]) && substr($argv[1], 0, 1) === '/');
@@ -254,4 +313,4 @@ try {
 } catch (Throwable $error) {
     fwrite(STDERR, "GPU host probe failed closed; no GPU admission\n");
     exit(1);
-}
+} }

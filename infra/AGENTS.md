@@ -10,6 +10,21 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 
 ## Hard rules and invariants
 
+The shared DMS/Orbit scope in [ADR 0052](../docs/adr/0052-shared-array-docker-and-separate-budgets.md)
+supersedes only the earlier disabled-firewall/shared-parent recovery candidate
+below. Standard Docker IPv4 NAT plus owned isolation requires a reviewed
+daemon-only transition with apps off and rollback. Orbit retains its own 26 GiB
+parent; daemon overhead and DMS are separate budgets. Preserve no host swap and
+record unsupported accounting honestly. No global flush or unrelated activation.
+
+The optional cached-base source-overlay builder emits an artifact only. Reuse
+exact admitted dependency layers and reviewed frozen source; never resolve new
+packages or substitute an empty layer for a missing base. Native cache import,
+target Python/dependency behavior and worker holds require separate acceptance.
+The earlier wheel candidate remains unsealed unless its genuine inputs pass.
+Any copy-integrity or filesystem disagreement stops native activation and keeps
+all candidates/evidence; no check, repair or retry is authorized by a failed gate.
+
 - Expose only gateway port `8180`. Never publish API, web, PostgreSQL, Ollama, or production Mailpit ports.
 - Keep application callers off Ollama's model-download egress bridge; only Ollama joins it, and only the worker plus one-shot initializer join the internal AI network.
 - Keep the public-context fetcher secret-free and off every application/database/AI private network. It may join only a private worker link and its own egress link, fetch exact code-owned HTTPS sources, refuse redirects/private DNS, and bound bytes and content types.
@@ -23,6 +38,7 @@ Nginx Proxy Manager terminates public TLS. The Little Orbit gateway accepts its 
 - Reserve `10.253.14.2` for Caddy and `10.253.14.3` for the API on the Unraid private gateway link; `172.30.0.0/16` belongs to the target's Pterodactyl bridge. Keep the fixed addresses and `TRUSTED_PROXY_IP` together so update-time start order cannot move the trust boundary.
 - On Unraid, compose production in this exact order: `compose.yaml`, `compose.gpu.yaml`, then `compose.unraid.yaml`. Keep live PostgreSQL and attachment data on direct cache-pool paths, and put only encrypted privacy-filtered archives on the array-backed backup share.
 - The approved October 2026 array/RX480 recovery profile is an explicit exception, not a fallback for those launchers. Require exact admitted direct `/mnt/disk2` backing, separate fixed recovery paths, full-growth/rollback budget and 100 GiB residual reserve. Never create cache-looking ROOTFS directories, start dependency bootstrap, or claim runtime acceptance from admission alone. Follow `docs/operations/ARRAY-RX480-RECOVERY.md`.
+- The accepted array recovery uses unchanged standard Docker IPv4 firewall flags with reviewed owned source-preserving DNAT/FORWARD and tuple-scoped egress SNAT. The older disabled-firewall candidate is historical; never change daemon flags from a rendered model. The serving overlay is distinct from inert preparation and grants no execution authority. Only worker SMTP and the secret-free context fetcher gain bounded egress; Ollama/models and notifications do not. See ADRs 0050 and 0052.
 - Every GPU consumer must open the stable host inode `/mnt/cache/gpu-coordinator/gpu.lock` through `/run/gpu-coordinator/gpu.lock`, share the configured supplementary GID, verify that no stale Ollama, LocalAI, or NVENC process owns VRAM, and keep the lock for the complete GPU-resident operation. Never replace the lock file during status updates.
 - Explicit AMD recovery uses the separately admitted recovery coordinator inode and a narrow host ownership probe, not NVIDIA queries or an empty process list from a container PID namespace. No privileged/hostPID worker; unknown ownership, GPU proof failure, or uncertain unload blocks work. Probe deployment and actual RX480 acceptance remain independent gates.
 - Use bounded container logs, health checks, restart policies, automated database backups, retention, and a tested restore path.

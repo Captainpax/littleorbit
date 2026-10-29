@@ -10,6 +10,16 @@ Until 1.0, only the current default branch receives security fixes. After 1.0, t
 
 ## Security boundaries
 
+Current SMTP code requires verified STARTTLS before any configured credentials
+are transmitted, and refuses partial credentials before opening a connection.
+Plain unauthenticated Mailpit remains a development-only option. The October 29
+recovery verified provider TLS and SMTP AUTH without sending mail; ordinary
+mailbox delivery remains a separate check. The explicit recovery serving model
+and offline wheel scaffold are not host launchers or firewall installers.
+Native bounded DNS rules retain each verified IP only until its own expiry,
+including rotated answers; timeouts cannot renew stale access. The separately
+admitted controller owns host rules and startup without broadening the model.
+
 The public gateway is the only exposed container port. Authentication does not imply authorization to a couple resource. AI is isolated from answers and relationship data. Big Orbit views exclude relationship content, attachment names and bytes, quiz answers, precise locations, and profile images. Tokens, Big Orbit device credentials, and recovery codes are stored only as hashes; TOTP secrets, Android Keystore administrator keys, Android profile thumbnails, queued Smooches, kept-offline note attachments, and the phone's reusable wireless-ADB private key stay in protected or app-private storage. Smooch creation is transactionally rate-limited to five sends per account in a rolling hour, and account deletion erases the old relationship history. Server relationship avatars are normalized to bounded metadata-free WebP variants and are available only to the active couple. Precise coordinates are scheduled for deletion five minutes early and have a separate absolute 24-hour purge predicate.
 
 Every fresh Big Orbit device begins with an administrator password, an eight-digit PIN printed once by the trusted server CLI, and possession of a newly generated P-256 Android Keystore key. Only a domain-separated PIN hash is stored. One active PIN expires after ten minutes, fails closed after five attempts, is consumed once, and invalidates earlier unused PINs and live setup capabilities. Its restricted setup token can prove the pending key and, for the first owner only, confirm a newly staged TOTP factor; it cannot call ordinary administrator routes. A client that loses the final enrollment response must sign a fresh single-use challenge with the same key before the API rotates replacement credentials inside the original setup expiry. Existing MFA remains unchanged when later devices enroll. Ordinary `/v2/admin` sessions still require current replay-safe MFA plus an approved key. Challenges are single-use, 30-minute sessions are bound to one device record, 90-day device credentials are random and hashed, and revocation invalidates that device without disclosing whether unrelated protected records exist. `/v1/admin` and the browser `/admin` interface are absent. Typed operation jobs cannot contain commands, SQL, paths, URLs, or arbitrary parameters.

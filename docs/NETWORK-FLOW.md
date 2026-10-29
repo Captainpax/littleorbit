@@ -1,5 +1,11 @@
 # Network and logic flows
 
+The approved shared DMS/Orbit recovery successor uses standard Docker IPv4 NAT
+with owned isolation after native review. Separate budgets and the pending
+activation boundary are in [ADR 0052](adr/0052-shared-array-docker-and-separate-budgets.md).
+The older disabled-firewall candidate remains historical; no runtime or diagram
+acceptance follows from the new pure resource model.
+
 The Mermaid diagrams in this document are the editable architecture source of truth. The overview PNG is a reader-friendly concept and must be regenerated when its flow changes.
 
 The external-routing diagram shows the live Unraid route after the 2026-09-27 cutover. [`VERIFICATION-UNRAID-2026-09-26.md`](operations/VERIFICATION-UNRAID-2026-09-26.md) records the completed `.182` to `.14` stream, Nginx Proxy Manager switch, corrected reboot recovery, authorized DNS correction, and one existing authenticated Android session, plus the second-session, post-reload WSS reconnect, broader device, and cellular external-WAN checks that remain open.
@@ -14,8 +20,13 @@ The diagram below describes the original cache/NVIDIA deployment. The explicit
 [array/RX480 recovery profile](operations/ARRAY-RX480-RECOVERY.md) preserves
 these network/privacy boundaries but replaces only storage admission and GPU
 ownership verification under [ADR 0049](adr/0049-explicit-array-rx480-recovery.md).
-Its host probe is content-free and local; it adds no public listener. Hardware
-and runtime acceptance are still pending, and unrelated GPU consumers stay off.
+Its host probe is content-free and local; it adds no public listener. The schema-2
+private socket uses kernel peer credentials in both directions and the admitted
+worker cgroup. Runtime-PM suspension is explicit, never a fabricated zero sensor
+reading. The revised worker/probe integration has proved both physical generation
+and embeddings with verified unload. Eight approved containers run privately;
+the gateway's executable-capability correction and public acceptance remain
+pending. This does not change the public routing diagram. Unrelated GPU consumers stay off.
 
 ```mermaid
 flowchart TD
@@ -57,6 +68,39 @@ After the NPM upstream switch, the separately authorized DNS correction changed 
 Caddy trusts incoming `X-Forwarded-For` only when its immediate peer is `192.168.50.6`. It overwrites a private `X-Little-Orbit-Client-IP` header before proxying to FastAPI. FastAPI accepts that private header only from Caddy's fixed `gateway-api` address, validates it as exactly one IP address, and does not enable Uvicorn's generic proxy-header trust. Compose reserves `10.253.14.2` for Caddy and `10.253.14.3` for FastAPI; the target's Pterodactyl bridge already owns `172.30.0.0/16`. Direct or malformed values fall back to the socket peer for throttling. Allowed HTTP hosts derive the public name from `PUBLIC_BASE_URL` and retain only that name, localhost/loopback, and the internal `api` service name; direct readiness uses `Host: lil-orb.pax-kun.com`.
 
 Every GPU consumer opens the same stable inode at `/mnt/cache/gpu-coordinator/gpu.lock`, mounted as `/run/gpu-coordinator/gpu.lock`. Little Orbit acquires it before creating an AI-run claim and holds it through generation, embedding, immediate Ollama unload, and a bounded empty-`ollama ps` check. Oracle holds it while LocalAI is resident and unloads after 900 idle seconds; status checks cannot reload the model. Raven holds it for each NVENC process. Contention never preempts an owner: Little Orbit and Raven remain durably queued, while Oracle follows its existing graceful fallback. Scriptarr keeps its existing Pacific six-hour update cadence; Little Orbit's 01:00 and 03:00 eligibility times avoid its normal clock edges. After a crash or reboot, the advisory lock alone is insufficient; no consumer starts until stale Ollama, LocalAI, and NVENC processes are absent from VRAM.
+
+### Explicit recovery serving candidate
+
+The preceding diagram remains the historical cache/NVIDIA topology. The
+unaccepted recovery candidate in [ADR 0050](adr/0050-controlled-array-serving-contracts.md)
+keeps Docker `iptables`, `ip6tables`, `ip-forward`, `ip-masq`, IPv6 and userland
+proxy flags false. A native controller must first prove the actual init network
+namespace, existing forwarding state, native carriers and unrelated rule/route
+inventory. It must not assume Docker created an isolation chain.
+
+| Flow | Owned boundary | Preserved trust |
+|---|---|---|
+| NPM `.6` to `.14:8180` | Exact PREROUTING DNAT to Caddy `10.253.14.2:8180`, original-tuple FORWARD filtering, no SNAT | Caddy still sees NPM `.6`; API trusts only Caddy `.2`, API remains `.3` |
+| Context fetcher `10.253.14.18` | Sole member of `lo-ctx-egress`, exact DNS resolvers and five code-host public IPv4 lease sets on TCP443; matching SNAT to `.14` only | Fixed URLs, TLS hostname validation, no redirects, no environment proxy |
+| Worker `10.253.14.26` | Sole member of `lo-mail-egress`, exact recovered SMTP endpoint/STARTTLS port and DNS; matching SNAT to `.14` only | Existing encrypted outbox and once-recorded cutover; verified TLS before login |
+
+Fixed egress subnets are `10.253.14.16/29` and `10.253.14.24/29`; an actual route
+conflict refuses admission rather than silently choosing a new subnet. Internal
+networks remain internal. If the internal Caddy link has no default route, add
+only its namespace-local `.6/32 via 10.253.14.1` reply route. No physical host
+route change, PHP TCP relay, PROXY-protocol trust change or ingress masquerade
+is implied. Default-drop recovery forwarding blocks direct LAN/container access
+and unsanctioned egress; matched return connections retain their exact original
+tuple. Native sets must expire new-flow permission at the bounded DNS lease
+deadline; uncertain resolution/renewal fails closed.
+
+Explicit non-loopback upstream DNS is necessary: Docker forwards it from the
+container namespace, whereas host-loopback forwarding can bypass a FORWARD
+source check. IP filtering does not claim to enforce URLs or distinguish shared
+CDN hostnames: the fixed code catalogue and verified TLS enforce those names.
+Ollama, media and ClamAV receive no external route/NAT permission. No new model,
+notification broker, container or automatic download is introduced. These are
+pure models and a proposed overlay, not installed rules or public acceptance.
 
 ## Authentication and pairing
 
@@ -844,3 +888,17 @@ flowchart LR
 ```
 
 The compatibility gate runs before authentication and protected resource lookup, so its response cannot disclose account or relationship state. Routine publications leave `required_after` empty and remain optional.
+
+The October 29 explicit array/RX480 recovery now serves only its approved nine
+roles behind the existing NPM route. Standard Docker firewall flags remain
+unchanged. Owned DNAT admits only NPM's original host/port tuple, retains its
+source address, and gives Caddy only an NPM-specific return route inside the
+container network namespace. Other LAN/direct-container ingress stays denied.
+Context HTTPS and worker STARTTLS use exact source/destination/port tuples and
+independently expiring DNS address leases. Resolver rotation never extends an
+old address without a fresh verified answer; unavailable DNS leaves expired
+tuples closed by the kernel. Ollama has no model/download egress. The managed
+root probe authenticates only the current worker without host PID or Docker
+socket access in that container. See the [recovery runbook](operations/ARRAY-RX480-RECOVERY.md)
+for the accepted controlled restart, 30-minute stability window and durable
+array-start/stop hooks. No node2 host reboot was performed.

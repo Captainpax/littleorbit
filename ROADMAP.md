@@ -4,13 +4,68 @@ The roadmap describes intent, not a promise of dates. Privacy and safety gates c
 
 ## Recovery track — October 2026
 
+- [x] Complete the separately approved offline disk1 read-only metadata check:
+  exit 0 with no inconsistencies reported, and no repair. Positively close the
+  empty runtime and private mount, preserving the runtime image and staged
+  images. The array has since returned normally; this is not payload or RAM health.
+- [ ] Resolve the separate DMS working-copy disagreement before that database
+  starts. Little Orbit's accepted copies remain separate. No RAM fault is
+  established; no BIOS change or memory-test reboot is currently authorized.
+- [x] Verify the shared daemon's image-only transition and import eleven original
+  images by exact config ID without starting application containers. This is
+  availability evidence; the mixed-workload controller and application gates
+  remain pending.
+- [x] Bind the PG17 preparation user/socket group to the inspected Debian image
+  identity and retain nested recovered `pgdata`; refuse initialization or a
+  wrong cluster path. No recovered file ownership is normalized.
+- [x] Build and verify a code-only recovery artifact over an immutable original
+  dependency base, without downloads, package installation or build containers.
+  The first artifact's native cache import, target Python 3.12.11 and original
+  dependencies passed. The typed AMD revision also passed native import and
+  target verification; native serving is online and the wheel candidate remains
+  unsealed and unused.
+
+- [x] Add a pure shared-node resource model for separate Orbit/daemon/DMS budgets,
+  remaining-growth headroom and honest unsupported swap accounting. This is not
+  native runtime acceptance.
+- [x] Admit the exact nine Little Orbit services through the managed lifecycle,
+  preserving the accepted daemon image and all nine container IDs. DMS admission
+  remains separate and blocked on its working-copy disagreement. See
+  [ADR 0052](docs/adr/0052-shared-array-docker-and-separate-budgets.md).
+
 - [x] Implement fail-closed local array admission, explicit AMD checks, and a nine-service held preparation profile. CPU/config tests are not restoration, hardware, runtime or public acceptance.
 - [x] Match both AMD recovery overlays to the statically inspected official Ollama 0.35.1 image and its existing Radeon ICD, without a default Mesa build or host-driver change. Local image identity, loader compatibility and real RX480 inference remain acceptance gates.
-- [x] Implement an opt-in aware-UTC recovery mail boundary: preserve pre-cutover encrypted backlog unsent and unchanged while admitting fresh eligible requests. Normal unset delivery remains unchanged; actual guarded-worker and mailbox acceptance are still pending.
-- [ ] Recover complete cold Little Orbit state to a separately admitted direct-array profile; preserve the original cache image, encrypted backups, secrets, published APKs, and rollback evidence.
-- [ ] Validate explicit RX480/Vulkan support with the original pinned generation and embedding models; require real GPU offload for both, with no CPU-only recovery fallback.
-- [ ] Admit only Little Orbit and essential dependencies after schema, worker-hold, capacity, firewall, authenticated/WSS/media/APK, restart, and soak gates. Existing cache/NVIDIA launchers remain unchanged.
-- [ ] Complete production verification before recovery autostart. Local code or sealed evidence is not runtime acceptance; see the [recovery runbook](docs/operations/ARRAY-RX480-RECOVERY.md).
+- [x] Implement an opt-in aware-UTC recovery mail boundary: preserve pre-cutover encrypted backlog unsent and unchanged while admitting fresh eligible requests. The guarded serving worker and verified SMTP authentication passed; no automatic test email was sent, so ordinary mailbox delivery is not claimed.
+- [x] Require certificate/hostname-verified STARTTLS before credentialed SMTP; preserve unauthenticated local Mailpit. Keep the public-context fetcher independent of environment proxy configuration.
+- [x] Add a separate serving-model candidate with exact nine-role ceilings, a 26 GiB daemon/application parent contract, source-preserving NPM DNAT and tuple-scoped context/SMTP egress models. Pure/config checks never grant native runtime authority.
+- [x] Scaffold a network-disabled, digest-bound worker build using exact hash-locked wheels, with all undiscovered base/cache/source/wheel provenance explicitly unsealed and refused.
+- [x] Seal original local image-cache metadata and import the approved exact images; preserve original IDs and provenance without registry pulls.
+- [x] Accept the first worker artifact's native cache import and target interpreter/dependency checks without application access. The later typed-probe revision and serving runtime remain separate gates.
+- [x] Privately start recovered PG17 without initialization/migration and verify schema 0032, ordinary crash recovery and preservation of all recovered accounts. Original API/worker/media credentials passed private TCP acceptance and wrong-password rejection.
+- [x] Observe real RX480 generation and embeddings with the original models, then independently verify unload with a typed runtime-PM-aware host census. Preserve the old false-zero telemetry failure.
+- [x] Verify the schema-2 host probe and revised worker together in a temporary owned test: authenticated worker socket, actual RX480 generation/embeddings, strict residency, verified unload and clean broker shutdown. The later durable serving lifecycle also passed.
+- [x] Deploy the gateway-only `NET_BIND_SERVICE` bound required by the recovered Caddy executable. Preserve its original failed start; all other roles retain an empty capability allowlist.
+- [x] Release distinct serving worker/media entrypoints after real GPU, schema,
+  scanner and privacy gates. Expire old raw locations only in the working copy;
+  retain the cold copy and encrypted pre-cutover mail watermark.
+- [x] Verify public TLS, readiness, original APK ranges, HTTP/WSS authorization
+  guards, all five context TLS destinations and certificate-verified SMTP AUTH
+  without sending mail. The owner confirmed existing login and relationship data.
+- [x] Observe the real app reconnect after the controlled restart: authenticated
+  notification WSS acceptance and authenticated profile HTTP 200, without
+  exporting tokens or creating test accounts. Both original public APK ranges
+  and a real non-NPM LAN DROP counter also passed.
+- [x] Complete one Little Orbit-only normal shutdown and persisted restart,
+  preserving all nine IDs and data, with fresh PG17/schema, scanner, both actual
+  GPU model paths and unload, and source-preserving NPM routing.
+- [x] Cover rotating DNS answers with independently expiring IP leases, and prove
+  native kernel expiry plus an actual blocked egress packet counter.
+- [x] Copy and independently verify complete coherent cold and working Little Orbit state to the admitted direct-array paths, preserving the original image, secrets, models, APKs and rollback. This file-level milestone does not establish database semantics or runtime acceptance.
+- [x] Validate explicit RX480/Vulkan support with both original pinned models through the corrected worker, with real offload and no CPU-only recovery fallback. Public serving remains a separate gate.
+- [x] Bring only Little Orbit's approved nine services online after the scoped
+  serving gates. Existing cache/NVIDIA launchers remain unchanged; broader
+  physical-device/WSS reconnect checks are distinct from server acceptance.
+- [x] Complete a fresh 31-sample, 30-minute post-restart stability window, then install and independently verify durable array-start/stop hooks. Duplicate installation retained the same nine processes, and SSH is configured for boot. No node2 reboot was performed; earlier failed windows remain failed. See the [recovery runbook](docs/operations/ARRAY-RX480-RECOVERY.md).
 
 ## 1.0 — Free public foundation
 

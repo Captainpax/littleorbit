@@ -1,0 +1,121 @@
+# CANDIDATE only: apply after the complete inert array-recovery profile.
+# This file does NOT grant start, worker-release, firewall or publication authority.
+# No Docker ports: native owned DNAT preserves NPM's source address at Caddy.
+x-array-serving: &serving
+  profiles: !override [array-serving-explicit-only]
+  cgroup_parent: ${ORBIT_RECOVERY_CGROUP_PARENT:?require admitted owned aggregate cgroup}
+
+services:
+  gateway:
+    <<: *serving
+    cpus: 0.25
+    mem_limit: 268435456
+    memswap_limit: 268435456
+    pids_limit: 64
+  web:
+    <<: *serving
+    cpus: 1
+    mem_limit: 805306368
+    memswap_limit: 805306368
+    pids_limit: 128
+  api:
+    <<: *serving
+    cpus: 1
+    mem_limit: 1073741824
+    memswap_limit: 1073741824
+    pids_limit: 256
+  postgres:
+    <<: *serving
+    cpus: 2
+    mem_limit: 4294967296
+    memswap_limit: 4294967296
+    pids_limit: 256
+  worker:
+    <<: *serving
+    cpus: 2
+    mem_limit: 2147483648
+    memswap_limit: 2147483648
+    pids_limit: 256
+    entrypoint: [python, -m]
+    command: [little_orbit_api.worker]
+    environment:
+      WORKER_HOLD: "false"
+      GPU_RECOVERY_PROOF_MODE: "false"
+      RECOVERY_MAIL_NOT_BEFORE: ${ORBIT_RECOVERY_MAIL_CUTOVER:?require once-recorded UTC cutoff}
+      SMTP_HOST: ${ORBIT_RECOVERY_SMTP_HOST:?require privately recovered SMTP hostname}
+      SMTP_PORT: ${ORBIT_RECOVERY_SMTP_PORT:?require privately recovered STARTTLS port}
+      SMTP_STARTTLS: "true"
+    dns: !override ["${ORBIT_RECOVERY_DNS_IPV4:?require admitted non-loopback upstream DNS}"]
+    dns_opt: !override ["ndots:0", "timeout:2", "attempts:1"]
+    networks: !override
+      private: {}
+      ai-private: {}
+      context-private: {}
+      worker-mail-egress: {ipv4_address: 10.253.14.26}
+    healthcheck: !override
+      test: [CMD, python, -c, "import pathlib, socket; assert b'little_orbit_api.worker' in pathlib.Path('/proc/1/cmdline').read_bytes(); socket.create_connection(('postgres', 5432), 3).close()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  context-fetcher:
+    <<: *serving
+    cpus: 0.5
+    mem_limit: 268435456
+    memswap_limit: 268435456
+    pids_limit: 64
+    dns: !override ["${ORBIT_RECOVERY_DNS_IPV4:?require admitted non-loopback upstream DNS}"]
+    dns_opt: !override ["ndots:0", "timeout:2", "attempts:1"]
+    networks: !override
+      context-private: {}
+      context-egress: {ipv4_address: 10.253.14.18}
+  ollama:
+    <<: *serving
+    cpus: 4
+    mem_limit: 8589934592
+    memswap_limit: 8589934592
+    pids_limit: 256
+  media-worker:
+    <<: *serving
+    cpus: 2
+    mem_limit: 2147483648
+    memswap_limit: 2147483648
+    pids_limit: 128
+    entrypoint: [python, -m]
+    command: [little_orbit_api.attachment_media]
+    environment: !override
+      LITTLE_ORBIT_ENV: production
+      DATABASE_URL: ${DATABASE_MEDIA_URL:?require recovered media credential URL}
+      ATTACHMENT_STORAGE_DIR: /var/lib/little-orbit/attachments
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+    healthcheck: !override
+      test: [CMD, python, -c, "import pathlib, socket; assert b'little_orbit_api.attachment_media' in pathlib.Path('/proc/1/cmdline').read_bytes(); socket.create_connection(('postgres', 5432), 3).close(); socket.create_connection(('clamav', 3310), 3).close()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  clamav:
+    <<: *serving
+    cpus: 1
+    mem_limit: 4294967296
+    memswap_limit: 4294967296
+    pids_limit: 128
+
+networks:
+  context-egress: !override
+    driver: bridge
+    internal: false
+    driver_opts:
+      com.docker.network.bridge.name: lo-ctx-egress
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config: [{subnet: 10.253.14.16/29, gateway: 10.253.14.17}]
+  worker-mail-egress:
+    driver: bridge
+    internal: false
+    driver_opts:
+      com.docker.network.bridge.name: lo-mail-egress
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config: [{subnet: 10.253.14.24/29, gateway: 10.253.14.25}]

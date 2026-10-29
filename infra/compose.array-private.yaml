@@ -1,0 +1,51 @@
+# Candidate private validation only. No host ports, worker release or egress.
+# Apply after the reviewed base, RX480 and inert array files. Native adoption of
+# the exact rendered model and existing files is a separate gate; never `up` it.
+x-private-validation: &private-validation
+  cgroup_parent: ${ORBIT_RECOVERY_CGROUP_PARENT:?require admitted owned cgroup}
+
+services:
+  gateway: {<<: *private-validation}
+  web: {<<: *private-validation}
+  api: {<<: *private-validation}
+  postgres: {<<: *private-validation}
+  worker: {<<: *private-validation}
+  media-worker: {<<: *private-validation}
+  clamav: {<<: *private-validation}
+  context-fetcher:
+    <<: *private-validation
+    networks: !override [context-private]
+  ollama:
+    <<: *private-validation
+    entrypoint: [/bin/ollama]
+    devices: !override [/dev/dri/renderD128:/dev/dri/renderD128]
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NO_CLOUD: "1"
+
+# Exact disjoint internal links. No private-stage default external route.
+networks: !override
+  gateway-api:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: lo-rec-edge}
+    ipam: {config: [{subnet: 10.253.14.0/28, gateway: 10.253.14.1}]}
+  private:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: lo-rec-app}
+    ipam: {config: [{subnet: 10.253.14.32/28, gateway: 10.253.14.33}]}
+  gateway-web:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: lo-rec-web}
+    ipam: {config: [{subnet: 10.253.14.48/28, gateway: 10.253.14.49}]}
+  ai-private:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: lo-rec-ai}
+    ipam: {config: [{subnet: 10.253.14.64/28, gateway: 10.253.14.65}]}
+  media-private:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: lo-rec-media}
+    ipam: {config: [{subnet: 10.253.14.80/28, gateway: 10.253.14.81}]}
+  context-private:
+    internal: true
+    driver_opts: {com.docker.network.bridge.name: lo-rec-ctx}
+    ipam: {config: [{subnet: 10.253.14.96/28, gateway: 10.253.14.97}]}

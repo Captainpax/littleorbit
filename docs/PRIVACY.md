@@ -21,6 +21,18 @@ operational hold neither creates accounts nor requests password resets, and
 must not be silently removed to replay historical mail. Normal deployments
 without the optional boundary retain their existing behavior.
 
+Credentialed SMTP now refuses delivery unless STARTTLS is enabled with system-CA
+certificate and hostname verification; a failed TLS handshake cannot proceed
+to login or send. Unauthenticated local development Mailpit remains available.
+The October 29 recovery separately verified provider TLS and SMTP AUTH without
+sending mail, and committed working-copy raw-location expiry while preserving
+forensic cold data and the durable mail cutoff. This does not establish ordinary
+mailbox delivery. The serving profile permits worker egress only to that privately
+recovered endpoint and bounded DNS, and context-fetcher egress only for the five
+code-owned HTTPS sources. It disables environment-derived HTTP proxies, adds no
+AI/model egress or notification broker, and exports neither expanded Compose
+secrets nor SMTP names/credentials in its sanitized model result.
+
 | Data | Purpose | Access | Intended retention |
 |---|---|---|---|
 | Email, password hash, verification state | Account access and recovery | Account owner; limited admin metadata | Until deletion plus bounded backup expiry |

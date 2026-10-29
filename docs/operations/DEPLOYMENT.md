@@ -1,5 +1,13 @@
 # Home deployment runbook
 
+For the approved shared-array DMS/Orbit recovery only, use the scope and recorded
+native gates in [ADR 0052](../adr/0052-shared-array-docker-and-separate-budgets.md).
+The normal cache/NVIDIA deployment and immutable release history remain intact.
+Little Orbit's October 29 public recovery, controlled restart, 30-minute window
+and durable array-start/stop hooks passed. DMS remains under its separate
+integrity hold. Follow the recovery runbook for the installed controller;
+the original cache/NVIDIA instructions below do not operate that recovery.
+
 After cutover, public availability will depend on Unraid, home power, internet service, the router, authoritative DNS, and the separate Nginx Proxy Manager host remaining online. This topology is suitable for learning and a small service only after security, backup, and device release gates pass. The target production host is Unraid at `192.168.50.14`; Nginx Proxy Manager remains at `192.168.50.6`. Its certificate and TLS settings were preserved, while the separately authorized 2026-09-27 DNS correction changed the stale `pax-kun.com` apex A record to the current WAN address.
 
 ## Unraid production layout
@@ -7,8 +15,12 @@ After cutover, public availability will depend on Unraid, home power, internet s
 The cache/NVIDIA layout below remains the original production profile. Do not
 reuse its bootstrap or launcher against a missing cache pool. The approved
 [array/RX480 recovery runbook](ARRAY-RX480-RECOVERY.md) uses independently
-admitted direct-array paths and remains unaccepted until its real hardware
-and runtime gates pass.
+admitted direct-array paths and records its accepted hardware/runtime gates.
+Its distinct `compose.array-serving.yaml` candidate is a last-file delta over
+the inert recovery model, not a replacement for the normal launcher. Do not run
+it with `up` from this document: native two-daemon supervision, image/build
+closure, resource/kernel membership, GPU, privacy/mail and owned-network
+acceptance remain separate gates in the recovery runbook.
 
 Use these non-exported paths. Do not place the live database or attachments beneath a generic appdata/user-share path that Unraid mover or snapshot tooling can relocate while the service runs. This follows Unraid's separation of [container working data and shares](https://docs.unraid.net/unraid-os/using-unraid-to/manage-storage/shares/).
 
@@ -21,6 +33,12 @@ Use these non-exported paths. Do not place the live database or attachments bene
 | `/mnt/cache/little-orbit-tools/` | Checksum-pinned host-only tools such as `age` | Non-exported cache-only share; never add it to production container mounts |
 | `/mnt/cache/vault/little-orbit/android-signing/` | Separately encrypted Little Orbit and Big Orbit signer bundles | Outside production Compose; decrypt only into tmpfs for one-shot signing |
 | `/mnt/user/little-orbit-backups/` | Encrypted, privacy-filtered database/attachment pairs | Array-only share; local recovery, not off-host disaster recovery |
+
+The cache table records the original deployment layout. The separately approved
+[array recovery](ARRAY-RX480-RECOVERY.md) preserves recovered ownership and uses
+the inspected PG17 image's `999:999` runtime identity with nested `pgdata`.
+Do not normalize a recovered tree or infer runtime users from an outer host
+directory's historical group.
 
 Run `infra/scripts/unraid-bootstrap.sh` as root on the verified `.14` host to create the layout and install the checksum-pinned `age` binary. The script refuses another host and refuses to create state unless `/mnt/cache` is the expected BTRFS device mount and `/mnt/user` is the exact `shfs` mount; mere root-filesystem directories do not pass. It requires SMB and NFS export to be disabled, may add the two missing NFS-disable keys to an otherwise exact legacy share configuration, and rejects partial or conflicting NFS policy. After validating each persistent share file, it applies the same fixed storage policy through Unraid's local management command so the running `shfs` sees it before any directory or file is created. It then writes a root-owned mode-`0600` content-free `.array-placement` sentinel through `/mnt/user/little-orbit-backups/` so an empty backup share materializes on an array disk and can pass the physical-placement audit. Do not remove that sentinel. Both bootstrap and the Compose attachment initializer retain `65532:65532` mode `0750` on the attachment root; this denies traversal by Unraid's generic `users` group while preserving access for the unprivileged API, worker, media worker, and backup reader. Exclude the live PostgreSQL and attachment directories from generic appdata backup/snapshot jobs.
 

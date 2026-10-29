@@ -9,6 +9,11 @@ For the October 2026 cache-loss recovery, follow the separate
 preserved. Their deliberate privacy exclusions mean a backup is not equivalent
 to full cold state; selecting that fallback requires an explicit data-loss
 decision. Do not independently choose the newest database and attachment files.
+The recovery serving candidate does not enable the normal backup scheduler or
+change retention, cold copies, keys, APKs or model blobs. Source/working-copy
+acceptance and full-growth capacity remain external prerequisites; neither an
+offline worker build nor a rendered model permits copying or rehashing accepted
+payloads. Admit the recovery-specific backup/restore path before autostart.
 
 Set `BACKUP_AGE_RECIPIENT` in the root-only `/mnt/cache/little-orbit-secrets/runtime.env` to the public recipient printed by the checksum-pinned `age-keygen`. Keep the corresponding private identity outside Git and production containers. The Unraid restore drill defaults to:
 

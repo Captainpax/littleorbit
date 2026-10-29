@@ -50,9 +50,27 @@ The 1.1.0 watch update is signed as phone code 25 and Wear code 19. Watch record
 ## Architecture
 
 The October 2026 [array/RX480 recovery track](docs/operations/ARRAY-RX480-RECOVERY.md)
-is a separate, fail-closed operator workflow, not a declaration that the service
-is restored. The cache/NVIDIA deployment remains the default; recovery requires
-preserved cold state and actual GPU generation and embedding proofs.
+is a separate, fail-closed operator workflow; its actual runtime results are
+reported below. The cache/NVIDIA deployment remains the default. Recovery
+requires preserved cold state and actual GPU generation and embedding proofs.
+The separate serving candidate adds verified SMTP STARTTLS, an offline-only
+worker build-closure scaffold, approved resource ceilings and owned narrow
+DNAT/egress contracts. Its local model checks grant no start/publication
+authority; unsealed image/base/wheel inputs still fail closed.
+
+October 29 recovery status: all nine approved services are online through the
+existing public hostname with valid TLS. The owner confirmed existing-account
+login and relationship data. Schema 0032, original credentials, both original
+RX480 model paths and unload, working-copy privacy expiry, APK ranges and
+HTTP/WSS authorization and a real authenticated app reconnect passed. The gateway
+retains only its required
+`NET_BIND_SERVICE` addition. Verified SMTP authentication sent no email, and
+context access is limited to five approved HTTPS hosts with expiring DNS rules.
+The same nine container IDs returned through the persisted startup controller.
+Its fresh 31-sample, 30-minute stability window and durable array-start/stop
+hooks passed. A duplicate installation adopted the running processes without
+restarting them. SSH is configured for boot; no node2 reboot was performed.
+The September deployment description below is historical.
 
 Android, Wear OS, [Big Orbit](https://github.com/Captainpax/big-orbit), and browsers connect to `https://lil-orb.pax-kun.com`. Production now runs on Unraid with one gateway port at `192.168.50.14:8180`, admitted only from Nginx Proxy Manager at `192.168.50.6`. NPM's TLS configuration was preserved; a separately authorized 2026-09-27 correction changed the stale `pax-kun.com` apex A record to the current WAN address, all four authoritative name servers returned it, and a Pixel 8 Pro received API 1.3.0 readiness in Chrome over Wi-Fi. The same installed production app then used an existing session for authenticated HTTPS and notification WSS through the new host; after the audited code-only reload it again produced authenticated `200` traffic before leaving the network. The gateway routes `/api/*` and `/ws/*` to FastAPI and all other paths to Next.js. PostgreSQL, pgvector, Ollama, the worker, and Mailpit remain private to the Compose network. A secret-free context fetcher has a separate bounded egress network and accepts only code-owned HTTPS sources. Little Orbit cooperatively shares the host RTX 4060 through a stable lock with Scriptarr; contention delays queued site-wide AI work without exposing relationship data or preempting another workload. Isolated host acceptance now proves Raven's durable wait, container-recreation recovery, and automatic resume without production-library mutation. The current Gmail credential also delivered a content-free SMTP probe to the intended production inbox. The [Unraid cutover record](docs/operations/VERIFICATION-UNRAID-2026-09-26.md) distinguishes those results from the still-open second-session, post-reload WSS reconnect, Big Orbit, Gmail app-password rotation and ordinary outbox delivery, broader physical-device, Little Orbit-under-Scriptarr contention, cellular external-WAN, and off-host recovery checks.
 

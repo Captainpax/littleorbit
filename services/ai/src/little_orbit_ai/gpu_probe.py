@@ -20,6 +20,7 @@ from typing import Any
 
 MAX_PROBE_BYTES = 8_192
 PROBE_TIMEOUT_SECONDS = 5
+PROBE_SCHEMA = 2
 
 
 class GpuReleaseUnsafe(RuntimeError):
@@ -53,23 +54,29 @@ class GpuRequiredFailure(RuntimeError):
 def validate_idle_proof(value: object, nonce: str, identity: AmdProbeIdentity) -> bool:
     """Reject partial, stale, malformed, wrong-device and busy attestations."""
 
-    if not isinstance(value, dict) or not _matches_device(value, nonce, identity):
+    if not isinstance(value, dict) or not _valid_observation(value, nonce, identity):
         return False
-    if value.get("census_complete") is not True:
+    if value.get("owners") != [] or value["vram_used_bytes"] > identity.idle_vram_bytes:
         return False
-    if value.get("owners") != [] or value.get("errors") != []:
-        return False
-    if not _valid_metrics(value):
-        return False
+    # A suspended device may return EBUSY for its sensor. Preserve that missing
+    # reading as null; a fresh, previously active runtime-PM state proves quiet
+    # hardware separately. Never turn an unavailable sensor into a zero value.
+    return value["gpu_busy_percent"] in (None, 0)
+
+
+def _valid_observation(value: dict[str, Any], nonce: str, identity: AmdProbeIdentity) -> bool:
     return bool(
-        value["gpu_busy_percent"] == 0 and value["vram_used_bytes"] <= identity.idle_vram_bytes
+        _matches_device(value, nonce, identity)
+        and value.get("census_complete") is True
+        and value.get("errors") == []
+        and _valid_metrics(value)
     )
 
 
 def _matches_device(value: dict[str, Any], nonce: str, identity: AmdProbeIdentity) -> bool:
     if value.get("nonce") != nonce:
         return False
-    if type(value.get("schema")) is not int or value["schema"] != 1:
+    if type(value.get("schema")) is not int or value["schema"] != PROBE_SCHEMA:
         return False
     expected_device = {
         "pci_bdf": identity.pci_bdf,
@@ -85,10 +92,29 @@ def _matches_device(value: dict[str, Any], nonce: str, identity: AmdProbeIdentit
 def _valid_metrics(value: dict[str, Any]) -> bool:
     if type(value.get("samples")) is not int or value["samples"] < 2:
         return False
-    for name in ("gpu_busy_percent", "vram_used_bytes", "sample_span_ms"):
+    for name in ("vram_used_bytes", "sample_span_ms", "runtime_active_ms"):
         if type(value.get(name)) is not int or value[name] < 0:
             return False
-    return bool(0 < value["sample_span_ms"] <= 2_000)
+    if not 0 < value["sample_span_ms"] <= 2_000:
+        return False
+    return _valid_busy_observation(value)
+
+
+def _valid_busy_observation(value: dict[str, Any]) -> bool:
+    if not {"gpu_busy_percent", "gpu_busy_errno"}.issubset(value):
+        return False
+    power = value.get("runtime_status")
+    if power not in ("active", "suspended"):
+        return False
+    if power == "suspended" and value["runtime_active_ms"] == 0:
+        return False
+    busy = value["gpu_busy_percent"]
+    if type(busy) is int:
+        return bool(0 <= busy <= 100 and value["gpu_busy_errno"] is None)
+    return bool(
+        busy is None and value["gpu_busy_errno"] == "EBUSY"
+        and power == "suspended" and value["runtime_active_ms"] > 0
+    )
 
 
 def _verify_socket(path: Path) -> tuple[int, int]:
@@ -120,18 +146,15 @@ async def request_residency_proof(requirement: GpuRequirement) -> bool:
     """Require only the admitted Ollama container to own this physical device."""
 
     value, nonce = await _request_proof(requirement.socket_path, "residency")
-    if not isinstance(value, dict):
+    if not isinstance(value, dict) or not _valid_observation(value, nonce, requirement.identity):
         return False
     if not _approved_owners(value.get("owners")):
         return False
     busy = value.get("gpu_busy_percent")
-    if type(busy) is not int or not 0 <= busy <= 100:
+    if value["runtime_status"] != "active" or type(busy) is not int:
         return False
     used = value.get("vram_used_bytes")
-    if type(used) is not int or used <= requirement.identity.idle_vram_bytes:
-        return False
-    normalized = dict(value, owners=[], gpu_busy_percent=0, vram_used_bytes=0)
-    return validate_idle_proof(normalized, nonce, requirement.identity)
+    return type(used) is int and used > requirement.identity.idle_vram_bytes
 
 
 def _approved_owners(value: object) -> bool:
@@ -159,7 +182,7 @@ async def _request_proof(path: Path, operation: str) -> tuple[object, str]:
             _verify_root_peer(writer.get_extra_info("socket"))
             if before != _verify_socket(path):
                 raise RuntimeError("AMD probe socket changed during connection")
-            request = {"schema": 1, "operation": operation, "nonce": nonce}
+            request = {"schema": PROBE_SCHEMA, "operation": operation, "nonce": nonce}
             writer.write(json.dumps(request).encode("ascii") + b"\n")
             await writer.drain()
             try:
