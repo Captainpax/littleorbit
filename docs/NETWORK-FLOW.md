@@ -16,6 +16,13 @@ The external-routing diagram shows the live Unraid route after the 2026-09-27 cu
 
 ## External routing and trust
 
+The phone's shared OkHttp client uses standard certificate and hostname validation
+for Retrofit HTTPS, note/notification WSS and phone-hosted Wear APK downloads.
+The source pin is 5.5.1, including the compromised eMudhra intermediate blocklist;
+the phone's own APK download instead uses Android DownloadManager's platform TLS.
+No route changes accompany this source update, and installed-device protection
+remains unverified. See the [focused assessment](operations/VERIFICATION-OKHTTP-2026-10-31.md).
+
 The diagram below describes the original cache/NVIDIA deployment. The explicit
 [array/RX480 recovery profile](operations/ARRAY-RX480-RECOVERY.md) preserves
 these network/privacy boundaries but replaces only storage admission and GPU

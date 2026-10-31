@@ -4,6 +4,7 @@ Little Orbit is MIT-licensed application code and depends on separately licensed
 
 The Android client directly relies on:
 
+- [OkHttp and logging-interceptor 5.5.1](https://github.com/lysine-dev/okhttp), Apache License 2.0, for the shared HTTPS/WSS client and its aligned logging dependency.
 - [Kadb 2.1.4](https://github.com/flyfishxu/Kadb), Apache License 2.0, for user-driven local wireless-ADB pairing and Wear APK installation.
 - [Conscrypt 2.6.0](https://github.com/google/conscrypt), Apache License 2.0, for the public TLS exporter used by Android wireless-debug pairing.
 - [Android Image Cropper 4.7.0](https://github.com/CanHub/Android-Image-Cropper), Apache License 2.0, for the phone's explicit square photo crop.

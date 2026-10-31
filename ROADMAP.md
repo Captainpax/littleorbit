@@ -2,6 +2,15 @@
 
 The roadmap describes intent, not a promise of dates. Privacy and safety gates can delay a feature.
 
+## Android security maintenance - October 2026
+
+- [x] Prepare the focused OkHttp 5.5.1 source update, keeping its logging
+  interceptor on the same version, to reject eight compromised eMudhra
+  intermediate certificates. See the [assessment and local verification](docs/operations/VERIFICATION-OKHTTP-2026-10-31.md).
+- [ ] Complete remaining Android device verification and a separately approved signed
+  phone release with an increased version code. The source update does not establish
+  the installed APK's dependency version or any device's trust-store update status.
+
 ## Recovery track — October 2026
 
 - [x] Complete the separately approved offline disk1 read-only metadata check:
