@@ -100,6 +100,7 @@ This inventory assigns every repository-owned Markdown file to a purpose. Review
 
 ## Operations and verification
 
+- `docs/operations/VERIFICATION-OKHTTP-2026-10-31.md` - focused OkHttp certificate-blocklist assessment, local checks and unreleased/device boundaries.
 - `docs/operations/BACKUP-RESTORE.md` — encrypted PostgreSQL/attachment backups, restore drills, and the exact-host-migration boundary.
 - `docs/operations/DEPLOYMENT.md` — production Compose, NPM, firewall, and release runbook.
 - `docs/operations/LOCAL-DEVELOPMENT.md` — local stack, updater, Wear installer, and photo development.

@@ -10,6 +10,17 @@ Until 1.0, only the current default branch receives security fixes. After 1.0, t
 
 ## Security boundaries
 
+The Android source pins OkHttp and its logging interceptor to 5.5.1, whose
+[upstream security fix](https://github.com/lysine-dev/okhttp/commit/6db98026dfb817a23c0282aa4e53d8187b309052)
+rejects eight compromised eMudhra intermediate certificates. The shared client
+uses standard certificate and hostname validation for Retrofit HTTPS, note and
+notification WSS, and phone-hosted Wear APK downloads. Google's Play Services
+update supplies equivalent protection on devices that received it; AOSP devices
+that still trust the affected hierarchy benefit from the library update. This is
+a source pin, not evidence of an installed APK or a device update. The phone's
+own APK download uses Android DownloadManager and its platform TLS stack; it is
+outside this OkHttp change. See the [assessment](docs/operations/VERIFICATION-OKHTTP-2026-10-31.md).
+
 Current SMTP code requires verified STARTTLS before any configured credentials
 are transmitted, and refuses partial credentials before opening a connection.
 Plain unauthenticated Mailpit remains a development-only option. The October 29
